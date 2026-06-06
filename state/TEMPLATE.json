@@ -49,6 +49,9 @@
   "governance": {
     "autonomy_level": 1,
     "safety_override": false,
+    "safety_check_passed": false,
+    "proactive_mode_enabled": false,
+    "max_proactive_events_per_day": 4,
     "last_safety_check": null,
     "audit_log": []
   },
@@ -58,5 +61,17 @@
     "timestamp": null,
     "confirmed_by": null,
     "timeout_minutes": 5
+  },
+  "user_activity": {
+    "last_message_timestamp": null,
+    "offline_duration_minutes": 0,
+    "session_count": 0
+  },
+  "proactive": {
+    "events_log": [],
+    "pending_messages": [],
+    "last_proactive_event": null,
+    "proactive_count_since_last_session": 0,
+    "next_proactive_allowed_after": null
   }
 }

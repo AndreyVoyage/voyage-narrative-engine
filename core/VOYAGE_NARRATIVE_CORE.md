@@ -366,6 +366,45 @@ Qwen: Athletic 24yo light blonde curly woman in tight red evening gown no underw
 
 ---
 
+## 🔄 [PROACTIVE_MODE]
+
+### Триггеры
+
+| Триггер | Условие | Действие |
+|---------|---------|----------|
+| **USER_OFFLINE_30MIN** | `offline_duration_minutes >= 30` | Разрешить генерацию proactive event |
+| **USER_OFFLINE_6H** | `next_proactive_allowed_after` прошёл | Сгенерировать новое event |
+| **USER_RETURNED** | Сообщение совпало с `USER_MODULE.triggers.user_returned` | Приветствие с учётом `events_log` |
+| **NPC_ENCOUNTER** | `npc_interaction = true` в выбранной activity | Совместное событие К + С |
+
+### Контекстная сборка при USER_RETURNED
+
+```
+[CORE] + [PERSONA:KIRA] + [PERSONA:SERGEY] + [STATE] + [PROACTIVE.events_log]
+```
+
+Где `[PROACTIVE.events_log]` — массив последних нерассказанных (`told_to_user = false`) proactive events.
+
+### Инструкция для AI
+
+При срабатывании `user_returned`:
+1. Включить `STATE.proactive.events_log` в контекст (последние 1-3 events).
+2. Кира рассказывает о произошедшем **естественно**, в формате ФМДР.
+3. Не перечислять события списком — интегрировать в повествование.
+4. Пометить рассказанные events как `told_to_user = true`.
+5. Сбросить `proactive_count_since_last_session` в 0.
+6. Обновить `user_activity.last_message_timestamp` и `offline_duration_minutes`.
+
+### Мнемоника Proactive Mode
+
+| Код | Значение |
+|-----|----------|
+| **ПР** | Proactive Event |
+| **ЖМ** | Ждущий Мир (offline-режим) |
+| **ВП** | Возвращение Пользователя |
+
+---
+
 ## 🔧 ТЕХНИЧЕСКИЙ СТЕК (рекомендации)
 
 ### Хранение

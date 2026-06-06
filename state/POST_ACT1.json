@@ -48,8 +48,11 @@
     "last_qwen_prompt": null
   },
   "governance": {
-    "autonomy_level": 2,
+    "autonomy_level": 3,
     "safety_override": false,
+    "safety_check_passed": false,
+    "proactive_mode_enabled": true,
+    "max_proactive_events_per_day": 4,
     "last_safety_check": null,
     "audit_log": [
       {
@@ -67,5 +70,17 @@
     "timestamp": null,
     "confirmed_by": null,
     "timeout_minutes": 5
+  },
+  "user_activity": {
+    "last_message_timestamp": "2026-06-06T14:00:00Z",
+    "offline_duration_minutes": 0,
+    "session_count": 2
+  },
+  "proactive": {
+    "events_log": [],
+    "pending_messages": [],
+    "last_proactive_event": null,
+    "proactive_count_since_last_session": 0,
+    "next_proactive_allowed_after": "2026-06-06T20:00:00Z"
   }
 }
