@@ -1,0 +1,53 @@
+{
+  "session_id": "SN_001",
+  "timestamp": "2026-06-06T11:00:00Z",
+  "core_version": "1.0.0",
+  "characters": {
+    "kira": {
+      "level": "U1",
+      "facet": "TG1",
+      "location": "home",
+      "clothing": "sportswear",
+      "underwear": true,
+      "emotional_state": "stable",
+      "last_action": null
+    },
+    "sergey": {
+      "level": "S1",
+      "location": "gym",
+      "last_action": null
+    }
+  },
+  "flags": {
+    "gym_stretching": false,
+    "bar_visited": false,
+    "bar_kiss": false,
+    "sergey_touched_waist": false,
+    "sergey_touched_thigh": false,
+    "kira_sent_photos": false,
+    "kira_no_underwear": false,
+    "kira_red_dress": false,
+    "user_visited_gym": false,
+    "user_saw_kira_sergey": false
+  },
+  "memory": {
+    "scenes_used": [],
+    "names_banned": [],
+    "emotional_anchors": [
+      "ты мой финиш",
+      "собери меня"
+    ],
+    "last_scenario": null,
+    "last_summary": null
+  },
+  "visual": {
+    "kira_seed": 12345,
+    "sergey_seed": 67890,
+    "last_qwen_prompt": null
+  },
+  "governance": {
+    "autonomy_level": 1,
+    "safety_override": false,
+    "last_safety_check": null
+  }
+}

@@ -1,0 +1,124 @@
+{
+  "template": {
+    "location": [
+      "gym",
+      "bar",
+      "hotel",
+      "spa",
+      "home",
+      "car",
+      "office",
+      "beach",
+      "club",
+      "street"
+    ],
+    "time": [
+      "morning",
+      "day",
+      "evening",
+      "night"
+    ],
+    "archetype": [
+      "trainer",
+      "bartender",
+      "stranger",
+      "friend",
+      "ex",
+      "boss",
+      "neighbor",
+      "client",
+      "doctor",
+      "artist"
+    ],
+    "kira_level": [
+      "U1",
+      "U2",
+      "U3",
+      "U4",
+      "U5",
+      "U6",
+      "U7"
+    ],
+    "sergey_level": [
+      "S1",
+      "S2",
+      "S3",
+      "S4",
+      "S5",
+      "S6",
+      "S7"
+    ],
+    "intensity": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "risk": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ]
+  },
+  "rules": {
+    "no_repeat": true,
+    "escalation": "level_plus_one_or_same",
+    "linking": "reference_previous",
+    "character_development": true,
+    "risk_cap": "intensity_plus_two",
+    "max_intensity_without_confirmation": 7,
+    "confirmation_required_for": [
+      "U6",
+      "U7"
+    ]
+  },
+  "examples": [
+    {
+      "id": "SC_001",
+      "location": "gym",
+      "time": "evening",
+      "archetype": "trainer",
+      "kira_level": "U1",
+      "sergey_level": "S1",
+      "intensity": 3,
+      "risk": 2,
+      "flags_required": [],
+      "flags_set": [
+        "gym_stretching"
+      ],
+      "prerequisites": null,
+      "description": "Первая тренировка. Сергей — тренер. Кира стойкая к соблазнам."
+    },
+    {
+      "id": "SC_042",
+      "location": "bar",
+      "time": "night",
+      "archetype": "bartender",
+      "kira_level": "U5",
+      "sergey_level": "S5",
+      "intensity": 7,
+      "risk": 5,
+      "flags_required": [
+        "bar_visited"
+      ],
+      "flags_set": [
+        "bar_kiss"
+      ],
+      "prerequisites": "К уже была в этом баре с Сергеем (SC_038).",
+      "description": "Кира в красном платье без белья. Доминирует. Сергей подыгрывает."
+    }
+  ]
+}

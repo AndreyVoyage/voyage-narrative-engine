@@ -1,0 +1,9 @@
+PROMPT.txt
+*.tmp
+state/sessions/*.json
+!state/sessions/.gitkeep
+memory/EVENT_LOG.json
+memory/summaries/*.md
+!memory/summaries/.gitkeep
+.DS_Store
+*.swp
