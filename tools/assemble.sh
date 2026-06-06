@@ -27,6 +27,9 @@ fi
     echo "## SERGEY"
     cat personas/SERGEY_MODULE.json
     echo ""
+    echo "## USER (Я)"
+    cat personas/USER_MODULE.json
+    echo ""
     echo "[STATE]"
     cat "state/sessions/${SESSION}.json"
     echo ""
