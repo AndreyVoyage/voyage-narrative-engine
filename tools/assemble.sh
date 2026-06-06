@@ -1,15 +1,12 @@
 #!/bin/bash
 # Собирает PROMPT.txt из модулей
-# Использование: ./tools/assemble.sh [номер_сессии] [сценарий]
+# Использование: ./tools/assemble.sh [STATE_FILE] [сценарий]
 
-SESSION="${1:-SN_001}"
+STATE_FILE="${1:-state/TEMPLATE.json}"
 SCENARIO="${2:-}"
 
-# Создать STATE если нет
-if [ ! -f "state/sessions/${SESSION}.json" ]; then
-    cp state/TEMPLATE.json "state/sessions/${SESSION}.json"
-    echo "Создан state/sessions/${SESSION}.json"
-fi
+# Определить имя сессии из STATE
+SESSION=$(basename "$STATE_FILE" .json)
 
 # Собрать PROMPT.txt
 {
@@ -31,13 +28,13 @@ fi
     cat personas/USER_MODULE.json
     echo ""
     echo "[STATE]"
-    cat "state/sessions/${SESSION}.json"
+    cat "$STATE_FILE"
     echo ""
     echo "[SCENARIO]"
     if [ -n "$SCENARIO" ] && [ -f "$SCENARIO" ]; then
         cat "$SCENARIO"
     else
-        echo "# Укажи сценарий: ./tools/assemble.sh SN_001 scenarios/acts/ACT_2_BAR.md"
+        echo "# Укажи сценарий: ./tools/assemble.sh state/POST_ACT1.json scenarios/acts/ACT_2_BAR.md"
     fi
 } > PROMPT.txt
 

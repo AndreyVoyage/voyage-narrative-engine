@@ -28,7 +28,8 @@
     "kira_no_underwear": false,
     "kira_red_dress": false,
     "user_visited_gym": false,
-    "user_saw_kira_sergey": false
+    "user_saw_kira_sergey": false,
+    "sergey_invited_bar": false
   },
   "memory": {
     "scenes_used": [],
@@ -48,6 +49,13 @@
   "governance": {
     "autonomy_level": 1,
     "safety_override": false,
-    "last_safety_check": null
+    "last_safety_check": null,
+    "audit_log": []
+  },
+  "safety_check": {
+    "required_for": ["U6", "U6-pik"],
+    "passed": false,
+    "timestamp": null,
+    "confirmed_by": null
   }
 }
