@@ -26,11 +26,14 @@
     "sergey_touched_waist": true,
     "sergey_touched_thigh": true,
     "kira_sent_photos": true,
-    "kira_no_underwear": true,
-    "kira_red_dress": true,
     "user_visited_gym": true,
     "user_saw_kira_sergey": true,
-    "sergey_invited_bar": true
+    "sergey_invited_bar": true,
+    "sergey_dominant_bar": false,
+    "user_rescued": false,
+    "kira_dominant": false,
+    "sergey_submits": false,
+    "sergey_withdrew": false
   },
   "memory": {
     "scenes_used": ["gym_stretching", "home_aftercare", "bar_invitation"],
@@ -57,5 +60,12 @@
         "result": "aftercare_completed"
       }
     ]
+  },
+  "safety_check": {
+    "required_for": ["U6", "U6-pik"],
+    "passed": false,
+    "timestamp": null,
+    "confirmed_by": null,
+    "timeout_minutes": 5
   }
 }

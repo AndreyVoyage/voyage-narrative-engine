@@ -25,19 +25,19 @@
     "sergey_touched_waist": false,
     "sergey_touched_thigh": false,
     "kira_sent_photos": false,
-    "kira_no_underwear": false,
-    "kira_red_dress": false,
     "user_visited_gym": false,
     "user_saw_kira_sergey": false,
-    "sergey_invited_bar": false
+    "sergey_invited_bar": false,
+    "sergey_dominant_bar": false,
+    "user_rescued": false,
+    "kira_dominant": false,
+    "sergey_submits": false,
+    "sergey_withdrew": false
   },
   "memory": {
     "scenes_used": [],
     "names_banned": [],
-    "emotional_anchors": [
-      "ты мой финиш",
-      "собери меня"
-    ],
+    "emotional_anchors": ["ты мой финиш", "собери меня"],
     "last_scenario": null,
     "last_summary": null
   },
@@ -56,6 +56,7 @@
     "required_for": ["U6", "U6-pik"],
     "passed": false,
     "timestamp": null,
-    "confirmed_by": null
+    "confirmed_by": null,
+    "timeout_minutes": 5
   }
 }
