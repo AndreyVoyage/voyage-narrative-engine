@@ -1,0 +1,368 @@
+{
+  "template": {
+    "location": [
+      "gym",
+      "bar",
+      "hotel",
+      "spa",
+      "home",
+      "car",
+      "office",
+      "beach",
+      "club",
+      "street"
+    ],
+    "time": [
+      "morning",
+      "day",
+      "evening",
+      "night"
+    ],
+    "archetype": [
+      "trainer",
+      "bartender",
+      "stranger",
+      "friend",
+      "ex",
+      "boss",
+      "neighbor",
+      "client",
+      "doctor",
+      "artist"
+    ],
+    "kira_level": [
+      "U1",
+      "U2",
+      "U3",
+      "U4",
+      "U5",
+      "U6",
+      "U7"
+    ],
+    "sergey_level": [
+      "S1",
+      "S2",
+      "S3",
+      "S4",
+      "S5",
+      "S6",
+      "S7"
+    ],
+    "intensity": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "risk": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ]
+  },
+  "rules": {
+    "no_repeat": true,
+    "escalation": "level_plus_one_or_same",
+    "linking": "reference_previous",
+    "character_development": true,
+    "risk_cap": "intensity_plus_two",
+    "max_intensity_without_confirmation": 7,
+    "confirmation_required_for": [
+      "U6",
+      "U7"
+    ]
+  },
+  "library_index": [
+    {
+      "id": "SC_003",
+      "name": "Тихий охотник в пустом зале",
+      "location": "gym",
+      "kira_level_start": "U2",
+      "kira_level_end": "U3",
+      "characters": null,
+      "flags_required": [],
+      "flags_set": [
+        "gym_night_visited",
+        "sergey_seen_at_barbell",
+        "mirror_glance_exchanged",
+        "sergey_wipes_sweat",
+        "kira_noticed_sergey_scars"
+      ],
+      "content_rating": "R",
+      "file": "scenarios/SC_003.json"
+    },
+    {
+      "id": "SC_004",
+      "name": "Растяжка на красном мате",
+      "location": "gym",
+      "kira_level_start": "U2",
+      "kira_level_end": "U3",
+      "characters": null,
+      "flags_required": [
+        "mirror_glance_exchanged"
+      ],
+      "flags_set": [
+        "gym_stretching",
+        "sergey_touched_waist",
+        "red_mat_first_contact",
+        "kira_felt_his_weight",
+        "mirror_reflection_seen"
+      ],
+      "content_rating": "R",
+      "file": "scenarios/SC_004.json"
+    },
+    {
+      "id": "SC_005",
+      "name": "Приседания со штангой",
+      "location": "gym",
+      "kira_level_start": "U3",
+      "kira_level_end": "U4",
+      "characters": null,
+      "flags_required": [
+        "red_mat_first_contact"
+      ],
+      "flags_set": [
+        "squat_complete",
+        "sergey_hands_on_thighs",
+        "sergey_behind_kira",
+        "mirror_full_reflection",
+        "kira_sweat_dripping",
+        "barbell_on_shoulders"
+      ],
+      "content_rating": "R",
+      "file": "scenarios/SC_005.json"
+    },
+    {
+      "id": "SC_006",
+      "name": "Своеволие на красном мате — Пик",
+      "location": "gym",
+      "kira_level_start": "U4",
+      "kira_level_end": "U4-пик",
+      "characters": null,
+      "flags_required": [
+        "barbell_on_shoulders"
+      ],
+      "flags_set": [
+        "gym_peak_complete",
+        "kira_took_control",
+        "sergey_kneeled_on_mat",
+        "kira_grabbed_his_shirt",
+        "nose_to_nose",
+        "tears_and_sweat_mix",
+        "red_mat_peak",
+        "phone_forgotten_on_mat"
+      ],
+      "content_rating": "NC-17",
+      "file": "scenarios/SC_006.json"
+    },
+    {
+      "id": "SC_007",
+      "name": "Собери меня — Aftercare в зале",
+      "location": "gym",
+      "kira_level_start": "U4",
+      "kira_level_end": "U5",
+      "characters": null,
+      "flags_required": [
+        "kira_took_control"
+      ],
+      "flags_set": [
+        "gym_aftercare_alone",
+        "kira_crying_on_mat",
+        "red_mat_symbol",
+        "kira_hugging_knees",
+        "sergey_left_gym",
+        "phone_messages_seen",
+        "self_rebuilding"
+      ],
+      "content_rating": "R",
+      "file": "scenarios/SC_007.json"
+    },
+    {
+      "id": "SC_008",
+      "name": "Ты мой финиш — Объятия",
+      "location": "home",
+      "kira_level_start": "U5",
+      "kira_level_end": "U5",
+      "characters": null,
+      "flags_required": [
+        "kira_texted_yakov"
+      ],
+      "flags_set": [
+        "home_embrace_complete",
+        "kira_in_yakov_shirt",
+        "yakov_came_to_gym",
+        "kira_crying_in_arms",
+        "red_mat_left_behind",
+        "first_home_after_gym",
+        "yakov_hands_smooth",
+        "sergey_hands_rough_contrast"
+      ],
+      "content_rating": "R",
+      "file": "scenarios/SC_008.json"
+    },
+    {
+      "id": "SC_009",
+      "name": "Ты мой якорь — Дома",
+      "location": "home",
+      "kira_level_start": "U5",
+      "kira_level_end": "U5",
+      "characters": null,
+      "flags_required": [
+        "kira_in_yakov_shirt"
+      ],
+      "flags_set": [
+        "home_morning_complete",
+        "kira_sleeping_in_arms",
+        "yakov_holding_all_night",
+        "morning_light_window",
+        "kira_hair_dry_now",
+        "shirt_still_on",
+        "breathing_in_unison"
+      ],
+      "content_rating": "PG-13",
+      "file": "scenarios/SC_009.json"
+    },
+    {
+      "id": "SC_010",
+      "name": "Ночь, тишина, якорь",
+      "location": "home",
+      "kira_level_start": "U5",
+      "kira_level_end": "U5",
+      "characters": null,
+      "flags_required": [
+        "breathing_in_unison"
+      ],
+      "flags_set": [
+        "home_night_complete",
+        "kira_half_asleep",
+        "yakov_hand_in_hair",
+        "lamp_only_light",
+        "darkness_around_bed",
+        "warm_orange_glow",
+        "kira_leg_on_yakov",
+        "silence_as_third_character"
+      ],
+      "content_rating": "PG-13",
+      "file": "scenarios/SC_010.json"
+    },
+    {
+      "id": "SC_011",
+      "name": "Доброе утро, дом",
+      "location": "home",
+      "kira_level_start": "U5",
+      "kira_level_end": "U5",
+      "characters": null,
+      "flags_required": [
+        "silence_breathing"
+      ],
+      "flags_set": [
+        "home_morning2_complete",
+        "kira_lazy_smile",
+        "sunlight_on_bed",
+        "coffee_smell",
+        "kira_stretches_like_cat",
+        "yakov_brings_coffee",
+        "new_day_beginning",
+        "kira_whole_again"
+      ],
+      "content_rating": "PG",
+      "file": "scenarios/SC_011.json"
+    },
+    {
+      "id": "SC_012",
+      "name": "Кофе и слёзы на кухне",
+      "location": "home",
+      "kira_level_start": "U5",
+      "kira_level_end": "U5",
+      "characters": null,
+      "flags_required": [
+        "kira_ready_for_life"
+      ],
+      "flags_set": [
+        "home_kitchen_complete",
+        "kira_on_kitchen_table",
+        "yakov_between_legs",
+        "coffee_cup_in_hand",
+        "tears_on_cheeks",
+        "honesty_moment",
+        "kira_tells_everything",
+        "yakov_listens_without_judgment",
+        "acceptance_complete"
+      ],
+      "content_rating": "PG-13",
+      "file": "scenarios/SC_012.json"
+    },
+    {
+      "id": "SC_013",
+      "name": "Сообщение от Сергея",
+      "location": "home",
+      "kira_level_start": "U5",
+      "kira_level_end": "U5-интрига",
+      "characters": null,
+      "flags_required": [
+        "acceptance_complete"
+      ],
+      "flags_set": [
+        "home_message_complete",
+        "sergey_message_received",
+        "kira_shows_phone",
+        "yakov_reads_message",
+        "triangle_reopened",
+        "kira_torn_again",
+        "yakov_decides",
+        "future_uncertain"
+      ],
+      "content_rating": "PG-13",
+      "file": "scenarios/SC_013.json"
+    }
+  ],
+  "examples": [
+    {
+      "id": "SC_001",
+      "location": "gym",
+      "time": "evening",
+      "archetype": "trainer",
+      "kira_level": "U1",
+      "sergey_level": "S1",
+      "intensity": 3,
+      "risk": 2,
+      "flags_required": [],
+      "flags_set": [
+        "gym_stretching"
+      ],
+      "prerequisites": null,
+      "description": "Первая тренировка. Сергей — тренер. Кира стойкая к соблазнам."
+    },
+    {
+      "id": "SC_042",
+      "location": "bar",
+      "time": "night",
+      "archetype": "bartender",
+      "kira_level": "U5",
+      "sergey_level": "S5",
+      "intensity": 7,
+      "risk": 5,
+      "flags_required": [
+        "bar_visited"
+      ],
+      "flags_set": [
+        "bar_kiss"
+      ],
+      "prerequisites": "К уже была в этом баре с Сергеем (SC_038).",
+      "description": "Кира в красном платье без белья. Доминирует. Сергей подыгрывает."
+    }
+  ]
+}

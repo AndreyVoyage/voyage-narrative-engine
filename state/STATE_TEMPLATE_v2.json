@@ -1,0 +1,153 @@
+{
+  "session_id": "voyage_session_v2_001",
+  "timestamp": "2026-06-07T08:00:00Z",
+  "version": "2.0.0",
+  "kira_persona_mode": "shy_to_bitch",
+  "sergey_role_in_corruption": "catalyst",
+  "characters": {
+    "kira": {
+      "level": "U1",
+      "sublevel": "A",
+      "full_level": "U1-A",
+      "mode": "shy_to_bitch",
+      "facet": "ТГ2",
+      "location": "gym",
+      "underwear": true,
+      "clothing": "sportswear",
+      "visual_seed": 54321,
+      "current_desire": null,
+      "corruption_progress": 0,
+      "good_girl_syndrome_active": true,
+      "trauma_active": false
+    },
+    "sergey": {
+      "level": "S1",
+      "role": "catalyst",
+      "location": "gym",
+      "visual_seed": 67890,
+      "current_intent": null,
+      "reading_kira": true
+    },
+    "user": {
+      "name": "Я",
+      "location": "gym",
+      "emotional_anchor": "ты мой финиш",
+      "preferred_pov": "kira",
+      "gaze_duration_sec": 0,
+      "last_command": null
+    }
+  },
+  "flags": {
+    "gym_stretching": false,
+    "bar_kiss": false,
+    "sergey_touched_waist": false,
+    "sergey_touched_thigh": false,
+    "kira_sent_photos": false,
+    "bar_visited": false,
+    "home_visited": true,
+    "sergey_invited_bar": false,
+    "sergey_sent_message": false,
+    "sergey_met_kira": false,
+    "kira_first_blush": false,
+    "kira_asked_why_you_look": false,
+    "kira_first_unconscious_smile": false,
+    "kira_first_provocation": false,
+    "kira_denies_desire_crying": false,
+    "kira_admits_to_self": false,
+    "kira_unstopped_touch": false,
+    "kira_takes_initiative": false,
+    "kira_ritual_goodbye": false,
+    "kira_bitch_mask_on": false,
+    "kira_bitch_true": false,
+    "sergey_introduced_by_user": false,
+    "sergey_catalyst_gaze": false,
+    "mirror_glance_exchanged": false,
+    "red_mat_first_contact": false,
+    "barbell_on_shoulders": false,
+    "kira_took_control": false,
+    "kira_texted_yakov": false,
+    "home_embrace_complete": false,
+    "breathing_in_unison": false,
+    "silence_breathing": false,
+    "kira_ready_for_life": false,
+    "acceptance_complete": false,
+    "kira_trauma_activated": false,
+    "kira_alone_on_track_triggered": false,
+    "kira_provocation_mode": false,
+    "kira_regression_trigger": false,
+    "kira_shower_cry_U3B": false,
+    "kira_mirror_first_time": false,
+    "kira_saw_herself": false,
+    "kira_gym_solo": false,
+    "sergey_gym_seen": false,
+    "sergey_bar_alone": false
+  },
+  "memory": {
+    "scenes_used": [],
+    "names_banned": [],
+    "emotional_anchors": [],
+    "last_scenario": null,
+    "event_log": [],
+    "summary": null,
+    "proactive_events_log": [],
+    "sergey_readings": [],
+    "kira_self_confessions": []
+  },
+  "visual": {
+    "kira_seed": 54321,
+    "sergey_seed": 67890,
+    "last_render": null,
+    "style_preset": "cinematic_photorealism",
+    "last_auto_visual_prompt": null
+  },
+  "governance": {
+    "autonomy_level": 1,
+    "safety_override": false,
+    "last_safety_check": null,
+    "audit_log": [],
+    "max_ag_for_current_sublevel": {
+      "U1-A": 2,
+      "U1-B": 2,
+      "U2-A": 2,
+      "U2-B": 2,
+      "U3-A": 3,
+      "U3-B": 3,
+      "U4-A": 3,
+      "U4-B": 3,
+      "U5-A": 4,
+      "U5-B": 4,
+      "U6-A": 4,
+      "U6-B": 4,
+      "U7-A": 1,
+      "U7-B": 2
+    }
+  },
+  "engagement": {
+    "sessions_per_week": 0,
+    "avg_session_duration_min": 0,
+    "proactive_response_rate": 0.0,
+    "last_session": null,
+    "streak_days": 0,
+    "proactive_count_since_last_session": 0,
+    "next_proactive_allowed_after": null
+  },
+  "proactive": {
+    "events_log": [],
+    "user_activity": {
+      "last_message_timestamp": null,
+      "offline_duration_minutes": 0,
+      "user_returned_trigger": false
+    }
+  },
+  "scenario": {
+    "current_id": null,
+    "current_location": null,
+    "current_time": null,
+    "intensity": 0,
+    "risk": 0,
+    "current_sublevel": null,
+    "next_sublevel": null,
+    "required_flags": [],
+    "set_flags": []
+  }
+}
