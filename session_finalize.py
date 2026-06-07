@@ -704,12 +704,11 @@ def main():
     parser.add_argument("--no-git", action="store_true", help="Не делать git commit")
     args = parser.parse_args()
 
-    global REPO_DIR, SESSIONS_DIR, PERSONAS_DIR, STATE_DIR, ASSETS_DIR
-    REPO_DIR = Path(args.repo)
-    SESSIONS_DIR = REPO_DIR / "sessions"
-    PERSONAS_DIR = REPO_DIR / "personas"
-    STATE_DIR = REPO_DIR / "state"
-    ASSETS_DIR = REPO_DIR / "assets" / "images"
+    globals()['REPO_DIR'] = Path(args.repo)
+    globals()['SESSIONS_DIR'] = REPO_DIR / "sessions"
+    globals()['PERSONAS_DIR'] = REPO_DIR / "personas"
+    globals()['STATE_DIR'] = REPO_DIR / "state"
+    globals()['ASSETS_DIR'] = REPO_DIR / "assets" / "images"
 
     log_path = Path(args.log)
     if not log_path.exists():
