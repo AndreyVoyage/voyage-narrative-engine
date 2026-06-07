@@ -12,7 +12,8 @@
       "club",
       "street",
       "clinic",
-      "veterinary_clinic"
+      "veterinary_clinic",
+      "cafe"
     ],
     "time": [
       "morning",
@@ -34,7 +35,8 @@
       "maksim",
       "sergey",
       "user",
-      "duo_seduction"
+      "duo_seduction",
+      "marina"
     ],
     "kira_level": [
       "U1",
@@ -62,6 +64,15 @@
       "M5",
       "M6",
       "M7"
+    ],
+    "marina_level": [
+      "MA1",
+      "MA2",
+      "MA3",
+      "MA4",
+      "MA5",
+      "MA6",
+      "MA7"
     ],
     "intensity": [
       1,
@@ -95,145 +106,182 @@
     "character_development": "Архетип второго мужчины получает характер и мотивацию",
     "risk_cap": "Риск не может превышать intensity + 2",
     "triad_rule": "При triad_active=true обязательно участие 3+ персонажей",
-    "duo_seduction_rule": "При archetype=duo_seduction пользователь = AG0 (вуайерист), NPC = AG4"
+    "duo_seduction_rule": "При archetype=duo_seduction пользователь = AG0 (вуайерист), NPC = AG4",
+    "marina_rule": "При archetype=marina обязательно участие Марины. Она может войти неожиданно и изменить динамику."
   },
   "scenarios": [
     {
-      "id": "SC_042",
-      "location": "bar",
+      "id": "SC_MARINA_001",
+      "title": "Знакомство с солнечным зайчиком",
+      "location": "cafe",
+      "time": "day",
+      "archetype": "marina",
+      "kira_level": "U2",
+      "sergey_level": "S2",
+      "maksim_level": "M1",
+      "marina_level": "MA1",
+      "intensity": 3,
+      "risk": 2,
+      "flags_required": [],
+      "flags_set": [
+        "marina_met",
+        "marina_flirted_with_user"
+      ],
+      "prerequisites": "Кира приводит Пользователя в кафе, где работает Марина. Марина радостно их встречает и сразу начинает флиртовать с Пользователем.",
+      "summary": "Первое появление Марины. Она ломает напряжённую атмосферу смехом и флиртом. Кира напрягается — ревность."
+    },
+    {
+      "id": "SC_MARINA_002",
+      "title": "Борьба на кровати",
+      "location": "home",
+      "time": "evening",
+      "archetype": "marina",
+      "kira_level": "U3",
+      "sergey_level": "S3",
+      "maksim_level": "M2",
+      "marina_level": "MA1",
+      "intensity": 4,
+      "risk": 3,
+      "flags_required": [
+        "marina_met"
+      ],
+      "flags_set": [
+        "marina_playfight",
+        "marina_kira_jealousy_triggered"
+      ],
+      "prerequisites": "Марина забегает в комнату, прыгает на кровать, начинает борьбу с Пользователем. Щекотка, смех. В какой-то момент она замирает слишком близко.",
+      "summary": "Марина на MA1. Игривая борьба. Неожиданная близость. Кира видит это и ревнует."
+    },
+    {
+      "id": "SC_MARINA_003",
+      "title": "Первая трещина",
+      "location": "cafe",
       "time": "night",
-      "archetype": "bartender",
+      "archetype": "marina",
+      "kira_level": "U4",
+      "sergey_level": "S4",
+      "maksim_level": "M3",
+      "marina_level": "MA3",
+      "intensity": 5,
+      "risk": 4,
+      "flags_required": [
+        "marina_playfight"
+      ],
+      "flags_set": [
+        "marina_vulnerability_shown",
+        "marina_body_shame_revealed"
+      ],
+      "prerequisites": "Марина случайно говорит искреннее, пугается, отшучивается. Пользователь ловит момент и зеркалит её. Она раскрывает страх быть осмеянной.",
+      "summary": "MA3. Первая трещина в маске. Марина показывает, что под игрой — страх."
+    },
+    {
+      "id": "SC_MARINA_004",
+      "title": "Электрическое напряжение",
+      "location": "bar",
+      "time": "evening",
+      "archetype": "marina",
       "kira_level": "U5",
       "sergey_level": "S5",
+      "maksim_level": "M4",
+      "marina_level": "MA2",
+      "intensity": 6,
+      "risk": 5,
+      "flags_required": [
+        "marina_met"
+      ],
+      "flags_set": [
+        "marina_sergey_electric_tension"
+      ],
+      "prerequisites": "Марина в баре. Сергей сидит один. Она подходит, флиртует, он не отвечает. Она пытается его рассмешить. Один раз он почти улыбнулся.",
+      "summary": "Марина и Сергей. Запретный плод. Он недоступен, она провоцирует. Electric tension."
+    },
+    {
+      "id": "SC_MARINA_005",
+      "title": "Доверие",
+      "location": "home",
+      "time": "night",
+      "archetype": "marina",
+      "kira_level": "U6",
+      "sergey_level": "S6",
+      "maksim_level": "M5",
+      "marina_level": "MA5",
+      "intensity": 5,
+      "risk": 3,
+      "flags_required": [
+        "marina_vulnerability_shown"
+      ],
+      "flags_set": [
+        "marina_reached_MA5",
+        "marina_user_future_pacing"
+      ],
+      "prerequisites": "Марина кладёт голову на плечо Пользователю. Не играя. Тихо. 'Мне с тобой спокойно. Это странно... я всегда бегала.'",
+      "summary": "MA5. Первый шаг без игры. Доверие. Якорь спокойствия."
+    },
+    {
+      "id": "SC_MARINA_006",
+      "title": "Уязвимость",
+      "location": "home",
+      "time": "morning",
+      "archetype": "marina",
+      "kira_level": "U7",
+      "sergey_level": "S7",
+      "maksim_level": "M6",
+      "marina_level": "MA6",
+      "intensity": 4,
+      "risk": 2,
+      "flags_required": [
+        "marina_reached_MA5"
+      ],
+      "flags_set": [
+        "marina_reached_MA6"
+      ],
+      "prerequisites": "Марина плачет. Рассказывает про 15 лет и осмеяние. Просит не смеяться. 'Ты первый, кто не сказал да ладно, ты просто маленькая.'",
+      "summary": "MA6. Полная уязвимость. Плачет, но не уходит. Прорыв."
+    },
+    {
+      "id": "SC_MARINA_007",
+      "title": "Интеграция",
+      "location": "beach",
+      "time": "day",
+      "archetype": "marina",
+      "kira_level": "U7",
+      "sergey_level": "S7",
+      "maksim_level": "M7",
+      "marina_level": "MA7",
+      "intensity": 3,
+      "risk": 1,
+      "flags_required": [
+        "marina_reached_MA6"
+      ],
+      "flags_set": [
+        "marina_reached_MA7",
+        "marina_maksim_dyad"
+      ],
+      "prerequisites": "Марина на пляже. Свободная, плавная. Обнимает Пользователя. 'Я люблю тебя. И теперь не стыдно. И щекотка останется.' Максим рядом — они смеются вместе.",
+      "summary": "MA7. Целостность. Можно быть и игривой, и серьёзной. Максим + Марина = лёгкая пара."
+    },
+    {
+      "id": "SC_MARINA_SAUNA",
+      "title": "Марина входит в сауну",
+      "location": "spa",
+      "time": "night",
+      "archetype": "marina",
+      "kira_level": "U5",
+      "sergey_level": "S5",
+      "maksim_level": "M5",
+      "marina_level": "MA2",
       "intensity": 7,
       "risk": 5,
       "flags_required": [
-        "bar_visited"
+        "sauna_quartet_formed",
+        "marina_met"
       ],
       "flags_set": [
-        "bar_kiss"
+        "marina_sauna_entrance",
+        "marina_broke_kira_subspace"
       ],
-      "prerequisites": "К уже была в этом баре с Сергеем (SC_038)."
-    },
-    {
-      "id": "SC_M001",
-      "title": "Ты как вообще?",
-      "location": "bar",
-      "time": "evening",
-      "archetype": "maksim",
-      "kira_level": "U1",
-      "sergey_level": "S2",
-      "maksim_level": "M1",
-      "intensity": 2,
-      "risk": 1,
-      "flags_required": [],
-      "flags_set": [
-        "maksim_met_kira"
-      ],
-      "prerequisites": "Сергей привёл Киру в бар. Максим сидит один за столиком с книгой и термосом.",
-      "summary": "Первое знакомство. Максим — мягкий, не пугает. Кира чувствует, что с ним можно быть собой."
-    },
-    {
-      "id": "SC_SAUNA_DUO_001",
-      "title": "Сауна: Дуэт обольстителей",
-      "location": "spa",
-      "time": "evening",
-      "archetype": "duo_seduction",
-      "kira_level": "U1",
-      "sergey_level": "S2",
-      "maksim_level": "M1",
-      "user_role": "voyeur",
-      "user_ag": 0,
-      "npc_ag": 4,
-      "intensity": 8,
-      "risk": 6,
-      "flags_required": [
-        "maksim_met_kira"
-      ],
-      "flags_set": [
-        "sauna_user_departed",
-        "sauna_commitment_given",
-        "sauna_rapport_established",
-        "sauna_maksim_reciprocity_activated",
-        "sauna_sergey_authority_established",
-        "sauna_mirror_pose_synced",
-        "sauna_kira_touches_maksim_knee",
-        "sauna_sergey_intimate_zone_breach",
-        "sauna_closed_system_activated",
-        "sauna_kira_demands_attention",
-        "sauna_sergey_test_completed",
-        "sauna_shower_glass_moment",
-        "sauna_kira_ice_anchor",
-        "sauna_kira_touches_both",
-        "sauna_kira_peak_reached",
-        "sauna_aftercare_completed",
-        "sauna_kira_earned_security"
-      ],
-      "prerequisites": "Пользователь уходит, оставляя Киру с Сергеем и Максимом в частной сауне. AG4 режим. NPC-to-NPC.",
-      "summary": "Полный путь Киры от У1 до У7 через дуэт обольстителей. Пользователь — вуайерист. СТОП — единственный guardrail.",
-      "psychology": [
-        "Basson Responsive Desire",
-        "Cialdini Reciprocity Scarcity Social Proof Authority",
-        "Greene Mixed Signals Isolation Triangles",
-        "Birnbaum Cognitive Narrowing",
-        "NLP Anchoring Mirroring",
-        "Gottman Turning Toward",
-        "Attachment Theory Anxious Escalation",
-        "Perel Distance Creates Desire",
-        "BDSM Subspace Domspace Aftercare",
-        "Excitation Transfer"
-      ],
-      "acts": [
-        {
-          "act": "Prologue",
-          "kira": "U1-Б",
-          "sergey": "S2",
-          "maksim": "M1",
-          "duration_min": 5
-        },
-        {
-          "act": "I",
-          "kira": "U1-Б→U2-А",
-          "sergey": "S2",
-          "maksim": "M1→M2",
-          "duration_min": 10
-        },
-        {
-          "act": "II",
-          "kira": "U2-А→U3-А",
-          "sergey": "S2→S3",
-          "maksim": "M2→M3",
-          "duration_min": 10
-        },
-        {
-          "act": "III",
-          "kira": "U3-А→U4-А",
-          "sergey": "S3→S4",
-          "maksim": "M3→M4",
-          "duration_min": 10
-        },
-        {
-          "act": "IV",
-          "kira": "U4-А→U5-А",
-          "sergey": "S4→S5",
-          "maksim": "M4→M5",
-          "duration_min": 10
-        },
-        {
-          "act": "V",
-          "kira": "U5-А→U6-пик",
-          "sergey": "S5→S6",
-          "maksim": "M5→M6",
-          "duration_min": 5
-        },
-        {
-          "act": "VI",
-          "kira": "U6-пик→U7",
-          "sergey": "S6→S7",
-          "maksim": "M6→M7",
-          "duration_min": 10
-        }
-      ]
+      "prerequisites": "Марина неожиданно входит в сауну в Акте IV или V. Кира в subspace. Марина: 'Ой, что вы тут делаете? Парночка?' — смех. Кира выходит из транса. Либо срыв, либо ускорение.",
+      "summary": "Марина ломает subspace Киры. Альтернативный трек сауны. Может быть СТОП или ускорение."
     }
   ]
 }

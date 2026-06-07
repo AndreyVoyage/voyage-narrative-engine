@@ -1,25 +1,31 @@
 {
   "session_id": "STRING",
   "timestamp": "ISO8601",
-  "scenario_id": "SC_SAUNA_DUO_001",
+  "scenario_id": "STRING",
   "characters": {
     "kira": {
       "level": "U1",
       "facet": "TG1",
-      "location": "spa"
+      "location": "home"
     },
     "sergey": {
-      "level": "S2",
-      "location": "spa"
+      "level": "S1",
+      "location": "gym"
     },
     "maksim": {
       "level": "M1",
-      "location": "spa"
+      "facet": "MG1",
+      "location": "clinic"
+    },
+    "marina": {
+      "level": "MA1",
+      "facet": "MG1",
+      "location": "cafe"
     },
     "user": {
-      "role": "voyeur",
-      "location": "outside",
-      "ag": 0
+      "role": "director",
+      "location": "variable",
+      "ag": 1
     }
   },
   "flags": {
@@ -29,7 +35,7 @@
     "sergey_touched_thigh": false,
     "kira_sent_photos": false,
     "bar_visited": false,
-    "maksim_met_kira": true,
+    "maksim_met_kira": false,
     "maksim_blushed_first_time": false,
     "maksim_hug_shared": false,
     "maksim_kira_hand_warming": false,
@@ -59,7 +65,21 @@
     "sauna_kira_touches_both": false,
     "sauna_kira_peak_reached": false,
     "sauna_aftercare_completed": false,
-    "sauna_kira_earned_security": false
+    "sauna_kira_earned_security": false,
+    "marina_met": false,
+    "marina_playfight": false,
+    "marina_flirted_with_user": false,
+    "marina_kira_jealousy_triggered": false,
+    "marina_vulnerability_shown": false,
+    "marina_sergey_electric_tension": false,
+    "marina_maksim_dyad": false,
+    "marina_body_shame_revealed": false,
+    "marina_reached_MA5": false,
+    "marina_reached_MA6": false,
+    "marina_reached_MA7": false,
+    "marina_sauna_entrance": false,
+    "marina_broke_kira_subspace": false,
+    "marina_user_future_pacing": false
   },
   "memory": {
     "scenes_used": [],
@@ -67,17 +87,19 @@
     "emotional_anchors": [],
     "last_scenario": null,
     "maksim_events": [],
-    "sauna_events": []
+    "sauna_events": [],
+    "marina_events": []
   },
   "visual": {
     "kira_seed": 12345,
     "sergey_seed": 67890,
-    "maksim_seed": 54321
+    "maksim_seed": 54321,
+    "marina_seed": 98765
   },
   "governance": {
-    "autonomy_level": 4,
+    "autonomy_level": 1,
     "safety_override": false,
-    "last_safety_check": null,
+    "last_safety_check": "2026-06-06T11:00:00Z",
     "audit_log": []
   },
   "engagement": {
