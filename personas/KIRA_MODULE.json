@@ -4,7 +4,7 @@
   "version": "11.0.0",
   "variables": {
     "age": 24,
-    "hair_color": "light_blonde",
+    "hair_color": "dark_blonde",
     "hair_length": "shoulder",
     "hair_texture": "curly",
     "eye_color": "green",
@@ -50,7 +50,7 @@
     "seed": 12345,
     "style": "cinematic_photorealism",
     "signature_features": [
-      "light_blonde_curly_hair_shoulders",
+      "dark_blonde_curly_hair_shoulders",
       "green_eyes_intense_gaze",
       "natural_C+_breasts_pink_areolas",
       "athletic_toned_body_steel_thighs",
@@ -68,8 +68,15 @@
         "probability": 0.5,
         "npc_interaction": false,
         "emotional_tone": "focused_energetic",
-        "visual_keywords": ["sportswear", "sweat", "treadmill", "ponytail"],
-        "flags_possible": ["kira_gym_solo"]
+        "visual_keywords": [
+          "sportswear",
+          "sweat",
+          "treadmill",
+          "ponytail"
+        ],
+        "flags_possible": [
+          "kira_gym_solo"
+        ]
       },
       {
         "id": "home_photo",
@@ -80,8 +87,15 @@
         "probability": 0.35,
         "npc_interaction": false,
         "emotional_tone": "playful_seductive",
-        "visual_keywords": ["mirror", "lingerie", "smartphone", "soft_light"],
-        "flags_possible": ["kira_sent_photos"]
+        "visual_keywords": [
+          "mirror",
+          "lingerie",
+          "smartphone",
+          "soft_light"
+        ],
+        "flags_possible": [
+          "kira_sent_photos"
+        ]
       },
       {
         "id": "evening_walk",
@@ -92,7 +106,12 @@
         "probability": 0.25,
         "npc_interaction": false,
         "emotional_tone": "melancholic_free",
-        "visual_keywords": ["wind", "coat", "city_lights", "heels"],
+        "visual_keywords": [
+          "wind",
+          "coat",
+          "city_lights",
+          "heels"
+        ],
         "flags_possible": []
       },
       {
@@ -104,7 +123,12 @@
         "probability": 0.3,
         "npc_interaction": false,
         "emotional_tone": "sensual_relaxed",
-        "visual_keywords": ["steam", "water", "wet_hair", "towel"],
+        "visual_keywords": [
+          "steam",
+          "water",
+          "wet_hair",
+          "towel"
+        ],
         "flags_possible": []
       },
       {
@@ -116,8 +140,17 @@
         "probability": 0.2,
         "npc_interaction": true,
         "emotional_tone": "tense_flirtatious",
-        "visual_keywords": ["red_dress", "close_dance", "whisper", "neon"],
-        "flags_possible": ["bar_kiss", "sergey_touched_waist", "sergey_touched_thigh"]
+        "visual_keywords": [
+          "red_dress",
+          "close_dance",
+          "whisper",
+          "neon"
+        ],
+        "flags_possible": [
+          "bar_kiss",
+          "sergey_touched_waist",
+          "sergey_touched_thigh"
+        ]
       }
     ],
     "message_user_when": "offline_30min_or_more",

@@ -9,7 +9,7 @@
       "location": "home",
       "underwear": true,
       "clothing": "sportswear",
-      "visual_seed": 12345,
+      "visual_seed": 54321,
       "current_desire": null
     },
     "sergey": {
@@ -46,7 +46,7 @@
     "summary": null
   },
   "visual": {
-    "kira_seed": 12345,
+    "kira_seed": 54321,
     "sergey_seed": 67890,
     "last_render": null,
     "style_preset": "cinematic_photorealism"
