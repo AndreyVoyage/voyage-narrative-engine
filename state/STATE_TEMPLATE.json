@@ -1,28 +1,25 @@
 {
-  "session_id": "voyage_session_001",
-  "timestamp": "2026-06-07T08:00:00Z",
-  "version": "1.0.0",
+  "session_id": "STRING",
+  "timestamp": "ISO8601",
+  "scenario_id": "SC_SAUNA_DUO_001",
   "characters": {
     "kira": {
       "level": "U1",
       "facet": "TG1",
-      "location": "home",
-      "underwear": true,
-      "clothing": "sportswear",
-      "visual_seed": 54321,
-      "current_desire": null
+      "location": "spa"
     },
     "sergey": {
-      "level": "S1",
-      "location": "gym",
-      "visual_seed": 67890,
-      "current_intent": null
+      "level": "S2",
+      "location": "spa"
+    },
+    "maksim": {
+      "level": "M1",
+      "location": "spa"
     },
     "user": {
-      "name": "Я",
-      "location": "home",
-      "emotional_anchor": "ты мой финиш",
-      "preferred_pov": "kira"
+      "role": "voyeur",
+      "location": "outside",
+      "ag": 0
     }
   },
   "flags": {
@@ -32,27 +29,53 @@
     "sergey_touched_thigh": false,
     "kira_sent_photos": false,
     "bar_visited": false,
-    "home_visited": true,
-    "sergey_invited_bar": false,
-    "sergey_sent_message": false,
-    "sergey_met_kira": false
+    "maksim_met_kira": true,
+    "maksim_blushed_first_time": false,
+    "maksim_hug_shared": false,
+    "maksim_kira_hand_warming": false,
+    "maksim_withdrew_kiss": false,
+    "maksim_exploded_limit": false,
+    "maksim_silent_departure": false,
+    "maksim_kira_reconciliation": false,
+    "maksim_knows_sergey_secret": true,
+    "maksim_backpack_seen": false,
+    "maksim_betrayed": false,
+    "triad_active": false,
+    "kira_chose_maksim": false,
+    "kira_chose_sergey": false,
+    "sauna_user_departed": false,
+    "sauna_commitment_given": false,
+    "sauna_rapport_established": false,
+    "sauna_maksim_reciprocity_activated": false,
+    "sauna_sergey_authority_established": false,
+    "sauna_mirror_pose_synced": false,
+    "sauna_kira_touches_maksim_knee": false,
+    "sauna_sergey_intimate_zone_breach": false,
+    "sauna_closed_system_activated": false,
+    "sauna_kira_demands_attention": false,
+    "sauna_sergey_test_completed": false,
+    "sauna_shower_glass_moment": false,
+    "sauna_kira_ice_anchor": false,
+    "sauna_kira_touches_both": false,
+    "sauna_kira_peak_reached": false,
+    "sauna_aftercare_completed": false,
+    "sauna_kira_earned_security": false
   },
   "memory": {
     "scenes_used": [],
     "names_banned": [],
     "emotional_anchors": [],
     "last_scenario": null,
-    "event_log": [],
-    "summary": null
+    "maksim_events": [],
+    "sauna_events": []
   },
   "visual": {
-    "kira_seed": 54321,
+    "kira_seed": 12345,
     "sergey_seed": 67890,
-    "last_render": null,
-    "style_preset": "cinematic_photorealism"
+    "maksim_seed": 54321
   },
   "governance": {
-    "autonomy_level": 1,
+    "autonomy_level": 4,
     "safety_override": false,
     "last_safety_check": null,
     "audit_log": []
@@ -62,22 +85,6 @@
     "avg_session_duration_min": 0,
     "proactive_response_rate": 0.0,
     "last_session": null,
-    "streak_days": 0,
-    "proactive_count_since_last_session": 0,
-    "next_proactive_allowed_after": null
-  },
-  "proactive": {
-    "events_log": [],
-    "user_activity": {
-      "last_message_timestamp": null,
-      "offline_duration_minutes": 0
-    }
-  },
-  "scenario": {
-    "current_id": null,
-    "current_location": null,
-    "current_time": null,
-    "intensity": 0,
-    "risk": 0
+    "streak_days": 0
   }
 }
