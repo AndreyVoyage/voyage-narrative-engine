@@ -1,38 +1,257 @@
-# Voyage Narrative Engine v2.0
+# Voyage Narrative Engine v2.1
 
-AI-Native интерактивная narrative-система с психологически проработанными персонажами.
+> AI-Native интерактивная narrative-система с психологически достоверными персонажами.
+> Подуровневая математика, TEC-механики, визуальная консистентность и автоматическая финализация сессий.
 
-## Структура
+---
 
-| Папка | Содержимое |
-|-------|-----------|
-| `core/` | VOYAGE_NARRATIVE_CORE_v2.md — мнемоники, ФМДР, АД, ВСНО |
-| `governance/` | AUTONOMY_GOVERNOR_v2.md — AG levels, Safety Checks, Audit Log |
-| `visual/` | QWEN_ADAPTER_v2.md — Lighting Map, anatomic anchors, промпты |
-| `knowledge/` | TEC_DICTIONARY.md, CROSS_PERSONA_RULES.md, persona_schema_v3.2.json |
-| `personas/` | JSON-модули: Кира (v14), Сергей (v4), Максим (v2), Марина (v2) |
-| `scenarios/` | SCENARIO_SAUNA_QUARTET.json — сауна вчетвером, 5 фаз |
-| `state/` | STATE_TEMPLATE_v2.json — глобальное состояние сессии |
-| `roles/` | Промпты для ролей: Persona Analyst, Visual Anatomist |
-| `scripts/` | build_prompt.sh, update_state.sh — автоматизация |
-| `docs/` | VOYAGE_QUICK_START.md, TEST_PROMPT.md |
-
-## Быстрый старт
+## Быстрый старт (TL;DR)
 
 ```bash
-# Собрать PROMPT.txt для сессии
-./scripts/build_prompt.sh sauna_quartet kira sergey marina
+# 1. Клонируйте репозиторий
+git clone https://github.com/AndreyVoyage/voyage-narrative-engine.git
+cd voyage-narrative-engine
 
-# Загрузить PROMPT.txt в Kimi/DeepSeek → играть
+# 2. Установите Python (Termux / Linux / macOS)
+python3 --version  # должно быть 3.7+
 
-# После сессии обновить STATE
-./scripts/update_state.sh session_notes.txt
+# 3. Запустите сессию в LLM (Kimi / DeepSeek / Claude)
+#    Загрузите personas/KIRA_MODULE_v14.json + scenarios/SCENARIO_SAUNA_QUARTET.json
+#    Ведите диалог, сохраните лог.
+
+# 4. Финализируйте сессию одной командой
+python3 session_finalize.py --log sessions/raw/session_2026-06-08.log --scenario sauna_quartet
+
+# 5. Проверьте результаты
+ls sessions/stories/      # литературный рассказ
+ls sessions/visuals/      # промпты для картинок
+ls sessions/state/        # обновлённые метрики
 ```
 
-## Тестирование
+---
 
-См. `docs/TEST_PROMPT.md` — 10 тестов для проверки корректности работы.
+## Что это
 
-## Версия
+**Voyage Narrative Engine** — это не просто набор промптов. Это **операционная система для интерактивных narrative-игр**:
 
-v2.0.0 | 2026-06-07 | Тесты пройдены ✅
+- **Персонажи** с психологической глубиной (травмы, конфликты, 14 подуровней поведения)
+- **Память** между сессиями (trust, attraction, история событий)
+- **Механика** «body knows first» (Chivers), «responsive desire» (Basson), «erotic plasticity» (Baumeister)
+- **Формат ФМДР** — структурированный вывод: (Мысли) → *Действия* → «Речь»
+- **Визуальная консистентность** — anatomic_anchor гарантирует одно и то же лицо на всех картинках
+- **Автоматизация** — `session_finalize.py` превращает сырой лог в 4 артефакта за 1 команду
+
+---
+
+## Структура репозитория
+
+```
+voyage-narrative-engine/
+├── README.md                           # ← этот файл
+├── session_finalize.py                 # ← ГЛАВНЫЙ СКРИПТ (финализация сессии)
+├── personas/                           # Модули персонажей (JSON)
+│   ├── KIRA_MODULE_v14.json           # Кира (ex-sprinter, steel butterfly, shy_to_bitch)
+│   ├── SERGEY_MODULE_v4.json          # Сергей (catalyst, avoidant, guardian)
+│   ├── MARINA_MODULE_v2.json          # Марина (shy_to_bloom, observer)
+│   └── MAKSIM_MODULE_v2.json          # Максим (secure, bridge)
+├── scenarios/                          # Сценарии (JSON)
+│   ├── SCENARIO_SAUNA_QUARTET.json    # Сауна вчетвером (5 фаз)
+│   └── SCENARIO_SHY_BLOOM.json        # Знакомство со скромной девушкой
+├── state/                              # Текущее состояние сессии
+│   └── STATE_TEMPLATE_v2.json       # Шаблон с vscno, levels, flags
+├── roles/                              # Промпты для LLM-ролей (опционально)
+│   ├── ROLE_STATE_MANAGER_v1.0_PROMPT.md
+│   ├── ROLE_NARRATIVE_EDITOR_v1.1_PROMPT.md
+│   ├── ROLE_VISUAL_EXTRACTOR_v1.0_PROMPT.md
+│   └── ROLE_VISUAL_PHYSIOGNOMIST_v1.0_PROMPT.md
+├── sessions/                           # Артефакты сессий (создаются автоматически)
+│   ├── raw/           # Сырые логи (вы кладёте сюда)
+│   ├── state/         # Обновления STATE (авто)
+│   ├── memory/        # Обновления memory модулей (авто)
+│   ├── stories/       # Литературные рассказы (авто)
+│   └── visuals/       # Промпты для картинок (авто)
+├── scripts/
+│   ├── termux/        # Скрипты для Android/Termux
+│   └── python/        # Python-утилиты
+│       └── check_consistency.py       # Проверка консистентности лиц (заглушка)
+├── schemas/
+│   └── persona_schema_v3_2_VOYAGE.json # JSON Schema для валидации модулей
+├── docs/
+│   ├── VOYAGE_NARRATIVE_CORE_v2.md    # Ядро системы (мнемоники, ФМДР, АД)
+│   ├── ANALYSIS_WORKFLOW_v1.0.md      # Анализ workflow
+│   ├── SESSION_FINALIZATION_WORKFLOW_v1.1.md # Подробная инструкция по финализации
+│   └── RUNNING_IN_TERMUX.md           # Как запускать в Termux
+└── assets/
+    └── images/                         # Сгенерированные картинки
+        └── character_sessions/
+            ├── kira/
+            ├── sergey/
+            ├── marina/
+            └── maksim/
+```
+
+---
+
+## Как играть (сессия)
+
+### 1. Подготовка
+
+Откройте чат с LLM (Kimi, DeepSeek, Claude, GPT-4). Загрузите:
+1. `personas/KIRA_MODULE_v14.json` — модуль персонажа (или несколько)
+2. `scenarios/SCENARIO_SAUNA_QUARTET.json` — сценарий (опционально)
+3. `state/STATE_TEMPLATE_v2.json` — текущее состояние (опционально, для продолжения)
+
+### 2. Игровой процесс
+
+- Пишите от первого лица (`Я подхожу к Кире`)
+- Или команды (`ВЛ2 СТ3`, `АД КН`, `У3-Б`)
+- Или в режиме режиссёра (`Пусть Кира улыбнётся`)
+- LLM генерирует ответ в формате ФМДР
+
+### 3. Финализация (после сессии)
+
+```bash
+# Сохраните лог в файл
+mkdir -p sessions/raw
+nano sessions/raw/session_2026-06-08.log
+# (вставьте весь текст из чата, Ctrl+O, Enter, Ctrl+X)
+
+# Запустите финализатор
+python3 session_finalize.py --log sessions/raw/session_2026-06-08.log --scenario sauna_quartet
+
+# Результаты:
+# sessions/stories/STORY_...md       — литературный рассказ
+# sessions/visuals/VISUAL_PROMPTS_...md — промпты для Qwen/Midjourney
+# sessions/state/STATE_UPDATE_...json   — обновлённые метрики
+# personas/KIRA_MODULE_v14.json       — обновлённая память (авто)
+```
+
+---
+
+## Как запустить session_finalize.py
+
+### Termux (Android)
+
+```bash
+# 1. Установите Python (один раз)
+pkg update && pkg install python3 -y
+
+# 2. Проверьте версию
+python3 --version  # Python 3.11+ или 3.8+
+
+# 3. Перейдите в репозиторий
+cd ~/voyage-narrative-engine
+
+# 4. Запустите
+python3 session_finalize.py --log sessions/raw/session_2026-06-08.log --scenario sauna_quartet
+
+# 5. Если ошибка "Module not found" — ничего ставить не нужно,
+#    скрипт использует только стандартную библиотеку.
+#    Если всё же нужно — проверьте путь:
+ls -la session_finalize.py
+```
+
+### Linux / macOS / Windows (WSL)
+
+```bash
+cd ~/voyage-narrative-engine
+python3 session_finalize.py --log sessions/raw/session_2026-06-08.log --scenario sauna_quartet
+```
+
+### Аргументы скрипта
+
+| Аргумент | Описание | Пример |
+|----------|----------|--------|
+| `--log` | **Обязательно.** Путь к логу сессии | `sessions/raw/session_2026-06-08.log` |
+| `--scenario` | ID сценария | `sauna_quartet`, `promenade`, `cafe_date` |
+| `--repo` | Путь к репозиторию (если не `~/voyage-narrative-engine`) | `/path/to/repo` |
+| `--no-git` | Не делать `git commit` | `--no-git` |
+
+---
+
+## Что делает session_finalize.py (внутри)
+
+**Один файл — 4 роли:**
+
+1. **State Manager** — парсит лог, определяет подуровни (У1-А…У7-Б), обновляет desire/anxiety (0-10), фиксирует флаги, проверяет vscno=10
+2. **Narrative Editor** — превращает ФМДР в литературный Markdown-рассказ
+3. **Visual Extractor** — находит 8 ключевых визуальных моментов
+4. **Visual Physiognomist** — генерирует промпты с `anatomic_anchor` для консистентности лица
+
+**Выход:** 4 файла + обновлённые модули персонажей + git commit.
+
+---
+
+## Что делать с check_consistency.py
+
+Это **заглушка** для будущей автоматической проверки консистентности лиц.
+
+**Сейчас (ручной режим):**
+```bash
+cd ~/voyage-narrative-engine
+python3 scripts/python/check_consistency.py KIRA_MODULE_v14 /path/to/new_kira.png /path/to/reference_kira.png
+```
+
+Скрипт выведет список `anatomic_anchor` (форма лица, глаза, нос, родинки) и попросит сравнить визуально.
+
+**Будущее:** Подключение CLIP/ResNet для автоматического сравнения эмбеддингов.
+
+---
+
+## Роли (для использования в LLM-чатах)
+
+Если `session_finalize.py` недостаточен (редкие случаи), используйте роли по отдельности:
+
+| Роль | Файл | Когда использовать |
+|------|------|-------------------|
+| **State Manager** | `roles/ROLE_STATE_MANAGER_v1.0_PROMPT.md` | Если скрипт неправильно определил уровень |
+| **Narrative Editor** | `roles/ROLE_NARRATIVE_EDITOR_v1.1_PROMPT.md` | Если нужна более литературная обработка |
+| **Visual Extractor** | `roles/ROLE_VISUAL_EXTRACTOR_v1.0_PROMPT.md` | Если нужно больше/меньше 8 моментов |
+| **Visual Physiognomist** | `roles/ROLE_VISUAL_PHYSIOGNOMIST_v1.0_PROMPT.md` | Если лицо «поплыло» — усилить anatomic_anchor |
+
+---
+
+## Требования
+
+| Компонент | Минимум | Рекомендуется |
+|-----------|---------|---------------|
+| Python | 3.7 | 3.10+ |
+| Git | 2.20+ | Любая |
+| LLM для сессий | Любая (Kimi/DeepSeek/Claude) | Kimi (200K контекст) |
+| LLM для ролей | Любая | Claude/GPT-4 (стилистика) |
+| Генерация картинок | Qwen / Midjourney / SD | Qwen (локально) или MJ |
+| ОС | Android/Termux, Linux, macOS, Windows | Любая |
+
+---
+
+## Версионирование
+
+- **v2.0.0** — Базовая система: модули, сценарии, STATE, ФМДР, TEC
+- **v2.1.0** — Добавлено: `session_finalize.py`, 4 роли, автоматическая финализация, anatomic_anchor, generation_history
+
+Семантическое версионирование: `MAJOR.MINOR.PATCH`
+- MAJOR — изменение архитектуры (новые модули несовместимы)
+- MINOR — новые функции (совместимы)
+- PATCH — багфиксы
+
+---
+
+## Лицензия и использование
+
+- Все персонажи — вымышленные, совершеннолетние (25+)
+- Сценарии построены на консенсуальности и психологической безопасности
+- Hard limits: насилие, принуждение — блокируются safety-протоколом
+- Для оффлайн-использования: поддерживаются локальные LLM (Ollama, LM Studio)
+
+---
+
+## Ссылки и помощь
+
+- **Репозиторий:** https://github.com/AndreyVoyage/voyage-narrative-engine
+- **Issues:** https://github.com/AndreyVoyage/voyage-narrative-engine/issues
+- **Документация:** `docs/SESSION_FINALIZATION_WORKFLOW_v1.1.md`
+- **Termux-гайд:** `docs/RUNNING_IN_TERMUX.md`
+
+---
+
+*Voyage Narrative Engine — где психология встречает код.*

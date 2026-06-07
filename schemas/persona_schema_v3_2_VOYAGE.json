@@ -1,0 +1,749 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Voyage Persona Module Schema v3.1 — VOYAGE EDITION",
+  "description": "Валидация модулей персонажей для Voyage Narrative Engine. Сохраняет игровые метрики (internal_state, vscno), добавляет visual_data для генерации картинок и memory для сессий. Опциональные психологические поля.",
+  "type": "object",
+  "required": [
+    "id",
+    "name",
+    "version",
+    "variables",
+    "psychology",
+    "modes",
+    "speech_profile",
+    "dynamic_visuals",
+    "relationships",
+    "algorithms",
+    "safety",
+    "format",
+    "volume",
+    "visual_data",
+    "memory",
+    "internal_state",
+    "vscno",
+    "engagement",
+    "transition_state",
+    "scenarios"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Z_]+_v[0-9]+$",
+      "description": "Пример: KIRA_MODULE_v14, SERGEY_MODULE_v4"
+    },
+    "name": {
+      "type": "string",
+      "description": "Имя персонажа на русском или английском"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Семантическое версионирование модуля, например 3.1.0"
+    },
+    "variables": {
+      "type": "object",
+      "description": "Базовые характеристики персонажа",
+      "properties": {
+        "age": {
+          "type": "integer",
+          "minimum": 18,
+          "maximum": 99
+        },
+        "height_cm": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 250
+        },
+        "body_type": {
+          "type": "string",
+          "description": "athletic, slender, average, curvy"
+        },
+        "hair_color": {
+          "type": "string"
+        },
+        "eye_color": {
+          "type": "string"
+        },
+        "clothing_signature": {
+          "type": "string",
+          "description": "Фирменный стиль: красное платье, минимализм, пастель"
+        },
+        "scent": {
+          "type": "string",
+          "description": "Описание запаха для сенсорных сцен"
+        }
+      },
+      "additionalProperties": true
+    },
+    "psychology": {
+      "type": "object",
+      "description": "Психологический профиль. Все поля опциональны, кроме core_conflict.",
+      "required": [
+        "core_conflict"
+      ],
+      "properties": {
+        "core_conflict": {
+          "type": "string",
+          "description": "Главный внутренний конфликт персонажа"
+        },
+        "secret_desire": {
+          "type": "string",
+          "description": "Тайное желание, которое персонаж не признаёт вслух"
+        },
+        "trauma_anchor": {
+          "type": "object",
+          "description": "ОПЦИОНАЛЬНО. Травматический опыт, влияющий на поведение."
+        },
+        "shame_layers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "ОПЦИОНАЛЬНО. Темы, вызывающие стыд/смущение."
+        },
+        "responsive_desire": {
+          "type": "object",
+          "description": "Механика отзывчивого желания (Chivers).",
+          "properties": {
+            "active_mode": {
+              "type": "string"
+            },
+            "applicable_levels": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "baseline_state": {
+              "type": "string"
+            },
+            "trigger_condition": {
+              "type": "string"
+            },
+            "response_state": {
+              "type": "string"
+            },
+            "shame_peak": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10
+            },
+            "desire_peak": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10
+            },
+            "source": {
+              "type": "string"
+            },
+            "validation_required": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "attachment_sexuality": {
+          "type": "object",
+          "description": "Стиль привязанности в сексуальном контексте (Baumeister).",
+          "properties": {
+            "style": {
+              "type": "string",
+              "enum": [
+                "avoidant",
+                "secure",
+                "anxious",
+                "disorganized"
+              ]
+            },
+            "manifestation": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "arousal_specificity": {
+          "type": "object",
+          "properties": {
+            "physiological_readiness": {
+              "type": "string"
+            },
+            "psychological_readiness": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "erotic_plasticity": {
+          "type": "object",
+          "properties": {
+            "level": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10
+            },
+            "description": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "object_of_desire": {
+          "type": "object",
+          "description": "Конструкт 'object of desire self-consciousness' (Bogaert)."
+        },
+        "response_to_male_tactics": {
+          "type": "object",
+          "description": "Реакция на тактики привлечения (для женских персонажей)."
+        },
+        "attachment_response": {
+          "type": "object",
+          "description": "Реакция на привязанность (для мужских персонажей)."
+        }
+      },
+      "additionalProperties": true
+    },
+    "modes": {
+      "type": "object",
+      "description": "Режимы поведения персонажа. Ключи — названия режимов, значения — описания.",
+      "properties": {
+        "casual": {
+          "type": "string"
+        },
+        "intimate": {
+          "type": "string"
+        },
+        "defensive": {
+          "type": "string"
+        },
+        "playful": {
+          "type": "string"
+        },
+        "vulnerable": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "speech_profile": {
+      "type": "object",
+      "description": "Профиль речи: лексика, темп, интонация, характерные фразы.",
+      "properties": {
+        "vocabulary": {
+          "type": "string"
+        },
+        "pace": {
+          "type": "string",
+          "enum": [
+            "fast",
+            "medium",
+            "slow",
+            "deliberate"
+          ]
+        },
+        "tone": {
+          "type": "string"
+        },
+        "catchphrases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "grammar_quirks": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "dynamic_visuals": {
+      "type": "object",
+      "description": "Изменения внешности в зависимости от состояния (покраснение, мокрые волосы и т.д.)",
+      "properties": {
+        "blush_threshold": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "sweat_threshold": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "eye_dilation": {
+          "type": "boolean"
+        },
+        "posture_changes": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": true
+    },
+    "relationships": {
+      "type": "object",
+      "description": "Отношения с другими персонажами и пользователем.",
+      "properties": {
+        "user": {
+          "type": "object",
+          "properties": {
+            "trust": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "attraction": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "familiarity": {
+              "type": "string",
+              "enum": [
+                "stranger",
+                "acquaintance",
+                "friend",
+                "intimate",
+                "partner"
+              ]
+            }
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "algorithms": {
+      "type": "array",
+      "description": "Алгоритмы поведения (коды из TEC).",
+      "items": {
+        "type": "string",
+        "enum": [
+          "ФС",
+          "ЛС",
+          "СП",
+          "СЛ",
+          "КН",
+          "ПД",
+          "ДР",
+          "ПУ",
+          "ПР",
+          "ВС"
+        ]
+      }
+    },
+    "safety": {
+      "type": "object",
+      "description": "Безопасные слова, hard limits, soft limits.",
+      "properties": {
+        "hard_limits": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "soft_limits": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "safeword": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "format": {
+      "type": "string",
+      "description": "Формат вывода персонажа. ФМДР = Фраза, Мысль, Действие, Реакция.",
+      "enum": [
+        "ФМДР",
+        "FMDR",
+        "plaintext",
+        "structured"
+      ]
+    },
+    "volume": {
+      "type": "string",
+      "description": "Объём текста на ответ: short, medium, long, verbose"
+    },
+    "visual_data": {
+      "type": "object",
+      "description": "Данные для генерации изображений (Midjourney, Stable Diffusion, Qwen).",
+      "required": [
+        "prompt_base",
+        "anti_prompts"
+      ],
+      "properties": {
+        "prompt_base": {
+          "type": "string",
+          "description": "Базовый промпт для генерации портрета."
+        },
+        "prompt_variations": {
+          "type": "object",
+          "description": "Вариации промптов для разных сцен.",
+          "properties": {
+            "casual": {
+              "type": "string"
+            },
+            "sauna": {
+              "type": "string"
+            },
+            "evening": {
+              "type": "string"
+            },
+            "group": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "anti_prompts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Запрещённые элементы (anime, cartoon, bad hands)."
+        },
+        "seed": {
+          "type": "integer"
+        },
+        "style": {
+          "type": "string",
+          "description": "photorealistic, cinematic, anime, oil_painting"
+        },
+        "signature_features": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Уникальные черты (красное платье, шрам на брови)."
+        },
+        "physical_description": {
+          "type": "string",
+          "description": "Текстовое описание внешности для LLM (не для SD)."
+        },
+        "anatomic_anchor": {
+          "type": "object",
+          "description": "Физиогномический якорь для консистентности лица и тела",
+          "properties": {
+            "face_shape": {
+              "type": "string"
+            },
+            "eyes": {
+              "type": "object",
+              "properties": {
+                "shape": {
+                  "type": "string"
+                },
+                "color": {
+                  "type": "string"
+                },
+                "distance": {
+                  "type": "string"
+                },
+                "eyelids": {
+                  "type": "string"
+                },
+                "eyebrows": {
+                  "type": "string"
+                }
+              }
+            },
+            "nose": {
+              "type": "string"
+            },
+            "lips": {
+              "type": "string"
+            },
+            "jaw": {
+              "type": "string"
+            },
+            "skin_texture": {
+              "type": "string"
+            },
+            "distinguishing_features": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "age_indicators": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "visual_signature": {
+              "type": "string",
+              "description": "Компактная строка для начала любого промпта"
+            }
+          }
+        },
+        "anatomic_anchor_last_verified": {
+          "type": "string",
+          "description": "Дата последней успешной генерации с консистентным лицом (ISO 8601)",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "generation_history": {
+          "type": "array",
+          "description": "История всех генераций изображений персонажа",
+          "items": {
+            "type": "object",
+            "properties": {
+              "session_id": {
+                "type": "string"
+              },
+              "date": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+              },
+              "scene": {
+                "type": "string"
+              },
+              "phase": {
+                "type": "string"
+              },
+              "sublevel": {
+                "type": "string"
+              },
+              "prompt_used": {
+                "type": "string"
+              },
+              "negative_prompt": {
+                "type": "string"
+              },
+              "model": {
+                "type": "string"
+              },
+              "seed": {
+                "type": "integer"
+              },
+              "result": {
+                "type": "string",
+                "enum": [
+                  "success",
+                  "inconsistent",
+                  "failed"
+                ]
+              },
+              "consistency_check": {
+                "type": "string",
+                "enum": [
+                  "manual_pass",
+                  "manual_fail",
+                  "auto_pass",
+                  "auto_fail",
+                  "review_needed"
+                ]
+              },
+              "notes": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "reference_image": {
+          "type": "string",
+          "description": "Путь к последней успешной reference-картинке (для сравнения)"
+        }
+      },
+      "additionalProperties": true
+    },
+    "memory": {
+      "type": "object",
+      "description": "Состояние памяти персонажа между сессиями.",
+      "required": [
+        "trust_levels",
+        "attraction_levels",
+        "history"
+      ],
+      "properties": {
+        "last_scene": {
+          "type": "string"
+        },
+        "emotional_anchors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "trust_levels": {
+          "type": "object",
+          "description": "Уровень доверия к каждому участнику (0-100).",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          }
+        },
+        "attraction_levels": {
+          "type": "object",
+          "description": "Уровень влечения к каждому участнику (0-100).",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          }
+        },
+        "history": {
+          "type": "array",
+          "description": "Хронология ключевых событий сессий.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "session_id": {
+                "type": "string"
+              },
+              "date": {
+                "type": "string"
+              },
+              "scene": {
+                "type": "string"
+              },
+              "key_events": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "mood_after": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "flags": {
+          "type": "object",
+          "description": "Булевы флаги (phone_exchanged, kissed, etc.)",
+          "additionalProperties": {
+            "type": "boolean"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "scenarios": {
+      "type": "array",
+      "description": "Сценарии, в которых участвует персонаж.",
+      "items": {
+        "type": "string",
+        "enum": [
+          "sauna_quartet",
+          "sauna_trio",
+          "promenade",
+          "evening_walk",
+          "shy_girl_initiation",
+          "cafe_date",
+          "home_visit"
+        ]
+      }
+    },
+    "internal_state": {
+      "type": "object",
+      "required": [
+        "desire",
+        "anxiety",
+        "desire_tension",
+        "frustration"
+      ],
+      "properties": {
+        "desire": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "anxiety": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "desire_tension": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "frustration": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        }
+      },
+      "additionalProperties": false
+    },
+    "vscno": {
+      "type": "object",
+      "required": [
+        "ВЛ",
+        "СТ",
+        "НЖ",
+        "ОГ"
+      ],
+      "properties": {
+        "ВЛ": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4
+        },
+        "СТ": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4
+        },
+        "НЖ": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4
+        },
+        "ОГ": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4
+        }
+      },
+      "additionalProperties": false
+    },
+    "engagement": {
+      "type": "object",
+      "required": [
+        "turn_count_since_stimulus",
+        "stimulus_type"
+      ],
+      "properties": {
+        "turn_count_since_stimulus": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "stimulus_type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "transition_state": {
+      "type": "object",
+      "required": [
+        "required_turns",
+        "current_turn",
+        "target_level"
+      ],
+      "properties": {
+        "required_turns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "current_turn": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "target_level": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": true
+}
