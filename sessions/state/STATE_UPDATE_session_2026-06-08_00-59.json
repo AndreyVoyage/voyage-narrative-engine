@@ -1,0 +1,92 @@
+{
+  "session_id": "session_2026-06-08_00-59",
+  "scenario_id": "sauna_quartet",
+  "turn_count": 7,
+  "characters": {
+    "kira": {
+      "current_level": "U4-B",
+      "previous_level": "U5-B",
+      "internal_state": {
+        "desire": 0,
+        "anxiety": 3,
+        "desire_tension": 2,
+        "frustration": 1
+      },
+      "vscno": {
+        "ВЛ": 2,
+        "СТ": 3,
+        "НЖ": 1,
+        "ОГ": 2
+      },
+      "flags": [],
+      "emergency_stop": false
+    },
+    "sergey": {
+      "current_level": "S1",
+      "previous_level": "unknown",
+      "internal_state": {
+        "desire": 0,
+        "anxiety": 2,
+        "desire_tension": 0,
+        "frustration": 0
+      },
+      "vscno": {
+        "ВЛ": 2,
+        "СТ": 3,
+        "НЖ": 1,
+        "ОГ": 2
+      },
+      "flags": [],
+      "emergency_stop": false
+    },
+    "marina": {
+      "current_level": "unknown",
+      "previous_level": "unknown",
+      "internal_state": {
+        "desire": 0,
+        "anxiety": 2,
+        "desire_tension": 0,
+        "frustration": 0
+      },
+      "vscno": {
+        "ВЛ": 2,
+        "СТ": 3,
+        "НЖ": 1,
+        "ОГ": 2
+      },
+      "flags": [],
+      "emergency_stop": false
+    }
+  },
+  "user": {
+    "choices_made": [
+      "ВЛ2 СТ3 НЖ1 ОГ2",
+      "кладу руку на талию Киры",
+      "АД КН"
+    ],
+    "flags": {}
+  },
+  "audit_log": [
+    {
+      "turn": 2,
+      "event": "LEVEL_TRANSITION",
+      "actor": "kira",
+      "from": "unknown",
+      "to": "U5-B"
+    },
+    {
+      "turn": 4,
+      "event": "LEVEL_TRANSITION",
+      "actor": "kira",
+      "from": "U5-B",
+      "to": "U4-B"
+    },
+    {
+      "turn": 5,
+      "event": "LEVEL_TRANSITION",
+      "actor": "sergey",
+      "from": "unknown",
+      "to": "S1"
+    }
+  ]
+}

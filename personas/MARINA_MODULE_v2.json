@@ -598,7 +598,15 @@
       "sergey": 20,
       "maksim": 50
     },
-    "history": [],
+    "history": [
+      {
+        "session_id": "session_2026-06-08_00-59",
+        "date": "2026-06-08",
+        "scene": "sauna_quartet",
+        "key_events": [],
+        "mood_after": "desire=0, anxiety=2"
+      }
+    ],
     "last_scene": "initial",
     "emotional_anchors": [
       "тот, кто заметил"

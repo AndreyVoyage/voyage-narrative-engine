@@ -1,0 +1,50 @@
+[
+  {
+    "character": "kira",
+    "module_path": "personas/KIRA_MODULE_v14.json",
+    "memory_changes": {
+      "trust_levels": {},
+      "attraction_levels": {},
+      "history.push": {
+        "session_id": "session_2026-06-08_00-59",
+        "date": "2026-06-08",
+        "scene": "sauna_quartet",
+        "key_events": [],
+        "mood_after": "desire=0, anxiety=3"
+      },
+      "flags": {}
+    }
+  },
+  {
+    "character": "sergey",
+    "module_path": "personas/SERGEY_MODULE_v4.json",
+    "memory_changes": {
+      "trust_levels": {},
+      "attraction_levels": {},
+      "history.push": {
+        "session_id": "session_2026-06-08_00-59",
+        "date": "2026-06-08",
+        "scene": "sauna_quartet",
+        "key_events": [],
+        "mood_after": "desire=0, anxiety=2"
+      },
+      "flags": {}
+    }
+  },
+  {
+    "character": "marina",
+    "module_path": "personas/MARINA_MODULE_v2.json",
+    "memory_changes": {
+      "trust_levels": {},
+      "attraction_levels": {},
+      "history.push": {
+        "session_id": "session_2026-06-08_00-59",
+        "date": "2026-06-08",
+        "scene": "sauna_quartet",
+        "key_events": [],
+        "mood_after": "desire=0, anxiety=2"
+      },
+      "flags": {}
+    }
+  }
+]
