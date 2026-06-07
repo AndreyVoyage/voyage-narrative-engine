@@ -36,7 +36,8 @@
       "sergey",
       "user",
       "duo_seduction",
-      "marina"
+      "marina",
+      "kira_marina_quartet"
     ],
     "kira_level": [
       "U1",
@@ -107,181 +108,152 @@
     "risk_cap": "Риск не может превышать intensity + 2",
     "triad_rule": "При triad_active=true обязательно участие 3+ персонажей",
     "duo_seduction_rule": "При archetype=duo_seduction пользователь = AG0 (вуайерист), NPC = AG4",
-    "marina_rule": "При archetype=marina обязательно участие Марины. Она может войти неожиданно и изменить динамику."
+    "marina_rule": "При archetype=marina обязательно участие Марины",
+    "km_rule": "При archetype=kira_marina_quartet обязательно участие Киры + Марины + Пользователя"
   },
   "scenarios": [
     {
-      "id": "SC_MARINA_001",
-      "title": "Знакомство с солнечным зайчиком",
-      "location": "cafe",
-      "time": "day",
-      "archetype": "marina",
-      "kira_level": "U2",
-      "sergey_level": "S2",
-      "maksim_level": "M1",
-      "marina_level": "MA1",
-      "intensity": 3,
-      "risk": 2,
-      "flags_required": [],
-      "flags_set": [
-        "marina_met",
-        "marina_flirted_with_user"
-      ],
-      "prerequisites": "Кира приводит Пользователя в кафе, где работает Марина. Марина радостно их встречает и сразу начинает флиртовать с Пользователем.",
-      "summary": "Первое появление Марины. Она ломает напряжённую атмосферу смехом и флиртом. Кира напрягается — ревность."
-    },
-    {
-      "id": "SC_MARINA_002",
-      "title": "Борьба на кровати",
-      "location": "home",
-      "time": "evening",
-      "archetype": "marina",
-      "kira_level": "U3",
-      "sergey_level": "S3",
-      "maksim_level": "M2",
-      "marina_level": "MA1",
-      "intensity": 4,
-      "risk": 3,
-      "flags_required": [
-        "marina_met"
-      ],
-      "flags_set": [
-        "marina_playfight",
-        "marina_kira_jealousy_triggered"
-      ],
-      "prerequisites": "Марина забегает в комнату, прыгает на кровать, начинает борьбу с Пользователем. Щекотка, смех. В какой-то момент она замирает слишком близко.",
-      "summary": "Марина на MA1. Игривая борьба. Неожиданная близость. Кира видит это и ревнует."
-    },
-    {
-      "id": "SC_MARINA_003",
-      "title": "Первая трещина",
-      "location": "cafe",
-      "time": "night",
-      "archetype": "marina",
-      "kira_level": "U4",
-      "sergey_level": "S4",
-      "maksim_level": "M3",
-      "marina_level": "MA3",
-      "intensity": 5,
-      "risk": 4,
-      "flags_required": [
-        "marina_playfight"
-      ],
-      "flags_set": [
-        "marina_vulnerability_shown",
-        "marina_body_shame_revealed"
-      ],
-      "prerequisites": "Марина случайно говорит искреннее, пугается, отшучивается. Пользователь ловит момент и зеркалит её. Она раскрывает страх быть осмеянной.",
-      "summary": "MA3. Первая трещина в маске. Марина показывает, что под игрой — страх."
-    },
-    {
-      "id": "SC_MARINA_004",
-      "title": "Электрическое напряжение",
-      "location": "bar",
-      "time": "evening",
-      "archetype": "marina",
-      "kira_level": "U5",
-      "sergey_level": "S5",
-      "maksim_level": "M4",
-      "marina_level": "MA2",
-      "intensity": 6,
-      "risk": 5,
-      "flags_required": [
-        "marina_met"
-      ],
-      "flags_set": [
-        "marina_sergey_electric_tension"
-      ],
-      "prerequisites": "Марина в баре. Сергей сидит один. Она подходит, флиртует, он не отвечает. Она пытается его рассмешить. Один раз он почти улыбнулся.",
-      "summary": "Марина и Сергей. Запретный плод. Он недоступен, она провоцирует. Electric tension."
-    },
-    {
-      "id": "SC_MARINA_005",
-      "title": "Доверие",
-      "location": "home",
-      "time": "night",
-      "archetype": "marina",
-      "kira_level": "U6",
-      "sergey_level": "S6",
-      "maksim_level": "M5",
-      "marina_level": "MA5",
-      "intensity": 5,
-      "risk": 3,
-      "flags_required": [
-        "marina_vulnerability_shown"
-      ],
-      "flags_set": [
-        "marina_reached_MA5",
-        "marina_user_future_pacing"
-      ],
-      "prerequisites": "Марина кладёт голову на плечо Пользователю. Не играя. Тихо. 'Мне с тобой спокойно. Это странно... я всегда бегала.'",
-      "summary": "MA5. Первый шаг без игры. Доверие. Якорь спокойствия."
-    },
-    {
-      "id": "SC_MARINA_006",
-      "title": "Уязвимость",
-      "location": "home",
-      "time": "morning",
-      "archetype": "marina",
-      "kira_level": "U7",
-      "sergey_level": "S7",
-      "maksim_level": "M6",
-      "marina_level": "MA6",
-      "intensity": 4,
-      "risk": 2,
-      "flags_required": [
-        "marina_reached_MA5"
-      ],
-      "flags_set": [
-        "marina_reached_MA6"
-      ],
-      "prerequisites": "Марина плачет. Рассказывает про 15 лет и осмеяние. Просит не смеяться. 'Ты первый, кто не сказал да ладно, ты просто маленькая.'",
-      "summary": "MA6. Полная уязвимость. Плачет, но не уходит. Прорыв."
-    },
-    {
-      "id": "SC_MARINA_007",
-      "title": "Интеграция",
-      "location": "beach",
-      "time": "day",
-      "archetype": "marina",
-      "kira_level": "U7",
-      "sergey_level": "S7",
-      "maksim_level": "M7",
-      "marina_level": "MA7",
-      "intensity": 3,
-      "risk": 1,
-      "flags_required": [
-        "marina_reached_MA6"
-      ],
-      "flags_set": [
-        "marina_reached_MA7",
-        "marina_maksim_dyad"
-      ],
-      "prerequisites": "Марина на пляже. Свободная, плавная. Обнимает Пользователя. 'Я люблю тебя. И теперь не стыдно. И щекотка останется.' Максим рядом — они смеются вместе.",
-      "summary": "MA7. Целостность. Можно быть и игривой, и серьёзной. Максим + Марина = лёгкая пара."
-    },
-    {
-      "id": "SC_MARINA_SAUNA",
-      "title": "Марина входит в сауну",
+      "id": "SC_SAUNA_KM_001",
+      "title": "Сауна: Квартет Кира-Марина",
       "location": "spa",
-      "time": "night",
-      "archetype": "marina",
-      "kira_level": "U5",
-      "sergey_level": "S5",
-      "maksim_level": "M5",
-      "marina_level": "MA2",
+      "time": "day",
+      "archetype": "kira_marina_quartet",
+      "kira_level": "U2",
+      "marina_level": "MA1",
+      "user_role": "active",
+      "user_ag": 2,
       "intensity": 7,
       "risk": 5,
       "flags_required": [
-        "sauna_quartet_formed",
-        "marina_met"
+        "sauna_km_started"
       ],
       "flags_set": [
-        "marina_sauna_entrance",
-        "marina_broke_kira_subspace"
+        "sauna_km_started",
+        "marina_joined_unexpected",
+        "km_11_bedro_touch",
+        "km_11_kira_leaves",
+        "km_11_marina_blush",
+        "km_12_playfight",
+        "km_12_kira_watches",
+        "km_12_marina_freeze",
+        "km_13_massage",
+        "km_13_kira_commands",
+        "km_13_marina_tenses",
+        "km_14_bed_talk",
+        "km_14_vulnerability",
+        "km_14_group_hug",
+        "km_15_kiss_bet",
+        "km_15_kira_kisses_first",
+        "km_15_marina_real_kiss",
+        "km_21_kira_leaves_alone",
+        "km_21_marina_panics",
+        "km_21_head_on_shoulder",
+        "km_22_stretch_show",
+        "km_22_kira_whispers",
+        "km_22_marina_falls",
+        "km_23_kira_closes_door",
+        "km_23_marina_panic",
+        "km_23_she_initiates",
+        "km_24_selfie",
+        "km_24_fight_for_phone",
+        "km_24_between_them",
+        "km_25_kira_tells",
+        "km_25_marina_asks_massage",
+        "km_25_kira_watches",
+        "km_31_sauna_contest",
+        "km_31_marina_loses",
+        "km_31_kira_wins",
+        "km_32_dance",
+        "km_32_marina_fades",
+        "km_32_kira_takes_over",
+        "km_33_massage_race",
+        "km_33_marina_first",
+        "km_33_kira_commands",
+        "km_34_yoga_pose",
+        "km_34_marina_falls",
+        "km_34_between",
+        "km_35_kira_leaves_shop",
+        "km_35_marina_kneels",
+        "km_35_almost_kiss",
+        "km_41_window_talk",
+        "km_41_marina_cries",
+        "km_41_group_hug",
+        "km_42_massage_cry",
+        "km_42_marina_says_no",
+        "km_42_kira_comforts",
+        "km_43_sleep_together",
+        "km_43_marina_between",
+        "km_43_kira_whispers",
+        "km_44_truth_or_dare",
+        "km_44_fears_revealed",
+        "km_44_group_hug",
+        "km_45_shower_together",
+        "km_45_butterfly_tattoo",
+        "km_45_vulnerability",
+        "km_51_kira_locks",
+        "km_51_marina_panics",
+        "km_51_she_comes",
+        "km_52_broken_phone",
+        "km_52_marina_whispers",
+        "km_52_kira_laughs",
+        "km_53_massage_hint",
+        "km_53_sheet_slips",
+        "km_53_kira_joke",
+        "km_54_fight_for_kiss",
+        "km_54_marina_wins",
+        "km_54_she_runs",
+        "km_55_final_night",
+        "km_55_marina_cuddles",
+        "km_55_kira_not_sleeping"
       ],
-      "prerequisites": "Марина неожиданно входит в сауну в Акте IV или V. Кира в subspace. Марина: 'Ой, что вы тут делаете? Парночка?' — смех. Кира выходит из транса. Либо срыв, либо ускорение.",
-      "summary": "Марина ломает subspace Киры. Альтернативный трек сауны. Может быть СТОП или ускорение."
+      "prerequisites": "Пользователь и Кира сняли сауну на день. Марина присоединяется неожиданно. 5 сценариев × 5 вариантов = 25 микросцен.",
+      "summary": "Полный путь Киры У2→У6 и Марины MA1→MA6 через ревность, соревнование, уязвимость и провокацию. Пользователь — активный катализатор.",
+      "psychology": [
+        "Basson Responsive Desire",
+        "Cialdini Social Proof Scarcity Reciprocity",
+        "Greene Mixed Signals Triangles Isolation",
+        "Attachment Theory Anxious + Anxious-Preoccupied",
+        "Excitation Transfer",
+        "Perel Distance Creates Desire"
+      ],
+      "acts": [
+        {
+          "act": "Prologue",
+          "kira": "U2",
+          "marina": "MA1",
+          "duration_min": 10
+        },
+        {
+          "act": "1.1-1.5",
+          "kira": "U2→U4",
+          "marina": "MA1→MA4",
+          "duration_min": 40
+        },
+        {
+          "act": "2.1-2.5",
+          "kira": "U3→U4",
+          "marina": "MA2→MA5",
+          "duration_min": 40
+        },
+        {
+          "act": "3.1-3.5",
+          "kira": "U4→U5",
+          "marina": "MA2→MA3",
+          "duration_min": 40
+        },
+        {
+          "act": "4.1-4.5",
+          "kira": "U3→U4",
+          "marina": "MA4→MA5",
+          "duration_min": 40
+        },
+        {
+          "act": "5.1-5.5",
+          "kira": "U5→U6",
+          "marina": "MA4→MA6",
+          "duration_min": 40
+        }
+      ]
     }
   ]
 }
