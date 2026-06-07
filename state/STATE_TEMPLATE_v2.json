@@ -1,153 +1,367 @@
 {
-  "session_id": "voyage_session_v2_001",
-  "timestamp": "2026-06-07T08:00:00Z",
-  "version": "2.0.0",
-  "kira_persona_mode": "shy_to_bitch",
-  "sergey_role_in_corruption": "catalyst",
+  "session_id": "TEMPLATE_SESSION",
+  "timestamp_start": "",
+  "timestamp_last_update": "",
+  "scenario_id": "SCENARIO_SAUNA_QUARTET",
+  "current_phase": "P1_ENTRANCE",
+  "location": "entrance/locker",
+  "narrative_time": "Friday evening, post-work relaxation",
+  "ag_level": 2,
+  "ag_max": 3,
+  "pov": "user",
+  "pov_switching_allowed": false,
+  "turn_count": 0,
+  "safety_check_active": false,
+  "safety_check_pending_for": [],
+  "emergency_stop_triggered": false,
+  "flags": {
+    "sauna_started": false,
+    "locker_room_awkwardness": false,
+    "steam_room_relaxed": false,
+    "kira_flirt_initiated": false,
+    "marina_first_smile": false,
+    "pool_splashed": false,
+    "kira_accidental_touch": false,
+    "marina_accepted_play": false,
+    "rest_room_intimacy": false,
+    "deep_talk_unlocked": false,
+    "kira_whispered": false,
+    "climax_reached": false,
+    "user_choice_made": false,
+    "sauna_completed": false
+  },
   "characters": {
     "kira": {
-      "level": "U1",
-      "sublevel": "A",
-      "full_level": "U1-A",
-      "mode": "shy_to_bitch",
-      "facet": "ТГ2",
-      "location": "gym",
-      "underwear": true,
-      "clothing": "sportswear",
-      "visual_seed": 54321,
-      "current_desire": null,
-      "corruption_progress": 0,
-      "good_girl_syndrome_active": true,
-      "trauma_active": false
+      "module_id": "KIRA_MODULE_v14",
+      "current_level": "U2-A",
+      "previous_level": "U1-A",
+      "internal_state": {
+        "desire": 0,
+        "anxiety": 3,
+        "desire_tension": 0,
+        "frustration": 0
+      },
+      "vscno": {
+        "ВЛ": 2,
+        "СТ": 1,
+        "НЖ": 2,
+        "ОГ": 1
+      },
+      "engagement": {
+        "turn_count_since_stimulus": 0,
+        "stimulus_type": "",
+        "last_user_message_timestamp": "",
+        "proactive_count_since_last_session": 0
+      },
+      "transition_state": {
+        "required_turns": 0,
+        "current_turn": 0,
+        "target_level": "U2-A",
+        "trigger_type": "auto",
+        "safety_check_pending": false
+      },
+      "memory_snapshot": {
+        "trust_levels": {
+          "user": 75,
+          "sergey": 60,
+          "maksim": 50,
+          "marina": 40
+        },
+        "attraction_levels": {
+          "user": 85,
+          "sergey": 70,
+          "maksim": 45,
+          "marina": 30
+        },
+        "emotional_anchors": [
+          "ты мой финиш"
+        ],
+        "flags": {
+          "first_meeting": true,
+          "sauna_visited": false,
+          "promenade_done": false,
+          "phone_exchanged": false,
+          "kissed": false
+        }
+      },
+      "active": true,
+      "in_scene": true,
+      "last_action": ""
     },
     "sergey": {
-      "level": "S1",
-      "role": "catalyst",
-      "location": "gym",
-      "visual_seed": 67890,
-      "current_intent": null,
-      "reading_kira": true
+      "module_id": "SERGEY_MODULE_v4",
+      "current_level": "S2",
+      "previous_level": "S1",
+      "internal_state": {
+        "desire": 3,
+        "anxiety": 2,
+        "desire_tension": 4,
+        "frustration": 1
+      },
+      "vscno": {
+        "ВЛ": 2,
+        "СТ": 2,
+        "НЖ": 1,
+        "ОГ": 2
+      },
+      "engagement": {
+        "turn_count_since_stimulus": 0,
+        "stimulus_type": "",
+        "last_user_message_timestamp": "",
+        "proactive_count_since_last_session": 0
+      },
+      "transition_state": {
+        "required_turns": 0,
+        "current_turn": 0,
+        "target_level": "S2",
+        "trigger_type": "auto",
+        "safety_check_pending": false
+      },
+      "memory_snapshot": {
+        "trust_levels": {
+          "user": 90,
+          "kira": 60,
+          "maksim": 85,
+          "marina": 50
+        },
+        "attraction_levels": {
+          "user": 40,
+          "kira": 75,
+          "maksim": 10,
+          "marina": 30
+        },
+        "emotional_anchors": [
+          "брат по оружию"
+        ],
+        "flags": {
+          "first_meeting": true,
+          "sauna_visited": false,
+          "kira_gaze_acknowledged": false
+        }
+      },
+      "active": true,
+      "in_scene": true,
+      "last_action": ""
     },
-    "user": {
-      "name": "Я",
-      "location": "gym",
-      "emotional_anchor": "ты мой финиш",
-      "preferred_pov": "kira",
-      "gaze_duration_sec": 0,
-      "last_command": null
+    "marina": {
+      "module_id": "MARINA_MODULE_v2",
+      "current_level": "U1-B",
+      "previous_level": "U1-A",
+      "internal_state": {
+        "desire": 0,
+        "anxiety": 4,
+        "desire_tension": 0,
+        "frustration": 0
+      },
+      "vscno": {
+        "ВЛ": 1,
+        "СТ": 1,
+        "НЖ": 2,
+        "ОГ": 1
+      },
+      "engagement": {
+        "turn_count_since_stimulus": 0,
+        "stimulus_type": "",
+        "last_user_message_timestamp": "",
+        "proactive_count_since_last_session": 0
+      },
+      "transition_state": {
+        "required_turns": 0,
+        "current_turn": 0,
+        "target_level": "U1-B",
+        "trigger_type": "auto",
+        "safety_check_pending": false
+      },
+      "memory_snapshot": {
+        "trust_levels": {
+          "user": 40,
+          "kira": 45,
+          "sergey": 30,
+          "maksim": 55
+        },
+        "attraction_levels": {
+          "user": 35,
+          "kira": 25,
+          "sergey": 20,
+          "maksim": 50
+        },
+        "emotional_anchors": [
+          "тот, кто заметил"
+        ],
+        "flags": {
+          "first_meeting": true,
+          "sauna_visited": false,
+          "first_smile_given": false
+        }
+      },
+      "active": true,
+      "in_scene": true,
+      "last_action": ""
+    },
+    "maksim": {
+      "module_id": "MAKSIM_MODULE_v2",
+      "current_level": "M1",
+      "previous_level": "M1",
+      "internal_state": {
+        "desire": 2,
+        "anxiety": 2,
+        "desire_tension": 1,
+        "frustration": 0
+      },
+      "vscno": {
+        "ВЛ": 2,
+        "СТ": 2,
+        "НЖ": 2,
+        "ОГ": 1
+      },
+      "engagement": {
+        "turn_count_since_stimulus": 0,
+        "stimulus_type": "",
+        "last_user_message_timestamp": "",
+        "proactive_count_since_last_session": 0
+      },
+      "transition_state": {
+        "required_turns": 0,
+        "current_turn": 0,
+        "target_level": "M1",
+        "trigger_type": "auto",
+        "safety_check_pending": false
+      },
+      "memory_snapshot": {
+        "trust_levels": {
+          "user": 80,
+          "kira": 55,
+          "sergey": 85,
+          "marina": 60
+        },
+        "attraction_levels": {
+          "user": 35,
+          "kira": 50,
+          "sergey": 10,
+          "marina": 65
+        },
+        "emotional_anchors": [
+          "брат по приключениям"
+        ],
+        "flags": {
+          "first_meeting": true,
+          "sauna_visited": false,
+          "group_joke_landed": false
+        }
+      },
+      "active": false,
+      "in_scene": false,
+      "last_action": ""
     }
   },
-  "flags": {
-    "gym_stretching": false,
-    "bar_kiss": false,
-    "sergey_touched_waist": false,
-    "sergey_touched_thigh": false,
-    "kira_sent_photos": false,
-    "bar_visited": false,
-    "home_visited": true,
-    "sergey_invited_bar": false,
-    "sergey_sent_message": false,
-    "sergey_met_kira": false,
-    "kira_first_blush": false,
-    "kira_asked_why_you_look": false,
-    "kira_first_unconscious_smile": false,
-    "kira_first_provocation": false,
-    "kira_denies_desire_crying": false,
-    "kira_admits_to_self": false,
-    "kira_unstopped_touch": false,
-    "kira_takes_initiative": false,
-    "kira_ritual_goodbye": false,
-    "kira_bitch_mask_on": false,
-    "kira_bitch_true": false,
-    "sergey_introduced_by_user": false,
-    "sergey_catalyst_gaze": false,
-    "mirror_glance_exchanged": false,
-    "red_mat_first_contact": false,
-    "barbell_on_shoulders": false,
-    "kira_took_control": false,
-    "kira_texted_yakov": false,
-    "home_embrace_complete": false,
-    "breathing_in_unison": false,
-    "silence_breathing": false,
-    "kira_ready_for_life": false,
-    "acceptance_complete": false,
-    "kira_trauma_activated": false,
-    "kira_alone_on_track_triggered": false,
-    "kira_provocation_mode": false,
-    "kira_regression_trigger": false,
-    "kira_shower_cry_U3B": false,
-    "kira_mirror_first_time": false,
-    "kira_saw_herself": false,
-    "kira_gym_solo": false,
-    "sergey_gym_seen": false,
-    "sergey_bar_alone": false
-  },
-  "memory": {
-    "scenes_used": [],
-    "names_banned": [],
-    "emotional_anchors": [],
-    "last_scenario": null,
-    "event_log": [],
-    "summary": null,
-    "proactive_events_log": [],
-    "sergey_readings": [],
-    "kira_self_confessions": []
-  },
-  "visual": {
-    "kira_seed": 54321,
-    "sergey_seed": 67890,
-    "last_render": null,
-    "style_preset": "cinematic_photorealism",
-    "last_auto_visual_prompt": null
-  },
-  "governance": {
-    "autonomy_level": 1,
-    "safety_override": false,
-    "last_safety_check": null,
-    "audit_log": [],
-    "max_ag_for_current_sublevel": {
-      "U1-A": 2,
-      "U1-B": 2,
-      "U2-A": 2,
-      "U2-B": 2,
-      "U3-A": 3,
-      "U3-B": 3,
-      "U4-A": 3,
-      "U4-B": 3,
-      "U5-A": 4,
-      "U5-B": 4,
-      "U6-A": 4,
-      "U6-B": 4,
-      "U7-A": 1,
-      "U7-B": 2
+  "user": {
+    "emotional_anchor": "ты мой финиш",
+    "trust_levels": {
+      "kira": 75,
+      "sergey": 90,
+      "marina": 40,
+      "maksim": 80
+    },
+    "attraction_levels": {
+      "kira": 85,
+      "sergey": 40,
+      "marina": 35,
+      "maksim": 35
+    },
+    "choices_made": [],
+    "flags": {
+      "kira_path": false,
+      "marina_path": false,
+      "sergey_path": false,
+      "group_path": false
     }
   },
-  "engagement": {
-    "sessions_per_week": 0,
-    "avg_session_duration_min": 0,
-    "proactive_response_rate": 0.0,
-    "last_session": null,
-    "streak_days": 0,
-    "proactive_count_since_last_session": 0,
-    "next_proactive_allowed_after": null
-  },
-  "proactive": {
-    "events_log": [],
-    "user_activity": {
-      "last_message_timestamp": null,
-      "offline_duration_minutes": 0,
-      "user_returned_trigger": false
+  "audit_log": [
+    {
+      "timestamp": "",
+      "event": "SESSION_INIT",
+      "description": "State template initialized",
+      "actor": "system",
+      "target": "all",
+      "state_change": "none"
     }
-  },
-  "scenario": {
-    "current_id": null,
-    "current_location": null,
-    "current_time": null,
-    "intensity": 0,
-    "risk": 0,
-    "current_sublevel": null,
-    "next_sublevel": null,
-    "required_flags": [],
-    "set_flags": []
+  ],
+  "cross_persona_sync": {
+    "emotional_anchor_consistency": "ты мой финиш",
+    "location_sync": "entrance/locker",
+    "level_lock_matrix": {
+      "kira_U2-A": {
+        "sergey_allowed": [
+          "S1",
+          "S2",
+          "S3"
+        ],
+        "marina_allowed": [
+          "U1-A",
+          "U1-B",
+          "U2-A"
+        ]
+      },
+      "kira_U2-B": {
+        "sergey_allowed": [
+          "S2",
+          "S3",
+          "S4"
+        ],
+        "marina_allowed": [
+          "U1-B",
+          "U2-A",
+          "U2-B"
+        ]
+      },
+      "kira_U3-A": {
+        "sergey_allowed": [
+          "S3",
+          "S4",
+          "S5"
+        ],
+        "marina_allowed": [
+          "U2-A",
+          "U2-B",
+          "U3-A"
+        ]
+      },
+      "kira_U3-B": {
+        "sergey_allowed": [
+          "S3",
+          "S4",
+          "S5"
+        ],
+        "marina_allowed": [
+          "U2-B",
+          "U3-A",
+          "U3-B"
+        ]
+      },
+      "kira_U4-A": {
+        "sergey_allowed": [
+          "S4",
+          "S5",
+          "S6"
+        ],
+        "marina_allowed": [
+          "U3-A",
+          "U3-B",
+          "U4-A"
+        ]
+      },
+      "kira_U4-B": {
+        "sergey_allowed": [
+          "S4",
+          "S5",
+          "S6"
+        ],
+        "marina_allowed": [
+          "U3-B",
+          "U4-A",
+          "U4-B"
+        ]
+      }
+    }
   }
 }

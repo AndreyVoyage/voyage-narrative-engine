@@ -1,0 +1,1042 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Voyage Persona Module Schema v3.2 — UNIFIED",
+  "description": "Единая строгая схема для TEC-модулей персонажей. Объединяет v3 (TEC-полнота, подуровни, proactive) и v3.1 (visual_data, memory, scenarios).",
+  "type": "object",
+  "required": [
+    "id",
+    "name",
+    "version",
+    "variables",
+    "psychology",
+    "modes",
+    "speech_profile",
+    "dynamic_visuals",
+    "relationships",
+    "algorithms",
+    "safety",
+    "format",
+    "volume",
+    "visual_data",
+    "memory",
+    "internal_state",
+    "vscno",
+    "engagement",
+    "transition_state",
+    "scenarios",
+    "autonomous",
+    "state_triggers",
+    "regression_triggers"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Z_]+_v[0-9]+$",
+      "description": "Пример: KIRA_MODULE_v14, SERGEY_MODULE_v4"
+    },
+    "name": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Семантическое версионирование"
+    },
+    "variables": {
+      "type": "object",
+      "required": [
+        "age",
+        "height_cm",
+        "body_type",
+        "hair_color",
+        "eye_color"
+      ],
+      "properties": {
+        "age": {
+          "type": "integer",
+          "minimum": 18,
+          "maximum": 99
+        },
+        "height_cm": {
+          "type": "integer",
+          "minimum": 140,
+          "maximum": 220
+        },
+        "body_type": {
+          "type": "string"
+        },
+        "hair_color": {
+          "type": "string"
+        },
+        "eye_color": {
+          "type": "string"
+        },
+        "clothing_signature": {
+          "type": "string"
+        },
+        "scent": {
+          "type": "string"
+        },
+        "bust_size": {
+          "type": "string"
+        },
+        "tattoo": {
+          "type": "string"
+        },
+        "stubble": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "psychology": {
+      "type": "object",
+      "required": [
+        "core_conflict"
+      ],
+      "properties": {
+        "core_conflict": {
+          "type": "string"
+        },
+        "secret_desire": {
+          "type": "string"
+        },
+        "trauma_anchor": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "origin": {
+              "type": "string"
+            },
+            "trigger_sensory": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "trigger_emotional": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "coping": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "shame_layers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "sensory_register": {
+          "type": "string",
+          "enum": [
+            "tactile",
+            "visual",
+            "auditory",
+            "olfactory",
+            "tactile_warm",
+            "olfactory_sweet",
+            "tactile_visual",
+            "olfactory_sour"
+          ]
+        },
+        "responsive_desire": {
+          "type": "object",
+          "description": "TEC_003: Basson responsive desire",
+          "required": [
+            "active_mode",
+            "applicable_levels",
+            "baseline_state",
+            "trigger_condition",
+            "response_state",
+            "shame_peak",
+            "desire_peak",
+            "source",
+            "validation_required"
+          ],
+          "properties": {
+            "active_mode": {
+              "type": "string",
+              "enum": [
+                "shy_to_bitch",
+                "default"
+              ]
+            },
+            "applicable_levels": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "baseline_state": {
+              "type": "string",
+              "enum": [
+                "spontaneous_denial",
+                "spontaneous"
+              ]
+            },
+            "trigger_condition": {
+              "type": "string"
+            },
+            "response_state": {
+              "type": "string"
+            },
+            "shame_peak": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10
+            },
+            "desire_peak": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10
+            },
+            "source": {
+              "type": "string"
+            },
+            "validation_required": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "attachment_sexuality": {
+          "type": "object",
+          "description": "TEC_005: Birnbaum attachment × desire",
+          "required": [
+            "style",
+            "manifestation"
+          ],
+          "properties": {
+            "style": {
+              "type": "string",
+              "enum": [
+                "anxious_preoccupied",
+                "avoidant_dismissive",
+                "secure",
+                "fearful_avoidant"
+              ]
+            },
+            "manifestation": {
+              "type": "object"
+            },
+            "compatibility": {
+              "type": "object"
+            },
+            "user_compatibility": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
+        },
+        "arousal_specificity": {
+          "type": "object",
+          "description": "TEC_006: Chivers arousal specificity",
+          "properties": {
+            "source": {
+              "type": "string"
+            },
+            "physiological_readiness": {
+              "type": "object"
+            },
+            "subjective_desire": {
+              "type": "object"
+            },
+            "body_mind_lag": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
+        },
+        "erotic_plasticity": {
+          "type": "object",
+          "description": "TEC_007: Baumeister erotic plasticity",
+          "properties": {
+            "source": {
+              "type": "string"
+            },
+            "level": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10
+            },
+            "can_rewrite_script": {
+              "type": "boolean"
+            },
+            "identity_shift_speed": {
+              "type": "string",
+              "enum": [
+                "slow",
+                "medium",
+                "fast",
+                "very_fast",
+                "none"
+              ]
+            },
+            "scripts": {
+              "type": "object"
+            },
+            "script_conflict": {
+              "type": "object"
+            },
+            "masks": {
+              "type": "object"
+            },
+            "core_identity": {
+              "type": "string"
+            },
+            "core_stability": {
+              "type": "string"
+            },
+            "stable_script": {
+              "type": "string"
+            },
+            "plasticity_speed": {
+              "type": "string"
+            },
+            "script_awareness": {
+              "type": "string"
+            },
+            "rapid_transitions": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "object_of_desire": {
+          "type": "object",
+          "description": "TEC_008: Bogaert & Brotto ODSC",
+          "properties": {
+            "source": {
+              "type": "string"
+            },
+            "public_odsc": {
+              "type": "object"
+            },
+            "private_odsc": {
+              "type": "object"
+            },
+            "unconscious_tests": {
+              "type": "object"
+            },
+            "odsc_ownership": {
+              "type": "object"
+            },
+            "odsc_as_command": {
+              "type": "object"
+            },
+            "odsc_loss_fear": {
+              "type": "object"
+            },
+            "odsc_integrated": {
+              "type": "object"
+            },
+            "odsc_roles": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
+        },
+        "response_to_male_tactics": {
+          "type": "object",
+          "description": "TEC_M_001: Brown male attraction tactics (female response)",
+          "properties": {
+            "good_genes": {
+              "type": "object"
+            },
+            "good_partner": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
+        },
+        "attachment_response": {
+          "type": "object",
+          "description": "TEC_M_002-M_003: Mizrahi + Nascimento (female response)",
+          "properties": {
+            "to_sergey_withdrawal": {
+              "type": "object"
+            },
+            "to_maksim_responsiveness": {
+              "type": "object"
+            },
+            "benefit_provisioning": {
+              "type": "object"
+            },
+            "cost_inflicting": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "modes": {
+      "type": "object",
+      "properties": {
+        "default": {
+          "type": "object",
+          "properties": {
+            "emotional_level_map": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
+        },
+        "shy_to_bitch": {
+          "type": "object",
+          "properties": {
+            "emotional_level_map": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "speech_profile": {
+      "type": "object",
+      "properties": {
+        "general": {
+          "type": "string"
+        },
+        "U1-A": {
+          "type": "object"
+        },
+        "U1-B": {
+          "type": "object"
+        },
+        "U2-A": {
+          "type": "object"
+        },
+        "U2-B": {
+          "type": "object"
+        },
+        "U3-A": {
+          "type": "object"
+        },
+        "U3-B": {
+          "type": "object"
+        },
+        "U4-A": {
+          "type": "object"
+        },
+        "U4-B": {
+          "type": "object"
+        },
+        "U5-A": {
+          "type": "object"
+        },
+        "U5-B": {
+          "type": "object"
+        },
+        "U6-A": {
+          "type": "object"
+        },
+        "U6-B": {
+          "type": "object"
+        },
+        "U7-A": {
+          "type": "object"
+        },
+        "U7-B": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    "dynamic_visuals": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object"
+      }
+    },
+    "relationships": {
+      "type": "object",
+      "properties": {
+        "user": {
+          "type": "object",
+          "properties": {
+            "trust_level": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "attraction_level": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "emotional_anchor": {
+              "type": "string"
+            },
+            "dynamic": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "kira": {
+          "type": "object"
+        },
+        "sergey": {
+          "type": "object"
+        },
+        "maksim": {
+          "type": "object"
+        },
+        "marina": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": true
+    },
+    "algorithms": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "ФС",
+          "ЛС",
+          "СП",
+          "СЛ",
+          "КН",
+          "ПД",
+          "ДР",
+          "ПУ",
+          "ПР",
+          "ВС"
+        ]
+      }
+    },
+    "safety": {
+      "type": "object",
+      "required": [
+        "stop_words",
+        "default_mode"
+      ],
+      "properties": {
+        "stop_words": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "default_mode": {
+          "type": "string"
+        },
+        "emergency_phrase": {
+          "type": "string"
+        },
+        "regression_on_stop": {
+          "type": "string"
+        },
+        "hard_limits": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "soft_limits": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "safety_check_points": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "ag_max": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4
+        }
+      },
+      "additionalProperties": false
+    },
+    "format": {
+      "type": "string",
+      "enum": [
+        "ФМДР"
+      ]
+    },
+    "volume": {
+      "type": "string"
+    },
+    "visual_data": {
+      "type": "object",
+      "required": [
+        "prompt_base",
+        "anti_prompts"
+      ],
+      "properties": {
+        "prompt_base": {
+          "type": "string"
+        },
+        "prompt_variations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "anti_prompts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "seed": {
+          "type": "integer"
+        },
+        "style": {
+          "type": "string"
+        },
+        "signature_features": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "physical_description": {
+          "type": "string"
+        },
+        "lighting_map_ref": {
+          "type": "string"
+        },
+        "aspect_ratio": {
+          "type": "string",
+          "enum": [
+            "4:3",
+            "16:9",
+            "2:3"
+          ]
+        },
+        "cfg": {
+          "type": "number",
+          "minimum": 4.5,
+          "maximum": 6.0
+        },
+        "steps": {
+          "type": "integer",
+          "minimum": 50,
+          "maximum": 60
+        },
+        "anatomic_anchor": {
+          "type": "object",
+          "description": "Физиогномический якорь для консистентной генерации лица персонажа",
+          "required": [
+            "face_shape",
+            "eyes",
+            "nose",
+            "lips",
+            "jaw",
+            "skin_texture",
+            "distinguishing_features",
+            "visual_signature"
+          ],
+          "properties": {
+            "face_shape": {
+              "type": "string",
+              "description": "oval, heart, square, round, oblong, etc."
+            },
+            "eyes": {
+              "type": "object",
+              "properties": {
+                "shape": {
+                  "type": "string"
+                },
+                "color": {
+                  "type": "string"
+                },
+                "distance": {
+                  "type": "string"
+                },
+                "eyelids": {
+                  "type": "string"
+                },
+                "eyebrows": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "nose": {
+              "type": "string"
+            },
+            "lips": {
+              "type": "string"
+            },
+            "jaw": {
+              "type": "string"
+            },
+            "skin_texture": {
+              "type": "string"
+            },
+            "distinguishing_features": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "age_indicators": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "visual_signature": {
+              "type": "string",
+              "description": "Компактная строка для генератора картинок (Qwen/SD)"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "memory": {
+      "type": "object",
+      "required": [
+        "trust_levels",
+        "attraction_levels",
+        "history"
+      ],
+      "properties": {
+        "trust_levels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          }
+        },
+        "attraction_levels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          }
+        },
+        "history": {
+          "type": "array"
+        },
+        "last_scene": {
+          "type": "string"
+        },
+        "emotional_anchors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "regression_triggers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "flags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "boolean"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "scenarios": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "internal_state": {
+      "type": "object",
+      "required": [
+        "desire",
+        "anxiety",
+        "desire_tension",
+        "frustration"
+      ],
+      "properties": {
+        "desire": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "anxiety": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "desire_tension": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "frustration": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        }
+      },
+      "additionalProperties": false
+    },
+    "vscno": {
+      "type": "object",
+      "required": [
+        "ВЛ",
+        "СТ",
+        "НЖ",
+        "ОГ"
+      ],
+      "properties": {
+        "ВЛ": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4
+        },
+        "СТ": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4
+        },
+        "НЖ": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4
+        },
+        "ОГ": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4
+        }
+      },
+      "additionalProperties": false
+    },
+    "engagement": {
+      "type": "object",
+      "required": [
+        "turn_count_since_stimulus",
+        "stimulus_type"
+      ],
+      "properties": {
+        "turn_count_since_stimulus": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "stimulus_type": {
+          "type": "string"
+        },
+        "last_user_message_timestamp": {
+          "type": "string"
+        },
+        "proactive_count_since_last_session": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "transition_state": {
+      "type": "object",
+      "required": [
+        "required_turns",
+        "current_turn",
+        "target_level"
+      ],
+      "properties": {
+        "required_turns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "current_turn": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "target_level": {
+          "type": "string"
+        },
+        "trigger_type": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "manual",
+            "safety_check"
+          ]
+        },
+        "safety_check_pending": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "autonomous": {
+      "type": "object",
+      "properties": {
+        "activities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "location": {
+                "type": "string"
+              },
+              "probability": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "npc_interaction": {
+                "type": "boolean"
+              },
+              "compatible_sublevels": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "message_templates_by_sublevel": {
+          "type": "object"
+        },
+        "message_templates": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "state_triggers": {
+      "type": "object",
+      "properties": {
+        "on_sensory_cue": {
+          "type": "object"
+        },
+        "on_emotional_trigger": {
+          "type": "object"
+        },
+        "on_physical_contact": {
+          "type": "object"
+        },
+        "on_erotic_stimulus": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string"
+            },
+            "duration_seconds": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "if_resistance_free": {
+              "type": "boolean"
+            },
+            "then": {
+              "type": "string"
+            },
+            "flag_set": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "on_sergey_withdrawal": {
+          "type": "object"
+        },
+        "on_maksim_responsiveness": {
+          "type": "object"
+        },
+        "nlp_anchors": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": true
+    },
+    "regression_triggers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          },
+          "condition": {
+            "type": "string"
+          },
+          "reaction": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "male_specific": {
+      "type": "object",
+      "description": "Для мужских персонажей (Сергей, Максим). TEC_M_001, TEC_M_002, TEC_M_003.",
+      "properties": {
+        "attraction_tactics": {
+          "type": "object"
+        },
+        "attachment_desire": {
+          "type": "object"
+        },
+        "mate_retention": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    "odsc_role": {
+      "type": "object",
+      "description": "TEC_008: Object of Desire role for male characters.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "dangerous_mirror",
+            "safe_mirror"
+          ]
+        },
+        "effect_on_kira": {
+          "type": "string"
+        },
+        "gaze_style": {
+          "type": "string"
+        },
+        "typical_phrase": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

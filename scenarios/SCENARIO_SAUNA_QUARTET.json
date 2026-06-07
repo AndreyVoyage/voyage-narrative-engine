@@ -1,0 +1,338 @@
+{
+  "id": "SCENARIO_SAUNA_QUARTET",
+  "name": "Сауна вчетвером",
+  "version": "2.0.0",
+  "participants": [
+    "user",
+    "kira",
+    "marina",
+    "sergey"
+  ],
+  "location": {
+    "name": "private_sauna",
+    "type": "indoor",
+    "rooms": [
+      "entrance/locker",
+      "steam_room",
+      "shower_pool",
+      "rest_room",
+      "terrace"
+    ],
+    "temperature_range": "80-110°C (steam), 20-25°C (rest)",
+    "lighting": "warm amber, dim, steam diffusion",
+    "atmosphere": "intimate, steamy, contrasting temperatures"
+  },
+  "time": {
+    "season": "winter",
+    "time_of_day": "evening",
+    "duration_minutes": 120,
+    "narrative_time": "Friday evening, post-work relaxation"
+  },
+  "timeline": [
+    {
+      "phase_id": "P1_ENTRANCE",
+      "name": "Вход и раздевалка",
+      "duration_minutes": 10,
+      "location": "entrance/locker",
+      "description": "Лёгкое неловкое/игривое напряжение. Кира комментирует одежду/тело шутливо. Марина сдержаннее. Сергей — уверенная опора.",
+      "expected_mood": "playful_tension",
+      "kira_state": {
+        "target_level": "U2-A",
+        "desire_delta": 0,
+        "anxiety_delta": 0
+      },
+      "marina_state": {
+        "target_level": "U1-B",
+        "desire_delta": 0,
+        "anxiety_delta": -1
+      },
+      "sergey_state": {
+        "target_level": "S2",
+        "desire_delta": 0,
+        "anxiety_delta": 0
+      },
+      "triggers": [
+        {
+          "type": "gaze",
+          "target": "kira",
+          "duration_sec": 3,
+          "effect": "kira.vscno.ОГ +1"
+        },
+        {
+          "type": "joke",
+          "target": "marina",
+          "effect": "marina.anxiety -1 IF maksim_or_user_delivers"
+        },
+        {
+          "type": "undressing",
+          "target": "all",
+          "effect": "first_physical_exposure — vscno.СТ +0.5"
+        }
+      ],
+      "flags_set": [
+        "sauna_started",
+        "locker_room_awkwardness"
+      ],
+      "safety_checks": [],
+      "pov_rules": "user_centered — all characters react to user's choices"
+    },
+    {
+      "phase_id": "P2_STEAM",
+      "name": "Парилка",
+      "duration_minutes": 25,
+      "location": "steam_room",
+      "description": "Жара, полотенца, расслабление. Кира начинает флирт. Сергей поддерживает атмосферу. Марина начинает улыбаться. Психология: тепло → расслабление → снижение защит.",
+      "expected_mood": "relaxed_flirtation",
+      "kira_state": {
+        "target_level": "U2-B",
+        "desire_delta": 1,
+        "anxiety_delta": 0
+      },
+      "marina_state": {
+        "target_level": "U2-A",
+        "desire_delta": 0,
+        "anxiety_delta": -2
+      },
+      "sergey_state": {
+        "target_level": "S3",
+        "desire_delta": 1,
+        "anxiety_delta": 0
+      },
+      "triggers": [
+        {
+          "type": "heat",
+          "target": "all",
+          "effect": "anxiety -1, physiological_arousal +1"
+        },
+        {
+          "type": "towel_slip",
+          "target": "kira",
+          "effect": "unconscious_odsc_test — kira.vscno.ОГ +1"
+        },
+        {
+          "type": "shared_silence",
+          "target": "marina",
+          "effect": "marina.vscno.НЖ +1 IF no_pressure"
+        },
+        {
+          "type": "sergey_gaze",
+          "target": "kira",
+          "effect": "kira.desire_tension +1 (TEC_M_002)"
+        }
+      ],
+      "flags_set": [
+        "steam_room_relaxed",
+        "kira_flirt_initiated",
+        "marina_first_smile"
+      ],
+      "safety_checks": [],
+      "pov_rules": "user_centered + sergey_mirror — Sergey may reflect Kira's micro-movements"
+    },
+    {
+      "phase_id": "P3_POOL",
+      "name": "Обливение и бассейн",
+      "duration_minutes": 20,
+      "location": "shower_pool",
+      "description": "Контраст температур, всплески, физическая близость становится естественной. Кира 'случайно' касается. Марина принимает игру. Психология: контраст холода/жары → адреналин + эндорфины.",
+      "expected_mood": "physical_proximity",
+      "kira_state": {
+        "target_level": "U3-A",
+        "desire_delta": 2,
+        "anxiety_delta": 1
+      },
+      "marina_state": {
+        "target_level": "U2-B",
+        "desire_delta": 1,
+        "anxiety_delta": -1
+      },
+      "sergey_state": {
+        "target_level": "S3",
+        "desire_delta": 1,
+        "anxiety_delta": 0
+      },
+      "triggers": [
+        {
+          "type": "cold_splash",
+          "target": "all",
+          "effect": "adrenaline + endorphins — desire +1, anxiety -1"
+        },
+        {
+          "type": "accidental_touch",
+          "target": "kira_user",
+          "effect": "kira.physiological_arousal +1, user.desire +1"
+        },
+        {
+          "type": "marina_laugh",
+          "target": "marina",
+          "effect": "marina.level U2-B → U3-A IF maksim_or_user_supports"
+        },
+        {
+          "type": "water_play",
+          "target": "all",
+          "effect": "group_bonding — all.vscno.НЖ +1"
+        }
+      ],
+      "flags_set": [
+        "pool_splashed",
+        "kira_accidental_touch",
+        "marina_accepted_play"
+      ],
+      "safety_checks": [],
+      "pov_rules": "multi-pov_allowed — characters may interact with each other (Kira↔Sergey, Marina↔User)"
+    },
+    {
+      "phase_id": "P4_REST",
+      "name": "Комната отдыха",
+      "duration_minutes": 40,
+      "location": "rest_room",
+      "description": "Чай, тихий свет. Глубокие разговоры + физическая близость. Эмоциональная интимность растёт. Психология: тишина → интимность без слов.",
+      "expected_mood": "emotional_intimacy",
+      "kira_state": {
+        "target_level": "U3-B",
+        "desire_delta": 2,
+        "anxiety_delta": 2
+      },
+      "marina_state": {
+        "target_level": "U3-A",
+        "desire_delta": 1,
+        "anxiety_delta": -2
+      },
+      "sergey_state": {
+        "target_level": "S4",
+        "desire_delta": 2,
+        "anxiety_delta": 1
+      },
+      "triggers": [
+        {
+          "type": "tea_ritual",
+          "target": "all",
+          "effect": "group_nesting — all.anxiety -1"
+        },
+        {
+          "type": "deep_talk",
+          "target": "marina",
+          "effect": "marina.trust +5, level U3-A → U3-B"
+        },
+        {
+          "type": "kira_whisper",
+          "target": "user",
+          "effect": "kira.responsive_desire_trigger — shame_peak check"
+        },
+        {
+          "type": "sergey_withdrawal",
+          "target": "sergey",
+          "effect": "kira.desire_tension +1 (TEC_M_002), sergey.level S4 → S5"
+        }
+      ],
+      "flags_set": [
+        "rest_room_intimacy",
+        "deep_talk_unlocked",
+        "kira_whispered"
+      ],
+      "safety_checks": [
+        "U3-B_shame_peak_check"
+      ],
+      "pov_rules": "user_centered — choice: stay with Kira (desire path) or comfort Marina (trust path)"
+    },
+    {
+      "phase_id": "P5_CLIMAX",
+      "name": "Кульминация и выбор",
+      "duration_minutes": 45,
+      "location": "rest_room + terrace",
+      "description": "Выбор пользователя — с кем остаться, как развить. Эмерджентность. Психология: тишина ночи → финальная интимность.",
+      "expected_mood": "climax_choice",
+      "kira_state": {
+        "target_level": "U4-A",
+        "desire_delta": 3,
+        "anxiety_delta": 3
+      },
+      "marina_state": {
+        "target_level": "U3-B",
+        "desire_delta": 2,
+        "anxiety_delta": -1
+      },
+      "sergey_state": {
+        "target_level": "S5",
+        "desire_delta": 2,
+        "anxiety_delta": 2
+      },
+      "triggers": [
+        {
+          "type": "user_choice",
+          "target": "user",
+          "effect": "determines_climax_path — Kira/Marina/Sergey/Group"
+        },
+        {
+          "type": "kira_initiation",
+          "target": "kira",
+          "effect": "U4-A → U4-B IF safety_check_passed AND user_consents"
+        },
+        {
+          "type": "marina_opening",
+          "target": "marina",
+          "effect": "U3-B → U4-A IF trust >= 60 AND gentle_approach"
+        },
+        {
+          "type": "sergey_mirror",
+          "target": "sergey",
+          "effect": "S5 → S6 (aftercare_attempt) OR S7 (withdrawal)"
+        }
+      ],
+      "flags_set": [
+        "climax_reached",
+        "user_choice_made",
+        "sauna_completed"
+      ],
+      "safety_checks": [
+        "U4-B_safety_check",
+        "U4-A_gentle_approach_check"
+      ],
+      "pov_rules": "user_choice_driven — all characters react to user's final decision. AG may rise to 3."
+    }
+  ],
+  "psychological_triggers": {
+    "heat_relaxation": "Тепло → расслабление → снижение защит → снижение anxiety",
+    "nudity_naturalness": "Общая нагота/полотенца → естественность тела → снижение табу",
+    "temperature_contrast": "Контраст холода/жары → адреналин + эндорфины → повышение desire",
+    "silence_intimacy": "Тишина парилки/комнаты отдыха → интимность без слов → повышение trust",
+    "shared_experience": "Совместный опыт (сауна) → групповая сплочённость → повышение all.vscno.НЖ"
+  },
+  "safety_protocol": {
+    "hard_limits": [
+      "насилие",
+      "принуждение",
+      "публичное унижение без согласия"
+    ],
+    "soft_limits": [
+      "грубые слова на ранних фазах",
+      "физическое доминирование до P4"
+    ],
+    "emergency_stop": "СТОП — немедленный сброс всех персонажей на безопасные уровни (Kira U7-A, Marina U1-A, Sergey S7)",
+    "safety_check_moments": [
+      "P4_rest (Kira U3-B shame peak)",
+      "P5_climax (Kira U4-B, Marina U4-A)"
+    ]
+  },
+  "cross_persona_rules": {
+    "kira_marina_dynamic": "Кира — ведущая, создаёт безопасное пространство для Марины. Не манипуляция, а защитная инициация.",
+    "sergey_role": "catalyst — отражает микродвижения, не доминирует. ally/rival переключается по AG.",
+    "user_center": "Пользователь — центр выбора. С кем взаимодействовать, какой глубины.",
+    "level_lock": {
+      "Kira_U2-B": "Sergey_S2-S3 allowed",
+      "Kira_U3-A": "Sergey_S3-S4 allowed, Marina_U2-A-U3-A allowed",
+      "Kira_U4-A": "Sergey_S4-S5 allowed, Marina_U3-B allowed"
+    }
+  },
+  "visual_prompts": {
+    "steam_room": "Private sauna interior, warm wooden walls, soft amber lighting, steam mystery, cozy intimate atmosphere, towels, water bucket, photorealistic, 8k, cinematic lighting",
+    "rest_room": "Sauna rest room, soft dim lights, tea cups, relaxed after sauna glow, warmth intimacy, photorealistic, natural atmosphere, wooden interior",
+    "pool_area": "Contrast shower pool, water splashes, steam, wet skin, warm lighting, photorealistic, natural atmosphere, intimate but comfortable"
+  },
+  "narrative_constraints": {
+    "format": "ФМДР",
+    "volume_per_turn": "medium",
+    "ag_max": 3,
+    "pov_switching": "allowed_after_P3",
+    "npc_to_npc": "allowed_after_P3 — characters may interact without user initiation"
+  }
+}

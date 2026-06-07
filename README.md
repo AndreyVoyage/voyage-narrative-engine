@@ -1,105 +1,38 @@
-# Voyage Narrative Engine v2.0 — Shy-to-Bloom Update
+# Voyage Narrative Engine v2.0
 
-> **AI-Native Narrative Framework** для интерактивного повествования с живыми NPC, многослойной памятью и визуальным мостом.
+AI-Native интерактивная narrative-система с психологически проработанными персонажами.
 
-## Что нового в v2.0
+## Структура
 
-- **Режим Киры `shy_to_bitch`** — альтернативная дуга от невинности к стервозности через 14 подуровней (A/Б).
-- **Сергей как Катализатор (Модель C)** — зеркало, а не соперник. Читает микродвижения Киры лучше, чем она сама.
-- **Подуровневая шкала У1-А…У7-Б** — каждый уровень имеет входную (A) и пиковую (Б) фазу.
-- **Автоматические триггеры переходов** — задержка взгляда, именованные действия, флаги.
-- **Регрессия** — стервозность может треснуть, вернув Киру к травме `alone_on_track`.
-- **Полная совместимость** с legacy-режимом `default` (стальная бабочка).
+| Папка | Содержимое |
+|-------|-----------|
+| `core/` | VOYAGE_NARRATIVE_CORE_v2.md — мнемоники, ФМДР, АД, ВСНО |
+| `governance/` | AUTONOMY_GOVERNOR_v2.md — AG levels, Safety Checks, Audit Log |
+| `visual/` | QWEN_ADAPTER_v2.md — Lighting Map, anatomic anchors, промпты |
+| `knowledge/` | TEC_DICTIONARY.md, CROSS_PERSONA_RULES.md, persona_schema_v3.2.json |
+| `personas/` | JSON-модули: Кира (v14), Сергей (v4), Максим (v2), Марина (v2) |
+| `scenarios/` | SCENARIO_SAUNA_QUARTET.json — сауна вчетвером, 5 фаз |
+| `state/` | STATE_TEMPLATE_v2.json — глобальное состояние сессии |
+| `roles/` | Промпты для ролей: Persona Analyst, Visual Anatomist |
+| `scripts/` | build_prompt.sh, update_state.sh — автоматизация |
+| `docs/` | VOYAGE_QUICK_START.md, TEST_PROMPT.md |
 
 ## Быстрый старт
 
-### 1. Сборка PROMPT.txt для сессии
-
 ```bash
-# В Termux (или любом терминале)
-cat core/VOYAGE_NARRATIVE_CORE_v2.md     personas/KIRA_MODULE_v12.json     personas/SERGEY_MODULE_v3.json     state/STATE_TEMPLATE_v2.json     scenarios/SCENARIO_SHY_BLOOM.json > PROMPT.txt
+# Собрать PROMPT.txt для сессии
+./scripts/build_prompt.sh sauna_quartet kira sergey marina
+
+# Загрузить PROMPT.txt в Kimi/DeepSeek → играть
+
+# После сессии обновить STATE
+./scripts/update_state.sh session_notes.txt
 ```
 
-### 2. Загрузка в LLM
+## Тестирование
 
-Откройте **Kimi** (рекомендуется, 200K контекст) и загрузите `PROMPT.txt`.
+См. `docs/TEST_PROMPT.md` — 10 тестов для проверки корректности работы.
 
-Стартовая команда:
-```
-Запускаем Voyage Engine v2.0.
-Режим: kira_persona_mode = "shy_to_bitch"
-Сергей: sergey_role = "catalyst"
-Текущий STATE: Кира У1-А, Сергей С1, локация gym.
-Начни сцену SC_000.
-```
+## Версия
 
-### 3. Управление внутри сессии
-
-| Команда | Эффект |
-|---|---|
-| `У1-А` … `У7-Б` | Переключить подуровень Киры |
-| `ТГ1` … `ТГ3` | Переключить грань |
-| `АД [код]` | Активировать алгоритм (ФС, ЛС, СП…) |
-| `М [параметры]` | Сгенерировать сценарий из матрицы |
-| `В` | Сгенерировать Qwen-промпт |
-| `Г [0-4]` | Установить Autonomy Governor |
-| `СТОП` | Emergency exit → У7-А |
-| `режим default` | Переключить Киру в legacy-режим |
-| `режим shy_to_bitch` | Переключить в режим совращения |
-
-## Структура репозитория
-
-```
-voyage-narrative/
-├── core/
-│   └── VOYAGE_NARRATIVE_CORE_v2.md      # Ядро с подуровнями A/Б
-├── personas/
-│   ├── KIRA_MODULE_v12.json              # Кира: default + shy_to_bitch
-│   ├── SERGEY_MODULE_v3.json             # Сергей: катализатор + чтение Киры
-│   └── KIRA_MODE_DEFAULT.json            # Legacy-модуль (опционально)
-├── state/
-│   └── STATE_TEMPLATE_v2.json            # STATE с флагами подуровней
-├── scenarios/
-│   └── SCENARIO_SHY_BLOOM.json          # Сценарии от У1-А до У7-Б
-├── governance/
-│   └── AUTONOMY_GOVERNOR_v2.md          # AG с учётом подуровней
-├── visual/
-│   └── QWEN_ADAPTER_v2.md               # Визуальный мост для подуровней
-├── memory/
-│   └── MEMORY_PROTOCOL_v2.md            # Память с символ-кодами подуровней
-├── legacy/                               # Старые файлы v1.0
-└── README.md
-```
-
-## Режимы Киры
-
-### `default` — Стальная бабочка (v11)
-У1: Стойкость → У7: Aftercare. Классическая дуга спринтерши.
-
-### `shy_to_bitch` — Невинность → Стерва (v12)
-У1-А: Невинность → У1-Б: Первый блеск → У2-А: Пробуждение → … → У7-Б: Интеграция.
-
-Переключение через флаг в STATE:
-```json
-"kira_persona_mode": "shy_to_bitch"
-```
-
-## Треугольник отношений (Модель C)
-
-- **Кира ↔ Я (Пользователь):** якорь, спасатель, тот, кто ведёт.
-- **Сергей ↔ Я:** союзник по совращению, но с кодексом чести. Уступает, если Я сказал «СТОП».
-- **Кира ↔ Сергей:** зеркало. Он видит её микродвижения и отражает их, чтобы она увидела себя со стороны.
-
-## Технический стек
-
-- **LLM:** Kimi (рекомендуется), DeepSeek (backup), Claude (reasoning)
-- **Визуал:** Qwen Studio (через [AUTO_VISUAL] блок)
-- **Хранение:** GitHub / локальная папка ~/voyage-narrative/
-- **Runtime:** bash + git (или скрипт `install_voyage_update.sh` для Termux)
-
-## Лицензия
-
-MIT — открыто для форков и адаптаций. Сохраняйте attribution: `Voyage Narrative Engine by AndreyVoyage`.
-
----
-> **Примечание:** Это prompt-native framework. Вся логика выполняется LLM на основе загруженного контекста. Для автоматизации парсинга STATE и Event Log требуется runtime-скрипт (в разработке).
+v2.0.0 | 2026-06-07 | Тесты пройдены ✅
