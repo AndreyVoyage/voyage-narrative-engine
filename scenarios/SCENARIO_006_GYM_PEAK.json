@@ -1,0 +1,94 @@
+{
+  "id": "SC_006",
+  "name": "Своеволие на красном мате — Пик",
+  "version": "1.0",
+  "location": "gym",
+  "time": "night",
+  "archetype": "trainer",
+  "kira_level_start": "U4",
+  "kira_level_end": "U4-пик",
+  "sergey_level_start": "S4",
+  "sergey_level_end": "S5",
+  "intensity": 9,
+  "risk": 7,
+  "duration_minutes": 45,
+  "prerequisites": [
+    "squat_complete",
+    "sergey_hands_on_thighs"
+  ],
+  "flags_required": [
+    "barbell_on_shoulders"
+  ],
+  "flags_set": [
+    "gym_peak_complete",
+    "kira_took_control",
+    "sergey_kneeled_on_mat",
+    "kira_grabbed_his_shirt",
+    "nose_to_nose",
+    "tears_and_sweat_mix",
+    "red_mat_peak",
+    "phone_forgotten_on_mat"
+  ],
+  "emotional_anchors": [
+    "срыв логики",
+    "я беру управление",
+    "между слезами и смехом",
+    "ты мой финиш"
+  ],
+  "symbols": [
+    "S006:U4→U4-пик:K+S:gym:night:peak_control"
+  ],
+  "choice_points": [
+    {
+      "id": "CP_1",
+      "timing": "peak_moment",
+      "question": "Кира лежит на мате. Сергей на коленях над ней. Нос в нос. Что делает Кира?",
+      "branches": [
+        {
+          "id": "1A",
+          "action": "Тянет его за майку, к себе. Не целует. Ждёт.",
+          "kira_reaction": "У4-пик. 'Ты — мой. Сейчас. Здесь. Не спорь.'",
+          "sergey_reaction": "S5. Не падает. Не отступает. Смотрит ей в глаза. 'Я не спорю.'",
+          "next_level": "U4-пик",
+          "flags": [
+            "kira_pulled_shirt",
+            "sergey_did_not_retreat"
+          ]
+        },
+        {
+          "id": "1B",
+          "action": "Плачет. Смеётся. Плачет. Всё одновременно.",
+          "kira_reaction": "У4-пик. Срыв логики. Слёзы и пот. Смех и страх.",
+          "sergey_reaction": "S5. Не удивлён. 'Я знал, что ты — такая.' — шепчет.",
+          "next_level": "U4-пик",
+          "flags": [
+            "kira_crying_laughing",
+            "sergey_knew_she_was"
+          ]
+        },
+        {
+          "id": "1C",
+          "action": "Отпускает его майку. Отворачивается. 'Хватит.'",
+          "kira_reaction": "У4-пик→У5. Самоостановка. Самоaftercare. Она — сильнее.",
+          "sergey_reaction": "S5. Отступает. Садится на пятки. 'Хватит.' — повторяет.",
+          "next_level": "U5",
+          "flags": [
+            "kira_said_stop",
+            "sergey_respected_stop",
+            "self_aftercare"
+          ]
+        }
+      ]
+    }
+  ],
+  "visual_scene_id": "VS_006",
+  "content_rating": "NC-17",
+  "safety_check": {
+    "required": true,
+    "ag_minimum": 3,
+    "timeout_seconds": 30,
+    "message": "Кира достигает У4-пик. Срыв логики. Эмоциональная перегрузка. Подтвердите: да/нет. Таймаут 30 сек → автосброс на У5.",
+    "auto_reset_level": "U5"
+  },
+  "safety_notes": "У4-пик — максимальное напряжение. Срыв логики. Требуется AG≥3 + Safety Check. После — обязательный переход на У5 (aftercare)."
+}

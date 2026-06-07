@@ -1,0 +1,80 @@
+{
+  "id": "SC_004",
+  "name": "Растяжка на красном мате",
+  "version": "1.0",
+  "location": "gym",
+  "time": "night",
+  "archetype": "trainer",
+  "kira_level_start": "U2",
+  "kira_level_end": "U3",
+  "sergey_level_start": "S2",
+  "sergey_level_end": "S3",
+  "intensity": 6,
+  "risk": 4,
+  "duration_minutes": 45,
+  "prerequisites": [
+    "gym_night_visited"
+  ],
+  "flags_required": [
+    "mirror_glance_exchanged"
+  ],
+  "flags_set": [
+    "gym_stretching",
+    "sergey_touched_waist",
+    "red_mat_first_contact",
+    "kira_felt_his_weight",
+    "mirror_reflection_seen"
+  ],
+  "emotional_anchors": [
+    "опасная близость",
+    "власть рук",
+    "тихий флирт"
+  ],
+  "symbols": [
+    "S004:U2→U3:K+S:gym:night:stretch_touch"
+  ],
+  "choice_points": [
+    {
+      "id": "CP_1",
+      "timing": "stretching",
+      "question": "Кира лежит на мате, растягивается. Сергей подходит. Что делает Кира?",
+      "branches": [
+        {
+          "id": "1A",
+          "action": "Замирает, не оборачивается",
+          "kira_reaction": "У2. Дышит тяжело. Ждёт. Не знает, чего ждёт.",
+          "sergey_reaction": "S3. Стоит над ней. Смотрит. Не касается. Пока.",
+          "next_level": "U2",
+          "flags": [
+            "kira_froze_waiting"
+          ]
+        },
+        {
+          "id": "1B",
+          "action": "Оборачивается, смотрит ему в глаза",
+          "kira_reaction": "У2→У3. Взгляд тяжёлый. Дерзость. Или страх. И то, и другое.",
+          "sergey_reaction": "S3. Прищуривается. Не улыбается. Кладёт руку на её поясницу.",
+          "next_level": "U3",
+          "flags": [
+            "kira_turned_looked",
+            "sergey_hand_on_waist"
+          ]
+        },
+        {
+          "id": "1C",
+          "action": "Просит помочь с растяжкой — официально",
+          "kira_reaction": "У3. Притворяется, что это тренировка. Но оба знают.",
+          "sergey_reaction": "S3. Кивает. Кладёт руки на её бёдра. 'Дыши.'",
+          "next_level": "U3",
+          "flags": [
+            "kira_asked_stretch_help",
+            "sergey_hands_on_thighs"
+          ]
+        }
+      ]
+    }
+  ],
+  "visual_scene_id": "VS_002",
+  "content_rating": "R",
+  "safety_notes": "У3 — первый физический контакт. Руки на пояснице/бёдрах. Нет сексуального контакта."
+}

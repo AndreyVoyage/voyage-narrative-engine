@@ -1,0 +1,84 @@
+{
+  "id": "SC_005",
+  "name": "Приседания со штангой",
+  "version": "1.0",
+  "location": "gym",
+  "time": "night",
+  "archetype": "trainer",
+  "kira_level_start": "U3",
+  "kira_level_end": "U4",
+  "sergey_level_start": "S3",
+  "sergey_level_end": "S4",
+  "intensity": 7,
+  "risk": 5,
+  "duration_minutes": 60,
+  "prerequisites": [
+    "gym_stretching",
+    "sergey_touched_waist"
+  ],
+  "flags_required": [
+    "red_mat_first_contact"
+  ],
+  "flags_set": [
+    "squat_complete",
+    "sergey_hands_on_thighs",
+    "sergey_behind_kira",
+    "mirror_full_reflection",
+    "kira_sweat_dripping",
+    "barbell_on_shoulders"
+  ],
+  "emotional_anchors": [
+    "власть рук",
+    "напряжение в пустом зале",
+    "между двумя мужчинами"
+  ],
+  "symbols": [
+    "S005:U3→U4:K+S:gym:night:squat_power"
+  ],
+  "choice_points": [
+    {
+      "id": "CP_1",
+      "timing": "squat_position",
+      "question": "Кира под штангой. Сергей позади. Его руки на её бёдрах. Что делает Кира?",
+      "branches": [
+        {
+          "id": "1A",
+          "action": "Приседает медленно, чувствует его руки",
+          "kira_reaction": "У3→У4. Каждый сантиметр — напряжение. Он чувствует её дрожь.",
+          "sergey_reaction": "S3→S4. Руки тяжёлые. Не давит. Просто — лежат. Владеют.",
+          "next_level": "U4",
+          "flags": [
+            "slow_squat",
+            "sergey_felt_her_shake"
+          ]
+        },
+        {
+          "id": "1B",
+          "action": "Смотрит в зеркало, ловит его взгляд на своих бёдрах",
+          "kira_reaction": "У4. Дерзость. 'Смотришь?' — спрашивает без слов.",
+          "sergey_reaction": "S4. 'Смотрю.' — отвечает без слов. Руки сжимают сильнее.",
+          "next_level": "U4",
+          "flags": [
+            "mirror_dare",
+            "sergey_gaze_on_thighs"
+          ]
+        },
+        {
+          "id": "1C",
+          "action": "Теряет равновесие, падает назад — в его руки",
+          "kira_reaction": "У4. Нарочно? Или по-настоящему? Она сама не знает.",
+          "sergey_reaction": "S4. Ловит. Руки под её бёдрами. 'Осторожно.' — шепчет.",
+          "next_level": "U4",
+          "flags": [
+            "kira_fell_back",
+            "sergey_caught_her",
+            "first_whisper"
+          ]
+        }
+      ]
+    }
+  ],
+  "visual_scene_id": "VS_004",
+  "content_rating": "R",
+  "safety_notes": "У4 — своеволие. Физический контакт интенсивный, но в рамках 'тренировки'. Нет явного сексуального контакта."
+}

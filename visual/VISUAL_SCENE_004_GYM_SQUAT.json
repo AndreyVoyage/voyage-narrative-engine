@@ -1,0 +1,48 @@
+{
+  "id": "VS_004",
+  "name": "Приседания со штангой — Кира и Сергей",
+  "kira_level": "U3→U4",
+  "characters": [
+    "K",
+    "S"
+  ],
+  "reference_persona": "KIRA_MODULE.json + SERGEY_MODULE.json",
+  "emotional_state": "power_through_proximity_squat",
+  "flags_set": [
+    "squat_complete",
+    "sergey_hands_on_thighs",
+    "sergey_behind_kira",
+    "mirror_full_reflection",
+    "kira_sweat_dripping",
+    "barbell_on_shoulders"
+  ],
+  "emotional_anchors": [
+    "власть рук",
+    "напряжение в пустом зале",
+    "между двумя мужчинами"
+  ],
+  "symbol": "S004:U3→U4:K+S:gym:night:squat_power",
+  "visual_parameters": {
+    "subject": "1girl, athletic 24yo woman, blonde curly hair, high ponytail, several strands loose on temples cheeks, shiny healthy, slightly wet from sweat, large almond-shaped warm honey-brown eyes, looking forward at mirror on wall, daring vulnerable hidden desire fear expression, slightly open lips, wet, pink cheeks, temples pulsing, half-closed eyelids, thoughtful heavy gaze looking through her reflection at him, 1boy, muscular 35yo man, former heavyweight athlete, 100kg, 185cm, broad shoulders, massive traps, V-shaped back, thick thighs, hairy chest naturally, short dark hair 3-6mm, gray at temples, three-day stubble, gray-blue eyes, cold evaluating predatory gaze, looking at her thighs buttocks back, not at camera",
+    "pose": "girl standing under barbell, holding bar with both hands on shoulders, classic squat position, back straight, chest pushed forward, shoulder blades together, legs shoulder width apart, feet slightly turned outward, body in squat phase, thighs parallel to floor or slightly below, pelvis pushed back, waist arched lordosis, top raised exposing lower back and waist, shorts tight, buttock line clearly outlined, head slightly tilted back, looking at mirror, face tense not from weight but from inner tension, boy standing directly behind her, very close, his chest almost touching her back 5-10cm, legs wider than her shoulders, stable stance heavy like rock, head slightly tilted down, looking at her thighs buttocks, both hands on her thighs, from outside, fingers spread, palms heavy, pressing down in direction of stretch, elbows slightly bent, forearms almost horizontal, body forming arc above her, not touching except hands and proximity",
+    "clothing_girl": "black short sports crop top, no bra, thin semi-transparent mesh or very thin elastic material, tight fitting, short ending at ribs, through fabric visible breast outline, nipples slightly protruding through fabric, abs outline, ribs, thin straps one slipped off left shoulder, black sports shorts very high waist, micro length, tight on thighs, inner thigh partially visible from side, thin elastic lycra spandex, shiny, wet from sweat, clinging to skin, no visible underwear lines, fabric tightly hugs, hint of intimate zone outlines through thin fabric, barefoot or white ankle socks slightly slipped, elegant feet with training calluses",
+    "clothing_boy": "gray dark blue wet sports stringer tank top or regular, fabric clinging to back and chest, visible powerful traps and chest hair, black sports leggings, tight on powerful thighs, wide elastic waistband, massive weightlifting shoes black, laces untied, dirty, sports watch on wrist, white towel on neck or in hand",
+    "environment": "empty gym, late evening night or early morning, few people, only them two, Olympic barbell with plates 60-80kg, bar steel dark, on girl's shoulders, barbell stands visible behind, black metal, dark gym, blurred barbells with bars, dumbbell rows, running track, benches, walls dark concrete or mirrored, large mirror on wall IN FRONT of her, mirror reflects both, girl in profile face three-quarters, boy behind her, his face visible above her shoulder, looking down",
+    "lighting": "dim directed from above, fluorescent lamps, half turned off, cold white blue light falls on them from upper left corner, creating sharp shadows, light reflected in mirror, contrast cold light on their bodies vs warm skin tones, shadows from boy fall on girl, mixing with her shadow, additional warm orange amber from far corner lamp, creating contour rim light on edges of their bodies, screen of forgotten phone on bench gives additional cold blue light on her chest face",
+    "mood": "dangerous proximity, quiet flirt, sports intimacy, power of hands, tension in empty gym, between two men, memory of touch, after battle before battle, heavy, humid, quiet to ringing, girl wants not two men but doubled attention, two gazes, two pairs of hands, two voices",
+    "style": "photorealistic, cinematic, like frame from erotic psychological drama or sports thriller Warrior Creed Whiplash style, with artistic intimate dark tone, not pornography, erotic tension through sensorics proximity power and trust",
+    "references": [
+      "Warrior",
+      "Creed",
+      "Whiplash",
+      "365 Days",
+      "David Dubnitskiy dark and athletic",
+      "sports erotic photography",
+      "Nike female athlete campaigns with intimate subtext"
+    ]
+  },
+  "qwen_prompt": "masterpiece, best quality, photorealistic, 8k, film grain, 1girl, athletic 24yo woman, blonde curly hair, high ponytail, loose strands on temples, shiny healthy, slightly wet from sweat, large almond-shaped warm honey-brown eyes, looking at mirror, daring vulnerable hidden desire fear expression, slightly open lips, wet, pink cheeks, temples pulsing, half-closed eyelids, thoughtful heavy gaze, standing under barbell, holding bar on shoulders, classic squat position, back straight, chest pushed forward, legs shoulder width apart, feet slightly turned outward, thighs parallel to floor, pelvis pushed back, waist arched, top raised exposing lower back, shorts tight, buttock line outlined, head slightly tilted back, black short sports crop top, no bra, thin semi-transparent mesh, visible breast outline, nipples protruding through fabric, abs outline, ribs, thin straps one slipped off, black sports shorts very high waist, micro length, tight on thighs, inner thigh partially visible, thin elastic lycra spandex, shiny wet, no visible underwear lines, hint of intimate zone outlines, barefoot, 1boy, muscular 35yo man, former heavyweight athlete, 100kg, 185cm, broad shoulders, massive traps, V-shaped back, thick thighs, hairy chest, short dark hair 3-6mm, gray at temples, three-day stubble, gray-blue eyes, cold predatory gaze, looking at her thighs, standing directly behind her, very close, chest almost touching her back, legs wider than her shoulders, stable stance heavy like rock, both hands on her thighs, from outside, fingers spread, palms heavy, pressing down, gray dark blue wet sports stringer tank top, fabric clinging to back and chest, visible powerful traps and chest hair, black sports leggings, tight on powerful thighs, wide elastic waistband, massive weightlifting shoes black, laces untied, dirty, sports watch, white towel, Olympic barbell with plates 60-80kg, bar steel dark, on her shoulders, barbell stands behind, black metal, empty gym, late evening night, fluorescent lamps half off, cold white blue light from above, sharp shadows, light reflected in mirror, large mirror in front reflecting both, girl in profile, boy behind her, his face visible above her shoulder, warm orange amber from far corner, rim light on edges, screen of phone on bench gives cold blue light, dangerous proximity, power of hands, tension, sports intimacy, heavy humid atmosphere, cinematic composition, medium shot, shallow depth of field, 85mm lens, Warrior aesthetic, Creed style, Whiplash atmosphere, 365 Days tension, photorealistic, film grain --ar 16:9",
+  "negative_prompt": "score_6, score_5, score_4, 3d, cartoon, anime, deformed, bad anatomy, extra limbs, blurry, low quality, watermark, text, signature, mutated hands, poorly drawn face, missing fingers, extra fingers, cheerful, bright, daytime, crowded, slim weak man, young man, smiling man, old woman, child",
+  "content_rating": "R",
+  "safety_notes": "U3→U4 power dynamic. Hands on thighs, close proximity, barbell squat position. No explicit sexual contact. Tension through training context and physical closeness. Mirror reflection shows full scene."
+}

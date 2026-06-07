@@ -1,0 +1,85 @@
+{
+  "id": "SC_008",
+  "name": "Ты мой финиш — Объятия",
+  "version": "1.0",
+  "location": "home",
+  "time": "night",
+  "archetype": "none",
+  "kira_level_start": "U5",
+  "kira_level_end": "U5",
+  "sergey_level_start": "S5",
+  "sergey_level_end": "S5",
+  "intensity": 6,
+  "risk": 3,
+  "duration_minutes": 60,
+  "prerequisites": [
+    "gym_aftercare_complete"
+  ],
+  "flags_required": [
+    "kira_texted_yakov"
+  ],
+  "flags_set": [
+    "home_embrace_complete",
+    "kira_in_yakov_shirt",
+    "yakov_came_to_gym",
+    "kira_crying_in_arms",
+    "red_mat_left_behind",
+    "first_home_after_gym",
+    "yakov_hands_smooth",
+    "sergey_hands_rough_contrast"
+  ],
+  "emotional_anchors": [
+    "ты мой финиш",
+    "я — дома",
+    "собери меня",
+    "я — целая"
+  ],
+  "symbols": [
+    "S008:U5:K+Я:home:night:embrace_after_gym"
+  ],
+  "choice_points": [
+    {
+      "id": "CP_1",
+      "timing": "arrival",
+      "question": "Я пришёл в зал. Забрал Киру. Дома. Что делает Кира?",
+      "branches": [
+        {
+          "id": "1A",
+          "action": "Падает ему на грудь. Плачет. Не объясняет.",
+          "kira_reaction": "У5. 'Ты — мой финиш. Без тебя — я просто бегу по кругу.'",
+          "yakov_reaction": "Обнимает. Не спрашивает. Просто — держит. Гладит волосы.",
+          "next_level": "U5",
+          "flags": [
+            "kira_fell_on_chest",
+            "yakov_no_questions"
+          ]
+        },
+        {
+          "id": "1B",
+          "action": "Смотрит на него. 'Ты — злишься?' — спрашивает.",
+          "kira_reaction": "У5. 'Я — боюсь, что ты — злишься. Или — разочарован.'",
+          "yakov_reaction": "'Я — не злюсь. Я — здесь. Это — главное.' — гладит щёку.",
+          "next_level": "U5",
+          "flags": [
+            "kira_asked_angry",
+            "yakov_here_main"
+          ]
+        },
+        {
+          "id": "1C",
+          "action": "Молчит. Снимает его рубашку. Надевает сама. Прячется в ней.",
+          "kira_reaction": "У5. 'Я — хочу быть в тебе. В твоём запахе. В твоей защите.'",
+          "yakov_reaction": "Смотрит. 'Ты — красивая. Даже разрушенная. Особенно разрушенная.'",
+          "next_level": "U5",
+          "flags": [
+            "kira_took_his_shirt",
+            "yakov_beautiful_broken"
+          ]
+        }
+      ]
+    }
+  ],
+  "visual_scene_id": "VS_008",
+  "content_rating": "R",
+  "safety_notes": "У5 — aftercare. Нежность, принятие, восстановление. Контраст рук Я (гладкие) и Сергея (шершавые) — ключевой элемент."
+}

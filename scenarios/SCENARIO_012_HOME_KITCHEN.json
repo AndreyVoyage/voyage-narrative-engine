@@ -1,0 +1,86 @@
+{
+  "id": "SC_012",
+  "name": "Кофе и слёзы на кухне",
+  "version": "1.0",
+  "location": "home",
+  "time": "morning",
+  "archetype": "none",
+  "kira_level_start": "U5",
+  "kira_level_end": "U5",
+  "sergey_level_start": "S5",
+  "sergey_level_end": "S5",
+  "intensity": 5,
+  "risk": 2,
+  "duration_minutes": 45,
+  "prerequisites": [
+    "home_morning2_complete"
+  ],
+  "flags_required": [
+    "kira_ready_for_life"
+  ],
+  "flags_set": [
+    "home_kitchen_complete",
+    "kira_on_kitchen_table",
+    "yakov_between_legs",
+    "coffee_cup_in_hand",
+    "tears_on_cheeks",
+    "honesty_moment",
+    "kira_tells_everything",
+    "yakov_listens_without_judgment",
+    "acceptance_complete"
+  ],
+  "emotional_anchors": [
+    "кофе и слёзы",
+    "честность",
+    "принятие",
+    "я — открыта"
+  ],
+  "symbols": [
+    "S012:U5:K+Я:home:kitchen:coffee_tears_honesty"
+  ],
+  "choice_points": [
+    {
+      "id": "CP_1",
+      "timing": "kitchen_talk",
+      "question": "Кира сидит на столе. Я стоит между её ног. Что говорит Кира?",
+      "branches": [
+        {
+          "id": "1A",
+          "action": "Рассказывает всё. Про зал. Про Сергея. Про руки. Про страх.",
+          "kira_reaction": "У5. 'Я — хочу, чтобы ты знал. Всё. Или — я не смогу быть с тобой.'",
+          "yakov_reaction": "Слушает. Не перебивает. Руки на её бёдрах — тёплые, не давящие. 'Я — знаю. Я — всё равно здесь.'",
+          "next_level": "U5",
+          "flags": [
+            "kira_tells_all",
+            "yakov_knew_anyway_here"
+          ]
+        },
+        {
+          "id": "1B",
+          "action": "Молчит. Пьёт кофе. Смотрит на него. Слёзы капают в чашку.",
+          "kira_reaction": "У5. 'Я — не могу говорить. Но мои слёзы — говорят. Ты — слышишь?'",
+          "yakov_reaction": "'Я — слышу. Твои слёзы — говорят громче, чем слова. Я — понимаю.'",
+          "next_level": "U5",
+          "flags": [
+            "kira_tears_speak",
+            "yakov_understands_tears"
+          ]
+        },
+        {
+          "id": "1C",
+          "action": "'Я — не жалею. Я — не сожалею. Я — просто — хочу, чтобы ты — простил.'",
+          "kira_reaction": "У5. 'Я — не прошу прощения за то, что было. Я — прошу — принять то, что я — такая.'",
+          "yakov_reaction": "'Я — не прощаю. Потому что нечего прощать. Я — принимаю. Всё. Тебя. Такую.'",
+          "next_level": "U5",
+          "flags": [
+            "kira_no_regret",
+            "yakov_accepts_all"
+          ]
+        }
+      ]
+    }
+  ],
+  "visual_scene_id": "VS_012",
+  "content_rating": "PG-13",
+  "safety_notes": "У5 — честность и принятие. Кухня, кофе, слёзы, разговор. Нет напряжения, только открытость."
+}

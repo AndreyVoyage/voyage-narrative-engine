@@ -1,0 +1,85 @@
+{
+  "id": "SC_010",
+  "name": "Ночь, тишина, якорь",
+  "version": "1.0",
+  "location": "home",
+  "time": "night",
+  "archetype": "none",
+  "kira_level_start": "U5",
+  "kira_level_end": "U5",
+  "sergey_level_start": "S5",
+  "sergey_level_end": "S5",
+  "intensity": 5,
+  "risk": 2,
+  "duration_minutes": 60,
+  "prerequisites": [
+    "home_morning_complete"
+  ],
+  "flags_required": [
+    "breathing_in_unison"
+  ],
+  "flags_set": [
+    "home_night_complete",
+    "kira_half_asleep",
+    "yakov_hand_in_hair",
+    "lamp_only_light",
+    "darkness_around_bed",
+    "warm_orange_glow",
+    "kira_leg_on_yakov",
+    "silence_as_third_character"
+  ],
+  "emotional_anchors": [
+    "ты мой якорь",
+    "я — плыву",
+    "ты — мой финиш",
+    "я — не одна"
+  ],
+  "symbols": [
+    "S010:U5:K+Я:home:night:half_sleep_anchor"
+  ],
+  "choice_points": [
+    {
+      "id": "CP_1",
+      "timing": "midnight",
+      "question": "Ночь. Кира в полусне. Я обнимает её. Что происходит?",
+      "branches": [
+        {
+          "id": "1A",
+          "action": "Кира ворочается. Бормочет во сне. 'Не уходи...'",
+          "kira_reaction": "У5. Полусон. 'Не уходи... Сергей... нет... Я — хочу... Я...'",
+          "yakov_reaction": "Слышит имя. Не вздрагивает. Гладит волосы. 'Я — здесь. Не Сергей. Я.'",
+          "next_level": "U5",
+          "flags": [
+            "kira_says_sergey_name",
+            "yakov_heard_but_stayed"
+          ]
+        },
+        {
+          "id": "1B",
+          "action": "Кира просыпается. Смотрит на него. 'Ты — не спишь?'",
+          "kira_reaction": "У5. 'Ты — бодрствуешь? Зачем?' 'Чтобы — не потерять тебя. Даже во сне.'",
+          "yakov_reaction": "'Я — сплю. Но часть меня — бодрствует. Для тебя.'",
+          "next_level": "U5",
+          "flags": [
+            "kira_wakes_asks",
+            "yakov_part_awake_for_her"
+          ]
+        },
+        {
+          "id": "1C",
+          "action": "Тишина. Никто не говорит. Только дыхание. В такт.",
+          "kira_reaction": "У5. 'Я — слышу его сердце. Он — слышит моё. Это — достаточно.'",
+          "yakov_reaction": "Не двигается. Держит её. Чувствует, как она — тяжелеет во сне. Улыбается.",
+          "next_level": "U5",
+          "flags": [
+            "silence_breathing",
+            "yakov_smiles_her_sleeping"
+          ]
+        }
+      ]
+    }
+  ],
+  "visual_scene_id": "VS_010",
+  "content_rating": "PG-13",
+  "safety_notes": "У5 — глубокое восстановление. Ночь, тишина, полусон. Нет напряжения, только присутствие."
+}

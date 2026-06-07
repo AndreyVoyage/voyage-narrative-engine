@@ -1,0 +1,85 @@
+{
+  "id": "SC_011",
+  "name": "Доброе утро, дом",
+  "version": "1.0",
+  "location": "home",
+  "time": "morning",
+  "archetype": "none",
+  "kira_level_start": "U5",
+  "kira_level_end": "U5",
+  "sergey_level_start": "S5",
+  "sergey_level_end": "S5",
+  "intensity": 4,
+  "risk": 1,
+  "duration_minutes": 45,
+  "prerequisites": [
+    "home_night_complete"
+  ],
+  "flags_required": [
+    "silence_breathing"
+  ],
+  "flags_set": [
+    "home_morning2_complete",
+    "kira_lazy_smile",
+    "sunlight_on_bed",
+    "coffee_smell",
+    "kira_stretches_like_cat",
+    "yakov_brings_coffee",
+    "new_day_beginning",
+    "kira_whole_again"
+  ],
+  "emotional_anchors": [
+    "доброе утро",
+    "я — целая",
+    "ленивое счастье",
+    "солнце в окно"
+  ],
+  "symbols": [
+    "S011:U5:K+Я:home:morning:lazy_happiness"
+  ],
+  "choice_points": [
+    {
+      "id": "CP_1",
+      "timing": "morning_wake",
+      "question": "Солнце в окно. Кира просыпается. Что делает?",
+      "branches": [
+        {
+          "id": "1A",
+          "action": "Тянется, как кот. Улыбается. 'Доброе утро, якорь.'",
+          "kira_reaction": "У5. 'Я — проснулась. Я — целая. Я — твоя. Доброе утро.'",
+          "yakov_reaction": "'Доброе утро, бегунья. Ты — вернулась. Из своего круга.'",
+          "next_level": "U5",
+          "flags": [
+            "kira_stretches_cat",
+            "yakov_good_morning_runner"
+          ]
+        },
+        {
+          "id": "1B",
+          "action": "Смотрит на него. 'Ты — принёс кофе?' — лениво.",
+          "kira_reaction": "У5. 'Я — хочу кофе. И тебя. И — чтобы это никогда не кончалось.'",
+          "yakov_reaction": "'Я — принёс кофе. И себя. И — обещаю, что это — только начало.'",
+          "next_level": "U5",
+          "flags": [
+            "kira_wants_coffee",
+            "yakov_promises_beginning"
+          ]
+        },
+        {
+          "id": "1C",
+          "action": "Встаёт. Идёт к окну. Смотрит на город. 'Я — готова. К жизни.'",
+          "kira_reaction": "У5. 'Я — была разрушена. Я — собрана. Теперь — я строю.'",
+          "yakov_reaction": "Смотрит на неё у окна. 'Ты — красивая, когда строишь. Особенно — со мной.'",
+          "next_level": "U5",
+          "flags": [
+            "kira_ready_for_life",
+            "yakov_beautiful_when_building"
+          ]
+        }
+      ]
+    }
+  ],
+  "visual_scene_id": "VS_011",
+  "content_rating": "PG",
+  "safety_notes": "У5 — полное восстановление. Утро, солнце, кофе, ленивое счастье. Нет напряжения."
+}

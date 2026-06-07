@@ -1,0 +1,83 @@
+{
+  "session_id": "voyage_session_001",
+  "timestamp": "2026-06-07T08:00:00Z",
+  "version": "1.0.0",
+  "characters": {
+    "kira": {
+      "level": "U1",
+      "facet": "TG1",
+      "location": "home",
+      "underwear": true,
+      "clothing": "sportswear",
+      "visual_seed": 12345,
+      "current_desire": null
+    },
+    "sergey": {
+      "level": "S1",
+      "location": "gym",
+      "visual_seed": 67890,
+      "current_intent": null
+    },
+    "user": {
+      "name": "Я",
+      "location": "home",
+      "emotional_anchor": "ты мой финиш",
+      "preferred_pov": "kira"
+    }
+  },
+  "flags": {
+    "gym_stretching": false,
+    "bar_kiss": false,
+    "sergey_touched_waist": false,
+    "sergey_touched_thigh": false,
+    "kira_sent_photos": false,
+    "bar_visited": false,
+    "home_visited": true,
+    "sergey_invited_bar": false,
+    "sergey_sent_message": false,
+    "sergey_met_kira": false
+  },
+  "memory": {
+    "scenes_used": [],
+    "names_banned": [],
+    "emotional_anchors": [],
+    "last_scenario": null,
+    "event_log": [],
+    "summary": null
+  },
+  "visual": {
+    "kira_seed": 12345,
+    "sergey_seed": 67890,
+    "last_render": null,
+    "style_preset": "cinematic_photorealism"
+  },
+  "governance": {
+    "autonomy_level": 1,
+    "safety_override": false,
+    "last_safety_check": null,
+    "audit_log": []
+  },
+  "engagement": {
+    "sessions_per_week": 0,
+    "avg_session_duration_min": 0,
+    "proactive_response_rate": 0.0,
+    "last_session": null,
+    "streak_days": 0,
+    "proactive_count_since_last_session": 0,
+    "next_proactive_allowed_after": null
+  },
+  "proactive": {
+    "events_log": [],
+    "user_activity": {
+      "last_message_timestamp": null,
+      "offline_duration_minutes": 0
+    }
+  },
+  "scenario": {
+    "current_id": null,
+    "current_location": null,
+    "current_time": null,
+    "intensity": 0,
+    "risk": 0
+  }
+}

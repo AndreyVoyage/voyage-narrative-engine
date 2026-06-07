@@ -1,0 +1,43 @@
+{
+  "id": "VS_013",
+  "name": "Сообщение от Сергея — Интрига",
+  "kira_level": "U5-интрига",
+  "characters": [
+    "K",
+    "Я"
+  ],
+  "reference_persona": "KIRA_MODULE.json",
+  "emotional_state": "surprise_and_uncertainty",
+  "flags_set": [
+    "home_message_complete",
+    "sergey_message_received",
+    "kira_shows_phone",
+    "yakov_reads_message",
+    "triangle_reopened"
+  ],
+  "emotional_anchors": [
+    "интрига",
+    "решение",
+    "будущее",
+    "треугольник снова"
+  ],
+  "symbol": "S013:U5→U5-интрига:K+Я:home:morning:message_triangle",
+  "visual_parameters": {
+    "subject": "1girl, athletic 24yo woman, blonde curly hair, dry, messy, surprised expression, eyes wide, phone in hand, looking at man, 1boy, man, reading phone, face partially visible or in shadow, serious expression",
+    "pose": "woman sitting on kitchen table or standing, holding phone with both hands, showing screen to man, man standing close, reading phone, hand on her shoulder or waist, intimate but tense",
+    "clothing": "woman wearing oversized gray/white men's shirt, sleeves covering hands, man wearing casual t-shirt, jeans",
+    "environment": "kitchen or bedroom, morning, warm sunlight, but tension in air, phone screen glowing, table with coffee cups, maybe toast, homey but suddenly uncertain atmosphere",
+    "lighting": "warm morning sunlight, but phone screen adds cold blue light, contrast between warm and cold, face illuminated by both, uncertainty in shadows",
+    "mood": "surprise, uncertainty, reopened triangle, tension under warmth, decision moment, future unclear, love tested",
+    "style": "photorealistic, cinematic, film grain, 8k, dramatic morning, tension under domesticity, Before Sunrise uncertainty",
+    "references": [
+      "Before Sunrise",
+      "La La Land",
+      "Eternal Sunshine of the Spotless Mind"
+    ]
+  },
+  "qwen_prompt": "masterpiece, best quality, photorealistic, 8k, film grain, 1girl, athletic 24yo woman, blonde curly hair, dry, messy, surprised expression, eyes wide, phone in hand, looking at man, wearing oversized gray men's shirt, sleeves covering hands, sitting on kitchen table, holding phone with both hands, showing screen, 1boy, man standing close, reading phone, face partially visible in shadow, serious expression, hand on her shoulder, wearing casual t-shirt, jeans, kitchen, morning, warm sunlight, but tension in air, phone screen glowing with cold blue light, contrast between warm and cold, face illuminated by both, uncertainty in shadows, table with coffee cups, toast, homey but suddenly uncertain atmosphere, cinematic composition, medium shot, shallow depth of field, 50mm lens, dramatic morning, tension under domesticity, surprise, uncertainty, reopened triangle, decision moment, future unclear, love tested --ar 16:9",
+  "negative_prompt": "score_6, score_5, score_4, 3d, cartoon, anime, deformed, bad anatomy, extra limbs, blurry, low quality, watermark, text, signature, mutated hands, poorly drawn face, missing fingers, extra fingers, cheerful, happy, bright, no tension, gym setting",
+  "content_rating": "PG-13",
+  "safety_notes": "U5-интрига. Surprise, uncertainty, reopened triangle. No physical contact with Sergey. Focus on emotional complexity and decision."
+}

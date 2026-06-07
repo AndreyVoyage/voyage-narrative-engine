@@ -1,0 +1,85 @@
+{
+  "id": "SC_013",
+  "name": "Сообщение от Сергея",
+  "version": "1.0",
+  "location": "home",
+  "time": "morning",
+  "archetype": "none",
+  "kira_level_start": "U5",
+  "kira_level_end": "U5-интрига",
+  "sergey_level_start": "S5",
+  "sergey_level_end": "S5",
+  "intensity": 6,
+  "risk": 3,
+  "duration_minutes": 30,
+  "prerequisites": [
+    "home_kitchen_complete"
+  ],
+  "flags_required": [
+    "acceptance_complete"
+  ],
+  "flags_set": [
+    "home_message_complete",
+    "sergey_message_received",
+    "kira_shows_phone",
+    "yakov_reads_message",
+    "triangle_reopened",
+    "kira_torn_again",
+    "yakov_decides",
+    "future_uncertain"
+  ],
+  "emotional_anchors": [
+    "интрига",
+    "решение",
+    "будущее",
+    "треугольник снова"
+  ],
+  "symbols": [
+    "S013:U5→U5-интрига:K+Я:home:morning:message_triangle"
+  ],
+  "choice_points": [
+    {
+      "id": "CP_1",
+      "timing": "message_arrival",
+      "question": "Телефон звонит. Сообщение от Сергея. Кира показывает Я. Что делает Я?",
+      "branches": [
+        {
+          "id": "1A",
+          "action": "Читает. Молчит. Кладёт телефон на стол. 'Что ты хочешь?'",
+          "kira_reaction": "У5-интрига. 'Я — не знаю. Я — думала, что всё решено. Но...'",
+          "yakov_reaction": "'Я — не ревную. Я — спрашиваю. Что ты — хочешь? Я — или он? Или — оба?'",
+          "next_level": "U5-интрига",
+          "flags": [
+            "yakov_asks_what_she_wants",
+            "kira_doesnt_know"
+          ]
+        },
+        {
+          "id": "1B",
+          "action": "Берёт телефон. Пишет ответ. 'Она — со мной. Не пиши больше.'",
+          "kira_reaction": "У5-интрига. 'Ты — решил за меня? Я — должна была решить сама.' 'Ты — не решала. Я — решил.'",
+          "yakov_reaction": "'Я — защищаю то, что моё. Ты — моя. Я — не отдам. Даже — твоё право выбрать.'",
+          "next_level": "U5-интрига",
+          "flags": [
+            "yakov_answered_for_her",
+            "kira_wanted_to_choose"
+          ]
+        },
+        {
+          "id": "1C",
+          "action": "'Ответь ему. Скажи, что — встретитесь. Я — приду с тобой.'",
+          "kira_reaction": "У5-интрига. 'Ты — хочешь, чтобы я — встретилась с ним? С тобой? Втроём?' 'Я — хочу знать, кто — победит. Честно.'",
+          "yakov_reaction": "'Я — не боюсь. Я — уверен. Но я — хочу, чтобы ты — увидела разницу. Между нами. И — выбрала. Честно.'",
+          "next_level": "U5-интрига",
+          "flags": [
+            "yakov_offers_meeting",
+            "kira_shocked_by_offer"
+          ]
+        }
+      ]
+    }
+  ],
+  "visual_scene_id": "VS_013",
+  "content_rating": "PG-13",
+  "safety_notes": "У5-интрига — не эскалация, а внутренний конфликт. Треугольник открывается снова, но на новом уровне честности. Нет физического контакта с Сергеем в этой сцене."
+}

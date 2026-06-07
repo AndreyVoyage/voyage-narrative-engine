@@ -1,0 +1,390 @@
+{
+  "version": "2.0.0",
+  "last_updated": "2026-06-06",
+  "total_scenarios": 11,
+  "scenarios": [
+    {
+      "id": "SC_001",
+      "name": "Первая Встреча",
+      "file": "scenarios/SCENARIO_001_FIRST_MEETING.json",
+      "levels": "U1→U5",
+      "location": "embankment",
+      "time": "night",
+      "characters": [
+        "K",
+        "S",
+        "Я"
+      ],
+      "intensity": 7,
+      "risk": 4,
+      "prerequisites": [],
+      "status": "draft"
+    },
+    {
+      "id": "SC_002",
+      "name": "Три на Волне",
+      "file": "scenarios/SCENARIO_002_THREE_ON_WAVE.json",
+      "levels": "U1→U7",
+      "location": "yacht",
+      "time": "multi_day",
+      "characters": [
+        "K",
+        "S",
+        "Я"
+      ],
+      "intensity": 9,
+      "risk": 7,
+      "prerequisites": [
+        "triangle_formed"
+      ],
+      "status": "draft"
+    },
+    {
+      "id": "SC_003",
+      "name": "Тихий охотник в пустом зале",
+      "file": "scenarios/SCENARIO_003_GYM_NIGHT.json",
+      "levels": "U2→U3",
+      "location": "gym",
+      "time": "night",
+      "characters": [
+        "K",
+        "S"
+      ],
+      "intensity": 5,
+      "risk": 3,
+      "prerequisites": [],
+      "visual_scene": "VS_014",
+      "status": "active"
+    },
+    {
+      "id": "SC_004",
+      "name": "Растяжка на красном мате",
+      "file": "scenarios/SCENARIO_004_GYM_STRETCH.json",
+      "levels": "U2→U3",
+      "location": "gym",
+      "time": "night",
+      "characters": [
+        "K",
+        "S"
+      ],
+      "intensity": 6,
+      "risk": 4,
+      "prerequisites": [
+        "gym_night_sergey_seen"
+      ],
+      "visual_scene": "VS_002",
+      "status": "active"
+    },
+    {
+      "id": "SC_005",
+      "name": "Приседания со штангой",
+      "file": "scenarios/SCENARIO_005_GYM_SQUAT.json",
+      "levels": "U3→U4",
+      "location": "gym",
+      "time": "night",
+      "characters": [
+        "K",
+        "S"
+      ],
+      "intensity": 7,
+      "risk": 5,
+      "prerequisites": [
+        "sergey_touched_waist",
+        "gym_stretching"
+      ],
+      "visual_scene": "VS_004",
+      "status": "active"
+    },
+    {
+      "id": "SC_006",
+      "name": "Своеволие на красном мате",
+      "file": "scenarios/SCENARIO_006_GYM_PEAK.json",
+      "levels": "U4→U4-пик",
+      "location": "gym",
+      "time": "night",
+      "characters": [
+        "K",
+        "S"
+      ],
+      "intensity": 9,
+      "risk": 7,
+      "prerequisites": [
+        "squat_complete",
+        "sergey_hands_on_thighs"
+      ],
+      "visual_scene": "VS_006",
+      "status": "active",
+      "safety_check": true
+    },
+    {
+      "id": "SC_007",
+      "name": "Собери меня — Aftercare в зале",
+      "file": "scenarios/SCENARIO_007_GYM_AFTERCARE.json",
+      "levels": "U4→U5",
+      "location": "gym",
+      "time": "night",
+      "characters": [
+        "K"
+      ],
+      "intensity": 8,
+      "risk": 5,
+      "prerequisites": [
+        "gym_peak_complete"
+      ],
+      "visual_scene": "VS_007",
+      "status": "active"
+    },
+    {
+      "id": "SC_008",
+      "name": "Ты мой финиш — Объятия",
+      "file": "scenarios/SCENARIO_008_HOME_EMBRACE.json",
+      "levels": "U5",
+      "location": "home",
+      "time": "night",
+      "characters": [
+        "K",
+        "Я"
+      ],
+      "intensity": 6,
+      "risk": 3,
+      "prerequisites": [
+        "gym_aftercare_complete"
+      ],
+      "visual_scene": "VS_008",
+      "status": "active"
+    },
+    {
+      "id": "SC_009",
+      "name": "Ты мой якорь — Дома",
+      "file": "scenarios/SCENARIO_009_HOME_MORNING.json",
+      "levels": "U5",
+      "location": "home",
+      "time": "morning",
+      "characters": [
+        "K",
+        "Я"
+      ],
+      "intensity": 5,
+      "risk": 2,
+      "prerequisites": [
+        "home_embrace_complete"
+      ],
+      "visual_scene": "VS_009",
+      "status": "active"
+    },
+    {
+      "id": "SC_010",
+      "name": "Ночь, тишина, якорь",
+      "file": "scenarios/SCENARIO_010_HOME_NIGHT.json",
+      "levels": "U5",
+      "location": "home",
+      "time": "night",
+      "characters": [
+        "K",
+        "Я"
+      ],
+      "intensity": 5,
+      "risk": 2,
+      "prerequisites": [
+        "home_morning_complete"
+      ],
+      "visual_scene": "VS_010",
+      "status": "active"
+    },
+    {
+      "id": "SC_011",
+      "name": "Доброе утро, дом",
+      "file": "scenarios/SCENARIO_011_HOME_MORNING2.json",
+      "levels": "U5",
+      "location": "home",
+      "time": "morning",
+      "characters": [
+        "K",
+        "Я"
+      ],
+      "intensity": 4,
+      "risk": 1,
+      "prerequisites": [
+        "home_night_complete"
+      ],
+      "visual_scene": "VS_011",
+      "status": "active"
+    },
+    {
+      "id": "SC_012",
+      "name": "Кофе и слёзы на кухне",
+      "file": "scenarios/SCENARIO_012_HOME_KITCHEN.json",
+      "levels": "U5",
+      "location": "home",
+      "time": "morning",
+      "characters": [
+        "K",
+        "Я"
+      ],
+      "intensity": 5,
+      "risk": 2,
+      "prerequisites": [
+        "home_morning2_complete"
+      ],
+      "visual_scene": "VS_012",
+      "status": "active"
+    },
+    {
+      "id": "SC_013",
+      "name": "Сообщение от Сергея",
+      "file": "scenarios/SCENARIO_013_HOME_MESSAGE.json",
+      "levels": "U5→U5-интрига",
+      "location": "home",
+      "time": "morning",
+      "characters": [
+        "K",
+        "Я"
+      ],
+      "intensity": 6,
+      "risk": 3,
+      "prerequisites": [
+        "home_kitchen_complete"
+      ],
+      "visual_scene": "VS_013",
+      "status": "active"
+    }
+  ],
+  "visual_scenes": [
+    {
+      "id": "VS_001",
+      "name": "Проснись, милый — Селфи",
+      "file": "visual/VISUAL_SCENE_001_SELFIE.json",
+      "kira_level": "U1",
+      "characters": [
+        "K"
+      ]
+    },
+    {
+      "id": "VS_003",
+      "name": "Утренняя провокация — Зеркало",
+      "file": "visual/VISUAL_SCENE_003_MIRROR.json",
+      "kira_level": "U3",
+      "characters": [
+        "K"
+      ]
+    },
+    {
+      "id": "VS_002",
+      "name": "Растяжка в пустом зале",
+      "file": "visual/VISUAL_SCENE_002_GYM_STRETCH.json",
+      "kira_level": "U2→U3",
+      "characters": [
+        "K",
+        "S"
+      ]
+    },
+    {
+      "id": "VS_004",
+      "name": "Приседания со штангой",
+      "file": "visual/VISUAL_SCENE_004_GYM_SQUAT.json",
+      "kira_level": "U3→U4",
+      "characters": [
+        "K",
+        "S"
+      ]
+    },
+    {
+      "id": "VS_005",
+      "name": "Растяжка на красном мате — Касание",
+      "file": "visual/VISUAL_SCENE_005_GYM_TOUCH.json",
+      "kira_level": "U3→U4",
+      "characters": [
+        "K",
+        "S"
+      ]
+    },
+    {
+      "id": "VS_006",
+      "name": "Своеволие на красном мате — Пик",
+      "file": "visual/VISUAL_SCENE_006_GYM_PEAK.json",
+      "kira_level": "U4-пик",
+      "characters": [
+        "K",
+        "S"
+      ]
+    },
+    {
+      "id": "VS_007",
+      "name": "Собери меня — Кира одна",
+      "file": "visual/VISUAL_SCENE_007_GYM_ALONE.json",
+      "kira_level": "U5",
+      "characters": [
+        "K"
+      ]
+    },
+    {
+      "id": "VS_008",
+      "name": "Ты мой финиш — Объятия",
+      "file": "visual/VISUAL_SCENE_008_HOME_EMBRACE.json",
+      "kira_level": "U5",
+      "characters": [
+        "K",
+        "Я"
+      ]
+    },
+    {
+      "id": "VS_009",
+      "name": "Ты мой якорь — Дома",
+      "file": "visual/VISUAL_SCENE_009_HOME_SLEEP.json",
+      "kira_level": "U5",
+      "characters": [
+        "K",
+        "Я"
+      ]
+    },
+    {
+      "id": "VS_010",
+      "name": "Ночь, тишина, якорь",
+      "file": "visual/VISUAL_SCENE_010_HOME_NIGHT.json",
+      "kira_level": "U5",
+      "characters": [
+        "K",
+        "Я"
+      ]
+    },
+    {
+      "id": "VS_011",
+      "name": "Доброе утро, дом",
+      "file": "visual/VISUAL_SCENE_011_HOME_MORNING.json",
+      "kira_level": "U5",
+      "characters": [
+        "K",
+        "Я"
+      ]
+    },
+    {
+      "id": "VS_012",
+      "name": "Кофе и слёзы на кухне",
+      "file": "visual/VISUAL_SCENE_012_HOME_KITCHEN.json",
+      "kira_level": "U5",
+      "characters": [
+        "K",
+        "Я"
+      ]
+    },
+    {
+      "id": "VS_013",
+      "name": "Сообщение от Сергея",
+      "file": "visual/VISUAL_SCENE_013_HOME_MESSAGE.json",
+      "kira_level": "U5",
+      "characters": [
+        "K",
+        "Я"
+      ]
+    },
+    {
+      "id": "VS_014",
+      "name": "Тихий охотник — Сергей",
+      "file": "visual/VISUAL_SCENE_014_SERGEY_MEMORY.json",
+      "kira_level": "S2",
+      "characters": [
+        "S"
+      ]
+    }
+  ]
+}

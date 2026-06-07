@@ -1,0 +1,46 @@
+{
+  "id": "VS_002",
+  "name": "Растяжка в пустом зале — Кира и Сергей",
+  "kira_level": "U2→U3",
+  "characters": [
+    "K",
+    "S"
+  ],
+  "reference_persona": "KIRA_MODULE.json + SERGEY_MODULE.json",
+  "emotional_state": "dangerous_proximity_first_contact",
+  "flags_set": [
+    "gym_stretching",
+    "sergey_touched_waist",
+    "red_mat_first_contact",
+    "mirror_glance_exchanged",
+    "kira_felt_his_weight"
+  ],
+  "emotional_anchors": [
+    "опасная близость",
+    "власть рук",
+    "тихий флирт"
+  ],
+  "symbol": "S002:U2→U3:K+S:gym:night:stretch_touch",
+  "visual_parameters": {
+    "subject": "1girl, athletic 24yo woman, blonde curly hair, high ponytail, several strands loose on temples cheeks forehead, hair shiny healthy slightly wet from sweat, large almond-shaped warm honey-brown eyes, looking at mirror on wall, daring vulnerable hidden desire expression, slightly open lips, wet from sweat, pink cheeks, temples pulsing, half-closed eyelids, 1boy, muscular 35yo man, former heavyweight athlete, 100kg, 185cm, broad shoulders, massive traps, V-shaped back, thick thighs, hairy chest naturally, short dark hair 3-6mm, gray at temples, three-day stubble, gray-blue eyes, cold evaluating predatory gaze, looking at her face or thigh, not at camera",
+    "pose": "girl lying on back on red leather mat, arms behind head elbows to sides, or one hand on stomach other on thigh, body slightly arched in lower back lordosis, head tilted back, chin up, looking at mirror on wall, right thigh raised spread, knee bent, pose for stretching, boy standing over her, leaning through her, one leg beside mat, other at her thigh, body forming arc above her, not touching except hands, head turned toward her face, squinting, face serious no smile, concentrated, shoulders tense, traps protruding, wet hair at temples, sweat dripping down neck and adam's apple",
+    "clothing_girl": "black short sports crop top, no bra, fabric thin semi-transparent mesh or very thin elastic, wet from sweat, clinging to skin, through fabric visible breast outline, abs outline, ribs, thin straps one slipped off left shoulder, exposing collarbone line and shoulder, black sports shorts very high waist, micro length, tight on thighs, inner thigh partially visible, thin elastic lycra spandex, shiny, wet, clinging to skin, hint of no underwear no visible lines, barefoot, elegant feet with training calluses",
+    "clothing_boy": "gray dark blue wet sports stringer tank top or regular, fabric clinging to back and chest, visible powerful traps and chest hair, black sports leggings tight on powerful thighs, wide elastic waistband, massive weightlifting shoes black, laces untied, dirty from gym rubber, sports watch on wrist, white towel on neck or in hand",
+    "environment": "empty gym, late evening night after closing, no one except them, red leather mat for stretching wrestling, rectangular thick, slightly worn at edges, on gray rubber floor covering, dark gym, visible blurred barbell with bar, dumbbell rows, running track, benches, walls dark concrete or mirrored, large mirror on wall in front of mat, mirror reflects both of them, visible side top view",
+    "lighting": "dim directed from above, fluorescent lamps, but half turned off, cold white blue light falls on them from upper left corner, creating sharp shadows, light reflected in mirror, contrast cold light on their bodies vs warm skin tones, shadows from boy fall on girl, mixing with her shadow, additional warm orange amber light from far corner lamp, creating contour rim light on edges of their bodies",
+    "mood": "dangerous proximity, quiet flirt, sports intimacy, power and trust, tension in empty gym, memory of touch, after battle, before battle, heavy, humid, quiet to ringing",
+    "style": "photorealistic, cinematic, like frame from erotic psychological drama or sports thriller Warrior Creed style, but with artistic intimate dark tone, not pornography, erotic tension through sensorics and proximity",
+    "references": [
+      "Warrior",
+      "Creed",
+      "Whiplash",
+      "David Dubnitskiy dark and athletic",
+      "sports erotic photography",
+      "Nike female athlete campaigns with intimate subtext"
+    ]
+  },
+  "qwen_prompt": "masterpiece, best quality, photorealistic, 8k, film grain, 1girl, athletic 24yo woman, blonde curly hair, high ponytail, loose strands on temples, shiny healthy hair, slightly wet from sweat, large almond-shaped warm honey-brown eyes, looking at mirror, daring vulnerable hidden desire expression, slightly open lips, wet, pink cheeks, temples pulsing, half-closed eyelids, lying on back on red leather mat, arms behind head, body slightly arched, head tilted back, chin up, right thigh raised, knee bent, stretching pose, black short sports crop top, no bra, thin semi-transparent mesh, wet clinging to skin, visible breast outline, abs outline, ribs, thin straps one slipped off left shoulder, black sports shorts very high waist, micro length, tight on thighs, inner thigh partially visible, thin elastic lycra spandex, shiny wet, hint of no underwear, barefoot, 1boy, muscular 35yo man, former heavyweight athlete, 100kg, 185cm, broad shoulders, massive traps, V-shaped back, thick thighs, hairy chest, short dark hair 3-6mm, gray at temples, three-day stubble, gray-blue eyes, cold predatory gaze, looking at her, standing over her, leaning through her, one leg beside mat, other at her thigh, body forming arc above her, gray dark blue wet sports stringer tank top, fabric clinging to back and chest, visible powerful traps and chest hair, black sports leggings, tight on powerful thighs, wide elastic waistband, massive weightlifting shoes black, laces untied, dirty, sports watch, white towel, empty gym, late evening night, fluorescent lamps half off, cold white blue light from above, sharp shadows, light reflected in mirror, walls dark concrete, large mirror reflecting both, red mat center, blurred barbell, dumbbell rows, running track, benches, warm orange amber accent from far corner, rim light on body edges, dangerous proximity, quiet flirt, sports intimacy, power and trust, tension, heavy humid atmosphere, cinematic composition, medium shot, shallow depth of field, 85mm lens, Warrior aesthetic, Creed style, Whiplash atmosphere, photorealistic, film grain --ar 16:9",
+  "negative_prompt": "score_6, score_5, score_4, 3d, cartoon, anime, deformed, bad anatomy, extra limbs, blurry, low quality, watermark, text, signature, mutated hands, poorly drawn face, missing fingers, extra fingers, cheerful, bright, daytime, crowded, slim weak man, young man, smiling man, old woman, child",
+  "content_rating": "R",
+  "safety_notes": "U2→U3 first physical contact. Hands on waist/thighs but within 'training' context. No explicit sexual contact. Tension through proximity and gaze. Mirror reflection adds psychological depth."
+}

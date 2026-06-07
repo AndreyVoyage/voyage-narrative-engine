@@ -1,0 +1,75 @@
+{
+  "id": "SC_003",
+  "name": "Тихий охотник в пустом зале",
+  "version": "1.0",
+  "location": "gym",
+  "time": "night",
+  "archetype": "trainer",
+  "kira_level_start": "U2",
+  "kira_level_end": "U3",
+  "sergey_level_start": "S2",
+  "sergey_level_end": "S3",
+  "intensity": 5,
+  "risk": 3,
+  "duration_minutes": 30,
+  "prerequisites": [],
+  "flags_required": [],
+  "flags_set": [
+    "gym_night_visited",
+    "sergey_seen_at_barbell",
+    "mirror_glance_exchanged",
+    "sergey_wipes_sweat",
+    "kira_noticed_sergey_scars"
+  ],
+  "emotional_anchors": [
+    "тихий охотник",
+    "воспоминание как призрак"
+  ],
+  "symbols": [
+    "S003:U2→U3:K+S:gym:night:barbell_glance"
+  ],
+  "choice_points": [
+    {
+      "id": "CP_1",
+      "timing": "entrance",
+      "question": "Кира входит в зал поздно вечером. Сергей у штанги. Что делает Кира?",
+      "branches": [
+        {
+          "id": "1A",
+          "action": "Игнорирует, идёт к беговой дорожке",
+          "kira_reaction": "У2. Бегёт, но краем глаза видит его в зеркале",
+          "sergey_reaction": "S2. Замечает, но не оборачивается. Ждёт.",
+          "next_level": "U2",
+          "flags": [
+            "kira_ran_away_gaze"
+          ]
+        },
+        {
+          "id": "1B",
+          "action": "Смотрит в зеркало, ловит его взгляд",
+          "kira_reaction": "У2→У3. Зеркальный взгляд — первый контакт",
+          "sergey_reaction": "S2→S3. Прищуривается. Оценивает. Не отводит глаз.",
+          "next_level": "U3",
+          "flags": [
+            "mirror_glance_exchanged",
+            "first_eye_contact"
+          ]
+        },
+        {
+          "id": "1C",
+          "action": "Подходит, просит помочь со штангой",
+          "kira_reaction": "У3. Дерзость притворная — она сильнее, чем кажется",
+          "sergey_reaction": "S3. Удивлён. Но скрывает. Кивает. Подходит.",
+          "next_level": "U3",
+          "flags": [
+            "kira_asked_help",
+            "sergey_agreed_help"
+          ]
+        }
+      ]
+    }
+  ],
+  "visual_scene_id": "VS_014",
+  "content_rating": "R",
+  "safety_notes": "У3 — срыв, но контролируемый. Нет физического контакта в этой сцене."
+}

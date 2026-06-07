@@ -1,0 +1,84 @@
+{
+  "id": "SC_009",
+  "name": "Ты мой якорь — Дома",
+  "version": "1.0",
+  "location": "home",
+  "time": "morning",
+  "archetype": "none",
+  "kira_level_start": "U5",
+  "kira_level_end": "U5",
+  "sergey_level_start": "S5",
+  "sergey_level_end": "S5",
+  "intensity": 5,
+  "risk": 2,
+  "duration_minutes": 45,
+  "prerequisites": [
+    "home_embrace_complete"
+  ],
+  "flags_required": [
+    "kira_in_yakov_shirt"
+  ],
+  "flags_set": [
+    "home_morning_complete",
+    "kira_sleeping_in_arms",
+    "yakov_holding_all_night",
+    "morning_light_window",
+    "kira_hair_dry_now",
+    "shirt_still_on",
+    "breathing_in_unison"
+  ],
+  "emotional_anchors": [
+    "ты мой якорь",
+    "я — дома",
+    "дыхание в такт",
+    "ленивое счастье"
+  ],
+  "symbols": [
+    "S009:U5:K+Я:home:morning:sleep_anchor"
+  ],
+  "choice_points": [
+    {
+      "id": "CP_1",
+      "timing": "waking",
+      "question": "Утро. Кира просыпается в его объятиях. Что делает?",
+      "branches": [
+        {
+          "id": "1A",
+          "action": "Не открывает глаза. Улыбается во сне. Дышит в такт.",
+          "kira_reaction": "У5. 'Я — дома. Я — целая. Я — его. Наконец-то.'",
+          "yakov_reaction": "Проснулся раньше. Смотрит на неё. Не двигается. Боится разбудить.",
+          "next_level": "U5",
+          "flags": [
+            "kira_smiles_asleep",
+            "yakov_watching_her"
+          ]
+        },
+        {
+          "id": "1B",
+          "action": "Открывает глаза. Смотрит на него. 'Ты — не спал?'",
+          "kira_reaction": "У5. 'Ты — бодрствовал всю ночь? Чтобы я — спала?'",
+          "yakov_reaction": "'Я — спал. Но просыпался. Чтобы проверить, что ты — здесь.'",
+          "next_level": "U5",
+          "flags": [
+            "kira_asked_sleep",
+            "yakov_checked_she_is_here"
+          ]
+        },
+        {
+          "id": "1C",
+          "action": "Прячется в его шею. 'Не уходи. Сегодня. Не уходи.'",
+          "kira_reaction": "У5. 'Я — боюсь, что если ты уйдёшь — я развалюсь снова.'",
+          "yakov_reaction": "'Я — никуда не уйду. Я — твой якорь. Помнишь?'",
+          "next_level": "U5",
+          "flags": [
+            "kira_hides_in_neck",
+            "yakov_i_am_anchor"
+          ]
+        }
+      ]
+    }
+  ],
+  "visual_scene_id": "VS_009",
+  "content_rating": "PG-13",
+  "safety_notes": "У5 — полное восстановление. Нет напряжения. Только тепло, безопасность, доверие."
+}

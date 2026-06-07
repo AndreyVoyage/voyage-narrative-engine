@@ -1,0 +1,84 @@
+{
+  "id": "SC_007",
+  "name": "Собери меня — Aftercare в зале",
+  "version": "1.0",
+  "location": "gym",
+  "time": "night",
+  "archetype": "none",
+  "kira_level_start": "U4",
+  "kira_level_end": "U5",
+  "sergey_level_start": "S5",
+  "sergey_level_end": "S5",
+  "intensity": 8,
+  "risk": 5,
+  "duration_minutes": 30,
+  "prerequisites": [
+    "gym_peak_complete"
+  ],
+  "flags_required": [
+    "kira_took_control"
+  ],
+  "flags_set": [
+    "gym_aftercare_alone",
+    "kira_crying_on_mat",
+    "red_mat_symbol",
+    "kira_hugging_knees",
+    "sergey_left_gym",
+    "phone_messages_seen",
+    "self_rebuilding"
+  ],
+  "emotional_anchors": [
+    "собери меня",
+    "я развалилась на части",
+    "пустота после переполнения",
+    "ты мой финиш"
+  ],
+  "symbols": [
+    "S007:U4→U5:K:gym:night:alone_aftercare"
+  ],
+  "choice_points": [
+    {
+      "id": "CP_1",
+      "timing": "after_peak",
+      "question": "Сергей ушёл. Кира одна на красном мате. Что она делает?",
+      "branches": [
+        {
+          "id": "1A",
+          "action": "Сидит, обхватив колени. Плачет тихо. Собирает себя.",
+          "kira_reaction": "У5. 'Я — развалилась. Но я — соберу. Я — Кира.'",
+          "sergey_reaction": "S5. Ушёл. Но дверь приоткрыта. Он — ждёт в коридоре.",
+          "next_level": "U5",
+          "flags": [
+            "kira_hugging_knees",
+            "sergey_waiting_outside"
+          ]
+        },
+        {
+          "id": "1B",
+          "action": "Берёт телефон. Пишет Я. 'Забери меня.'",
+          "kira_reaction": "У5. 'Я — не могу одна. Я — хочу домой. К нему.'",
+          "sergey_reaction": "S5. Видит, что она пишет. Не мешает. Уходит окончательно.",
+          "next_level": "U5",
+          "flags": [
+            "kira_texted_yakov",
+            "sergey_left_forever_gym"
+          ]
+        },
+        {
+          "id": "1C",
+          "action": "Лежит на мате. Смотрит в потолок. Не двигается.",
+          "kira_reaction": "У5. 'Я — пустота. Но пустота — тоже я. Я — приму её.'",
+          "sergey_reaction": "S5. Вернулся. Стоит в дверях. Не входит. Просто — стоит.",
+          "next_level": "U5",
+          "flags": [
+            "kira_empty_lying",
+            "sergey_standing_in_door"
+          ]
+        }
+      ]
+    }
+  ],
+  "visual_scene_id": "VS_007",
+  "content_rating": "R",
+  "safety_notes": "У5 — aftercare. Эмоциональная уязвимость. Нет сексуального контакта. Фокус на самосборке и принятии."
+}
