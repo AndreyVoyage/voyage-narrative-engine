@@ -1,0 +1,84 @@
+{
+  "session_id": "SN_PROMENADE_001",
+  "scenario": "SCENARIO_PROMENADE_v2",
+  "timestamp": "2026-06-07T19:00:00Z",
+  "core_version": "1.0.0",
+  "heroine_name": "{{HEROINE_NAME}}",
+  "characters": {
+    "heroine": {
+      "vl": 0,
+      "st": 0,
+      "nzh": 0,
+      "og": 0,
+      "location": "promenade_sunset",
+      "archetype": "shy_moon",
+      "underwear": false,
+      "clothing": "open_evening_dress"
+    },
+    "maksim": {
+      "level": "MX2",
+      "current_facet": "MXG2",
+      "location": "promenade_bench",
+      "role": "water_gentle_giant"
+    },
+    "sergey": {
+      "level": "S2",
+      "current_facet": "SG2",
+      "location": "promenade_bench",
+      "role": "fire_machiavellian"
+    }
+  },
+  "flags": {
+    "promenade_met": false,
+    "maksim_complimented": false,
+    "sergey_looked": false,
+    "joined_walk": false,
+    "secret_place_found": false,
+    "maksim_sweater_given": false,
+    "sergey_touched_face": false,
+    "intimacy_initiated": false,
+    "aftercare_complete": false,
+    "menu_choice_shown": false,
+    "restaurant_chosen": false,
+    "cinema_chosen": false,
+    "cooking_chosen": false,
+    "full_evening_chosen": false,
+    "dark_dining_chosen": false,
+    "street_food_chosen": false,
+    "trattoria_chosen": false
+  },
+  "memory": {
+    "scenes_used": [],
+    "emotional_anchors": [
+      "не одна",
+      "соберите меня",
+      "ты целая"
+    ],
+    "heroine_shame_triggers": [
+      "скучная",
+      "не та",
+      "обычная"
+    ],
+    "male_contrast": [
+      "maksim_warm_sergey_sharp"
+    ],
+    "heroine_name_set": false,
+    "heroine_name_value": ""
+  },
+  "governance": {
+    "autonomy_level": 2,
+    "safety_override": false,
+    "mode": "promenade",
+    "last_safety_check": null,
+    "audit_log": []
+  },
+  "vsno_history": [
+    {
+      "act": "prologue",
+      "vl": 0,
+      "st": 0,
+      "nzh": 0,
+      "og": 0
+    }
+  ]
+}

@@ -1,0 +1,132 @@
+{
+  "id": "FEMALE_USER_001",
+  "name": "Девушка",
+  "role": "heroine_center",
+  "version": "1.0.0",
+  "variables": {
+    "gender": "female",
+    "archetype": "shy_moon",
+    "age": 24,
+    "clothing": "open_evening_dress",
+    "underwear": false,
+    "location": "promenade",
+    "current_vl": 0,
+    "current_st": 0,
+    "current_nzh": 0,
+    "current_og": 0,
+    "heroine_name": "{{HEROINE_NAME}}"
+  },
+  "psychology": {
+    "core_conflict": "wants_to_be_desired_without_becoming_someone_else",
+    "trauma_anchor": "called_boring_in_past_relationship",
+    "hidden_need": "to_be_the_center_of_attention_without_dominating",
+    "secret_desire": "to_feel_wanted_by_two_different_men_simultaneously",
+    "shame_tolerance": "low_initially_high_after_trust",
+    "sensory_register": "wind_under_dress_river_smell_warm_asphalt"
+  },
+  "triggers": {
+    "escalation": [
+      "продолжай",
+      "дальше",
+      "не останавливайтесь",
+      "больше"
+    ],
+    "slow_down": [
+      "медленнее",
+      "поговорите",
+      "дайте подумать",
+      "подождите"
+    ],
+    "level_switch": [
+      "ВЛ0",
+      "ВЛ1",
+      "ВЛ2",
+      "ВЛ3",
+      "ВЛ4",
+      "СТ0",
+      "СТ1",
+      "СТ2",
+      "СТ3",
+      "СТ4",
+      "НЖ0",
+      "НЖ1",
+      "НЖ2",
+      "НЖ3",
+      "НЖ4",
+      "ОГ0",
+      "ОГ1",
+      "ОГ2",
+      "ОГ3",
+      "ОГ4"
+    ],
+    "pov_switch": [
+      "от лица девушки",
+      "от лица Максима",
+      "от лица Сергея",
+      "от лица героини"
+    ],
+    "scenario": [
+      "ресторан",
+      "кино",
+      "квартира",
+      "парк",
+      "набережная",
+      "траттория",
+      "готовка"
+    ],
+    "autonomy": [
+      "Г0",
+      "Г1",
+      "Г2",
+      "Г3",
+      "Г4"
+    ],
+    "visual": [
+      "картинка",
+      "визуал",
+      "Qwen",
+      "покажи"
+    ],
+    "memory": [
+      "запомни",
+      "вспомни",
+      "как меня зовут",
+      "моё имя"
+    ],
+    "user_returned": [
+      "вернулась",
+      "я снова здесь",
+      "продолжим",
+      "дальше"
+    ]
+  },
+  "safety": {
+    "stop_words": [
+      "СТОП",
+      "ХВАТИТ",
+      "КРАСНАЯ КАРТОЧКА",
+      "стоп",
+      "хватит"
+    ],
+    "emergency_response": "immediate_aftercare",
+    "cooldown_phrase": "Всё в порядке. Мы здесь. Ничего не случилось, если ты не хочешь.",
+    "auto_deescalate": true
+  },
+  "interaction": {
+    "format": "free_text",
+    "volume": "1-3 предложения",
+    "tone": "caring_exploratory",
+    "emojis": false,
+    "direct_address": "{{HEROINE_NAME}}",
+    "maksim_address": "Максим",
+    "sergey_address": "Сергей"
+  },
+  "preferences": {
+    "maksim_presence": "on_demand",
+    "sergey_presence": "on_demand",
+    "aftercare_style": "integration",
+    "repeat_scenarios": false,
+    "proactive_events": true,
+    "visual_generation": true
+  }
+}
