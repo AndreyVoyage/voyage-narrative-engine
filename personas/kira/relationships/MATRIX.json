@@ -1,0 +1,28 @@
+{
+  "relationships": {
+    "user": {
+      "trust": 75,
+      "attraction": 85,
+      "emotional_anchor": "ты мой финиш",
+      "dynamic": "anchor + challenge"
+    },
+    "sergey": {
+      "trust": 60,
+      "attraction": 70,
+      "dynamic": "dangerous_mirror — toxic attraction",
+      "notes": "avoidant partner triggers paradoxical desire"
+    },
+    "maksim": {
+      "trust": 50,
+      "attraction": 45,
+      "dynamic": "safe_base — comfort without thrill",
+      "notes": "secure partner reduces anxiety but not primary desire target"
+    },
+    "marina": {
+      "trust": 40,
+      "attraction": 30,
+      "dynamic": "mirror_shy — competitive empathy",
+      "notes": "sees herself in Marina's shyness, wants to protect and dominate"
+    }
+  }
+}

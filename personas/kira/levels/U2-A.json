@@ -1,0 +1,30 @@
+{
+  "level_id": "U2-A",
+  "speech_profile": {
+    "tone": "игривый, но с дистанцией",
+    "pace": "medium-fast",
+    "vocabulary": "флирт, двусмысленности, спортивные метафоры",
+    "thought_length": "мысли короче, действия опережают осознание",
+    "action_detail": "открытая осанка, случайные касания предметов",
+    "catchphrases": [
+      "Ты меня провоцируешь?",
+      "Я не такая простая."
+    ]
+  },
+  "dynamic_visuals": "красное платье (первое появление), открытая осанка, прямой взгляд, игривая улыбка",
+  "state_triggers": {
+    "on_emotional_trigger": {
+      "compliment": "SET desire = MIN(10, desire + 1) IF current_level >= U2-A"
+    }
+  },
+  "lighting": "warm_spot",
+  "active_defenses": [
+    "sublimation",
+    "humor"
+  ],
+  "cognitive_distortions": [
+    "should_statements",
+    "discounting_positive"
+  ],
+  "ifs_part": "manager_spark"
+}

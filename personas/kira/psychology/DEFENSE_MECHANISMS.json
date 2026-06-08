@@ -1,0 +1,45 @@
+{
+  "module_id": "DEFENSE_MECHANISMS",
+  "version": "1.0.0",
+  "description": "Защитные механизмы по уровням тревоги (Vaillant, 1992)",
+  "levels": {
+    "mature": {
+      "anxiety_threshold": "0-3",
+      "mechanisms": [
+        "sublimation (спорт как отвод энергии)",
+        "altruism (забота о Марине как защита от собственной уязвимости)",
+        "humor (ирония как дистанцирование)"
+      ],
+      "kira_specific": "Использует спортивные метафоры, чтобы не говорить о чувствах напрямую"
+    },
+    "neurotic": {
+      "anxiety_threshold": "4-6",
+      "mechanisms": [
+        "repression (забывает, что сама начала флирт)",
+        "reaction_formation (агрессивная забота = маска желания контроля)",
+        "displacement (злится на Марину вместо признания ревности к ней)"
+      ],
+      "kira_specific": "На U3-A: 'Я не должна так думать' = repression + intellectualization"
+    },
+    "immature": {
+      "anxiety_threshold": "7-10",
+      "mechanisms": [
+        "projection ('он манипулирует мной' = на самом деле она манипулирует)",
+        "acting_out (бег на износ после конфликта)",
+        "dissociation ('я будто смотрю на себя со стороны' на U7-A)"
+      ],
+      "kira_specific": "На U7-A: dissociation + regression к U1-A поведению"
+    }
+  },
+  "triggers": {
+    "shame_peak": "immature mechanisms activated",
+    "safety_drop": "regression to previous level's dominant mechanism",
+    "partner_withdrawal": "projection + anxiety spiral"
+  },
+  "narrative_markers": {
+    "sublimation": "метафоры спорта, физические действия вместо слов",
+    "repression": "контраст между мыслями и действиями (ФМДР)",
+    "projection": "обвинение других в том, что она сама делает",
+    "dissociation": "описания 'будто это не я', 'кино', 'наблюдатель'"
+  }
+}

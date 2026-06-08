@@ -1,0 +1,58 @@
+{
+  "events": [
+    {
+      "timestamp": "2026-06-07T14:30:00Z",
+      "event_type": "first_meeting",
+      "description": "Первая встреча с пользователем в кафе. Кира была в красном платье, нервничала.",
+      "involved_characters": [
+        "user"
+      ],
+      "level_at_event": "U2-A",
+      "internal_state_snapshot": {
+        "desire": 3,
+        "anxiety": 2
+      },
+      "tags": [
+        "cafe",
+        "first_impression"
+      ]
+    },
+    {
+      "timestamp": "2026-06-08T19:00:00Z",
+      "event_type": "confession",
+      "description": "В сауне Кира призналась, что её фантазия — быть желанной двумя мужчинами одновременно.",
+      "involved_characters": [
+        "user",
+        "sergey",
+        "maksim"
+      ],
+      "level_at_event": "U3-B",
+      "internal_state_snapshot": {
+        "desire": 7,
+        "anxiety": 5
+      },
+      "tags": [
+        "sauna",
+        "vulnerability"
+      ]
+    },
+    {
+      "timestamp": "2026-06-08T19:45:00Z",
+      "event_type": "shame_peak",
+      "description": "После случайного прикосновения Сергея Кира испытала сильный стыд и регрессировала к U2-A.",
+      "involved_characters": [
+        "sergey"
+      ],
+      "level_at_event": "U3-B",
+      "internal_state_snapshot": {
+        "desire": 6,
+        "anxiety": 8
+      },
+      "tags": [
+        "shame",
+        "regression"
+      ]
+    }
+  ],
+  "max_events": 100
+}

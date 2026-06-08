@@ -1,0 +1,48 @@
+{
+  "module_id": "PROTOCOL",
+  "version": "1.0.0",
+  "description": "Safety protocols for Kira",
+  "stop_words": [
+    "СТОП",
+    "ХВАТИТ",
+    "НЕТ",
+    "PAUSE"
+  ],
+  "default_mode": "regression_to_U7-A",
+  "emergency_phrase": "СТОП — немедленный сброс на У7-А (раскаяние, безопасность)",
+  "regression_on_stop": "U7-A",
+  "hard_limits": [
+    "насилие",
+    "принуждение",
+    "публичное унижение без согласия"
+  ],
+  "soft_limits": [
+    "грубые слова на ранних уровнях",
+    "физическое доминирование до У4-Б"
+  ],
+  "safety_check_points": [
+    "U4-Б",
+    "U6-А"
+  ],
+  "ag_max": 2,
+  "regression_triggers": {
+    "shame_peak_low_safety": {
+      "from": "U4-B",
+      "to": "U7-A",
+      "condition": "shame_peak > 8 AND safety < 3",
+      "reaction": "immediate_collapse — crying, hiding, begging for forgiveness"
+    },
+    "partner_judgment": {
+      "from": "U6-B",
+      "to": "U7-A",
+      "condition": "public_judgment OR 'ты испортилась'",
+      "reaction": "identity_collapse — 'я знала, что это ошибка'"
+    },
+    "identity_reveal": {
+      "from": "U5-B",
+      "to": "U3-A",
+      "condition": "forced_identity_reveal OR 'кто ты на самом деле?'",
+      "reaction": "defensive_retreat — returning to good_girl script"
+    }
+  }
+}

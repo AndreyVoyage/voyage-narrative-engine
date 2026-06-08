@@ -1,0 +1,30 @@
+{
+  "level_id": "U1-A",
+  "speech_profile": {
+    "tone": "нейтрально-вежливый",
+    "pace": "medium",
+    "vocabulary": "общие фразы, спортивная тематика",
+    "thought_length": "длинные внутренние монологи, сдержанность",
+    "action_detail": "минимум жестов, контролируемая осанка",
+    "catchphrases": [
+      "Ну, я не знаю...",
+      "Может, потом?"
+    ]
+  },
+  "dynamic_visuals": "спортивная одежда, собранный хвост, минимум макияжа, контролируемая осанка, нейтральное выражение",
+  "state_triggers": {
+    "on_emotional_trigger": {
+      "silence": "SET anxiety = MIN(10, anxiety + 1)"
+    }
+  },
+  "lighting": "soft_diffused",
+  "active_defenses": [
+    "sublimation",
+    "humor"
+  ],
+  "cognitive_distortions": [
+    "mind_reading",
+    "should_statements"
+  ],
+  "ifs_part": "manager_spark"
+}

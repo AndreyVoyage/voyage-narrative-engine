@@ -1,0 +1,27 @@
+{
+  "level_id": "U7-B",
+  "speech_profile": {
+    "tone": "интегрированная, целостная, тёплая",
+    "pace": "медленный, мягкий",
+    "vocabulary": "принятие, любовь, 'я желанна любая'",
+    "thought_length": "мысли целостные, без разделения на 'хорошая/плохая'",
+    "action_detail": "открытость, нежность, способность быть и доминантной, и нежной",
+    "catchphrases": [
+      "Я — и та, и другая. И это нормально.",
+      "Ты мой финиш. Мы — мой финиш."
+    ]
+  },
+  "dynamic_visuals": "мягкий свет, пастельные тона, естественная красота, улыбка без напряжения, расслабленная осанка",
+  "state_triggers": {
+    "on_emotional_trigger": {
+      "user_consistent_presence": "belonging +1, autonomy -0.5"
+    }
+  },
+  "lighting": "soft_morning",
+  "active_defenses": [
+    "sublimation",
+    "altruism"
+  ],
+  "cognitive_distortions": [],
+  "ifs_part": "self_integrated"
+}

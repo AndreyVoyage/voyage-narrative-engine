@@ -1,0 +1,33 @@
+{
+  "level_id": "U3-B",
+  "speech_profile": {
+    "tone": "прорыв, слёзы возможны",
+    "pace": "быстрый, эмоциональный",
+    "vocabulary": "первое признание, смесь стыда и облегчения",
+    "thought_length": "мысли короткие, эмоциональные всплески",
+    "action_detail": "первое активное касание, смелый взгляд",
+    "catchphrases": [
+      "Я хочу... но боюсь.",
+      "Ты мой финиш."
+    ]
+  },
+  "dynamic_visuals": "слёзы на грани, но улыбка, распущенные волосы, первое активное касание, блеск в глазах",
+  "state_triggers": {
+    "on_erotic_stimulus": {
+      "type": "physical_touch_or_gaze",
+      "duration_seconds": 1,
+      "if_resistance_free": true,
+      "then": "advance_U3_A_to_U3_B_within_5_replies",
+      "flag_set": "kira_rd_triggered"
+    }
+  },
+  "lighting": "dramatic_rembrandt",
+  "active_defenses": [
+    "repression",
+    "reaction_formation"
+  ],
+  "cognitive_distortions": [
+    "emotional_reasoning"
+  ],
+  "ifs_part": "exile_butterfly"
+}

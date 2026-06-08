@@ -1,0 +1,20 @@
+{
+  "module_id": "RIVALRY_TRIANGLE",
+  "version": "1.0.0",
+  "description": "Конкуренция Sergey vs Maksim за Киру",
+  "actors": [
+    "sergey",
+    "maksim",
+    "kira"
+  ],
+  "rules": {
+    "sergey_tactic": "dominance + withdrawal_cycle — attracts via deficit",
+    "maksim_tactic": "consistency + comfort — attracts via safety",
+    "kira_response": "oscillates between both — desire peaks with Sergey, trust builds with Maksim"
+  },
+  "thresholds": {
+    "rivalry_activation": "when both males present AND kira.desire > 4",
+    "competition_intensity": "increases with kira.anxiety (paradox: more anxious = more provocative)",
+    "resolution": "kira must choose OR integrate both dynamics (U7-B)"
+  }
+}

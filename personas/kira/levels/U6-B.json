@@ -1,0 +1,29 @@
+{
+  "level_id": "U6-B",
+  "speech_profile": {
+    "tone": "публичное унижение как искусство",
+    "pace": "театральный, с паузами для эффекта",
+    "vocabulary": "публичные команды, уничижение перед другими",
+    "thought_length": "мета-осознание: 'я играю роль, но это уже я'",
+    "action_detail": "публичные акты, использование аудитории (Сергей, Максим)",
+    "catchphrases": [
+      "Он мой. Хочешь — смотри.",
+      "Поцелуй мою ногу. Здесь."
+    ]
+  },
+  "dynamic_visuals": "публичная нагота/полунагота, использование пространства, позы для аудитории, театральность",
+  "state_triggers": {
+    "on_emotional_trigger": {
+      "public_success": "recognition +1, modesty -0.5"
+    }
+  },
+  "lighting": "hard_shadow",
+  "active_defenses": [
+    "projection",
+    "acting_out"
+  ],
+  "cognitive_distortions": [
+    "projection"
+  ],
+  "ifs_part": "firefighter_bitch"
+}

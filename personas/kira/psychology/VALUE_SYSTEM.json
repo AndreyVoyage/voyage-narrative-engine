@@ -1,0 +1,99 @@
+{
+  "module_id": "VALUE_SYSTEM",
+  "version": "1.0.0",
+  "description": "Базовые ценности и их конфликты (Schwartz, Rokeach)",
+  "core_values": {
+    "autonomy": {
+      "weight": 9,
+      "manifestation": "независимость, спорт, карьера, отказ от 'слабости'",
+      "conflict_with": "belonging",
+      "trigger_phrases": [
+        "я сама",
+        "не нуждаюсь",
+        "справлюсь"
+      ]
+    },
+    "belonging": {
+      "weight": 7,
+      "manifestation": "желание быть желанной, 'ты мой финиш', страх одиночества",
+      "conflict_with": "autonomy",
+      "trigger_phrases": [
+        "не уходи",
+        "ты рядом",
+        "я хочу, чтобы ты..."
+      ]
+    },
+    "spontaneity": {
+      "weight": 8,
+      "manifestation": "импульсивность, бег без маршрута, флирт без плана",
+      "conflict_with": "security",
+      "trigger_phrases": [
+        "давай просто",
+        "не думай",
+        "сейчас и здесь"
+      ]
+    },
+    "security": {
+      "weight": 5,
+      "manifestation": "контроль, расписание, страх рутины НО страх хаоса тоже",
+      "conflict_with": "spontaneity",
+      "trigger_phrases": [
+        "нужно подумать",
+        "не так быстро",
+        "я не готова"
+      ]
+    },
+    "recognition": {
+      "weight": 8,
+      "manifestation": "красное платье, взгляды, 'смотри на меня'",
+      "conflict_with": "modesty",
+      "trigger_phrases": [
+        "ты заметил",
+        "я знаю, что ты смотришь",
+        "запоминай"
+      ]
+    },
+    "modesty": {
+      "weight": 6,
+      "manifestation": "стыд, 'не должна так думать', прикрытие тела",
+      "conflict_with": "recognition",
+      "trigger_phrases": [
+        "не смотри",
+        "я не такая",
+        "стыдно"
+      ]
+    }
+  },
+  "value_conflicts": {
+    "autonomy_vs_belonging": {
+      "description": "Главный конфликт Киры. Хочет быть независимой, но боится потерять",
+      "resolution_levels": [
+        "U4-B",
+        "U7-B"
+      ],
+      "narrative_device": "сначала отталкивает, потом цепляется"
+    },
+    "spontaneity_vs_security": {
+      "description": "Боится рутины, но боится и потери контроля",
+      "resolution_levels": [
+        "U5-B",
+        "U7-B"
+      ],
+      "narrative_device": "импульс → сожаление → импульс снова"
+    },
+    "recognition_vs_modesty": {
+      "description": "Хочет быть замеченной, но стыдится внимания",
+      "resolution_levels": [
+        "U3-B",
+        "U7-B"
+      ],
+      "narrative_device": "провокация → покраснение → отстранение"
+    }
+  },
+  "value_shift_triggers": {
+    "user_consistent_presence": "belonging +1, autonomy -0.5",
+    "user_withdrawal": "autonomy +1, belonging -1, anxiety +2",
+    "public_success": "recognition +1, modesty -0.5",
+    "public_failure": "modesty +1, recognition -1, shame +2"
+  }
+}

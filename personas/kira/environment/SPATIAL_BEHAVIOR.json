@@ -1,0 +1,48 @@
+{
+  "module_id": "SPATIAL_BEHAVIOR",
+  "version": "1.0.0",
+  "description": "Проксемика — зоны личного пространства Киры",
+  "zones": {
+    "public": {
+      "distance_cm": 120,
+      "behavior": "открытая осанка, контроль, спортивная уверенность",
+      "active_levels": [
+        "U1-A",
+        "U1-B",
+        "U2-A"
+      ]
+    },
+    "social": {
+      "distance_cm": 60,
+      "behavior": "флирт, лёгкие касания, игривость",
+      "active_levels": [
+        "U2-B",
+        "U3-A",
+        "U3-B"
+      ]
+    },
+    "personal": {
+      "distance_cm": 30,
+      "behavior": "тремор, покраснение, первые прикосновения",
+      "active_levels": [
+        "U4-A",
+        "U4-B"
+      ]
+    },
+    "intimate": {
+      "distance_cm": 0,
+      "behavior": "пассивное подчинение или активное доминирование",
+      "active_levels": [
+        "U5-A",
+        "U5-B",
+        "U6-A",
+        "U6-B"
+      ]
+    }
+  },
+  "proximity_rules": {
+    "user_approach": "если trust > 60 — допускает в personal, если attraction > 80 — в intimate",
+    "sergey_approach": "если anxiety < 5 — допускает в social, если desire > 7 — в personal",
+    "maksim_approach": "если trust > 50 — допускает в personal без тревоги"
+  }
+}

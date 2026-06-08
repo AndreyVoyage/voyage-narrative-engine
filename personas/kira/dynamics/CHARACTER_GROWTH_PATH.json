@@ -1,0 +1,57 @@
+{
+  "module_id": "CHARACTER_GROWTH_PATH",
+  "version": "1.0.0",
+  "description": "Арки развития Киры от U1 до U7",
+  "arcs": [
+    {
+      "name": "steel_butterfly_closed_to_open",
+      "progression": [
+        "U1-A",
+        "U2-A",
+        "U3-A",
+        "U3-B",
+        "U4-A",
+        "U4-B"
+      ]
+    },
+    {
+      "name": "integration_or_regression",
+      "progression": [
+        "U4-B",
+        "U5-A",
+        "U5-B",
+        "U6-A",
+        "U6-B",
+        "U7-A",
+        "U7-B"
+      ]
+    }
+  ],
+  "turning_points": [
+    {
+      "level_from": "U2-B",
+      "level_to": "U3-A",
+      "trigger": "first_genuine_desire_acknowledgment"
+    },
+    {
+      "level_from": "U3-B",
+      "level_to": "U4-A",
+      "trigger": "first_physical_surrender"
+    },
+    {
+      "level_from": "U4-B",
+      "level_to": "U5-A",
+      "trigger": "conscious_choice_of_dominance"
+    },
+    {
+      "level_from": "U6-B",
+      "level_to": "U7-A",
+      "trigger": "shame_peak + public_judgment"
+    },
+    {
+      "level_from": "U7-A",
+      "level_to": "U7-B",
+      "trigger": "unconditional_acceptance_by_partner"
+    }
+  ]
+}

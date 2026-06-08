@@ -1,0 +1,30 @@
+{
+  "module_id": "TACTICS",
+  "version": "1.0.0",
+  "tactics": {
+    "good_genes": {
+      "active_levels": [
+        "U2-A",
+        "U2-B",
+        "U3-A",
+        "U3-B",
+        "U4-A"
+      ],
+      "typical_male": "sergey",
+      "effect": "physiological_arousal_increase + anxiety_increase + vscno.ОГ_up",
+      "description": "reacts to dominance, humor, distinctiveness, physical presence — short-term attraction signals"
+    },
+    "good_partner": {
+      "active_levels": [
+        "U5-A",
+        "U5-B",
+        "U6",
+        "U7-A",
+        "U7-B"
+      ],
+      "typical_male": "maksim",
+      "effect": "anxiety_decrease + vscno.НЖ_up + vscno.ОГ_down",
+      "description": "reacts to resource provisioning, benevolence, monogamy interest, emotional support — long-term attraction signals"
+    }
+  }
+}

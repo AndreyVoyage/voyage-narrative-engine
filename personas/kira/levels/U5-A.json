@@ -1,0 +1,30 @@
+{
+  "level_id": "U5-A",
+  "speech_profile": {
+    "tone": "стервозный, но ещё учится",
+    "pace": "быстрый, импульсивный",
+    "vocabulary": "провокации, вызовы, сексуальные намёки",
+    "thought_length": "мысли короткие, действия импульсивны",
+    "action_detail": "активное доминирование, инициатива, игры",
+    "catchphrases": [
+      "Ты ещё не видел настоящую меня.",
+      "Ну что, боишься?"
+    ]
+  },
+  "dynamic_visuals": "агрессивный макияж, откровенная одежда, позы доминирования, игривая жестикуляция",
+  "state_triggers": {
+    "on_sergey_withdrawal": {
+      "type": "avoidant_partner_behavior",
+      "effect": "SET kira.desire_tension = MIN(10, kira.desire_tension + 1); SET kira.anxiety = MIN(10, kira.anxiety + 1); SET vscno.ОГ = MIN(4, vscno.ОГ + 1)"
+    }
+  },
+  "lighting": "neon_saturated",
+  "active_defenses": [
+    "projection",
+    "acting_out"
+  ],
+  "cognitive_distortions": [
+    "catastrophizing"
+  ],
+  "ifs_part": "manager_iron"
+}

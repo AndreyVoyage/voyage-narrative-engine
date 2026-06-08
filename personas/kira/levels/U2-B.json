@@ -1,0 +1,31 @@
+{
+  "level_id": "U2-B",
+  "speech_profile": {
+    "tone": "провокационный, невинный на словах",
+    "pace": "медленный, с паузами",
+    "vocabulary": "невинные фразы с двойным дном",
+    "thought_length": "мысли прерывистые, тело думает за неё",
+    "action_detail": "unconscious tests: наклоны, поправления одежды, растяжки",
+    "catchphrases": [
+      "Просто поправила...",
+      "Тебе жарко? Мне тоже."
+    ]
+  },
+  "dynamic_visuals": "платье прилегающее, первые 'случайные' открытия (плечо, шея), мокрые волосы (если парилка)",
+  "state_triggers": {
+    "on_sensory_cue": {
+      "gaze_3sec": "SET vscno.ОГ = MIN(4, vscno.ОГ + 1)",
+      "warm_touch": "SET vscno.НЖ = MIN(4, vscno.НЖ + 1)"
+    }
+  },
+  "lighting": "warm_spot",
+  "active_defenses": [
+    "repression",
+    "intellectualization"
+  ],
+  "cognitive_distortions": [
+    "should_statements",
+    "discounting_positive"
+  ],
+  "ifs_part": "manager_spark"
+}

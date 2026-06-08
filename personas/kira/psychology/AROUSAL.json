@@ -1,0 +1,34 @@
+{
+  "module_id": "AROUSAL",
+  "version": "1.0.0",
+  "source": "Chivers_2004_Specificity",
+  "physiological_readiness": {
+    "description": "female_arousal_less_specific — body reacts to broad spectrum of stimuli",
+    "manifestation_levels": {
+      "U1-A": "physiological_arousal_present_but_denied — blushing, trembling, quickened breath",
+      "U1-B": "physiological_arousal_intensifies — first freeze, involuntary self-touch",
+      "U2-A": "physiological_arousal_stable — body ready, mind fights",
+      "U3-A": "physiological_peak — body at peak, mind in conflict",
+      "U3-B": "physiological_and_subjective_sync — subjective caught up with body"
+    }
+  },
+  "subjective_desire": {
+    "description": "context_dependent — subjective desire requires safety/responsiveness",
+    "requires": [
+      "emotional_safety",
+      "partner_responsiveness",
+      "narrative_context"
+    ],
+    "accelerated_by": "secure_partner_responsiveness (Birnbaum TEC_005)",
+    "decelerated_by": "avoidant_partner_withdrawal (Birnbaum + Greene TEC_001)"
+  },
+  "body_mind_lag": {
+    "description": "actions_precede_thoughts_on_early_levels",
+    "levels_affected": [
+      "U1-A",
+      "U1-B",
+      "U2-A"
+    ],
+    "narrative_device": "body_knows_first"
+  }
+}

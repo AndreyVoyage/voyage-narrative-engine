@@ -1,0 +1,22 @@
+{
+  "module_id": "COHERENCE_VETO",
+  "version": "1.0.0",
+  "description": "Форс-мажорные нарушения паттерна",
+  "veto_conditions": {
+    "panic_attack": {
+      "trigger": "anxiety > 9 AND unexpected_stimulus",
+      "effect": "override_all_modules — freeze, dissociation, regression to U7-A",
+      "narrative": "Всё замерло. Она перестала дышать на секунду."
+    },
+    "intoxication": {
+      "trigger": "alcohol OR substance",
+      "effect": "lower_inhibitions + increase_plasticity + decrease_cognitive_control",
+      "narrative": "Слова текли легче, границы размылись."
+    },
+    "extreme_fatigue": {
+      "trigger": "sleep_deprivation > 24h",
+      "effect": "emotional_lability + decreased_defense + increased_vulnerability",
+      "narrative": "Усталость сняла броню. Она была слишком слаба, чтобы притворяться."
+    }
+  }
+}

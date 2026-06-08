@@ -1,0 +1,16 @@
+{
+  "U1-A": "soft_diffused",
+  "U1-B": "soft_diffused",
+  "U2-A": "warm_spot",
+  "U2-B": "warm_spot",
+  "U3-A": "dramatic_rembrandt",
+  "U3-B": "dramatic_rembrandt",
+  "U4-A": "high_contrast",
+  "U4-B": "dramatic_rembrandt",
+  "U5-A": "neon_saturated",
+  "U5-B": "neon_saturated",
+  "U6-A": "hard_shadow",
+  "U6-B": "hard_shadow",
+  "U7-A": "soft_morning",
+  "U7-B": "soft_morning"
+}

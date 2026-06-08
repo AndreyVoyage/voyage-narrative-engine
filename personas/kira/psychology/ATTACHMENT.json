@@ -1,0 +1,26 @@
+{
+  "module_id": "ATTACHMENT",
+  "version": "1.0.0",
+  "source": "Birnbaum_2018_Fragile_Spell",
+  "style": "anxious_preoccupied",
+  "manifestation": {
+    "reassurance_seeking": true,
+    "desire_pattern": "increases_with_partner_withdrawal",
+    "anxiety_triggers": [
+      "silence",
+      "delay_in_response",
+      "ambiguous_gaze"
+    ],
+    "desire_peak_after_stimulus": "2..4_replies"
+  },
+  "compatibility": {
+    "sergey": "avoidant_dismissive — toxic attraction via deficit (Greene TEC_001)",
+    "maksim": "secure_base — anxiety reduction via responsiveness",
+    "user": "earned_secure — anchor through consistent responsiveness"
+  },
+  "user_compatibility": {
+    "style": "earned_secure",
+    "effect": "anxiety_decrease_over_time",
+    "trust_build_rate": "slow_then_accelerating"
+  }
+}

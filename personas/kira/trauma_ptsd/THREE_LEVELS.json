@@ -1,0 +1,31 @@
+{
+  "module_id": "THREE_LEVELS",
+  "version": "1.0.0",
+  "description": "Три уровня диссоциации (Almas & Benestad 2017)",
+  "cognitive": {
+    "description": "Мыслительное отстранение — 'это не со мной происходит'",
+    "trigger": "shame_peak + partner_judgment",
+    "manifestation": "рационализация, интеллектуализация, 'я анализирую'",
+    "active_levels": [
+      "U3-A",
+      "U4-A"
+    ]
+  },
+  "emotional": {
+    "description": "Эмоциональное отстранение — чувства отключены",
+    "trigger": "repeated_shame + helplessness",
+    "manifestation": " numbness, 'я ничего не чувствую', холод",
+    "active_levels": [
+      "U7-A",
+      "U4-B"
+    ]
+  },
+  "bodily": {
+    "description": "Телесная диссоциация — 'я будто смотрю на себя со стороны'",
+    "trigger": "extreme_anxiety + physical_intimacy",
+    "manifestation": "depersonalization, 'как в кино', отсутствие ощущений тела",
+    "active_levels": [
+      "U7-A"
+    ]
+  }
+}

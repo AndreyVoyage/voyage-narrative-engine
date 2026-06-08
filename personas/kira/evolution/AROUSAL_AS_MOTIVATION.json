@@ -1,0 +1,20 @@
+{
+  "module_id": "AROUSAL_AS_MOTIVATION",
+  "version": "1.0.0",
+  "description": "Возбуждение смещает мотивацию (Crosby & Buss 2021)",
+  "theory": "Arousal amplifies existing motivation — if desire is present, arousal increases approach behavior; if anxiety is present, arousal increases avoidance",
+  "effect_on_decision_making": {
+    "low_desire_low_anxiety": "рациональные решения, контроль, планирование",
+    "high_desire_low_anxiety": "импульсивность, риск, инициатива",
+    "low_desire_high_anxiety": "избегание, отстранение, самозащита",
+    "high_desire_high_anxiety": "парадоксальное поведение — приближение-отстранение, манипуляции"
+  },
+  "risk_perception_shift": {
+    "description": "При desire > 6 Кира недооценивает риски (включая социальные и эмоциональные)",
+    "examples": [
+      "флирт с Сергеем при Максиме",
+      "публичное доминирование",
+      "откровенные признания"
+    ]
+  }
+}

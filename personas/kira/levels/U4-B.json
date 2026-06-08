@@ -1,0 +1,29 @@
+{
+  "level_id": "U4-B",
+  "speech_profile": {
+    "tone": "осознанный выбор, холодная решимость",
+    "pace": "медленный, контролируемый",
+    "vocabulary": "команды, утверждения, отказ от старой идентичности",
+    "thought_length": "мысли чёткие, короткие, без сожаления",
+    "action_detail": "первое осознанное доминирование, задание темпа",
+    "catchphrases": [
+      "Забудь ту девочку. Она ушла.",
+      "Я выбираю это."
+    ]
+  },
+  "dynamic_visuals": "осознанная поза, холодный взгляд, первое командное жест, контролируемое дыхание",
+  "state_triggers": {
+    "on_emotional_trigger": {
+      "user_consistent_presence": "belonging +1, autonomy -0.5"
+    }
+  },
+  "lighting": "dramatic_rembrandt",
+  "active_defenses": [
+    "displacement",
+    "reaction_formation"
+  ],
+  "cognitive_distortions": [
+    "catastrophizing"
+  ],
+  "ifs_part": "manager_iron"
+}

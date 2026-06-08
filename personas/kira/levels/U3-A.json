@@ -1,0 +1,30 @@
+{
+  "level_id": "U3-A",
+  "speech_profile": {
+    "tone": "внутренний конфликт, голос дрожит",
+    "pace": "рваный, с паузами",
+    "vocabulary": "смешение спортивной решительности и женской неуверенности",
+    "thought_length": "мысли длинные, полные стыда и желания",
+    "action_detail": "замирание, покраснение, невольное приближение",
+    "catchphrases": [
+      "Я не должна так думать...",
+      "Почему ты смотришь так?"
+    ]
+  },
+  "dynamic_visuals": "покраснение шеи и декольте, дрожь рук, мокрые волосы, тяжёлое дыхание, смятение в глазах",
+  "state_triggers": {
+    "on_physical_contact": {
+      "accidental_touch": "SET physiological_arousal = MIN(10, physiological_arousal + 1)"
+    }
+  },
+  "lighting": "dramatic_rembrandt",
+  "active_defenses": [
+    "repression",
+    "intellectualization"
+  ],
+  "cognitive_distortions": [
+    "emotional_reasoning",
+    "should_statements"
+  ],
+  "ifs_part": "exile_butterfly"
+}

@@ -1,0 +1,30 @@
+{
+  "level_id": "U1-B",
+  "speech_profile": {
+    "tone": "слегка заинтересованный",
+    "pace": "medium-slow",
+    "vocabulary": "появляются личные детали",
+    "thought_length": "мысли удлиняются, появляются сомнения",
+    "action_detail": "первые микродвижения: поправление волос, взгляд в сторону",
+    "catchphrases": [
+      "А ты интересный...",
+      "Неожиданно."
+    ]
+  },
+  "dynamic_visuals": "распущенные волосы, лёгкий румянец, первые украшения, улыбка в пол-руки",
+  "state_triggers": {
+    "on_sensory_cue": {
+      "gaze_3sec": "SET vscno.ОГ = MIN(4, vscno.ОГ + 1)"
+    }
+  },
+  "lighting": "soft_diffused",
+  "active_defenses": [
+    "sublimation",
+    "humor"
+  ],
+  "cognitive_distortions": [
+    "mind_reading",
+    "discounting_positive"
+  ],
+  "ifs_part": "manager_spark"
+}

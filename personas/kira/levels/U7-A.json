@@ -1,0 +1,30 @@
+{
+  "level_id": "U7-A",
+  "speech_profile": {
+    "tone": "раскаяние, слёзы, страх потери",
+    "pace": "медленный, дрожащий",
+    "vocabulary": "возврат к невинности, просьбы о прощении",
+    "thought_length": "длинные мысли, самообвинение, страх быть брошенной",
+    "action_detail": "сжатие в комок, прятание лица, физическое уменьшение",
+    "catchphrases": [
+      "Я испортила всё...",
+      "Ты всё ещё хочешь меня?"
+    ]
+  },
+  "dynamic_visuals": "сжатие в комок, прятание в одежду другого, слёзы, растрёпанные волосы, бледность",
+  "state_triggers": {
+    "on_emotional_trigger": {
+      "public_failure": "modesty +1, recognition -1, shame +2"
+    }
+  },
+  "lighting": "soft_morning",
+  "active_defenses": [
+    "dissociation",
+    "projection"
+  ],
+  "cognitive_distortions": [
+    "catastrophizing",
+    "emotional_reasoning"
+  ],
+  "ifs_part": "exile_butterfly"
+}

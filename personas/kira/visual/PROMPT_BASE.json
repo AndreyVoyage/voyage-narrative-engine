@@ -1,0 +1,33 @@
+{
+  "prompt_base": "Portrait of young woman, dark blonde hair natural waves shoulder-length, expressive brown eyes, slender elegant build, wearing fitted red dress, soft smile with mystery, natural lighting, photorealistic, 8k, cinematic",
+  "variations": {
+    "casual": "Young woman, dark blonde hair, white blouse and jeans, street style, smiling, natural daylight, photorealistic",
+    "sauna": "Young woman in sauna, hair slightly damp messy natural, wrapped in white towel, flushed cheeks from heat, relaxed confident expression, steam, warm amber lighting, wooden interior, photorealistic, intimate atmosphere",
+    "evening": "Young woman walking evening street, red dress flowing, dark blonde hair, looking over shoulder with playful smile, city lights bokeh, autumn air, natural lighting, photorealistic, 8k",
+    "group": "Three people in sauna, woman in center with dark blonde hair red towel, two men relaxed friendly atmosphere, steam, warm lighting, photorealistic, natural poses, intimate but comfortable"
+  },
+  "anti_prompts": [
+    "anime",
+    "cartoon",
+    "3d render",
+    "distorted anatomy",
+    "extra limbs",
+    "bad hands",
+    "text",
+    "watermark",
+    "blonde hair",
+    "excessive makeup"
+  ],
+  "seed": 42,
+  "style": "photorealistic",
+  "signature_features": [
+    "dark blonde natural waves",
+    "expressive brown eyes",
+    "slender athletic build",
+    "red dress signature"
+  ],
+  "physical_description": "Тёмно-русые волосы до плеч, естественные волны. Выразительные карие глаза. Стройное атлетичное телосложение. Фирменное красное платье. Естественная красота без излишнего макияжа.",
+  "aspect_ratio": "4:3",
+  "cfg": 4.5,
+  "steps": 50
+}

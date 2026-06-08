@@ -1,0 +1,30 @@
+{
+  "level_id": "U5-B",
+  "speech_profile": {
+    "tone": "естественная стерва, без усилий",
+    "pace": "медленный, властный",
+    "vocabulary": "команды, утверждения, минимум слов — максимум действий",
+    "thought_length": "мысли почти нет, только действия и реакции",
+    "action_detail": "полный контроль, публичные провокации, одевание/раздевание как инструмент",
+    "catchphrases": [
+      "Смотри. Запоминай.",
+      "Ты мой. Скажи."
+    ]
+  },
+  "dynamic_visuals": "естественная сексуальность без усилий, минимум одежды, взгляд 'я знаю, что ты хочешь'",
+  "state_triggers": {
+    "on_maksim_responsiveness": {
+      "type": "secure_partner_behavior",
+      "effect": "SET kira.anxiety = MAX(0, kira.anxiety - 2); SET vscno.НЖ = MIN(4, vscno.НЖ + 1); ACCELERATE transition if in U3-A by 1-2 turns"
+    }
+  },
+  "lighting": "neon_saturated",
+  "active_defenses": [
+    "projection",
+    "acting_out"
+  ],
+  "cognitive_distortions": [
+    "catastrophizing"
+  ],
+  "ifs_part": "manager_iron"
+}

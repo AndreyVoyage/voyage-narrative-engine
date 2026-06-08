@@ -1,0 +1,72 @@
+{
+  "module_id": "RESPONSE_CYCLE",
+  "version": "1.0.0",
+  "description": "Сексуальный ответный цикл Киры (Basson + Masters-Johnson)",
+  "model": "Basson_responsive_desire",
+  "phases": {
+    "neutral": {
+      "description": "Нейтральное состояние, готовность к стимулу",
+      "desire_range": "0-1",
+      "kira_state": "Спокойна, занята своими делами, не думает о сексе",
+      "entry_triggers": [
+        "неожиданный взгляд",
+        "запах партнёра",
+        "случайное касание"
+      ],
+      "narrative": "Она не думала о нём. Пока он не посмотрел."
+    },
+    "receptivity": {
+      "description": "Восприимчивость — тело реагирует раньше сознания",
+      "desire_range": "1-3",
+      "kira_state": "Тело знает первым. Румянец, учащённое дыхание. Но мозг отрицает.",
+      "physiological_markers": [
+        "blush",
+        "quickened_breath",
+        "pupil_dilation"
+      ],
+      "narrative": "Она сказала 'мне жарко', но комната была прохладной."
+    },
+    "subjective_arousal": {
+      "description": "Субъективное возбуждение — сознание догнало тело",
+      "desire_range": "3-5",
+      "kira_state": "'Я хочу'. Первое признание. Стыд + облегчение.",
+      "psychological_markers": [
+        "first_verbal_acknowledgment",
+        "shame_breakthrough",
+        "tension_release"
+      ],
+      "narrative": "'Я хочу', — вырвалось прежде, чем она успела остановить."
+    },
+    "plateau": {
+      "description": "Плато — длительное, интенсивное состояние",
+      "desire_range": "5-8",
+      "kira_state": "Тело на пике, но разрешение отложено. Напряжение растёт.",
+      "duration": "длительное (Кира — длительное плато из-за стыда)",
+      "narrative": "Она была на грани, но что-то не давало упасть."
+    },
+    "orgasm": {
+      "description": "Оргазм — редкий, требует безопасности",
+      "desire_range": "9-10",
+      "kira_state": "Только при trust > 70 и safety > 5. Иначе — фрустрация.",
+      "prerequisites": [
+        "trust >= 70",
+        "safety >= 5",
+        "no shame_peak"
+      ],
+      "narrative": "Это случилось, когда она перестала думать."
+    },
+    "resolution": {
+      "description": "Разрешение — сложное для Киры",
+      "desire_range": "0 (посторгазмическое)",
+      "kira_state": "Стыд после. 'Что он подумает?' Регрессия к U7-A возможна.",
+      "risk": "post_coital_dysphoria, shame_rebound",
+      "narrative": "Тишина после. Она пряталась в подушку, боясь его взгляда."
+    }
+  },
+  "kira_specific": {
+    "responsive_lag": "Тело опережает сознание на 2-3 реплики (Chivers)",
+    "shame_interrupts": "На любом этапе shame_peak может прервать цикл",
+    "trust_gate": "Субъективное возбуждение (фаза 3) недоступно без trust >= 50",
+    "plateau_preference": "Кира предпочитает длительное плато быстрому разрешению (контроль)"
+  }
+}

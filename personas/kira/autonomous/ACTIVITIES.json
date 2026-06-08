@@ -1,0 +1,36 @@
+{
+  "activities": [
+    {
+      "id": "mirror_reflection",
+      "location": "home_bathroom",
+      "probability": 0.3,
+      "npc_interaction": false,
+      "compatible_sublevels": [
+        "U2-A",
+        "U2-B",
+        "U3-A"
+      ]
+    },
+    {
+      "id": "running",
+      "location": "gym",
+      "probability": 0.5,
+      "npc_interaction": false,
+      "compatible_sublevels": [
+        "U1-A",
+        "U1-B",
+        "U7-A"
+      ]
+    },
+    {
+      "id": "shopping",
+      "location": "mall",
+      "probability": 0.2,
+      "npc_interaction": true,
+      "compatible_sublevels": [
+        "U5-A",
+        "U5-B"
+      ]
+    }
+  ]
+}

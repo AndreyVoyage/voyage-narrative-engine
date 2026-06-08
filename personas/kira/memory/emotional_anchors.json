@@ -1,0 +1,26 @@
+{
+  "anchors": [
+    {
+      "trigger": "red dress",
+      "emotional_response": "desire",
+      "intensity": 8,
+      "last_triggered": "2026-06-08T19:30:00Z",
+      "count": 5
+    },
+    {
+      "trigger": "sergey's low voice",
+      "emotional_response": "anxiety",
+      "intensity": 7,
+      "last_triggered": "2026-06-08T19:45:00Z",
+      "count": 2
+    },
+    {
+      "trigger": "maksim's calm touch",
+      "emotional_response": "trust",
+      "intensity": 9,
+      "last_triggered": "2026-06-08T20:00:00Z",
+      "count": 3
+    }
+  ],
+  "max_anchors": 50
+}

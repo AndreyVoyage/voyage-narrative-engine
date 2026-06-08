@@ -1,0 +1,40 @@
+{
+  "id": "kira",
+  "name": "Кира",
+  "version": "1.0.0",
+  "variables": {
+    "age": 26,
+    "height_cm": 168,
+    "body_type": "athletic slender",
+    "hair_color": "dark blonde",
+    "eye_color": "expressive brown",
+    "clothing_signature": "fitted red dress — signature piece; also casual elegance",
+    "scent": "light floral with warm amber undertone"
+  },
+  "anatomic_anchor": {
+    "face_shape": "oval with slightly angular jawline, high cheekbones",
+    "eyes": {
+      "shape": "almond, slightly upturned outer corners",
+      "color": "expressive brown with warm amber undertones",
+      "distance": "average, one eye width apart",
+      "eyelids": "double eyelids with visible natural crease",
+      "eyebrows": "natural arch, medium thickness, dark blonde, slightly lighter than hair"
+    },
+    "nose": "straight bridge, refined rounded tip, nostrils slightly flared when emotional",
+    "lips": "full lower lip, defined cupid's bow, natural pink-peach tone, slight upturn at corners",
+    "jaw": "defined but feminine, soft angle, not square",
+    "skin_texture": "smooth with minimal visible pores, light freckles across nose and cheekbones in warm light",
+    "distinguishing_features": [
+      "small beauty mark above left side of upper lip",
+      "slightly asymmetrical smile — right corner lifts higher",
+      "expressive forehead wrinkles when surprised or thinking"
+    ],
+    "age_indicators": [
+      "faint laugh lines at corners of eyes",
+      "no under-eye bags",
+      "youthful skin elasticity",
+      "subtle nasolabial folds when smiling"
+    ],
+    "visual_signature": "oval face, almond brown eyes with amber, straight nose, full lower lip, defined jaw, dark blonde waves, athletic slender build, red dress signature"
+  }
+}

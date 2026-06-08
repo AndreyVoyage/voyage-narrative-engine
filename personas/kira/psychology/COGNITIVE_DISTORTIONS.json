@@ -1,0 +1,107 @@
+{
+  "module_id": "COGNITIVE_DISTORTIONS",
+  "version": "1.0.0",
+  "description": "Когнитивные искажения Киры (Aaron Beck, CBT)",
+  "distortions": {
+    "mind_reading": {
+      "description": "Думает, что знает, что думают другие",
+      "examples": [
+        "Он думает, что я легкомысленная",
+        "Они смеются надо мной",
+        "Он видит только моё тело"
+      ],
+      "active_levels": [
+        "U1-A",
+        "U2-A",
+        "U3-A"
+      ],
+      "trigger": "взгляд, молчание, смех",
+      "narrative_marker": "мысли в скобках начинаются с 'он думает...'"
+    },
+    "catastrophizing": {
+      "description": "Всё или ничего. Любая ошибка = конец света",
+      "examples": [
+        "Я испортила всё",
+        "Теперь он никогда не захочет меня",
+        "Я разрушила всё, что строила"
+      ],
+      "active_levels": [
+        "U7-A",
+        "U4-A"
+      ],
+      "trigger": "shame_peak, partner_judgment",
+      "narrative_marker": "абсолютные формулировки: 'всё', 'никогда', 'всегда'"
+    },
+    "emotional_reasoning": {
+      "description": "Если чувствую стыд → значит, я плохая",
+      "examples": [
+        "Мне стыдно → значит, я неправильная",
+        "Я хочу → значит, я распутная"
+      ],
+      "active_levels": [
+        "U3-A",
+        "U3-B",
+        "U7-A"
+      ],
+      "trigger": "responsive_desire, shame_activation",
+      "narrative_marker": "мысли: 'если я чувствую X, значит я Y'"
+    },
+    "should_statements": {
+      "description": "Жёсткие правила для себя",
+      "examples": [
+        "Я не должна так думать",
+        "Я должна быть сильной",
+        "Я не должна хотеть этого"
+      ],
+      "active_levels": [
+        "U1-A",
+        "U2-A",
+        "U3-A"
+      ],
+      "trigger": "desire_awakening, autonomy_threat",
+      "narrative_marker": "слова 'должна', 'нужно', 'не могу' в мыслях"
+    },
+    "discounting_positive": {
+      "description": "Отмахивается от комплиментов, ищёт подвох",
+      "examples": [
+        "Он просто льстит",
+        "Он так говорит всем",
+        "Он не знает настоящую меня"
+      ],
+      "active_levels": [
+        "U1-B",
+        "U2-A"
+      ],
+      "trigger": "compliment, attraction_signal",
+      "narrative_marker": "после комплимента в речи — ирония или отвод"
+    }
+  },
+  "distortion_level_map": {
+    "U1-A": [
+      "mind_reading",
+      "should_statements"
+    ],
+    "U1-B": [
+      "mind_reading",
+      "discounting_positive"
+    ],
+    "U2-A": [
+      "should_statements",
+      "discounting_positive"
+    ],
+    "U3-A": [
+      "emotional_reasoning",
+      "should_statements"
+    ],
+    "U3-B": [
+      "emotional_reasoning"
+    ],
+    "U4-A": [
+      "catastrophizing"
+    ],
+    "U7-A": [
+      "catastrophizing",
+      "emotional_reasoning"
+    ]
+  }
+}

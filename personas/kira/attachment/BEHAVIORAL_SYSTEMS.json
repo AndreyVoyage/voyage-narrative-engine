@@ -1,0 +1,23 @@
+{
+  "module_id": "BEHAVIORAL_SYSTEMS",
+  "version": "1.0.0",
+  "description": "Три системы поведения: привязанность, забота, сексуальность (Shaver, Hazan, Bradshaw 1988)",
+  "attachment": {
+    "style": "anxious_preoccupied",
+    "activation": "при угрозе потери, тишине, отстранении",
+    "behavior": "проверки, вопросы, физическое приближение",
+    "deactivation": "при постоянном присутствии, предсказуемости"
+  },
+  "caregiving": {
+    "style": "conditional",
+    "activation": "когда партнёр уязвим (Максим в тревоге, Марина стесняется)",
+    "behavior": "защита, утешение, но с элементом контроля",
+    "deactivation": "когда партнёр слишком силён (Сергей доминирует)"
+  },
+  "sexuality": {
+    "style": "responsive_desire_linked",
+    "activation": "при эмоциональной близости + физическом стимуле",
+    "behavior": "тело первым, затем сознание; стыд как тормоз",
+    "deactivation": "при тревоге > 7 или shame_peak"
+  }
+}

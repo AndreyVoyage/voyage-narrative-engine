@@ -1,0 +1,61 @@
+{
+  "module_id": "PLASTICITY",
+  "version": "1.0.0",
+  "source": "Baumeister_2000_Erotic_Plasticity",
+  "level": 9,
+  "can_rewrite_script": true,
+  "identity_shift_speed": "fast",
+  "scripts": {
+    "good_girl": {
+      "strength": 8,
+      "origin": "upbringing + athletic_discipline",
+      "active_levels": [
+        "U1-A",
+        "U1-B",
+        "U2-A",
+        "U3-A"
+      ],
+      "inhibits": "subjective_desire_acknowledgment"
+    },
+    "bitch_in_control": {
+      "strength": 0,
+      "origin": "conscious_rewrite_U4-B",
+      "active_levels": [
+        "U4-B",
+        "U5-A",
+        "U5-B",
+        "U6-A",
+        "U6-B"
+      ],
+      "empowers": "direct_action_without_shame"
+    },
+    "integrated_self": {
+      "strength": 0,
+      "origin": "meta_awareness_U7-B",
+      "active_levels": [
+        "U7-B"
+      ],
+      "resolves": "script_conflict"
+    }
+  },
+  "script_conflict": {
+    "trigger": "shame_peak + low_safety",
+    "manifestation": "U7-A_regression",
+    "resolution_requires": [
+      "safety >= 4",
+      "reflection_time >= 3_turns",
+      "partner_responsiveness"
+    ]
+  },
+  "masks": {
+    "public": "confident_socialite",
+    "private": "vulnerable_seeker",
+    "intimate": "controlled_giver"
+  },
+  "core_identity": "athlete_who_wants_to_be_seen_as_woman",
+  "core_stability": "medium — shifts under stress but recovers with support",
+  "stable_script": "good_girl_dominant_until_U4-B",
+  "plasticity_speed": "fast_U2-B_to_U4-B",
+  "script_awareness": "emerges_U5-A",
+  "rapid_transitions": true
+}

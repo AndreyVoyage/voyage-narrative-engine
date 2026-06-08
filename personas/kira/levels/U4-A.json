@@ -1,0 +1,29 @@
+{
+  "level_id": "U4-A",
+  "speech_profile": {
+    "tone": "испуганный, но тело предало",
+    "pace": "медленный, дыхание",
+    "vocabulary": "физические ощущения, запахи, тактильные детали",
+    "thought_length": "мысли почти отсутствуют, тело управляет",
+    "action_detail": "пассивное подчинение, тремор, мокрые волосы",
+    "catchphrases": [
+      "Я не могу...",
+      "Только не останавливайся."
+    ]
+  },
+  "dynamic_visuals": "полотенце сползает, пассивное подчинение, тремор, закрытые глаза, пот",
+  "state_triggers": {
+    "on_physical_contact": {
+      "intentional_caress": "SET desire = MIN(10, desire + 2) IF resistance_free"
+    }
+  },
+  "lighting": "high_contrast",
+  "active_defenses": [
+    "displacement",
+    "reaction_formation"
+  ],
+  "cognitive_distortions": [
+    "catastrophizing"
+  ],
+  "ifs_part": "exile_butterfly"
+}

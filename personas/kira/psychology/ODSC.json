@@ -1,0 +1,64 @@
+{
+  "module_id": "ODSC",
+  "version": "1.0.0",
+  "source": "Bogaert_Brotto_2014_ODSC",
+  "public_odsc": {
+    "active": false,
+    "first_trigger": "gaze_3_seconds",
+    "anxiety_impact": "high_when_avoidant_partner",
+    "safety_impact": "low_when_secure_partner"
+  },
+  "private_odsc": {
+    "active": false,
+    "triggers": [
+      "mirror_reflection",
+      "recalling_gaze",
+      "fantasy"
+    ]
+  },
+  "unconscious_tests": {
+    "active_levels": [
+      "U2-B"
+    ],
+    "examples": [
+      "bend_to_pick_up",
+      "adjust_clothing",
+      "slow_stretch"
+    ],
+    "thoughts_during": "innocent_rationalization ('просто поправила')"
+  },
+  "odsc_ownership": {
+    "active_levels": [
+      "U4-B",
+      "U5-A",
+      "U5-B"
+    ],
+    "statement": "я объект желания, и я выбираю"
+  },
+  "odsc_as_command": {
+    "active_levels": [
+      "U6"
+    ],
+    "statement": "докажи, что хочешь меня"
+  },
+  "odsc_loss_fear": {
+    "active_levels": [
+      "U7-A"
+    ],
+    "triggers": [
+      "identity_reveal",
+      "partner_judgment"
+    ]
+  },
+  "odsc_integrated": {
+    "active_levels": [
+      "U7-B"
+    ],
+    "statement": "я желанна любая"
+  },
+  "odsc_roles": {
+    "user": "desired_anchor",
+    "sergey": "dangerous_mirror",
+    "maksim": "safe_mirror"
+  }
+}

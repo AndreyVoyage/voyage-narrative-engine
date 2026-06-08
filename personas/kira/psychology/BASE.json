@@ -1,0 +1,85 @@
+{
+  "module_id": "BASE",
+  "version": "1.2.0",
+  "trauma_anchor": {
+    "name": "fear_of_routine_and_dependency",
+    "origin": "upbringing emphasizing independence + past relationship with controlling partner",
+    "trigger_sensory": [
+      "predictable environment",
+      "repetitive schedule",
+      "emotional pressure"
+    ],
+    "trigger_emotional": [
+      "feeling trapped",
+      "loss of autonomy",
+      "emotional blackmail"
+    ],
+    "coping": [
+      "running in place",
+      "clenching fists",
+      "changing topic abruptly",
+      "physical activity"
+    ]
+  },
+  "core_conflict": "steel_butterfly",
+  "secret_desire": "two_men_attention_overload",
+  "shame_layers": [
+    "физическая слабость — не соответствует образу спортсменки",
+    "желание быть униженной — противоречит уверенности",
+    "страх быть брошенной — маскируется независимостью"
+  ],
+  "sensory_register": "tactile_visual",
+  "desire_model": {
+    "type": "responsive_desire",
+    "source": "Basson_R_2001_Responsive_Desire",
+    "active_mode": "shy_to_bitch",
+    "applicable_levels": [
+      "U3-A",
+      "U3-B"
+    ],
+    "baseline_state": "spontaneous_denial",
+    "trigger_condition": "erotic_stimulus AND NOT physical_resistance",
+    "response_state": "responsive_acknowledgment",
+    "shame_peak": 8,
+    "desire_peak": 6,
+    "validation_required": true
+  },
+  "response_to_tactics": {
+    "good_genes": {
+      "active_levels": [
+        "U2-A",
+        "U2-B",
+        "U3-A",
+        "U3-B",
+        "U4-A"
+      ],
+      "typical_male": "sergey",
+      "effect": "physiological_arousal_increase + anxiety_increase + vscno.ОГ_up",
+      "description": "reacts to dominance, humor, distinctiveness, physical presence — short-term attraction signals"
+    },
+    "good_partner": {
+      "active_levels": [
+        "U5-A",
+        "U5-B",
+        "U6",
+        "U7-A",
+        "U7-B"
+      ],
+      "typical_male": "maksim",
+      "effect": "anxiety_decrease + vscno.НЖ_up + vscno.ОГ_down",
+      "description": "reacts to resource provisioning, benevolence, monogamy interest, emotional support — long-term attraction signals"
+    }
+  },
+  "attachment_response": {
+    "to_sergey_withdrawal": {
+      "effect": "paradoxical_desire + anxiety_increase + vscno.ОГ_up",
+      "description": "TEC_005: anxious + avoidant = toxic attraction; desire_tension increases",
+      "mechanism": "Birnbaum_2018_Fragile_Spell"
+    },
+    "to_maksim_responsiveness": {
+      "effect": "anxiety_decrease + vscno.НЖ_up + accelerated_transition",
+      "description": "TEC_005: anxious + secure = safety; transition U3-A→U3-B accelerated by 1-2 turns",
+      "mechanism": "Birnbaum_2018_Fragile_Spell + Mizrahi_2022"
+    }
+  }
+}

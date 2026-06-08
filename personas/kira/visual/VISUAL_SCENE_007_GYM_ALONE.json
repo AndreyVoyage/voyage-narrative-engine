@@ -1,0 +1,40 @@
+{
+  "id": "VS_007",
+  "name": "Собери меня — Кира одна на красном мате",
+  "kira_level": "U5",
+  "characters": [
+    "K"
+  ],
+  "reference_persona": "KIRA_MODULE.json",
+  "emotional_state": "destruction_and_rebirth",
+  "flags_set": [
+    "gym_aftercare_alone",
+    "kira_crying_on_mat",
+    "red_mat_symbol"
+  ],
+  "emotional_anchors": [
+    "собери меня",
+    "я развалилась на части"
+  ],
+  "symbol": "S007:U4→U5:K:gym:night:alone_aftercare",
+  "visual_parameters": {
+    "subject": "1girl, athletic 24yo woman, blonde curly hair, messy wet hair, crying, tears on cheeks, wet eyelashes, closed eyes or half-open, vulnerable expression",
+    "pose": "sitting on red leather mat, hugging knees, head down, body curled in ball, barefoot, arms wrapped around legs, forehead on knees or chin on knees",
+    "clothing": "black crop top displaced, slid up exposing lower ribs and stomach, black shorts displaced, bunched up, wet fabric clinging to skin, visible sweat on skin",
+    "environment": "empty gym, night, completely dark background, fluorescent lights from above, red mat center frame, mirror wall in background reflecting her silhouette, faint gym equipment shapes",
+    "lighting": "dramatic top lighting, cold blue white fluorescent, single warm amber accent from distant emergency lamp, Rembrandt lighting, chiaroscuro, face partially in shadow, body partially illuminated",
+    "mood": "psychological drama, destruction, rebirth, aftercare, vulnerability, strength in brokenness, post-breakdown, solitude, heavy silence",
+    "style": "photorealistic, cinematic, film grain, 8k, Black Swan aesthetic, David Dubnitskiy style, Whiplash atmosphere",
+    "references": [
+      "Black Swan",
+      "Requiem for a Dream",
+      "David Dubnitskiy",
+      "Whiplash",
+      "artistic nude photography"
+    ]
+  },
+  "qwen_prompt": "masterpiece, best quality, photorealistic, 8k, film grain, 1girl, athletic 24yo woman, blonde curly messy wet hair, crying, tears on cheeks, wet eyelashes, eyes closed, vulnerable expression, sitting on red leather mat, hugging knees, body curled in ball, barefoot, arms wrapped around legs, chin on knees, black crop top displaced exposing lower ribs, black shorts displaced bunched up, wet fabric clinging to skin, visible sweat, empty gym, night, dark background, fluorescent top lighting, cold blue white, warm amber accent from distant lamp, dramatic shadows, Rembrandt lighting, chiaroscuro, face partially in shadow, body partially illuminated, red mat center frame, mirror wall reflection, faint gym equipment, cinematic composition, medium shot, shallow depth of field, 85mm lens, Black Swan aesthetic, David Dubnitskiy style, Whiplash atmosphere, psychological drama, destruction, rebirth, vulnerability, strength in brokenness --ar 16:9",
+  "negative_prompt": "score_6, score_5, score_4, 3d, cartoon, anime, deformed, bad anatomy, extra limbs, blurry, low quality, watermark, text, signature, mutated hands, poorly drawn face, missing fingers, extra fingers, cheerful, happy, bright lighting, crowded, daytime",
+  "content_rating": "R",
+  "safety_notes": "U5 aftercare. Emotional vulnerability, crying, but no explicit nudity. Focus on psychological state, not sexual content. Red mat as symbol of passion/pain. Displaced clothing shows ribs and stomach but not intimate areas. Artistic, not erotic."
+}
