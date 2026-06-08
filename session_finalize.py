@@ -306,9 +306,10 @@ def parse_log(log_path: Path) -> List[Dict]:
 
 def extract_mnemonics(text: str) -> Dict:
     mnemos = {}
-    m = re.search(r"[УU](\d)-[АAB]", text, re.IGNORECASE)
+    m = re.search(r"[УU](\d)-([АAB])", text, re.IGNORECASE)
     if m:
-        mnemos["level"] = f"U{m.group(1)}-A" if m.group(2) in "АA" else f"U{m.group(1)}-B"
+        letter = "A" if m.group(2).upper() in ("A", "А") else "B"
+        mnemos["level"] = f"U{m.group(1)}-{letter}"
     m = re.search(r"S(\d)", text, re.IGNORECASE)
     if m:
         mnemos["level_sergey"] = f"S{m.group(1)}"
@@ -745,7 +746,12 @@ class NarrativeEditor:
     def _user_to_prose(self, text: str) -> Optional[str]:
         text = text.strip()
         if text.startswith("Я ") or text.startswith("я "):
-            return "Он " + text[2:]
+            text = text[2:]
+        # Морфологическая заглушка: 1-е лицо → 3-е
+        text = text.replace("кладу", "кладёт").replace("беру", "берёт").replace("говорю", "говорит")
+        text = text.replace("смотрю", "смотрит").replace("иду", "идёт").replace("делаю", "делает")
+        text = text.replace("хочу", "хочет").replace("могу", "может").replace("знаю", "знает")
+        text = text.replace("люблю", "любит").replace("обнимаю", "обнимает").replace("целую", "целует")
         if text.startswith("Пусть ") or text.startswith("пусть "):
             return text[6:].capitalize() + "."
         if re.match(r"^(ВЛ|СТ|НЖ|ОГ)", text, re.IGNORECASE):
@@ -753,6 +759,8 @@ class NarrativeEditor:
         return f"Он {text}."
 
     def _fmdr_to_prose(self, actor: str, text: str) -> str:
+        # Удаляем мнемоники уровней перед обработкой
+        text = re.sub(r"[УU]\d-[АAB]\s*[:：]?\s*", "", text, flags=re.IGNORECASE)
         fmdr = extract_fmdr(text)
         name = actor.capitalize()
         parts = []
@@ -974,25 +982,30 @@ class VisualPipeline:
         return "85mm lens, f/1.8, close-up portrait, eye level, shallow depth of field"
 
     def _build_negative_prompt(self, actor: str, visual_data: Dict) -> str:
-        base = "anime, cartoon, 3d render, distorted anatomy, extra limbs, bad hands, text, watermark, oversaturated, plastic skin, blurry, low quality"
+        base_parts = ["anime", "cartoon", "3d render", "distorted anatomy", "extra limbs", "bad hands", "text", "watermark", "oversaturated", "plastic skin", "blurry", "low quality"]
         anti = visual_data.get("anti_prompts", [])
-        if anti:
-            base += ", " + ", ".join(anti)
+        for a in anti:
+            if a not in base_parts:
+                base_parts.append(a)
         extras = {
-            "kira": "blonde hair, excessive makeup, different face, old, wrinkles, different eye color",
-            "marina": "harsh makeup, aggressive pose, different eye color, muscular, old",
-            "sergey": "clean shaven, baby face, weak jaw, different hair color, anime",
-            "maksim": "bulky bodybuilder, aggressive pose, different hair color, old",
+            "kira": ["blonde hair", "excessive makeup", "different face", "old", "wrinkles", "different eye color"],
+            "marina": ["harsh makeup", "aggressive pose", "different eye color", "muscular", "old"],
+            "sergey": ["clean shaven", "baby face", "weak jaw", "different hair color", "anime"],
+            "maksim": ["bulky bodybuilder", "aggressive pose", "different hair color", "old"],
         }
         if actor in extras:
-            base += ", " + extras[actor]
-        return base
+            for e in extras[actor]:
+                if e not in base_parts:
+                    base_parts.append(e)
+        return ", ".join(base_parts)
 
 # =============================================================================
 # MAIN
 # =============================================================================
 
 def main():
+    global REPO_DIR, SESSIONS_DIR, PERSONAS_DIR, STATE_DIR, ASSETS_DIR
+
     parser = argparse.ArgumentParser(
         description="Voyage Session Finalizer v2.1 — один файл, весь pipeline",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -1015,7 +1028,6 @@ def main():
 
     set_verbose(args.verbose)
 
-    global REPO_DIR, SESSIONS_DIR, PERSONAS_DIR, STATE_DIR, ASSETS_DIR
     REPO_DIR = Path(args.repo)
     SESSIONS_DIR = REPO_DIR / "sessions"
     PERSONAS_DIR = REPO_DIR / "personas"
