@@ -1000,6 +1000,64 @@ class VisualPipeline:
         return ", ".join(base_parts)
 
 # =============================================================================
+# MODULE API — для импорта из integration_test.py и других скриптов
+# =============================================================================
+
+class SessionEngine:
+    """
+    Пошаговый движок сессии.
+    Хранит entries и позволяет добавлять turn за turn'ом,
+    пересчитывая состояние через StateManager.
+    """
+    def __init__(self, scenario_id: str = "unknown", personas: Optional[Dict] = None, initial_entries: Optional[List[Dict]] = None):
+        self.scenario_id = scenario_id
+        self.personas = personas or {}
+        self.entries = initial_entries or []
+        self.state_manager: Optional[StateManager] = None
+        self._turn_index: int = 0
+
+    def add_turn(self, actor: str, text: str) -> Dict:
+        """Добавить один turn и пересчитать состояние."""
+        self.entries.append({"actor": actor, "text": text})
+        self.state_manager = StateManager(self.entries, self.scenario_id, self.personas)
+        self.state = self.state_manager.process()
+        self._turn_index = len(self.entries)
+        return self.state_manager.to_dict()
+
+    def get_state(self) -> Dict:
+        if not self.state_manager:
+            return {}
+        return self.state_manager.to_dict()
+
+    def get_memory_update(self) -> List[Dict]:
+        if not self.state_manager:
+            return []
+        return self.state_manager.generate_memory_update()
+
+    def get_changes(self) -> Dict:
+        if not self.state_manager:
+            return {}
+        return dict(self.state_manager.changes)
+
+
+def process_step(state_dict: Optional[Dict], actor: str, text: str, scenario_id: str = "unknown", personas: Optional[Dict] = None) -> Dict:
+    """
+    Stateless обработка одного turn'а.
+    Если state_dict передан, его поля session_id и scenario_id используются
+    для continuity, но полный пересчёт происходит только по текущей entry.
+    Для накопления истории используйте SessionEngine.
+    """
+    entries = [{"actor": actor, "text": text}]
+    sm = StateManager(entries, scenario_id, personas or {})
+    state = sm.process()
+    result = sm.to_dict()
+    if state_dict:
+        result["session_id"] = state_dict.get("session_id", result["session_id"])
+        result["scenario_id"] = state_dict.get("scenario_id", result["scenario_id"])
+    return result
+
+
+# =============================================================================
 # MAIN
 # =============================================================================
 
