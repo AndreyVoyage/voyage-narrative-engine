@@ -49,6 +49,8 @@ VSCNO_DEFAULTS = {
     "sergey": {"ВЛ": 2, "СТ": 2, "НЖ": 2, "ОГ": 4},
     "marina": {"ВЛ": 1, "СТ": 2, "НЖ": 4, "ОГ": 3},
     "maksim": {"ВЛ": 3, "СТ": 2, "НЖ": 2, "ОГ": 3},
+    "andrey_senior": {"ВЛ": 3, "СТ": 2, "НЖ": 2, "ОГ": 3},
+    "andrey_junior": {"ВЛ": 2, "СТ": 3, "НЖ": 2, "ОГ": 2},
 }
 
 LEVEL_SIGNATURES = {
@@ -992,6 +994,8 @@ class VisualPipeline:
             "marina": ["harsh makeup", "aggressive pose", "different eye color", "muscular", "old"],
             "sergey": ["clean shaven", "baby face", "weak jaw", "different hair color", "anime"],
             "maksim": ["bulky bodybuilder", "aggressive pose", "different hair color", "old"],
+        "andrey_senior": ["bald head", "shaved head", "receding hairline", "sparse hair", "close-set eyes", "skinny build", "feminine features"],
+        "andrey_junior": ["anime", "cartoon", "3d render", "distorted anatomy", "extra limbs", "bad hands", "text", "watermark", "excessive muscles", "bodybuilder", "aged appearance", "facial hair", "beard", "tall height"],
         }
         if actor in extras:
             for e in extras[actor]:
