@@ -9,3 +9,4 @@ memory/SUMMARY_*.md
 .vscode/
 .idea/
 *.swp
+*.bak.*

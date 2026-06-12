@@ -53,6 +53,16 @@ voyage-narrative-engine/
 │   ├── KIRA_MODULE_v14.json           # Кира (ex-sprinter, steel butterfly, shy_to_bitch)
 │   ├── SERGEY_MODULE_v4.json          # Сергей (catalyst, avoidant, guardian)
 │   ├── MARINA_MODULE_v2.json          # Марина (shy_to_bloom, observer)
+│   ├── ANDREY_JUNIOR_MODULE_v2.1.json    # Андрей (shy_explosive_youth) v2.1.0
+│   ├── ANDREY_SENIOR_MODULE_v1.1.json    # Андрей (protector_playful_switch) v1.1.0
+│   ├── user_default.json    # Я v1.0.0
+│   ├── sergey_v3.json    # Сергей v3.0.0
+│   ├── sergey_v2.json    # Сергей v2.0.0
+│   ├── MAKSIM_001.json    # Максим (loyal_clumsy_giant) v1.0.0
+│   ├── MARINA_001.json    # Марина (sunshine_pixie) v1.1.0
+│   ├── kira_v12.json    # Кира v12.0.0
+│   ├── kira_v11.json    # Кира v11.0.0
+│   ├── FEMALE_USER_001.json    # Девушка v1.0.0
 │   └── MAKSIM_MODULE_v2.json          # Максим (secure, bridge)
 ├── scenarios/                          # Сценарии (JSON)
 │   ├── SCENARIO_SAUNA_QUARTET.json    # Сауна вчетвером (5 фаз)
