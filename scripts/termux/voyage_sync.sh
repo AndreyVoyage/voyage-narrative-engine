@@ -11,7 +11,7 @@ REPO_DIR="${HOME}/voyage-narrative-engine"
 ARCHIVE_DIR="/sdcard/Download/voyage-narrative-engine"
 PERSONAS_DIR="${REPO_DIR}/personas"
 SCRIPTS_DIR="${REPO_DIR}/scripts"
-INTEGRATOR="${REPO_DIR}/voyage_integrator.py"
+INTEGRATOR="${REPO_DIR}/scripts/termux/voyage_integrator.py"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'

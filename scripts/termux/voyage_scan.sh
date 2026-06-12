@@ -81,7 +81,7 @@ if [ $COPIED -eq 0 ] && [ $UPDATED -eq 0 ]; then
     echo ""
     echo -e "${CYAN}=== Запуск voyage_sync.sh (для git push) ===${NC}"
     cd "$REPO_DIR"
-    ./voyage_sync.sh
+    ./scripts/termux/voyage_sync.sh
     exit 0
 fi
 
@@ -106,4 +106,4 @@ echo ""
 echo -e "${CYAN}[SYNC] Запуск voyage_sync.sh (интеграция + git push)...${NC}"
 echo ""
 cd "$REPO_DIR"
-./voyage_sync.sh
+./scripts/termux/voyage_sync.sh
