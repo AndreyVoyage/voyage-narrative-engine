@@ -49,6 +49,7 @@ VSCNO_DEFAULTS = {
     "sergey": {"ВЛ": 2, "СТ": 2, "НЖ": 2, "ОГ": 4},
     "marina": {"ВЛ": 1, "СТ": 2, "НЖ": 4, "ОГ": 3},
     "maksim": {"ВЛ": 3, "СТ": 2, "НЖ": 2, "ОГ": 3},
+    "olga_module_v2": {"ВЛ": 3, "СТ": 1, "НЖ": 1, "ОГ": 3},
     "user_default": {"ВЛ": 2, "СТ": 2, "НЖ": 2, "ОГ": 2},
     "sergey_module_v4": {"ВЛ": 2, "СТ": 3, "НЖ": 2, "ОГ": 3},
     "sergey_v3": {"ВЛ": 2, "СТ": 2, "НЖ": 2, "ОГ": 2},
@@ -438,7 +439,7 @@ class StateManager:
             if actor == "user":
                 self.state.user["choices_made"].append(text[:100])
                 if mnemos.get("vscno"):
-                    for char in ["kira", "sergey", "marina", "maksim", "andrey_junior_module", "andrey_senior_module", "female_user_001", "kira_v11", "kira_v12", "kira_module_v14", "maksim_module_v2", "marina_001", "marina_module_v2", "maksim_001", "sergey_v2", "sergey_v3", "sergey_module_v4", "user_default"]:
+                    for char in ["kira", "sergey", "marina", "maksim", "andrey_junior_module", "andrey_senior_module", "female_user_001", "kira_v11", "kira_v12", "kira_module_v14", "maksim_module_v2", "marina_001", "marina_module_v2", "maksim_001", "sergey_v2", "sergey_v3", "sergey_module_v4", "user_default", "olga_module_v2"]:
                         if char not in self.state.characters:
                             self.state.characters[char] = self._init_char(char)
                         self.state.characters[char].vscno = mnemos["vscno"]
@@ -1008,6 +1009,7 @@ class VisualPipeline:
             "marina": ["harsh makeup", "aggressive pose", "different eye color", "muscular", "old"],
             "sergey": ["clean shaven", "baby face", "weak jaw", "different hair color", "anime"],
             "maksim": ["bulky bodybuilder", "aggressive pose", "different hair color", "old"],
+        "olga_module_v2": ["anime", "cartoon", "3d render", "distorted anatomy", "extra limbs", "bad hands", "text", "watermark", "excessive makeup", "wrinkled skin"],
         "sergey_module_v4": ["anime", "cartoon", "3d render", "distorted anatomy", "extra limbs", "bad hands", "text", "watermark"],
         "marina_module_v2": ["anime", "cartoon", "3d render", "distorted anatomy", "extra limbs", "bad hands", "text", "watermark", "excessive makeup"],
         "maksim_module_v2": ["anime", "cartoon", "3d render", "distorted anatomy", "extra limbs", "bad hands", "text", "watermark"],
@@ -1142,7 +1144,7 @@ def main():
     # 2. Load personas (до State Manager, чтобы baseline trust/attraction были корректны)
     log("\n[2/5] Loading personas...")
     personas = {}
-    for char in ["kira", "sergey", "marina", "maksim", "andrey_junior_module", "andrey_senior_module", "female_user_001", "kira_v11", "kira_v12", "kira_module_v14", "maksim_module_v2", "marina_001", "marina_module_v2", "maksim_001", "sergey_v2", "sergey_v3", "sergey_module_v4", "user_default"]:
+    for char in ["kira", "sergey", "marina", "maksim", "andrey_junior_module", "andrey_senior_module", "female_user_001", "kira_v11", "kira_v12", "kira_module_v14", "maksim_module_v2", "marina_001", "marina_module_v2", "maksim_001", "sergey_v2", "sergey_v3", "sergey_module_v4", "user_default", "olga_module_v2"]:
         persona = load_persona(char)
         if persona:
             personas[char] = persona
