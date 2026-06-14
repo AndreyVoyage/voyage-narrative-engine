@@ -57,6 +57,7 @@ voyage-narrative-engine/
 │   ├── ANDREY_SENIOR_MODULE_v1.1.json    # Андрей (protector_playful_switch) v1.1.0
 │   ├── OLGA_MODULE_v2.json    # Ольга v2.0.0
 │   ├── KIRA_MODULE_v15.json    # Кира v15.0.0
+│   ├── EGOR_MODULE_v1.json    # Егор v1.0.0
 │   ├── user_default.json    # Я v1.0.0
 │   ├── sergey_v3.json    # Сергей v3.0.0
 │   ├── sergey_v2.json    # Сергей v2.0.0

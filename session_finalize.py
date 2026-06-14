@@ -49,6 +49,7 @@ VSCNO_DEFAULTS = {
     "sergey": {"ВЛ": 2, "СТ": 2, "НЖ": 2, "ОГ": 4},
     "marina": {"ВЛ": 1, "СТ": 2, "НЖ": 4, "ОГ": 3},
     "maksim": {"ВЛ": 3, "СТ": 2, "НЖ": 2, "ОГ": 3},
+    "egor_module_v1": {"ВЛ": 2, "СТ": 2, "НЖ": 2, "ОГ": 2},
     "kira_module_v15": {"ВЛ": 2, "СТ": 2, "НЖ": 2, "ОГ": 2},
     "olga_module_v2": {"ВЛ": 3, "СТ": 1, "НЖ": 1, "ОГ": 3},
     "user_default": {"ВЛ": 2, "СТ": 2, "НЖ": 2, "ОГ": 2},
@@ -440,7 +441,7 @@ class StateManager:
             if actor == "user":
                 self.state.user["choices_made"].append(text[:100])
                 if mnemos.get("vscno"):
-                    for char in ["kira", "sergey", "marina", "maksim", "andrey_junior_module", "andrey_senior_module", "female_user_001", "kira_v11", "kira_v12", "kira_module_v14", "maksim_module_v2", "marina_001", "marina_module_v2", "maksim_001", "sergey_v2", "sergey_v3", "sergey_module_v4", "user_default", "olga_module_v2", "kira_module_v15"]:
+                    for char in ["kira", "sergey", "marina", "maksim", "andrey_junior_module", "andrey_senior_module", "female_user_001", "kira_v11", "kira_v12", "kira_module_v14", "maksim_module_v2", "marina_001", "marina_module_v2", "maksim_001", "sergey_v2", "sergey_v3", "sergey_module_v4", "user_default", "olga_module_v2", "kira_module_v15", "egor_module_v1"]:
                         if char not in self.state.characters:
                             self.state.characters[char] = self._init_char(char)
                         self.state.characters[char].vscno = mnemos["vscno"]
@@ -1146,7 +1147,7 @@ def main():
     # 2. Load personas (до State Manager, чтобы baseline trust/attraction были корректны)
     log("\n[2/5] Loading personas...")
     personas = {}
-    for char in ["kira", "sergey", "marina", "maksim", "andrey_junior_module", "andrey_senior_module", "female_user_001", "kira_v11", "kira_v12", "kira_module_v14", "maksim_module_v2", "marina_001", "marina_module_v2", "maksim_001", "sergey_v2", "sergey_v3", "sergey_module_v4", "user_default", "olga_module_v2", "kira_module_v15"]:
+    for char in ["kira", "sergey", "marina", "maksim", "andrey_junior_module", "andrey_senior_module", "female_user_001", "kira_v11", "kira_v12", "kira_module_v14", "maksim_module_v2", "marina_001", "marina_module_v2", "maksim_001", "sergey_v2", "sergey_v3", "sergey_module_v4", "user_default", "olga_module_v2", "kira_module_v15", "egor_module_v1"]:
         persona = load_persona(char)
         if persona:
             personas[char] = persona
