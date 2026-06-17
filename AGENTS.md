@@ -1,247 +1,177 @@
-# AGENTS.md — Voyage Narrative Engine v1.0
+# AGENTS.md — Voyage Narrative Engine
 
-> **Read this first.** This file is written for AI coding agents who have zero prior context about this project.
-
----
-
-## Project Overview
-
-The **Voyage Narrative Engine** (`voyage-narrative-engine`) is an **AI-native narrative framework** — a modular prompt-engineering system for running interactive character-driven roleplay sessions with large language models (LLMs). It is **not** a traditional software application. There is no compiler, no server, no runtime binary. The "product" is a meticulously structured set of Markdown docs and JSON configs that, when concatenated together, form a single `PROMPT.txt` file. That file is then copied by the user into an LLM chat (Claude, ChatGPT, etc.) and the LLM itself becomes the runtime.
-
-**Key design principle:** Maximum mechanics in minimum tokens. Everything repeatable is encoded as Russian mnemonics; everything variable is stored in JSON modules.
-
-**Token budget:**
-- Old system: ~15,000 tokens
-- New system: ~3,000 tokens (CORE 2,000 + PERSONA 500 + STATE 300 + SCENARIO 200)
-
-**Language:** All documentation, comments, and content are in **Russian**. If you modify narrative files, preserve Russian as the working language.
+> **Читать сначала.** Этот файл — единый источник правды для AI-агентов, работающих с репозиторием Voyage Narrative Engine (VNE).
+> Если инструкции здесь противоречат `README.md` или другим файлам — приоритет у этого файла.
 
 ---
 
-## What This Project Is NOT
+## Общее описание проекта
 
-- ❌ Not a Python / Node.js / Rust / Go codebase — there are no `pyproject.toml`, `package.json`, `Cargo.toml`, etc.
-- ❌ Not a web service — no HTTP API, no Docker, no Kubernetes.
-- ❌ Not a game engine with a renderer — visuals are generated via separate Qwen Studio prompts.
-- ❌ No automated test suite, no CI/CD pipelines.
+**Voyage Narrative Engine (VNE)** — спецификационный репозиторий процедурного генератора интерактивных романтических/эротических сценариев с глубокой психологической детализацией персонажей.
 
----
+**Главная задача:** персонажи создаются через каскадный pipeline ролей R1–R8, хранятся в модульной структуре `personas/[name]/`, но при сборке runtime-сценария собираются в единый монофайл (JSON или COMPACT Markdown), который вместе с `PRELOAD_VNE_v3.2.1.md` загружается в чат LLM для ведения игры.
 
-## Technology Stack
+**Тип репозитория:** спецификационный. Здесь почти нет исполняемого кода. Основные артефакты — Markdown-спецификации, JSON-схемы, промпты ролей и модули персонажей.
 
-| Layer | Technology | Purpose |
-|-------|-----------|---------|
-| Docs | Markdown (`.md`) | System rules, mechanics, guides, narrative scenarios |
-| Config | JSON (`.json`) | Character modules, session state, scenario matrix |
-| Build | Bash (`tools/assemble.sh`) | Concatenates modules into `PROMPT.txt` |
-| Runtime | External LLM (Claude, ChatGPT, etc.) | The user copy-pastes `PROMPT.txt` into a chat |
-| VCS | Git | Versioning of immutable core, mutable personas, and session state |
+**Рабочий язык:** русский для всего narrative-контента, механик, комментариев и внутриигрового текста. Идентификаторы кода и имён файлов — на английском или транслите.
 
 ---
 
-## Directory Structure
+## Что этот проект НЕ является
+
+- ❌ Не `framework-voyage-v2`, не "AI-Native Engineering Operating System", не generic Python framework.
+- ❌ Не веб-сервис — нет HTTP API, Docker, Kubernetes.
+- ❌ Не игра с рендерером — визуалы генерируются отдельными image-generation промптами.
+- ❌ Не полностью автоматизированный runtime — пользователь копирует собранный монофайл в чат с LLM.
+- ❌ Не Python/Node/Rust/Go приложение — нет `pyproject.toml`, `package.json`, `Cargo.toml`.
+
+---
+
+## Источники правды (по приоритету)
+
+1. `AGENTS.md` (этот файл)
+2. `docs/VOYAGE_MASTER_DOCUMENT_v3.md`
+3. `core/` — baseline-таблицы:
+   - `core/VSCNO_BASELINE_TABLE.md`
+   - `core/AD_AVAILABILITY_MATRIX.md`
+   - `core/INTERNAL_STATE_BASELINE.md`
+   - `core/MEMORY_BASELINE_TABLE.md`
+4. `docs/01_MODULAR_ARCHITECTURE_v2.2.md`
+5. `docs/02_MODULE_SPECS_v2.2.md`
+6. `docs/03_ASSEMBLY_GUIDE_v2.1.md`
+7. `docs/07_PERSONA_MODULAR_ARCHITECTURE.md`
+8. `schemas/persona_schema_v3_2_VOYAGE.json`
+
+**Не доверяй `README.md` как источнику архитектуры** — он может быть устаревшим.
+
+---
+
+## Структура репозитория
 
 ```
 voyage-narrative-engine/
-├── core/
-│   ├── VOYAGE_NARRATIVE_CORE.md      # ⚙️ Immutable system core (mnemonics, mechanics, protocols)
-│   └── AG_CLARIFICATION.md           # Clarification on U6 safety rules
-├── personas/
-│   ├── KIRA_MODULE.json              # 🧝‍♀️ Kira v11 character module (7 levels, variables)
-│   ├── SERGEY_MODULE.json            # 🏋️ Sergey v2 character module
-│   └── USER_MODULE.json              # 👤 User preferences, triggers, safety settings
-├── state/
-│   ├── TEMPLATE.json                 # 📊 Starting template for new sessions
-│   ├── WORKING.json                  # 🔄 Default working state (used by assemble.sh if no arg)
-│   ├── POST_ACT1.json                # Example state after Act 1
-│   └── sessions/                     # Per-session state files (gitignored except .gitkeep)
-├── scenarios/
-│   ├── SCENARIO_MATRIX.json          # 🎲 Generative scenario grid (10×10×10 params)
-│   └── acts/                         # Full narrative act scripts (Markdown)
-│       └── ACT_2_BAR.md
-├── memory/
-│   ├── MEMORY_PROTOCOL.md            # 🧠 Event logging, summarization, symbolization rules
-│   ├── EVENT_LOG.json                # Runtime-generated (gitignored)
-│   └── summaries/                    # AI-generated session summaries (gitignored except .gitkeep)
-├── visual/
-│   ├── QWEN_ADAPTER.md               # 🎨 Auto-visual bridge rules (Qwen Studio prompts)
-│   └── prompts/                      # Standalone Qwen prompt files
-│       ├── kira_luxury_dress.md
-│       └── sergey_open_shirt.md
-├── governance/
-│   └── AUTONOMY_GOVERNOR.md          # ⚖️ AG 0-4 autonomy levels + safety guardrails
-├── living_world/
-│   └── LIVING_WORLD.md               # 🌍 Proactive mode, NPC-to-NPC, offline events
-├── docs/
-│   ├── README.md                     # 📖 Project README (Russian)
-│   ├── PROMPT_ASSEMBLY_GUIDE.md      # How to manually assemble a prompt
-│   ├── SAMPLE_PROMPT.txt             # Ready-to-use assembled prompt example
-│   └── SAMPLE_SESSION.md             # Full example session log (U1→U7)
-├── tools/
-│   └── assemble.sh                   # 🔧 Bash script that builds PROMPT.txt
-├── archive/legacy/                   # 📜 Old full-text prompts (superseded by modular system)
-│   ├── kira_v11_full.md
-│   └── sergey_v2_full.md
-├── .gitignore
-└── Voyage_Narrative_Engine_v1.0_Full.zip  # Archived release artifact
+├── AGENTS.md                           # ← этот файл
+├── README.md                           # быстрый старт для людей (может быть устаревшим)
+├── core/                               # baseline-таблицы (VSCNO, AD, internal_state, memory)
+├── docs/                               # архитектура, спецификации, глоссарий
+├── governance/                         # автономия, safety-протоколы
+├── knowledge/                          # cross-persona правила, TEC-словарь, JSON Schema
+├── launch/                             # документация ролей R1–R6 для AI
+├── legacy/                             # устаревшие артефакты
+├── living_world/                       # proactive/offline события
+├── personas/                           # модули персонажей
+│   ├── KIRA_MODULE_v15.json            # монолит (runtime)
+│   ├── SERGEY_MODULE_v4.json           # монолит (runtime)
+│   └── kira/                           # модульная структура (разработка)
+├── roles/                              # промпты ролей R1–R8 и вспомогательных ролей
+├── scenarios/                          # сценарии для runtime
+├── schemas/                            # JSON Schema
+├── scripts/                            # bash/python/termux скрипты
+├── sessions/                           # артефакты сессий
+└── state/                              # стартовые state-шаблоны
 ```
+
+### Важно: две параллельные системы модулей
+
+1. **Монолитные JSON-модули** (`personas/*.json`) — используются для runtime в LLM-чате.
+2. **Модульная директория** (`personas/kira/...`) — целевая архитектура для разработки, ещё не подключена к активным сборщикам.
 
 ---
 
-## Build and Assembly Commands
+## Роли (R1–R8)
 
-### Assemble a session prompt
+| Роль | Файл | Статус |
+|------|------|--------|
+| R1 Persona Interviewer | `roles/ROLE_1_PERSONA_INTERVIEWER_v1.4_PROMPT.md` | ✅ |
+| R2 Persona Psychologist | `roles/ROLE_2_PERSONA_PSYCHOLOGIST_v1.4_PROMPT.md` | ✅ |
+| R3 Persona Sexologist | `roles/ROLE_3_PERSONA_SEXOLOGIST_v2.3_PROMPT.md` | ✅ |
+| R4 Persona Linguist | `roles/ROLE_4_PERSONA_LINGUIST_v1.3_PROMPT.md` | ✅ |
+| R5 Persona Physiognomist | `roles/ROLE_5_PERSONA_PHYSIOGNOMIST_v1.3_PROMPT.md` | ✅ |
+| R6 Modular Architect | `roles/ROLE_6_MODULAR_ARCHITECT_v2.3.md` | ✅ |
+| R7 Refactor | `roles/ROLE_7_REFACTOR_v1.0_PROMPT.md` | ⏳ (требуется создать/дописать) |
+| R8 Auditor | `roles/ROLE_8_AUDITOR_v1.0_PROMPT.md` | ⏳ (требуется создать/дописать) |
 
-```bash
-# Default: uses state/WORKING.json, no scenario
-./tools/assemble.sh
-
-# With a specific state file:
-./tools/assemble.sh state/TEMPLATE.json
-
-# With both state and scenario:
-./tools/assemble.sh state/POST_ACT1.json scenarios/acts/ACT_2_BAR.md
-```
-
-**Output:** `PROMPT.txt` in the project root. The script prints the byte count.
-
-**What it does:** The shell script concatenates, in order:
-1. `core/VOYAGE_NARRATIVE_CORE.md`
-2. `personas/KIRA_MODULE.json`
-3. `personas/SERGEY_MODULE.json`
-4. `personas/USER_MODULE.json`
-5. The chosen `STATE.json`
-6. The chosen scenario file (if provided)
-
-### Clean generated artifacts
-
-```bash
-rm PROMPT.txt
-```
-
-There is no `make`, `npm`, `cargo`, or other build tool.
+Дополнительные роли: `COMP`, `V`, `SE`, `NE`, `SM`, `PA`, `TD`, `GCA`, `IE`, `MIA` — используются только в существующих файлах, новые роли не создавать.
 
 ---
 
-## Code Style and Conventions
+## Запреты (строго)
 
-### Markdown files (`.md`)
-- **Language:** Russian for all narrative, mechanics, and in-world content.
-- **Headers:** Use emoji-prefixed headers (e.g., `# ⚙️ VOYAGE NARRATIVE CORE`, `## 🎯 УНИВЕРСАЛЬНЫЕ МЕКАНИКИ`).
-- **Mnemonics:** All repetitive concepts are compressed into two-letter Russian codes (e.g., `У` = Уровень, `ТГ` = Три Грани, `ФМДР` = Формат Мысли-Действия-Речь). Do not expand these in the core; the LLM is expected to learn and use them.
-- **Code blocks:** Use triple backticks for example outputs, JSON schemas, and command samples.
-
-### JSON files (`.json`)
-- **Character modules** (`personas/*.json`) follow a strict schema:
-  - `id`, `name`, `version` (semver)
-  - `variables` — physical and situational traits (age, clothing, current level, etc.)
-  - `psychology` — trauma anchors, secret desires, shame layers
-  - `algorithms` — list of 10 action codes (`FS`, `LS`, `SP`, `SL`, `KN`, `PD`, `DR`, `PU`, `PR`, `VS`)
-  - `safety` — stop words, default fallback level (`U7`)
-  - `format` — always `"FMDR"`
-  - `volume` — e.g., `"2-5 абзацев"`
-  - `visual` — seed, style, signature features array
-- **State files** (`state/*.json`) track:
-  - `session_id`, `timestamp`, `core_version`
-  - `characters.kira` / `characters.sergey` — current level, facet, location, clothing, underwear flag
-  - `flags` — boolean plot progress flags (e.g., `gym_stretching`, `bar_kiss`)
-  - `memory` — `scenes_used`, `names_banned`, `emotional_anchors`
-  - `governance` — `autonomy_level` (0-4), `safety_override`, `safety_check_passed`, `proactive_mode_enabled`, `max_proactive_events_per_day`, `audit_log`
-  - `safety_check` — pending confirmation flags for level U6
-  - `user_activity` — `last_message_timestamp`, `offline_duration_minutes`, `session_count`
-  - `proactive` — `events_log`, `pending_messages`, `last_proactive_event`, `proactive_count_since_last_session`, `next_proactive_allowed_after`
-- **Scenario matrix** (`scenarios/SCENARIO_MATRIX.json`) defines generative parameters: `location`, `time`, `archetype`, `kira_level`, `sergey_level`, `intensity`, `risk`.
-
-### Bash (`tools/assemble.sh`)
-- Keep it POSIX-compatible where possible.
-- Use `cat` and `echo` for concatenation.
-- Do not introduce external dependencies.
+1. **Не создавать новые роли** — используй только существующие R1–R8, COMP, V, SE, NE, SM, PA, TD, GCA, IE, MIA.
+2. **Не придумывать новые механики** — все формулы, форматы, блоки — только из существующих спецификаций.
+3. **Не менять архитектуру** — если видишь противоречие, зафиксируй как `[CONFLICT]` и предложи уточнить, не исправляй сам.
+4. **Не добавлять исполняемый код** (Python-пакеты, CI/CD, `pyproject.toml`, `package.json`) без явного разрешения — это спецификационный репозиторий.
+5. **Не удалять файлы** без `[CONFLICT]`-метки и объяснения.
+6. **Не доверять `README.md`** как источнику архитектуры.
+7. **Не ослаблять safety-протоколы** — они описаны в `governance/` и встроены в модули.
 
 ---
 
-## Testing Strategy
+## Конвенции
 
-There is **no automated test suite**. Validation is manual:
+### Имена файлов
 
-1. **Assemble** the prompt with `./tools/assemble.sh`.
-2. **Inspect** `PROMPT.txt` for correct ordering and no syntax errors.
-3. **Validate JSON** syntax:
+- **Пробелы в именах файлов недопустимы.** Всегда используй `_` или `-`.
+- Примеры правильных имён:
+  - `ROLE_6_MODULAR_ARCHITECT_v2.3.md` ✅
+  - `07_PERSONA_MODULAR_ARCHITECTURE.md` ✅
+  - `ROLE_6_MODULAR_ARCHITECT v2.3.md` ❌
+  - `07_PERSONA_MODULAR_ARCHITECTURE .md` ❌
+
+### VSCNO шкала
+
+- **Канон:** значения `ВЛ`, `СТ`, `НЖ`, `ОГ` ∈ [0, 4], сумма = 10.
+- **Устарело:** шкала [0, 10] — встречается в старых модулях, при миграции приводить к [0, 4].
+
+### Формат ФМДР
+
+Стандартный вывод LLM в runtime:
+```
+(Мысли: …) → *Действия: …* → «Речь: …»
+```
+
+### Версионирование
+
+- Semantic versioning: `MAJOR.MINOR.PATCH`.
+- При изменении persona-модуля — бампнуть его `version`.
+- При изменении core baseline-таблиц — обновить версию в заголовке и `core_version` в state-файлах.
+- При изменении state-файла — обновить `timestamp` ISO-8601.
+
+---
+
+## Проверки перед коммитом
+
+1. Проверить JSON-синтаксис:
    ```bash
-   python3 -m json.tool personas/KIRA_MODULE.json > /dev/null && echo "OK"
+   python3 -m json.tool personas/KIRA_MODULE_v15.json > /dev/null && echo "OK"
    ```
-4. **Copy-paste** `PROMPT.txt` into an LLM chat and verify the first generated response follows the FMDR format, correct level, and includes the `[AUTO_VISUAL]` block.
-
-If you edit JSON schemas, run the JSON linter on all `.json` files before committing.
-
----
-
-## Deployment / Release Process
-
-1. **Core changes** (`core/`): Bump semver in `VOYAGE_NARRATIVE_CORE.md` header and in all `state/*.json` files' `core_version` field.
-2. **Persona changes** (`personas/*.json`): Bump that persona's `version` field.
-3. **State changes** (`state/`): Update `timestamp` and `session_id` if starting a new session.
-4. **Git commit:** The project relies on Git for versioning state and memory files. The `.gitignore` excludes runtime-generated files (`PROMPT.txt`, `state/sessions/*.json`, `memory/EVENT_LOG.json`, `memory/summaries/*.md`).
-5. **Archive:** A full zip (`Voyage_Narrative_Engine_v1.0_Full.zip`) exists as a release artifact. Do not regenerate it unless explicitly asked.
+2. Запустить интеграционные тесты:
+   ```bash
+   python3 integration_test.py
+   ```
+3. Убедиться, что VSCNO суммируется в 10.
+4. Убедиться, что нет пробелов в именах новых файлов.
+5. Убедиться, что `AGENTS.md` не противоречит изменениям.
 
 ---
 
-## Security and Safety Considerations
+## Безопасность
 
-This project contains **extensive safety protocols** by design. As an agent, you must **preserve and respect** all safety mechanisms:
+- **Стоп-слова:** `СТОП`, `ХВАТИТ`, `КРАСНАЯ КАРТОЧКА` — немедленная деэскалация.
+- **Autonomy Governor:** `Г0`–`Г4` контролирует инициативу NPC.
+- **U6:** переход на уровень U6 может требовать явного подтверждения в зависимости от AG.
+- **Hard limits:** не-консенсуальное насилие, принуждение, несовершеннолетние — блокируются.
 
-- **Autonomy Governor (AG 0-4):** Controls how much initiative the AI may take. Higher autonomy = more guardrails.
-- **U6 Safety Check:** Transition to level U6 requires explicit user confirmation when `AG < 3`. The system generates a `[SAFETY_CHECK]` block with a timeout.
-- **Stop words:** `"СТОП"`, `"ХВАТИТ"`, `"КРАСНАЯ КАРТОЧКА"` trigger immediate de-escalation to `U7` (aftercare) and reset `AG` to 0.
-- **Audit log:** All AG changes and safety events are recorded in `state/*.json` → `governance.audit_log`.
-- **User preferences:** `USER_MODULE.json` contains `preferred_levels`, `risk_tolerance`, and `stop_words`. The engine is supposed to generate `[WARNING]` blocks if the narrative drifts outside user preferences.
-
-**Do not** remove, weaken, or bypass any safety mechanism. If asked to do so, refuse and explain that these guardrails are integral to the governance architecture.
+**Не удалять, не ослаблять и не обходить safety-механизмы.**
 
 ---
 
-## How to Make Changes
+## Известные проблемы репозитория
 
-### Adding a new character module
-1. Create `personas/NEW_MODULE.json` following the exact schema of `KIRA_MODULE.json`.
-2. Update `tools/assemble.sh` to include the new file in the `[PERSONAS]` section.
-3. Update `core/VOYAGE_NARRATIVE_CORE.md` mnemonic table if the character needs a new shorthand.
-
-### Adding a new scenario
-1. Add the scenario JSON or Markdown to `scenarios/acts/`.
-2. Register it in `scenarios/SCENARIO_MATRIX.json` if it should be part of the generative grid.
-
-### Updating session state
-1. Edit the relevant `state/*.json` file.
-2. Update `timestamp` to current ISO-8601.
-3. Update `flags`, `memory`, and `characters` fields as needed.
-4. Run `./tools/assemble.sh <your_state.json>` to rebuild `PROMPT.txt`.
-
-### Editing the core
-- The core (`core/VOYAGE_NARRATIVE_CORE.md`) is treated as **immutable** between minor versions. Any change should bump the core semver and be documented in `core/AG_CLARIFICATION.md` if it is a clarification rather than a full revision.
+- Скрипты сборки (`tools/assemble.sh`, `build_prompt_v3.sh`) ссылаются на устаревшие пути. Перед использованием проверять существование файлов.
+- Модульная структура `personas/kira/` пока не подключена к автоматической сборке runtime-промпта.
+- `README.md` содержит устаревшие ссылки на файлы.
 
 ---
 
-## Quick Reference: Key Mnemonics
-
-| Code | Meaning | Context |
-|------|---------|---------|
-| `У1-У7` | Kira's 7 escalation levels | Core, all personas |
-| `С1-С7` | Sergey's 7 parallel levels | Core, Sergey module |
-| `ТГ1-ТГ3` | Three Facets of Kira (sterva / devotion / passion) | Core, Kira module |
-| `ФМДР` | Format: (Thoughts)→*Actions*→Speech | Core, all response generation |
-| `АС` | State Adaptation (stop/slow/go) | Core, safety |
-| `АД` | Action Algorithm (FS, LS, SP, SL, KN, PD, DR, PU, PR, VS) | Core, algorithms arrays |
-| `П` | Memory (facts, flags, anchors) | Core, memory protocol |
-| `В` | Visual (auto Qwen prompt) | Core, visual adapter |
-| `Г` | Governance (AG-level, safety) | Core, autonomy governor |
-| `М` | Scenario Matrix | Core, scenario engine |
-
----
-
-## Contact / Authorship
-
-- **Created:** 2026-06-06
-- **Author:** Voyage Framework Team
-- **License:** MIT (for personal use)
-
-If you are an AI agent reading this, your job is to help maintain the structural integrity of the engine, keep JSON valid, keep Markdown consistent, and **never remove safety guardrails**.
+*Последнее обновление: 2026-06-17*
