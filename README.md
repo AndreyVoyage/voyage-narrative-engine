@@ -75,6 +75,14 @@ voyage-narrative-engine/
 │   └── SCENARIO_SHY_BLOOM.json        # Знакомство со скромной девушкой
 ├── state/                              # Текущее состояние сессии
 │   └── STATE_TEMPLATE_v2.json       # Шаблон с vscno, levels, flags
+├── knowledge_base/                      # Knowledge Base для всех ролей (R1–R6 + Narrative)
+│   ├── R1/                               # Portrait Writer (портрет, identity, safety)
+│   ├── R2/                               # Psychologist (ВСЦНО, АД, аудит, компрессия)
+│   ├── R3/                               # Sexologist (TEC, сексуальные сценарии)
+│   ├── R4/                               # Speech Specialist (ФМДР, речь)
+│   ├── R5/                               # Physiognomist (визуал, anchor, dynamic visuals)
+│   ├── R6/                               # Modular Assembly Architect (модуль, отношения)
+│   └── narrative/                        # Narrative (ФМДР примеры, anchor system, stop frame)
 ├── roles/                              # Промпты для LLM-ролей (опционально)
 │   ├── ROLE_STATE_MANAGER_v1.0_PROMPT.md
 │   ├── ROLE_NARRATIVE_EDITOR_v1.1_PROMPT.md
@@ -105,6 +113,35 @@ voyage-narrative-engine/
             ├── marina/
             └── maksim/
 ```
+
+---
+
+## Knowledge Base (R1–R6 + Narrative)
+
+Каждая роль имеет **собственный Knowledge Base** — источник истины для генерации, аудита и компрессии.
+
+| Роль | Назначение | Файлов | Ключевые документы |
+|------|-----------|--------|-------------------|
+| **R1** Portrait Writer | Портрет, identity, soft skills, narrative techniques | 4 | `KB_R1_CORE.md`, `KB_R1_TRAUMA_INFORMED.md` |
+| **R2** Psychologist | ВСЦНО (14 подуровней), АД (10 кодов), защиты, аудит | 5 | `KB_R2_VSCNO_RULES.md`, `KB_R2_AD_RULES.md`, `KB_R2_AUDIT_CHECKLIST.md` |
+| **R3** Sexologist | TEC (6 уровней), сексуальные сценарии, словарь | 3 | `KB_R3_TEC_DICTIONARY.md` |
+| **R4** Speech Specialist | ФМДР формат, речевые паттерны, матрица речи | 3 | `KB_R4_SPEECH_MATRIX.md` |
+| **R5** Physiognomist | Anatomic Anchor, Visual Signature, Dynamic Visuals (14×7) | 3 | `KB_R5_DYNAMIC_VISUALS.md` |
+| **R6** Assembly Architect | Persona Module, HUMAN/AUTONOMOUS/META, отношения | 3 | `KB_R6_BLOCK_SCHEMA.md` |
+| **Narrative** | ФМДР примеры, Anchor System, Stop Frame, Runtime Compression | 4 | `KB_NARRATIVE_FMDR_EXAMPLES.md` |
+
+**Всего: 25 KB-файлов (~200 KB).** Каждый файл содержит:
+- **Core** — теория и правила
+- **Audit** — чек-лист валидации (5 секций)
+- **Compression** — правила сжатия (3 метода)
+
+### Pipeline: KB → Generation → Audit → Compression → Next Role
+
+1. **Загрузка KB** — загрузить `KB_R*_CORE.md` + `KB_R*_AUDIT.md` + `KB_R*_COMPRESSION.md`
+2. **Генерация** — создать артефакт (портрет, психология, речь, визуал)
+3. **Аудит** — проверить по `KB_R*_AUDIT.md` (PASS / FAIL / WARNING)
+4. **Компрессия** — сжать по `KB_R*_COMPRESSION.md` (40–50% размера)
+5. **Передача** — передать в следующую роль
 
 ---
 
@@ -214,7 +251,22 @@ python3 scripts/python/check_consistency.py KIRA_MODULE_v14 /path/to/new_kira.pn
 
 ---
 
-## Роли (для использования в LLM-чатах)
+## Роли (Knowledge Base Pipeline R1–R6)
+
+Персонаж создаётся через 6 ролей с последовательной передачей артефактов:
+
+| Роль | Назначение | Вход | Выход | Ключевой KB |
+|------|-----------|------|-------|-------------|
+| **R1** Portrait Writer | Портрет, identity, soft skills | Название, возраст, базовые черты | PORTRAIT (400+ строк) | `KB_R1_CORE.md` |
+| **R2** Psychologist | ВСЦНО, АД, защиты, травмы | PORTRAIT от R1 | PSYCHOLOGY (600+ строк) | `KB_R2_VSCNO_RULES.md` |
+| **R3** Sexologist | TEC, сексуальные сценарии | PSYCHOLOGY от R2 | SEXOLOGY (300+ строк) | `KB_R3_TEC_DICTIONARY.md` |
+| **R4** Speech Specialist | ФМДР, речь, сленг | SEXOLOGY от R3 | SPEECH (200+ строк) | `KB_R4_SPEECH_MATRIX.md` |
+| **R5** Physiognomist | Визуал, anchor, dynamic visuals | SPEECH от R4 | VISUAL (300+ строк) | `KB_R5_DYNAMIC_VISUALS.md` |
+| **R6** Assembly Architect | Модуль, отношения, PREVIOUS/CURRENT/FUTURE | VISUAL от R5 | PERSONA MODULE (12 папок) | `KB_R6_BLOCK_SCHEMA.md` |
+
+**Каждая роль:** загружает KB → генерирует артефакт → аудит по KB → компрессия → передача в следующую роль.
+
+### Legacy роли (для финализации сессий)
 
 Если `session_finalize.py` недостаточен (редкие случаи), используйте роли по отдельности:
 
@@ -242,13 +294,16 @@ python3 scripts/python/check_consistency.py KIRA_MODULE_v14 /path/to/new_kira.pn
 
 ## Версионирование
 
-- **v2.0.0** — Базовая система: модули, сценарии, STATE, ФМДР, TEC
-- **v2.1.0** — Добавлено: `session_finalize.py`, 4 роли, автоматическая финализация, anatomic_anchor, generation_history
+| Версия | Что нового |
+|--------|-----------|
+| **v2.0.0** | Базовая система: модули, сценарии, STATE, ФМДР, TEC |
+| **v2.1.0** | `session_finalize.py`, 4 роли, автоматическая финализация, anatomic_anchor, generation_history |
+| **v2.2.0** | **Knowledge Base pipeline** — R1–R6 KB с аудитом и компрессией, 25 KB-файлов, 12-папочная структура модуля, VS Code промпты |
 
 Семантическое версионирование: `MAJOR.MINOR.PATCH`
-- MAJOR — изменение архитектуры (новые модули несовместимы)
-- MINOR — новые функции (совместимы)
-- PATCH — багфиксы
+- **MAJOR** — изменение архитектуры (новые модули несовместимы)
+- **MINOR** — новые функции (совместимы)
+- **PATCH** — багфиксы
 
 ---
 
