@@ -1,0 +1,10 @@
+{
+  "module_id": "PROMPT_BASE",
+  "version": "1.0.0",
+  "prompt_base": "",
+  "signature_features": [],
+  "anti_prompts": [],
+  "visual_signature": "",
+  "anatomic_anchor_last_verified": "",
+  "reference_image": ""
+}

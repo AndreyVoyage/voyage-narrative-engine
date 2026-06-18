@@ -1,0 +1,80 @@
+{
+  "id": "egor_module_v1",
+  "name": "Егор",
+  "version": "1.0.0",
+  "source_module": "EGOR_MODULE_v1",
+  "source_version": "1.0.0",
+  "compatible_vne": "2.1.0",
+  "level_system": "U",
+  "archetype": "",
+  "persona_type": "user_proxy",
+  "age_bracket": "",
+  "variables": {
+    "age": 35,
+    "height_cm": 180,
+    "weight_kg": 83,
+    "hair_color": "dark_ash_blond",
+    "hair_style": "short_military_textured_top",
+    "eye_color": "gray",
+    "eye_shape": "almond_narrowed_heavy_hood",
+    "body_type": "athletic",
+    "build": "broad_shoulders_narrow_waist",
+    "skin_tone": "light_olive",
+    "facial_hair": "none",
+    "distinguishing_features": "asymmetrical_smirk_left_higher",
+    "signature_item": "expensive_watch",
+    "home_style": "dark_textiles_brutal",
+    "lighting_preference": "dim_burgundy",
+    "cuisine": "french_pan_asian",
+    "music": "fast_adrenaline"
+  },
+  "anatomic_anchor": {
+    "face_shape": "oval_angular_jaw_sharp_defined_masculine",
+    "forehead": "broad_short",
+    "chin": "strong_cleft",
+    "overall": "predatory_elegance_wolf-like",
+    "eyes": {
+      "color": "gray",
+      "shape": "almond_narrowed_heavy_hood",
+      "gaze": "intense_calculating_predatory",
+      "signature": "left_squint_when_lying",
+      "pupil_dynamics": "U1-U3:normal_cold, U4-U5:dilated, U3A-U5B:constricted, U4B-U5A:max_dilated"
+    },
+    "nose": {
+      "shape": "straight_strong_aquiline",
+      "signature": "nostrils_flared_when_aroused"
+    },
+    "lips": {
+      "shape": "medium_cupid_bow_thin",
+      "signature": "asymmetrical_smirk_left_higher",
+      "dynamics": "tightens_anger_flattens_lying",
+      "speech": "precise_economic",
+      "teeth_visibility": "U3B_U4B"
+    },
+    "skin": {
+      "tone": "light_olive_tans_healthy",
+      "texture": "smooth_well-maintained",
+      "dynamics": "flush_cheekbones_U4-U5",
+      "scars": "none_flawless",
+      "sweat": "U1-U3:minimal, U4-U5:moderate_forehead, U5B:none"
+    },
+    "hair": {
+      "color": "dark_ash_blond",
+      "style": "short_military_textured_top",
+      "facial_hair": "none_or_3day_stubble"
+    },
+    "body": {
+      "height": 180,
+      "weight": 83,
+      "type": "athletic",
+      "build": "broad_shoulders_narrow_waist",
+      "muscle_definition": "visible"
+    },
+    "signature_items": [
+      "expensive_watch",
+      "fingers_tap_anxious_clench_regressing"
+    ],
+    "posture": "forward_lean_predatory_shoulders_back_weight_on_balls_feet"
+  },
+  "visual_signature": ""
+}

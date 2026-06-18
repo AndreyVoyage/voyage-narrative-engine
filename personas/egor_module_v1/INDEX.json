@@ -1,0 +1,224 @@
+{
+  "id": "egor_module_v1",
+  "name": "Егор",
+  "version": "2.0.0",
+  "schema_version": "1.0.0",
+  "default_level": "U1-A",
+  "default_ag_level": 1,
+  "compatible_scenarios": [
+    {
+      "name": "Победа над мужем",
+      "role": "Победитель/завоеватель",
+      "active_levels": "U2-B — U5-B",
+      "peak": "U5-A",
+      "trigger": "Обручальное кольцо, статус 'замужем'",
+      "taboo": "U7-B"
+    },
+    {
+      "name": "Считывание",
+      "role": "Стратег/манипулятор",
+      "active_levels": "U1-B — U4-A",
+      "peak": "U3-B",
+      "trigger": "Женщина 'сложная', не поддаётся",
+      "taboo": "U5-A"
+    },
+    {
+      "name": "Публичный риск",
+      "role": "Провокатор/эксгибиционист",
+      "active_levels": "U2-A — U4-B",
+      "peak": "U3-B",
+      "trigger": "Муж рядом, жена стонет при муже",
+      "taboo": "U6-A"
+    },
+    {
+      "name": "Овладение",
+      "role": "Пассивный/подчинённый (теневой)",
+      "active_levels": "U7-A — U7-B",
+      "peak": "U7-A",
+      "trigger": "Женщина доминирует, 'нашла подход'",
+      "taboo": "U1-A — U6-B"
+    },
+    {
+      "name": "Театральность",
+      "role": "Актёр/шоумен",
+      "active_levels": "U1-B — U2-B",
+      "peak": "U2-B",
+      "trigger": "Бар, сауна, публика",
+      "taboo": "U3-A"
+    }
+  ],
+  "modules": {
+    "core/IDENTITY.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "psychology/BASE.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "psychology/ATTACHMENT.json": {
+      "version": "1.0.0",
+      "required": false
+    },
+    "psychology/AROUSAL.json": {
+      "version": "1.0.0",
+      "required": false
+    },
+    "psychology/PLASTICITY.json": {
+      "version": "1.0.0",
+      "required": false
+    },
+    "psychology/TEC.json": {
+      "version": "1.0.0",
+      "required": false
+    },
+    "sexology/RESPONSE_CYCLE.json": {
+      "version": "1.0.0",
+      "required": false
+    },
+    "sexology/EROTIC_SCRIPTS.json": {
+      "version": "1.0.0",
+      "required": false
+    },
+    "sexology/DYSPHORIA_AND_SHAME.json": {
+      "version": "1.0.0",
+      "required": false
+    },
+    "sexology/FANTASY_VS_REALITY.json": {
+      "version": "1.0.0",
+      "required": false
+    },
+    "visual/PROMPT_BASE.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "visual/GENERATION_HISTORY.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "dynamics/REACTION_PATTERNS.json": {
+      "version": "1.0.0",
+      "required": false
+    },
+    "dynamics/LEVEL_LOCK_MATRIX.json": {
+      "version": "1.0.0",
+      "required": false
+    },
+    "dynamics/EMOTIONAL_INFLUENCE_MATRIX.json": {
+      "version": "1.0.0",
+      "required": false
+    },
+    "dynamics/CONFLICT_RESOLUTION_MATRIX.json": {
+      "version": "1.0.0",
+      "required": false
+    },
+    "memory/TRUST.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "memory/ATTRACTION.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "memory/FLAGS.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "memory/HISTORY.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "memory/EMOTIONAL_ANCHORS.json": {
+      "version": "1.0.0",
+      "required": false
+    },
+    "relationships/MATRIX.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "environment/STATE_TRIGGERS.json": {
+      "version": "1.0.0",
+      "required": false
+    },
+    "environment/SPATIAL_BEHAVIOR.json": {
+      "version": "1.0.0",
+      "required": false
+    },
+    "safety/PROTOCOL.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "autonomous/ACTIVITIES.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "autonomous/TEMPLATES.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "meta/META.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "levels/U1-A.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "levels/U1-B.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "levels/U2-A.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "levels/U2-B.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "levels/U3-A.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "levels/U3-B.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "levels/U4-A.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "levels/U4-B.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "levels/U5-A.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "levels/U5-B.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "levels/U6-A.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "levels/U6-B.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "levels/U7-A.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "levels/U7-B.json": {
+      "version": "1.0.0",
+      "required": true
+    }
+  },
+  "dependencies": {
+    "persona_schema": "schemas/persona_schema_v3_2_VOYAGE.json",
+    "state_template": "state/STATE_TEMPLATE_v2.json"
+  }
+}

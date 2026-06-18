@@ -1,0 +1,23 @@
+{
+  "module_id": "FLAGS",
+  "version": "1.0.0",
+  "flags": {
+    "_bits": "0b0000000000000000",
+    "_map": [
+      "phone_exchanged",
+      "kissed",
+      "confessed_love",
+      "met_family",
+      "seen_vulnerable",
+      "shared_secret",
+      "physical_intimacy",
+      "aftercare_given",
+      "regression_observed",
+      "safety_check_passed",
+      "scenario_completed",
+      "photo_generated",
+      "voice_recorded",
+      "cross_persona_tested"
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "module_id": "PROTOCOL",
+  "version": "1.0.0",
+  "stop_words": [],
+  "default_mode": "green",
+  "hard_limits": [
+    "Унижение публично активно",
+    "Остаться один 'после'"
+  ],
+  "soft_limits": [
+    "Девушка, которая овладеет (растопление, страх слабости)"
+  ],
+  "safety_check_points": [],
+  "ag_max": 4,
+  "peak_explosion_note": "",
+  "emergency_phrase": "",
+  "receiving_preferences": {},
+  "cooldown_phrase": "",
+  "emergency_response": ""
+}

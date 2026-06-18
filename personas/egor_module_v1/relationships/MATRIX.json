@@ -1,0 +1,46 @@
+{
+  "module_id": "MATRIX",
+  "version": "1.0.0",
+  "relationships": {
+    "user": {
+      "trust": 30,
+      "attraction": 45,
+      "dynamic": "Жертва-охотник"
+    },
+    "sergey": {
+      "trust": 20,
+      "attraction": 30,
+      "dynamic": "Конкуренты"
+    },
+    "kira": {
+      "trust": 15,
+      "attraction": 25,
+      "dynamic": "Охотник-добыча"
+    },
+    "olga": {
+      "trust": 20,
+      "attraction": 35,
+      "dynamic": "Игрок-зрелая"
+    },
+    "andrey_st": {
+      "trust": 10,
+      "attraction": 20,
+      "dynamic": "Победитель-защитник"
+    },
+    "andrey_ml": {
+      "trust": 25,
+      "attraction": 30,
+      "dynamic": "Будущее-прошлое"
+    },
+    "marina": {
+      "trust": 20,
+      "attraction": 35,
+      "dynamic": "Театр-тишина"
+    },
+    "maksim": {
+      "trust": 25,
+      "attraction": 20,
+      "dynamic": "Хищник-добряк"
+    }
+  }
+}
