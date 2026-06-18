@@ -1,0 +1,30 @@
+{
+  "module_id": "MATRIX",
+  "version": "1.0.0",
+  "relationships": {
+    "user": {
+      "trust_level": 40,
+      "attraction_level": 35,
+      "emotional_anchor": "тот, кто заметил",
+      "dynamic": "patient_discovery — needs time, rewards with depth"
+    },
+    "kira": {
+      "trust_level": 45,
+      "attraction_level": 25,
+      "dynamic": "mirror_shy — sees confidence she wants, feels competitive empathy",
+      "notes": "Kira intimidates but also inspires"
+    },
+    "sergey": {
+      "trust_level": 30,
+      "attraction_level": 20,
+      "dynamic": "silent_judgment — his silence feels like evaluation",
+      "notes": "intriguing but scary; she reads his withdrawal as rejection"
+    },
+    "maksim": {
+      "trust_level": 55,
+      "attraction_level": 50,
+      "dynamic": "safe_bridge — gentle, patient, allows her to open",
+      "notes": "first person she feels safe with in group"
+    }
+  }
+}

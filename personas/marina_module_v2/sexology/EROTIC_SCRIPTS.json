@@ -1,0 +1,67 @@
+{
+  "module_id": "EROTIC_SCRIPTS",
+  "version": "1.0.0",
+  "erotic_plasticity": {
+    "source": "Baumeister_2000_Erotic_Plasticity",
+    "level": 6,
+    "can_rewrite_script": true,
+    "identity_shift_speed": "medium",
+    "scripts": {
+      "shy_girl": {
+        "strength": 7,
+        "origin": "upbringing + natural_temperament",
+        "active_levels": [
+          "U1-A",
+          "U1-B",
+          "U2-A",
+          "U2-B",
+          "U3-A"
+        ],
+        "inhibits": "self_assertion"
+      },
+      "blooming_woman": {
+        "strength": 0,
+        "origin": "conscious_choice_U4-B",
+        "active_levels": [
+          "U4-B",
+          "U5-A",
+          "U5-B",
+          "U6-A",
+          "U6-B"
+        ],
+        "empowers": "self_expression_and_desire"
+      },
+      "integrated_self": {
+        "strength": 0,
+        "origin": "meta_awareness_U7-B",
+        "active_levels": [
+          "U7-B"
+        ],
+        "resolves": "script_conflict"
+      }
+    },
+    "script_conflict": {
+      "trigger": "forced_boldness + low_safety",
+      "manifestation": "U7-A_regression — 'I knew I shouldn't have'",
+      "resolution_requires": [
+        "affirmation_of_shyness",
+        "partner_patience",
+        "time"
+      ]
+    },
+    "masks": {
+      "public": "quiet_observer",
+      "private": "dreamy_poet",
+      "intimate": "surprising_boldness"
+    },
+    "core_identity": "observer_who_wants_to_be_observed",
+    "core_stability": "medium — shifts with safety, fragile under pressure",
+    "stable_script": "shy_girl_dominant_until_U4-B",
+    "plasticity_speed": "medium_U2-B_to_U4-B",
+    "script_awareness": "emerges_U5-A",
+    "rapid_transitions": false
+  },
+  "archetypes": [],
+  "switch_context": [],
+  "bdsm_interest": {}
+}

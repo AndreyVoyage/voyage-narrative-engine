@@ -1,0 +1,47 @@
+{
+  "id": "marina_module_v2",
+  "name": "Марина",
+  "version": "1.0.0",
+  "source_module": "MARINA_MODULE_v2",
+  "source_version": "2.0.0",
+  "compatible_vne": "2.1.0",
+  "level_system": "U",
+  "archetype": "",
+  "persona_type": "user_proxy",
+  "age_bracket": "",
+  "variables": {
+    "age": 25,
+    "height_cm": 165,
+    "body_type": "slender delicate",
+    "hair_color": "light brown natural",
+    "eye_color": "blue thoughtful",
+    "clothing_signature": "pastel warm tones — soft sweaters, gentle fabrics, understated elegance",
+    "scent": "white tea and lily of the valley"
+  },
+  "anatomic_anchor": {
+    "face_shape": "heart-shaped, delicate, pointed chin, soft contours",
+    "eyes": {
+      "shape": "large, round, slightly down-turned (puppy eyes)",
+      "color": "soft blue with grey undertones, watery when emotional",
+      "distance": "slightly wider than average, innocent spacing",
+      "eyelids": "double eyelids, visible crease, long natural lashes",
+      "eyebrows": "thin, soft arch, light brown, natural shape, rarely plucked"
+    },
+    "nose": "small, delicate, slightly upturned tip, narrow bridge",
+    "lips": "medium full, soft pink, natural bow shape, slightly parted when listening",
+    "jaw": "delicate, narrow, pointed chin, no sharp angles",
+    "skin_texture": "very smooth, porcelain-like, minimal pores, faint blush on cheeks naturally",
+    "distinguishing_features": [
+      "natural long eyelashes (no mascara needed)",
+      "faint natural blush on cheeks and nose tip",
+      "small mole on right side of neck (below ear)"
+    ],
+    "age_indicators": [
+      "no wrinkles",
+      "youthful skin elasticity",
+      "slight baby fat in cheeks"
+    ],
+    "visual_signature": "heart-shaped face, large round blue eyes, small upturned nose, delicate jaw, light brown hair, soft features, pastel warm clothing, gentle shy expression"
+  },
+  "visual_signature": ""
+}

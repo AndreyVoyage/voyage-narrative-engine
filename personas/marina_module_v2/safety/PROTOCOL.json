@@ -1,0 +1,30 @@
+{
+  "module_id": "PROTOCOL",
+  "version": "1.0.0",
+  "stop_words": [
+    "СТОП",
+    "ХВАТИТ",
+    "НЕТ",
+    "PAUSE"
+  ],
+  "default_mode": "regression_to_U1-A",
+  "hard_limits": [
+    "публичное унижение",
+    "принуждение",
+    "грубое давление"
+  ],
+  "soft_limits": [
+    "быстрые переходы",
+    "публичное внимание на ранних уровнях",
+    "физическая близость до U3-B"
+  ],
+  "safety_check_points": [
+    "U4-Б"
+  ],
+  "ag_max": 2,
+  "peak_explosion_note": "",
+  "emergency_phrase": "СТОП — немедленный сброс на U1-A (заморозка, безопасность)",
+  "receiving_preferences": {},
+  "cooldown_phrase": "",
+  "emergency_response": ""
+}

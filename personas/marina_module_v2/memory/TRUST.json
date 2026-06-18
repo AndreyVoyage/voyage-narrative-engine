@@ -1,0 +1,10 @@
+{
+  "module_id": "TRUST",
+  "version": "1.0.0",
+  "trust_levels": {
+    "user": 40,
+    "kira": 45,
+    "sergey": 30,
+    "maksim": 55
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "module_id": "ATTRACTION",
+  "version": "1.0.0",
+  "attraction_levels": {
+    "user": 35,
+    "kira": 25,
+    "sergey": 20,
+    "maksim": 50
+  }
+}

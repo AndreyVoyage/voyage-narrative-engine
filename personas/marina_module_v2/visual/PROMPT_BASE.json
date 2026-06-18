@@ -1,0 +1,25 @@
+{
+  "module_id": "PROMPT_BASE",
+  "version": "1.0.0",
+  "prompt_base": "Portrait of young woman, soft gentle features, thoughtful blue eyes, natural light brown hair, pastel warm sweater, shy but warm smile, soft window lighting, photorealistic, 8k, intimate portrait",
+  "signature_features": [
+    "soft gentle features",
+    "thoughtful blue eyes",
+    "natural light brown hair",
+    "pastel warm clothing"
+  ],
+  "anti_prompts": [
+    "anime",
+    "cartoon",
+    "3d render",
+    "distorted anatomy",
+    "extra limbs",
+    "bad hands",
+    "text",
+    "watermark",
+    "excessive makeup"
+  ],
+  "visual_signature": "",
+  "anatomic_anchor_last_verified": "",
+  "reference_image": ""
+}

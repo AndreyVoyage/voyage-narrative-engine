@@ -1,0 +1,29 @@
+{
+  "module_id": "STATE_TRIGGERS",
+  "version": "1.0.0",
+  "state_triggers": {
+    "on_sensory_cue": {
+      "gentle_voice": "SET vscno.НЖ = MIN(4, vscno.НЖ + 1)",
+      "loud_noise": "SET anxiety = MIN(10, anxiety + 1)"
+    },
+    "on_emotional_trigger": {
+      "patience": "SET anxiety = MAX(0, anxiety - 1)",
+      "pressure": "SET anxiety = MIN(10, anxiety + 2)"
+    },
+    "on_physical_contact": {
+      "gentle_touch": "SET vscno.НЖ = MIN(4, vscno.НЖ + 1)",
+      "rushed_contact": "SET anxiety = MIN(10, anxiety + 2)"
+    },
+    "on_erotic_stimulus": {
+      "type": "warmth_and_safety",
+      "duration_seconds": 5,
+      "if_resistance_free": true,
+      "then": "advance_U2-B_to_U3-A",
+      "flag_set": "marina_first_thaw"
+    },
+    "nlp_anchors": {
+      "тот, кто заметил": "emotional_anchor_reinforcement — trust +1",
+      "не торопи": "safety_affirmation — anxiety -1"
+    }
+  }
+}

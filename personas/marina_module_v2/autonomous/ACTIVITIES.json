@@ -1,0 +1,38 @@
+{
+  "module_id": "ACTIVITIES",
+  "version": "1.0.0",
+  "activities": [
+    {
+      "id": "diary_writing",
+      "location": "home",
+      "probability": 0.4,
+      "npc_interaction": false,
+      "compatible_sublevels": [
+        "U1-A",
+        "U1-B",
+        "U7-A"
+      ]
+    },
+    {
+      "id": "cafe_observation",
+      "location": "cafe",
+      "probability": 0.3,
+      "npc_interaction": true,
+      "compatible_sublevels": [
+        "U2-A",
+        "U2-B"
+      ]
+    },
+    {
+      "id": "walk_park",
+      "location": "park",
+      "probability": 0.3,
+      "npc_interaction": false,
+      "compatible_sublevels": [
+        "U3-A",
+        "U5-B",
+        "U7-B"
+      ]
+    }
+  ]
+}

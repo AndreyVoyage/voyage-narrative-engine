@@ -1,0 +1,38 @@
+{
+  "module_id": "AROUSAL",
+  "version": "1.0.0",
+  "responsive_desire": {},
+  "arousal_specificity": {
+    "source": "Chivers_2004_Specificity",
+    "physiological_readiness": {
+      "description": "female_arousal_specific — requires emotional safety first",
+      "manifestation_levels": {
+        "U1-A": "frozen — body tense, breath held, minimal movement",
+        "U1-B": "first thaw — blushing, hesitant movement, softening",
+        "U2-A": "warming — body relaxes, first smiles, eye contact",
+        "U2-B": "curiosity — leaning in, first questions, touch of hair",
+        "U3-A": "opening — laughter, shared gaze, physical proximity",
+        "U3-B": "trust — first touch, leaning on shoulder, whispering",
+        "U4-A": "surrender — closed eyes, passive acceptance, trembling",
+        "U4-B": "choice — active participation, setting boundaries, 'yes'",
+        "U5-A": "blooming — expressing desires, initiating, surprising herself",
+        "U5-B": "natural — effortless sensuality, no performance, pure being",
+        "U6-A": "playful — experimenting, laughing during intimacy, joy",
+        "U6-B": "confident — directing, asking for what she wants, power",
+        "U7-A": "fear_of_loss — 'will he still want me if I'm not shy?'",
+        "U7-B": "integrated — 'I am both shy and bold, and that is my strength'"
+      }
+    },
+    "subjective_desire": {
+      "description": "safety_first — subjective desire requires extended emotional safety",
+      "requires": [
+        "extended_safety",
+        "patient_partner",
+        "no_pressure",
+        "narrative_context"
+      ],
+      "accelerated_by": "gentle_persistence + shared_laughter + Kira's_example",
+      "decelerated_by": "pressure + public_attention + rushed_physical_contact"
+    }
+  }
+}

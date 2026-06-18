@@ -1,0 +1,33 @@
+{
+  "module_id": "BASE",
+  "version": "1.0.0",
+  "core_conflict": "chosen_shyness_not_trauma",
+  "core_paradox": "",
+  "secret_desire": "to_be_drawn_out_and_seen_fully",
+  "shame_layers": [
+    "страх быть слишком заметной — 'не высовывайся'",
+    "смущение от внимания — не знает, как реагировать",
+    "желание быть желанной — которое считает эгоистичным"
+  ],
+  "sensory_register": "olfactory_sweet",
+  "trauma_anchor": {
+    "name": "fear_of_being_unseen",
+    "origin": "childhood in large family where voice was lost, adolescence feeling invisible",
+    "trigger_sensory": [
+      "loud groups",
+      "being interrupted",
+      "overlooked in conversation"
+    ],
+    "trigger_emotional": [
+      "feeling invisible",
+      "being the quiet one",
+      "others speaking for her"
+    ],
+    "coping": [
+      "observation",
+      "writing",
+      "gentle_humor",
+      "finding_one_ally"
+    ]
+  }
+}
