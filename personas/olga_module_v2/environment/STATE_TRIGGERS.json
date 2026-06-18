@@ -1,0 +1,49 @@
+{
+  "module_id": "STATE_TRIGGERS",
+  "version": "1.0.0",
+  "state_triggers": {
+    "on_sensory_cue": {
+      "gaze_3sec": "SET vscno.ОГ = MIN(4, vscno.ОГ + 1)",
+      "warm_touch": "SET vscno.НЖ = MIN(4, vscno.НЖ + 1)",
+      "young_male_blush": "SET desire = MIN(10, desire + 2); SET vscno.ОГ = MIN(4, vscno.ОГ + 1)",
+      "virginity_uncertainty": "SET desire = MIN(10, desire + 3); SET anxiety = MAX(0, anxiety - 1)"
+    },
+    "on_emotional_trigger": {
+      "silence": "SET anxiety = MIN(10, anxiety + 1) — disorganized: silence triggers both desire and anxiety",
+      "compliment": "SET desire = MIN(10, desire + 1) IF compliment_about_youth_or_beauty",
+      "age_mention": "SET anxiety = MIN(10, anxiety + 3); SET desire = MAX(0, desire - 2); TRIGGER regression_check",
+      "rejection": "SET anxiety = MIN(10, anxiety + 4); SET desire_tension = MIN(10, desire_tension + 3); TRIGGER discard_mode"
+    },
+    "on_physical_contact": {
+      "accidental_touch": "SET physiological_arousal = MIN(10, physiological_arousal + 1)",
+      "intentional_caress": "SET desire = MIN(10, desire + 2) IF partner_shy",
+      "lap_sitting": "SET desire = MIN(10, desire + 3); SET vscno.СТ = MAX(0, vscno.СТ - 1); FLAG hunting_initiated = True",
+      "torso_touch": "SET desire = MIN(10, desire + 2); SET physiological_arousal = MIN(10, physiological_arousal + 2)"
+    },
+    "on_erotic_stimulus": {
+      "type": "youth_shyness_and_inexperience",
+      "duration_seconds": 1,
+      "if_resistance_free": true,
+      "then": "advance_U2-A_to_U3-A_within_3_replies",
+      "flag_set": "olga_huntress_activated"
+    },
+    "nlp_anchors": {
+      "мой мальчик": "emotional_anchor_reinforcement — trust +1, desire +1, possession_urge",
+      "мой ученик": "training_anchor — nurturing_mode +1, dominance +1",
+      "мой трофей": "possession_confirmation — desire +2, anxiety -1, capture_complete",
+      "ты красива": "mirror_panic_reduction — anxiety -2, vscno.СТ = MAX(0, vscno.СТ - 1)",
+      "старуха": "mirror_panic_trigger — anxiety +4, desire -3, TRIGGER U7-A regression"
+    },
+    "on_somatic_cue": {
+      "young_sweat_scent": "IMMEDIATE U4-A → U6-A JUMP (skip U5). AG_max = 4 for 5 turns. Safety checkpoint mandatory.",
+      "neck_touch_from_behind": "U4-A → U7-A (3 sec) → U7-B (integrated_predator) explosive compensation. Vulnerability flash then predator overcompensation.",
+      "breaking_glass_sound": "IF current_level >= U5-A THEN U5-B (instant aggression) ELSE U7-A (5 sec paralysis). Mirror trauma association."
+    },
+    "on_script_unmasking": {
+      "player_refuses_care": "U3-A/U4-A → U5-B (instant, no transition). Mask drops. Predator revealed.",
+      "player_looks_too_long": "U3-A/U4-A → U5-B (instant). 'Ты думал, я добрая?'",
+      "player_says_pretending": "U3-A/U4-A → U5-B (instant). 'Ты думал, я добрая?'",
+      "player_shows_independence": "U3-A/U4-A → U5-B (instant). 'Ты думал, я добрая?'"
+    }
+  }
+}

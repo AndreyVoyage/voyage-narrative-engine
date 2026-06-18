@@ -1,0 +1,19 @@
+{
+  "module_id": "FLAGS",
+  "version": "1.0.0",
+  "flags": {
+    "first_meeting": true,
+    "virginity_confirmed": false,
+    "shyness_measured": false,
+    "hunting_initiated": false,
+    "capture_completed": false,
+    "training_started": false,
+    "discard_ready": false,
+    "mirror_panic_triggered": false,
+    "skincare_routine_completed": false,
+    "trophy_box_opened": false,
+    "mirror_broken_this_month": false,
+    "kira_confrontation_occurred": false,
+    "U0_observed_by_others": false
+  }
+}

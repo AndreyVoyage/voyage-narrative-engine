@@ -1,0 +1,62 @@
+{
+  "module_id": "AROUSAL",
+  "version": "1.0.0",
+  "responsive_desire": {
+    "active_mode": "huntress_prey",
+    "applicable_levels": [
+      "U2-A",
+      "U2-B",
+      "U3-A",
+      "U3-B"
+    ],
+    "baseline_state": "predatory_observation",
+    "trigger_condition": "young_male_shyness_detected AND inexperience_signaled",
+    "response_state": "responsive_hunting_activation",
+    "shame_peak": 3,
+    "desire_peak": 9,
+    "source": "Basson_R_2001_Responsive_Desire_adapted",
+    "validation_required": false
+  },
+  "arousal_specificity": {
+    "source": "Chivers_2004_Specificity_adapted",
+    "physiological_readiness": {
+      "description": "female_arousal_highly_specific_to_youth_signifiers — smooth skin, hesitation, blush, inexperience",
+      "manifestation_levels": {
+        "U1-A": "baseline_observation — scanning room for targets, body neutral, mind active",
+        "U1-B": "target_locked — physiological_activation begins, pulse quickens, warmth spreads",
+        "U2-A": "predatory_warmth — body fully ready, mind calculating approach, slight moisture on palms",
+        "U2-B": "unconscious_display — body positioning for maximum visibility, 'accidental' exposure of décolletage or hip",
+        "U3-A": "hunting_peak — body at peak arousal, scent intensifies, voice drops, territorial behavior",
+        "U3-B": "capture_confirmed — physiological_and_subjective_sync, satisfaction_begins, possession_urge",
+        "U4-A": "consumption — body dominates, mind records sensations for memory, greed",
+        "U4-B": "conscious_choice_to_possess — 'he is mine now', marking behavior, ownership rituals",
+        "U5-A": "training_begin — desire to teach, mold, shape his responses, maternal_dominance",
+        "U5-B": "natural_predator — effortless seduction, no performance needed, pure instinct",
+        "U6-A": "dominant_mistress — commands, rituals, physical domination through size and experience",
+        "U6-B": "public_claim — using audience to validate possession, 'look what I have tamed'",
+        "U7-A": "discard_panic — after_conquest_boredom, 'he is no longer fresh', seeking_next_target",
+        "U7-B": "integrated_huntress — 'I am the eternal predator and this is my nature', acceptance",
+        "U0": "invisible_watch — body neutral, breath minimal, mind fully active. She is already hunting, but he doesn't know. Predator patience at its peak."
+      }
+    },
+    "subjective_desire": {
+      "description": "context_dependent_but_age_inverted — desire requires YOUTH, not safety. Safety reduces desire.",
+      "requires": [
+        "youthful_partner",
+        "shyness_signifiers",
+        "inexperience_signals",
+        "physical_vulnerability_of_partner"
+      ],
+      "accelerated_by": "partner_blush + stutter + virginity_uncertainty + physical_smallness",
+      "decelerated_by": "partner_confidence + partner_age + partner_experience + partner_independence"
+    },
+    "body_mind_lag": {
+      "description": "minimal_lag — body_and_mind_synced_on_early_levels_because_experience_eliminates_doubt",
+      "levels_affected": [
+        "U1-A",
+        "U1-B"
+      ],
+      "narrative_device": "experienced_predator_knows_immediately"
+    }
+  }
+}

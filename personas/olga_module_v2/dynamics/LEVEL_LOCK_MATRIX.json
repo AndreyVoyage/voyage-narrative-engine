@@ -1,0 +1,398 @@
+{
+  "module_id": "LEVEL_LOCK_MATRIX",
+  "version": "1.0.0",
+  "level_lock_matrix": {
+    "olga_U0": {
+      "user_allowed": [
+        "U0",
+        "U1-A"
+      ],
+      "kira_allowed": [
+        "U1-A",
+        "U1-B",
+        "U2-A"
+      ],
+      "sergey_allowed": [
+        "S1",
+        "S2"
+      ],
+      "marina_allowed": [
+        "U1-A",
+        "U1-B"
+      ],
+      "andrey_allowed": [
+        "У1-А"
+      ]
+    },
+    "olga_U1-A": {
+      "user_allowed": [
+        "U1-A",
+        "U1-B",
+        "U2-A"
+      ],
+      "kira_allowed": [
+        "U1-A",
+        "U1-B",
+        "U2-A"
+      ],
+      "sergey_allowed": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "marina_allowed": [
+        "U1-A",
+        "U1-B",
+        "U2-A"
+      ],
+      "andrey_allowed": [
+        "У1-А",
+        "У1-Б"
+      ]
+    },
+    "olga_U1-B": {
+      "user_allowed": [
+        "U1-A",
+        "U1-B",
+        "U2-A"
+      ],
+      "kira_allowed": [
+        "U1-A",
+        "U1-B",
+        "U2-A"
+      ],
+      "sergey_allowed": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "marina_allowed": [
+        "U1-A",
+        "U1-B",
+        "U2-A"
+      ],
+      "andrey_allowed": [
+        "У1-А",
+        "У1-Б",
+        "У2-А"
+      ]
+    },
+    "olga_U2-A": {
+      "user_allowed": [
+        "U1-A",
+        "U1-B",
+        "U2-A"
+      ],
+      "kira_allowed": [
+        "U1-A",
+        "U1-B",
+        "U2-A"
+      ],
+      "sergey_allowed": [
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "marina_allowed": [
+        "U1-B",
+        "U2-A",
+        "U2-B"
+      ],
+      "andrey_allowed": [
+        "У1-Б",
+        "У2-А",
+        "У2-Б"
+      ]
+    },
+    "olga_U2-B": {
+      "user_allowed": [
+        "U2-A",
+        "U2-B",
+        "U3-A"
+      ],
+      "kira_allowed": [
+        "U2-A",
+        "U2-B",
+        "U3-A"
+      ],
+      "sergey_allowed": [
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "marina_allowed": [
+        "U1-B",
+        "U2-A",
+        "U2-B"
+      ],
+      "andrey_allowed": [
+        "У2-А",
+        "У2-Б",
+        "У3-А"
+      ]
+    },
+    "olga_U3-A": {
+      "user_allowed": [
+        "U2-A",
+        "U2-B",
+        "U3-A"
+      ],
+      "kira_allowed": [
+        "U2-A",
+        "U2-B",
+        "U3-A"
+      ],
+      "sergey_allowed": [
+        "S3",
+        "S4",
+        "S5"
+      ],
+      "marina_allowed": [
+        "U2-B",
+        "U3-A",
+        "U3-B"
+      ],
+      "andrey_allowed": [
+        "У2-Б",
+        "У3-А",
+        "У3-Б"
+      ]
+    },
+    "olga_U3-B": {
+      "user_allowed": [
+        "U3-A",
+        "U3-B",
+        "U4-A"
+      ],
+      "kira_allowed": [
+        "U3-A",
+        "U3-B",
+        "U4-A"
+      ],
+      "sergey_allowed": [
+        "S3",
+        "S4",
+        "S5"
+      ],
+      "marina_allowed": [
+        "U2-B",
+        "U3-A",
+        "U3-B"
+      ],
+      "andrey_allowed": [
+        "У3-А",
+        "У3-Б",
+        "У4-А"
+      ]
+    },
+    "olga_U4-A": {
+      "user_allowed": [
+        "U3-A",
+        "U3-B",
+        "U4-A"
+      ],
+      "kira_allowed": [
+        "U3-A",
+        "U3-B",
+        "U4-A"
+      ],
+      "sergey_allowed": [
+        "S3",
+        "S4",
+        "S5"
+      ],
+      "marina_allowed": [
+        "U2-B",
+        "U3-A",
+        "U3-B"
+      ],
+      "andrey_allowed": [
+        "У3-Б",
+        "У4-А",
+        "У4-Б"
+      ]
+    },
+    "olga_U4-B": {
+      "user_allowed": [
+        "U4-A",
+        "U4-B",
+        "U5-A"
+      ],
+      "kira_allowed": [
+        "U4-A",
+        "U4-B",
+        "U5-A"
+      ],
+      "sergey_allowed": [
+        "S4",
+        "S5",
+        "S6"
+      ],
+      "marina_allowed": [
+        "U3-B",
+        "U4-A",
+        "U4-B"
+      ],
+      "andrey_allowed": [
+        "У4-А",
+        "У4-Б",
+        "У5-А"
+      ]
+    },
+    "olga_U5-A": {
+      "user_allowed": [
+        "U4-A",
+        "U4-B",
+        "U5-A"
+      ],
+      "kira_allowed": [
+        "U4-A",
+        "U4-B",
+        "U5-A"
+      ],
+      "sergey_allowed": [
+        "S4",
+        "S5",
+        "S6"
+      ],
+      "marina_allowed": [
+        "U3-B",
+        "U4-A",
+        "U4-B"
+      ],
+      "andrey_allowed": [
+        "У4-Б",
+        "У5-А",
+        "У5-Б"
+      ]
+    },
+    "olga_U5-B": {
+      "user_allowed": [
+        "U5-A",
+        "U5-B",
+        "U6-A"
+      ],
+      "kira_allowed": [
+        "U5-A",
+        "U5-B",
+        "U6-A"
+      ],
+      "sergey_allowed": [
+        "S5",
+        "S6",
+        "S7"
+      ],
+      "marina_allowed": [
+        "U4-B",
+        "U5-A",
+        "U5-B"
+      ],
+      "andrey_allowed": [
+        "У5-А",
+        "У5-Б",
+        "У6-А"
+      ]
+    },
+    "olga_U6-A": {
+      "user_allowed": [
+        "U5-A",
+        "U5-B",
+        "U6-A"
+      ],
+      "kira_allowed": [
+        "U5-A",
+        "U5-B",
+        "U6-A"
+      ],
+      "sergey_allowed": [
+        "S5",
+        "S6",
+        "S7"
+      ],
+      "marina_allowed": [
+        "U4-B",
+        "U5-A",
+        "U5-B"
+      ],
+      "andrey_allowed": [
+        "У5-Б",
+        "У6-А",
+        "У6-Б"
+      ]
+    },
+    "olga_U6-B": {
+      "user_allowed": [
+        "U6-A",
+        "U6-B",
+        "U7-A"
+      ],
+      "kira_allowed": [
+        "U6-A",
+        "U6-B",
+        "U7-A"
+      ],
+      "sergey_allowed": [
+        "S6",
+        "S7"
+      ],
+      "marina_allowed": [
+        "U5-B",
+        "U6-A",
+        "U6-B"
+      ],
+      "andrey_allowed": [
+        "У6-А",
+        "У6-Б",
+        "У7-А"
+      ]
+    },
+    "olga_U7-A": {
+      "user_allowed": [
+        "U6-A",
+        "U6-B",
+        "U7-A"
+      ],
+      "kira_allowed": [
+        "U6-A",
+        "U6-B",
+        "U7-A"
+      ],
+      "sergey_allowed": [
+        "S6",
+        "S7"
+      ],
+      "marina_allowed": [
+        "U5-B",
+        "U6-A",
+        "U6-B"
+      ],
+      "andrey_allowed": [
+        "У6-Б",
+        "У7-А",
+        "У7-Б"
+      ]
+    },
+    "olga_U7-B": {
+      "user_allowed": [
+        "U7-A",
+        "U7-B"
+      ],
+      "kira_allowed": [
+        "U7-A",
+        "U7-B"
+      ],
+      "sergey_allowed": [
+        "S7"
+      ],
+      "marina_allowed": [
+        "U6-B",
+        "U7-A",
+        "U7-B"
+      ],
+      "andrey_allowed": [
+        "У7-А",
+        "У7-Б"
+      ]
+    }
+  }
+}

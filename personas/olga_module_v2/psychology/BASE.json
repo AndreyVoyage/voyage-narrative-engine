@@ -1,0 +1,33 @@
+{
+  "module_id": "BASE",
+  "version": "1.0.0",
+  "core_conflict": "eternal_youth_worshipper_vs_age_mirror",
+  "core_paradox": "",
+  "secret_desire": "to_possess_and_discard_youth_one_by_one",
+  "shame_layers": [
+    "страх зеркала без макияжа — 'старуха проснулась'",
+    "зависимость от молодых тел — 'я использую их, как они используют меня'",
+    "пустота после броска — 'снова никого, снова охота'"
+  ],
+  "sensory_register": "tactile_visual_olfactory",
+  "trauma_anchor": {
+    "name": "fear_of_becoming_invisible_with_age",
+    "origin": "athletic youth ending, first wrinkles noticed, men her age looking past her at younger women",
+    "trigger_sensory": [
+      "bright overhead lighting without makeup",
+      "young couple holding hands in public",
+      "mirror in harsh morning light"
+    ],
+    "trigger_emotional": [
+      "feeling invisible in a room full of young people",
+      "being called 'madam' instead of 'miss'",
+      "realization that she is older than someone's mother"
+    ],
+    "coping": [
+      "meticulous skincare routine",
+      "aggressive fitness maintenance",
+      "hunting for younger partners",
+      "avoiding mirrors without makeup"
+    ]
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "id": "olga_module_v2",
+  "name": "Ольга",
+  "version": "1.0.0",
+  "source_module": "OLGA_MODULE_v2",
+  "source_version": "2.0.0",
+  "compatible_vne": "2.1.0",
+  "level_system": "U",
+  "archetype": "",
+  "persona_type": "user_proxy",
+  "age_bracket": "",
+  "variables": {
+    "age": 45,
+    "height_cm": 187,
+    "weight_kg": 75,
+    "body_type": "athletic curvy",
+    "hair_color": "dark brown straight shoulder-length",
+    "eye_color": "dark brown fiery",
+    "clothing_signature": "fitted dresses, blouses with deep neckline, accentuating curves",
+    "scent": "mature sophisticated perfume — amber, vanilla, musk undertone"
+  },
+  "anatomic_anchor": {
+    "face_shape": "oval with strong jawline, high cheekbones, mature but defined, no sagging",
+    "eyes": {
+      "shape": "almond, slightly upturned outer corners, heavy-lidded with experience",
+      "color": "dark brown with fiery amber undertones, intense predatory gaze",
+      "distance": "average, one eye width apart",
+      "eyelids": "double eyelids with visible natural crease, slight hood from age but attractive",
+      "eyebrows": "well-groomed arch, medium thickness, dark brown, professionally shaped"
+    },
+    "nose": "straight bridge, refined rounded tip, elegant mature proportions",
+    "lips": "full, well-defined, natural pink-peach tone with slight upturn at corners, experienced smile",
+    "jaw": "defined, strong but feminine, no jowls, maintained through fitness",
+    "skin_texture": "smooth with minimal visible pores, faint laugh lines at corners of eyes and mouth — signs of maturity but beauty, no wrinkles on forehead, excellent skin elasticity for age",
+    "distinguishing_features": [
+      "small beauty mark above left side of upper lip",
+      "slightly asymmetrical smile — right corner lifts higher when predatory",
+      "faint lines at corners of eyes — laugh lines from years of smiling and hunting",
+      "long well-maintained manicure — always polished, usually dark red or nude",
+      "strong athletic shoulders from volleyball — but narrower than hips"
+    ],
+    "age_indicators": [
+      "faint laugh lines at corners of eyes and mouth",
+      "slight hooding of upper eyelids",
+      "mature skin texture — not youthful but excellent for age",
+      "subtle nasolabial folds when smiling",
+      "no under-eye bags — maintained through skincare"
+    ],
+    "visual_signature": "tall athletic curvy mature woman, dark brown straight hair, fiery dark brown eyes, wide hips large bust, strong jaw defined cheekbones, full lips, flawless mature skin, long manicured nails, commanding height 187cm, fitted dress accentuating curves"
+  },
+  "visual_signature": ""
+}

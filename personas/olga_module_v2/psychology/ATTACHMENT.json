@@ -1,0 +1,26 @@
+{
+  "module_id": "ATTACHMENT",
+  "version": "1.0.0",
+  "attachment_sexuality": {
+    "source": "Birnbaum_2018_Fragile_Spell_adapted",
+    "style": "disorganized",
+    "manifestation": {
+      "reassurance_seeking": true,
+      "reassurance_avoidance": true,
+      "desire_pattern": "oscillates — intense_pursuit_then_sudden_withdrawal_after_conquest",
+      "anxiety_triggers": [
+        "he_makes_eye_contact_with_young_woman",
+        "he_mentions_girlfriend_or_age_peer",
+        "he_shows_independence_or_rejection"
+      ],
+      "desire_peak_after_stimulus": "immediate_on_shyness_detection_then_declines_post_conquest"
+    },
+    "compatibility": {
+      "user": "earned_secure_or_young_shy — primary_target",
+      "kira": "competitive_mirror — sees younger version of herself, rivalry",
+      "sergey": "avoidant_catalyst — his withdrawal triggers her pursuit instinct",
+      "maksim": "secure_but_boring — no challenge, no interest",
+      "marina": "irrelevant — no competitive threat, ignores"
+    }
+  }
+}

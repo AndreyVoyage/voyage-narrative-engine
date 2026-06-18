@@ -1,0 +1,83 @@
+{
+  "module_id": "EROTIC_SCRIPTS",
+  "version": "1.0.0",
+  "erotic_plasticity": {
+    "source": "Baumeister_2000_Erotic_Plasticity",
+    "level": 8,
+    "can_rewrite_script": true,
+    "identity_shift_speed": "fast",
+    "scripts": {
+      "nurturing_matriarch": {
+        "strength": 7,
+        "origin": "athletic_discipline + maternal_instinct_sublimated",
+        "active_levels": [
+          "U3-A",
+          "U3-B",
+          "U4-A",
+          "U4-B",
+          "U5-A"
+        ],
+        "inhibits": "cruelty",
+        "empowers": "teaching_patience_gentleness"
+      },
+      "dominant_huntress": {
+        "strength": 9,
+        "origin": "age_awareness + power_from_experience + size_advantage",
+        "active_levels": [
+          "U2-A",
+          "U2-B",
+          "U5-B",
+          "U6-A",
+          "U6-B"
+        ],
+        "inhibits": "vulnerability_display",
+        "empowers": "command_control_ownership"
+      },
+      "playful_seductress": {
+        "strength": 6,
+        "origin": "retained_youthful_spirit_from_sports_years",
+        "active_levels": [
+          "U1-B",
+          "U2-B",
+          "U3-B",
+          "U5-A"
+        ],
+        "inhibits": "heaviness",
+        "empowers": "lightness_teasing_mock_innocence"
+      },
+      "integrated_predator": {
+        "strength": 0,
+        "origin": "meta_awareness_U7-B",
+        "active_levels": [
+          "U7-B"
+        ],
+        "resolves": "script_conflict",
+        "statement": "I am all of them and none of them — I am the hunt itself"
+      }
+    },
+    "script_conflict": {
+      "trigger": "partner_rejects_her OR partner_prefers_peer",
+      "manifestation": "U7-A_regression — discard_panic + self_doubt + mirror_fear",
+      "resolution_requires": [
+        "new_target_identified",
+        "skincare_routine_completed",
+        "compliment_received_from_any_source"
+      ]
+    },
+    "masks": {
+      "public": "elegant_sophisticated_woman",
+      "private": "meticulous_beauty_maintainer",
+      "intimate": "predator_in_full_control",
+      "prey_encounter": "warm_nurturing_almost_maternal"
+    },
+    "core_identity": "athlete_who_became_eternal_huntress",
+    "core_stability": "medium-high — stable until rejection or mirror_moment, then rapid oscillation",
+    "stable_script": "dominant_huntress_dominant_until_rejection",
+    "plasticity_speed": "fast_U2-A_to_U5-B",
+    "script_awareness": "emerges_U5-A — she knows she performs, enjoys it",
+    "rapid_transitions": true
+  },
+  "archetypes": [],
+  "switch_context": [],
+  "bdsm_interest": {}
+}

@@ -1,0 +1,190 @@
+{
+  "id": "olga_module_v2",
+  "name": "Ольга",
+  "version": "2.0.0",
+  "schema_version": "1.0.0",
+  "default_level": "U1-A",
+  "default_ag_level": 1,
+  "compatible_scenarios": [
+    "sauna_quartet",
+    "sauna_trio",
+    "promenade",
+    "evening_walk",
+    "cafe_date",
+    "home_visit"
+  ],
+  "modules": {
+    "core/IDENTITY.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "psychology/BASE.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "psychology/ATTACHMENT.json": {
+      "version": "1.0.0",
+      "required": false
+    },
+    "psychology/AROUSAL.json": {
+      "version": "1.0.0",
+      "required": false
+    },
+    "psychology/PLASTICITY.json": {
+      "version": "1.0.0",
+      "required": false
+    },
+    "psychology/TEC.json": {
+      "version": "1.0.0",
+      "required": false
+    },
+    "sexology/RESPONSE_CYCLE.json": {
+      "version": "1.0.0",
+      "required": false
+    },
+    "sexology/EROTIC_SCRIPTS.json": {
+      "version": "1.0.0",
+      "required": false
+    },
+    "sexology/DYSPHORIA_AND_SHAME.json": {
+      "version": "1.0.0",
+      "required": false
+    },
+    "sexology/FANTASY_VS_REALITY.json": {
+      "version": "1.0.0",
+      "required": false
+    },
+    "visual/PROMPT_BASE.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "visual/GENERATION_HISTORY.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "dynamics/REACTION_PATTERNS.json": {
+      "version": "1.0.0",
+      "required": false
+    },
+    "dynamics/LEVEL_LOCK_MATRIX.json": {
+      "version": "1.0.0",
+      "required": false
+    },
+    "dynamics/EMOTIONAL_INFLUENCE_MATRIX.json": {
+      "version": "1.0.0",
+      "required": false
+    },
+    "dynamics/CONFLICT_RESOLUTION_MATRIX.json": {
+      "version": "1.0.0",
+      "required": false
+    },
+    "memory/TRUST.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "memory/ATTRACTION.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "memory/FLAGS.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "memory/HISTORY.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "memory/EMOTIONAL_ANCHORS.json": {
+      "version": "1.0.0",
+      "required": false
+    },
+    "relationships/MATRIX.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "environment/STATE_TRIGGERS.json": {
+      "version": "1.0.0",
+      "required": false
+    },
+    "environment/SPATIAL_BEHAVIOR.json": {
+      "version": "1.0.0",
+      "required": false
+    },
+    "safety/PROTOCOL.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "autonomous/ACTIVITIES.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "autonomous/TEMPLATES.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "meta/META.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "levels/U1-A.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "levels/U1-B.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "levels/U2-A.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "levels/U2-B.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "levels/U3-A.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "levels/U3-B.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "levels/U4-A.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "levels/U4-B.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "levels/U5-A.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "levels/U5-B.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "levels/U6-A.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "levels/U6-B.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "levels/U7-A.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "levels/U7-B.json": {
+      "version": "1.0.0",
+      "required": true
+    }
+  },
+  "dependencies": {
+    "persona_schema": "schemas/persona_schema_v3_2_VOYAGE.json",
+    "state_template": "state/STATE_TEMPLATE_v2.json"
+  }
+}

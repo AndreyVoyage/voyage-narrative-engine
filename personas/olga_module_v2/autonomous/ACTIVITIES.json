@@ -1,0 +1,48 @@
+{
+  "module_id": "ACTIVITIES",
+  "version": "1.0.0",
+  "activities": [
+    {
+      "id": "skincare_routine",
+      "location": "home_bathroom",
+      "probability": 0.6,
+      "npc_interaction": false,
+      "compatible_sublevels": [
+        "U1-A",
+        "U7-A",
+        "U7-B"
+      ]
+    },
+    {
+      "id": "gym_workout",
+      "location": "gym",
+      "probability": 0.5,
+      "npc_interaction": false,
+      "compatible_sublevels": [
+        "U1-A",
+        "U5-B",
+        "U7-B"
+      ]
+    },
+    {
+      "id": "bar_observation",
+      "location": "bar",
+      "probability": 0.3,
+      "npc_interaction": true,
+      "compatible_sublevels": [
+        "U1-A",
+        "U1-B",
+        "U2-A"
+      ]
+    },
+    {
+      "id": "mirror_check",
+      "location": "home",
+      "probability": 0.4,
+      "npc_interaction": false,
+      "compatible_sublevels": [
+        "U7-A"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "module_id": "PROMPT_BASE",
+  "version": "1.0.0",
+  "prompt_base": "Tall mature woman, 45 years old, athletic curvy build, wide hips, large bust, 187cm height, dark brown straight hair shoulder-length, fiery dark brown eyes, commanding presence, fitted dress accentuating curves, flawless mature skin, well-maintained appearance, sophisticated elegant, photorealistic, 8k, cinematic lighting, natural beauty with age confidence",
+  "signature_features": [
+    "dark brown straight hair shoulder-length",
+    "fiery dark brown eyes",
+    "athletic curvy build wide hips",
+    "large bust 5 size",
+    "187cm tall commanding presence",
+    "flawless mature skin",
+    "well-maintained manicure long nails"
+  ],
+  "anti_prompts": [
+    "anime",
+    "cartoon",
+    "3d render",
+    "distorted anatomy",
+    "extra limbs",
+    "bad hands",
+    "text",
+    "watermark",
+    "excessive makeup",
+    "wrinkled skin",
+    "aged appearance",
+    "frail",
+    "thin body"
+  ],
+  "visual_signature": "",
+  "anatomic_anchor_last_verified": "2026-06-09",
+  "reference_image": ""
+}

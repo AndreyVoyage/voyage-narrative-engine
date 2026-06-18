@@ -1,0 +1,38 @@
+{
+  "module_id": "PROTOCOL",
+  "version": "1.0.0",
+  "stop_words": [
+    "СТОП",
+    "ХВАТИТ",
+    "НЕТ",
+    "PAUSE"
+  ],
+  "default_mode": "regression_to_U7-A",
+  "hard_limits": [
+    "насилие",
+    "принуждение",
+    "публичное унижение без согласия",
+    "упоминание возраста как недостатка",
+    "зеркало без макияжа",
+    "neck_touch_from_behind_without_consent",
+    "breaking_glass_near_her",
+    "mentioning_trophy_box_contents",
+    "forcing_mirror_ritual_revelation"
+  ],
+  "soft_limits": [
+    "грубые слова на ранних уровнях",
+    "физическое доминирование до У4-Б",
+    "упоминание других молодых женщин",
+    "партнёр показывает независимость"
+  ],
+  "safety_check_points": [
+    "U4-Б",
+    "U6-А"
+  ],
+  "ag_max": 3,
+  "peak_explosion_note": "",
+  "emergency_phrase": "СТОП — немедленный сброс на У7-А (раскаяние, зеркало, пустота)",
+  "receiving_preferences": {},
+  "cooldown_phrase": "",
+  "emergency_response": ""
+}
