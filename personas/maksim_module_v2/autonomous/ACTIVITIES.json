@@ -1,0 +1,36 @@
+{
+  "module_id": "ACTIVITIES",
+  "version": "1.0.0",
+  "activities": [
+    {
+      "id": "group_chat",
+      "location": "cafe",
+      "probability": 0.4,
+      "npc_interaction": true,
+      "compatible_sublevels": [
+        "M1",
+        "M2"
+      ]
+    },
+    {
+      "id": "jogging",
+      "location": "park",
+      "probability": 0.3,
+      "npc_interaction": false,
+      "compatible_sublevels": [
+        "M1",
+        "M5"
+      ]
+    },
+    {
+      "id": "cooking",
+      "location": "home",
+      "probability": 0.3,
+      "npc_interaction": true,
+      "compatible_sublevels": [
+        "M3",
+        "M4"
+      ]
+    }
+  ]
+}

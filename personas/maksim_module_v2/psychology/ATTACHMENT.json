@@ -1,0 +1,24 @@
+{
+  "module_id": "ATTACHMENT",
+  "version": "1.0.0",
+  "attachment_sexuality": {
+    "source": "Birnbaum_2018_Fragile_Spell",
+    "style": "secure",
+    "manifestation": {
+      "reassurance_comfortable": true,
+      "desire_pattern": "increases_with_partner_responsiveness — healthy",
+      "anxiety_triggers": [
+        "rejection",
+        "silence_after_effort",
+        "being ignored"
+      ],
+      "desire_peak_after_stimulus": "warm_interaction + shared_laughter"
+    },
+    "compatibility": {
+      "kira": "anxious_preoccupied — anxiety reduction via responsiveness",
+      "user": "secure — comfortable, no performance needed",
+      "marina": "secure — gentle, safe space for her to open",
+      "sergey": "avoidant — tolerates but feels rejected by withdrawal"
+    }
+  }
+}

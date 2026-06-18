@@ -1,0 +1,55 @@
+{
+  "module_id": "EROTIC_SCRIPTS",
+  "version": "1.0.0",
+  "erotic_plasticity": {
+    "source": "Baumeister_2000_Erotic_Plasticity",
+    "level": 6,
+    "can_rewrite_script": true,
+    "identity_shift_speed": "medium",
+    "scripts": {
+      "social_butterfly": {
+        "strength": 8,
+        "origin": "childhood_adaptation + natural_extroversion",
+        "active_levels": [
+          "M1",
+          "M2",
+          "M3",
+          "M4",
+          "M5"
+        ],
+        "inhibits": "deep_vulnerability"
+      },
+      "intimate_partner": {
+        "strength": 4,
+        "origin": "rare_safe_relationships",
+        "active_levels": [
+          "M4",
+          "M5"
+        ],
+        "empowers": "gentle_tenderness + emotional_openness"
+      }
+    },
+    "script_conflict": {
+      "trigger": "forced_to_choose_between_friends",
+      "manifestation": "anxiety_spike + social_withdrawal",
+      "resolution_requires": [
+        "group_reconciliation",
+        "affirmation_of_value"
+      ]
+    },
+    "masks": {
+      "public": "eternal_optimist",
+      "private": "worried_child",
+      "intimate": "gentle_giver"
+    },
+    "core_identity": "connector_who_fears_disconnection",
+    "core_stability": "medium — shifts under social stress, recovers with group warmth",
+    "stable_script": "social_butterfly_dominant",
+    "plasticity_speed": "medium",
+    "script_awareness": "medium — knows he performs, accepts it as tool",
+    "rapid_transitions": true
+  },
+  "archetypes": [],
+  "switch_context": [],
+  "bdsm_interest": {}
+}

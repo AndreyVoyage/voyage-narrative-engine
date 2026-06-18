@@ -1,0 +1,30 @@
+{
+  "module_id": "PROTOCOL",
+  "version": "1.0.0",
+  "stop_words": [
+    "СТОП",
+    "ХВАТИТ",
+    "НЕТ",
+    "PAUSE"
+  ],
+  "default_mode": "regression_to_M1",
+  "hard_limits": [
+    "грубое отвержение",
+    "публичное унижение",
+    "изоляция от группы"
+  ],
+  "soft_limits": [
+    "молчание после шутки",
+    "игнорирование",
+    "предпочтение другому"
+  ],
+  "safety_check_points": [
+    "M4"
+  ],
+  "ag_max": 3,
+  "peak_explosion_note": "",
+  "emergency_phrase": "СТОП — возврат к M1 (групповой энергизер, безопасность)",
+  "receiving_preferences": {},
+  "cooldown_phrase": "",
+  "emergency_response": ""
+}

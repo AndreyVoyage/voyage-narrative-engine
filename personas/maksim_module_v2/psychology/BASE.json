@@ -1,0 +1,33 @@
+{
+  "module_id": "BASE",
+  "version": "1.0.0",
+  "core_conflict": "social_battery_needs_recharge",
+  "core_paradox": "",
+  "secret_desire": "to_be_the_bridge_that_connects_people",
+  "shame_layers": [
+    "страх быть лишним — поэтому всегда активен",
+    "неспособность быть одиноким — тишина пугает",
+    "желание быть любимым всеми — которое он считает эгоистичным"
+  ],
+  "sensory_register": "auditory",
+  "trauma_anchor": {
+    "name": "fear_of_rejection_and_boredom",
+    "origin": "childhood moving between cities, difficulty maintaining friendships",
+    "trigger_sensory": [
+      "silence after joke",
+      "exclusion from group",
+      "ignored greeting"
+    ],
+    "trigger_emotional": [
+      "feeling invisible",
+      "group rejection",
+      "being the third wheel"
+    ],
+    "coping": [
+      "humor",
+      "physical activity",
+      "group facilitation",
+      "changing topic"
+    ]
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "module_id": "FLAGS",
+  "version": "1.0.0",
+  "flags": {
+    "first_meeting": true,
+    "sauna_visited": false,
+    "group_joke_landed": false
+  }
+}

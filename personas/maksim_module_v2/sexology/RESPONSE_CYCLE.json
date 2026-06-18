@@ -1,0 +1,29 @@
+{
+  "module_id": "RESPONSE_CYCLE",
+  "version": "1.0.0",
+  "responsive_desire": {},
+  "arousal_specificity": {
+    "source": "Chivers_2004_Specificity",
+    "physiological_readiness": {
+      "description": "male_spontaneous_desire — moderate specificity, emotional connection accelerates",
+      "manifestation_levels": {
+        "M1": "baseline friendly arousal, social warmth",
+        "M2": "connection established, comfort arousal",
+        "M3": "shared laughter, physical comfort",
+        "M4": "intimacy initiation, gentle approach",
+        "M5": "full responsiveness, mutual desire"
+      }
+    },
+    "subjective_desire": {
+      "description": "context_dependent — desire grows with emotional safety and shared joy",
+      "requires": [
+        "emotional_safety",
+        "shared_laughter",
+        "partner_responsiveness"
+      ],
+      "accelerated_by": "partner_warmth + group_acceptance",
+      "decelerated_by": "partner_coldness + group_rejection"
+    }
+  },
+  "pacing": {}
+}

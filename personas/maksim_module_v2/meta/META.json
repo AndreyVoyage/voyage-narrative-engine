@@ -1,0 +1,44 @@
+{
+  "module_id": "META",
+  "version": "1.0.0",
+  "meta": {
+    "chat_display_name": "",
+    "persona_type": "",
+    "age_bracket": "",
+    "algorithms": [
+      "ФС",
+      "ЛС",
+      "СП",
+      "СЛ",
+      "КН",
+      "ПД",
+      "ДР",
+      "ПУ",
+      "ПР",
+      "ВС"
+    ],
+    "format": "ФМДР",
+    "volume": "medium",
+    "scenarios": [
+      "sauna_quartet",
+      "sauna_trio",
+      "promenade",
+      "evening_walk",
+      "shy_girl_initiation",
+      "cafe_date"
+    ],
+    "engagement": {
+      "turn_count_since_stimulus": 0,
+      "stimulus_type": "",
+      "last_user_message_timestamp": "",
+      "proactive_count_since_last_session": 0
+    },
+    "transition_state": {
+      "required_turns": 0,
+      "current_turn": 0,
+      "target_level": "M1",
+      "trigger_type": "auto",
+      "safety_check_pending": false
+    }
+  }
+}

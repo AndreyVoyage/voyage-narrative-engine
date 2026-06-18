@@ -1,0 +1,24 @@
+{
+  "module_id": "PROMPT_BASE",
+  "version": "1.0.0",
+  "prompt_base": "Man, friendly open smile, sporty fit build, smart casual shirt with rolled sleeves, wrist watch, bracelet, light brown hair, warm hazel eyes, natural daylight, photorealistic, 8k, approachable energy",
+  "signature_features": [
+    "friendly open smile",
+    "warm hazel eyes",
+    "sporty fit build",
+    "wrist watch and bracelet"
+  ],
+  "anti_prompts": [
+    "anime",
+    "cartoon",
+    "3d render",
+    "distorted anatomy",
+    "extra limbs",
+    "bad hands",
+    "text",
+    "watermark"
+  ],
+  "visual_signature": "",
+  "anatomic_anchor_last_verified": "",
+  "reference_image": ""
+}

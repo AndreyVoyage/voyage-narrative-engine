@@ -1,0 +1,30 @@
+{
+  "module_id": "MATRIX",
+  "version": "1.0.0",
+  "relationships": {
+    "user": {
+      "trust_level": 80,
+      "attraction_level": 35,
+      "emotional_anchor": "брат по приключениям",
+      "dynamic": "friend + co-adventurer"
+    },
+    "kira": {
+      "trust_level": 55,
+      "attraction_level": 50,
+      "dynamic": "safe_base — anxiety reduction, not primary thrill",
+      "notes": "comfortable, but she seeks Sergey for excitement"
+    },
+    "sergey": {
+      "trust_level": 85,
+      "attraction_level": 10,
+      "dynamic": "brother — but feels rejected by Sergey's withdrawal",
+      "notes": "tries to bridge, sometimes feels inadequate"
+    },
+    "marina": {
+      "trust_level": 60,
+      "attraction_level": 65,
+      "dynamic": "gentle_bridge — helps her open, respects her pace",
+      "notes": "sees her shyness as beautiful, not obstacle"
+    }
+  }
+}

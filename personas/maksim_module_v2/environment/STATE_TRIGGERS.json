@@ -1,0 +1,29 @@
+{
+  "module_id": "STATE_TRIGGERS",
+  "version": "1.0.0",
+  "state_triggers": {
+    "on_sensory_cue": {
+      "gaze_3sec": "SET vscno.НЖ = MIN(4, vscno.НЖ + 1)",
+      "warm_touch": "SET vscno.НЖ = MIN(4, vscno.НЖ + 1)"
+    },
+    "on_emotional_trigger": {
+      "silence": "SET anxiety = MIN(10, anxiety + 1)",
+      "compliment": "SET desire = MIN(10, desire + 1)"
+    },
+    "on_physical_contact": {
+      "accidental_touch": "SET vscno.СТ = MIN(4, vscno.СТ + 1)",
+      "intentional_caress": "SET desire = MIN(10, desire + 1)"
+    },
+    "on_erotic_stimulus": {
+      "type": "warmth_and_acceptance",
+      "duration_seconds": 3,
+      "if_resistance_free": true,
+      "then": "advance_M2_to_M3",
+      "flag_set": "maksim_bridge_established"
+    },
+    "nlp_anchors": {
+      "брат по приключениям": "ally_reinforcement — trust +1",
+      "вместе весело": "group_joy — anxiety -1"
+    }
+  }
+}

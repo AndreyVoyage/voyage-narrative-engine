@@ -1,0 +1,48 @@
+{
+  "id": "maksim_module_v2",
+  "name": "Максим",
+  "version": "1.0.0",
+  "source_module": "MAKSIM_MODULE_v2",
+  "source_version": "2.0.0",
+  "compatible_vne": "2.1.0",
+  "level_system": "U",
+  "archetype": "",
+  "persona_type": "user_proxy",
+  "age_bracket": "",
+  "variables": {
+    "age": 28,
+    "height_cm": 180,
+    "body_type": "sporty fit not bulky",
+    "hair_color": "light brown",
+    "eye_color": "warm hazel",
+    "clothing_signature": "smart casual — shirt with rolled sleeves, wrist watch, bracelet",
+    "scent": "fresh citrus and cedar",
+    "stubble": "clean shaven or very light"
+  },
+  "anatomic_anchor": {
+    "face_shape": "round-oval, friendly soft contours, no sharp angles",
+    "eyes": {
+      "shape": "round, open, warm",
+      "color": "warm hazel with golden green flecks",
+      "distance": "average, warm spacing",
+      "eyelids": "double eyelids, visible crease, eyes crinkle when smiling",
+      "eyebrows": "medium thickness, soft natural arch, light brown, well-groomed"
+    },
+    "nose": "straight, medium length, rounded friendly tip, slightly upturned",
+    "lips": "medium full, naturally pink, wide smile showing teeth, laugh lines visible",
+    "jaw": "soft rounded jaw, no sharp angles, slight double chin when laughing",
+    "skin_texture": "smooth, healthy glow, minimal pores, clean shaven or very light stubble",
+    "distinguishing_features": [
+      "wide genuine smile with visible laugh lines",
+      "eyes crinkle at corners when happy",
+      "slightly asymmetrical ears (left ear sits lower)"
+    ],
+    "age_indicators": [
+      "no wrinkles",
+      "youthful plumpness in cheeks",
+      "healthy skin tone"
+    ],
+    "visual_signature": "round-oval face, warm hazel eyes, friendly smile, straight rounded nose, soft jaw, light brown hair, sporty fit build, smart casual with watch and bracelet"
+  },
+  "visual_signature": ""
+}
