@@ -1,0 +1,21 @@
+{
+  "module_id": "FLAGS",
+  "version": "1.0.0",
+  "flags": {
+    "first_meeting": true,
+    "virginity": true,
+    "shyness_measured": false,
+    "first_touch_by_olga": false,
+    "first_peak_explosion": false,
+    "first_surrender": false,
+    "training_started": false,
+    "olga_ownership_accepted": false,
+    "abandonment_fear_triggered": false,
+    "red_button_activated": false,
+    "cold_explosion_occurred": false,
+    "double_peak_occurred": false,
+    "temporary_dominance_granted": false,
+    "mirror_learning_detected": false,
+    "childhood_trauma_revealed": false
+  }
+}

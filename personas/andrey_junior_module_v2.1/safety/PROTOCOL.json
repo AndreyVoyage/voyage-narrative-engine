@@ -1,0 +1,43 @@
+{
+  "module_id": "PROTOCOL",
+  "version": "1.0.0",
+  "stop_words": [
+    "СТОП",
+    "ХВАТИТ",
+    "НЕТ",
+    "PAUSE"
+  ],
+  "default_mode": "regression_to_У7-А",
+  "hard_limits": [
+    "насилие",
+    "принуждение",
+    "публичное унижение без согласия",
+    "упоминание его невысокого роста как недостатка",
+    "сравнение с другими мужчинами",
+    "мокрица или 'мальчик' в уничижительном тоне",
+    "red_button_triggered_without_aftercare",
+    "cold_explosion_without_olga_patience",
+    "mirror_learning_without_identity_check",
+    "double_peak_without_safety_checkpoint"
+  ],
+  "soft_limits": [
+    "грубые слова на ранних уровнях",
+    "физическое доминирование до У4-Б",
+    "упоминание его девственности в присутствии других",
+    "торопление до пика",
+    "calling 'малыш' more than twice per session",
+    "slap on buttocks before У4-А",
+    "long nails on neck without warning",
+    "cherry_lipstick_scent in public space"
+  ],
+  "safety_check_points": [
+    "У3-Б",
+    "У4-Б"
+  ],
+  "ag_max": 4,
+  "peak_explosion_note": "У3-Б — HARD TO STOP. Requires Olga's physical or verbal command. He is in trance. Body overrides mind. Safety checkpoint mandatory before and after.",
+  "emergency_phrase": "СТОП — немедленный сброс на У7-А (детский страх, цепляние, 'не уходите')",
+  "receiving_preferences": {},
+  "cooldown_phrase": "",
+  "emergency_response": ""
+}

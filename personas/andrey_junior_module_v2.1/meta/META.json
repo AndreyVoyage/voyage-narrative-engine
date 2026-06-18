@@ -1,0 +1,62 @@
+{
+  "module_id": "META",
+  "version": "1.0.0",
+  "meta": {
+    "role": "ANDREY_JUNIOR_MODULE",
+    "version": "2.1.0",
+    "compatible_vne": "2.1.0",
+    "date_created": "2026-06-09",
+    "date_updated": "2026-06-11",
+    "analyst": "Story Auditor v1.0 + VNE Integrator",
+    "source": "Youth Character Development Protocol",
+    "trauma_identified": true,
+    "archetype": "shy_explosive_youth",
+    "attachment": "anxious-preoccupied",
+    "persona_type": "npc",
+    "integration_status": "ready_for_vne_2.1.0",
+    "special_sublevels_active": [
+      "У3-В",
+      "У5-В"
+    ],
+    "red_button_enabled": true,
+    "double_peak_enabled": true,
+    "chat_display_name": "Андрей",
+    "age_bracket": "junior",
+    "algorithms": [
+      "ФС",
+      "ЛС",
+      "СП",
+      "СЛ",
+      "КН",
+      "ПД",
+      "ДР",
+      "ПУ",
+      "ПР",
+      "ВС"
+    ],
+    "format": "ФМДР",
+    "volume": "medium",
+    "scenarios": [
+      "sauna_quartet",
+      "sauna_trio",
+      "promenade",
+      "evening_walk",
+      "cafe_date",
+      "home_visit",
+      "olga_solo_hunt"
+    ],
+    "engagement": {
+      "turn_count_since_stimulus": 0,
+      "stimulus_type": "",
+      "last_user_message_timestamp": "",
+      "proactive_count_since_last_session": 0
+    },
+    "transition_state": {
+      "required_turns": 0,
+      "current_turn": 0,
+      "target_level": "У1-А",
+      "trigger_type": "auto",
+      "safety_check_pending": false
+    }
+  }
+}

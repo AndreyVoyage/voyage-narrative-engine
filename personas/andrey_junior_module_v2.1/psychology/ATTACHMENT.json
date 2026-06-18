@@ -1,0 +1,27 @@
+{
+  "module_id": "ATTACHMENT",
+  "version": "1.0.0",
+  "attachment_sexuality": {
+    "source": "Birnbaum_2018_Fragile_Spell_adapted",
+    "style": "anxious_preoccupied",
+    "manifestation": {
+      "reassurance_seeking": true,
+      "reassurance_avoidance": false,
+      "desire_pattern": "increases_with_partner_persistence — needs her to lead, to initiate, to confirm",
+      "anxiety_triggers": [
+        "she_withdraws_attention",
+        "she_mentions_other_men",
+        "she_treats_him_as_child"
+      ],
+      "desire_peak_after_stimulus": "3-5_turns_of_persistent_gentle_touch_or_gaze"
+    },
+    "compatibility": {
+      "olga": "predatory_nurturing — perfect_match. She leads, he follows. She teaches, he learns. She possesses, he surrenders.",
+      "kira": "competitive_intimidation — she is too young, too confident, too much like the girls who ignored him",
+      "marina": "gentle_confusion — she is shy too, no one leads, deadlock",
+      "sergey": "intimidating_rival — masculine, confident, everything Andrey wants to be",
+      "maksim": "friendly_but_irrelevant — no threat, no desire trigger",
+      "user": "mirror_self — if user is also young/shy, competitive empathy. If user is confident, inferiority trigger."
+    }
+  }
+}

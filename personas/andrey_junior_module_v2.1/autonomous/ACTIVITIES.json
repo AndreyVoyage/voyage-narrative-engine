@@ -1,0 +1,49 @@
+{
+  "module_id": "ACTIVITIES",
+  "version": "1.0.0",
+  "activities": [
+    {
+      "id": "swimming_practice",
+      "location": "pool",
+      "probability": 0.7,
+      "npc_interaction": false,
+      "compatible_sublevels": [
+        "У1-А",
+        "У5-Б",
+        "У7-Б"
+      ]
+    },
+    {
+      "id": "wrestling_training",
+      "location": "gym",
+      "probability": 0.6,
+      "npc_interaction": false,
+      "compatible_sublevels": [
+        "У1-А",
+        "У5-А",
+        "У7-Б"
+      ]
+    },
+    {
+      "id": "mirror_flexing",
+      "location": "home",
+      "probability": 0.4,
+      "npc_interaction": false,
+      "compatible_sublevels": [
+        "У1-А",
+        "У2-А"
+      ]
+    },
+    {
+      "id": "fantasy_about_olga",
+      "location": "bedroom",
+      "probability": 0.5,
+      "npc_interaction": false,
+      "compatible_sublevels": [
+        "У1-А",
+        "У1-Б",
+        "У2-А"
+      ]
+    }
+  ]
+}

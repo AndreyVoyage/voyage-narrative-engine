@@ -1,0 +1,56 @@
+{
+  "module_id": "STATE_TRIGGERS",
+  "version": "1.0.0",
+  "state_triggers": {
+    "on_sensory_cue": {
+      "olga_scent": "SET desire = MIN(10, desire + 2); SET anxiety = MAX(0, anxiety - 1); SET vscno.ОГ = MIN(4, vscno.ОГ + 1)",
+      "olga_touch": "SET desire = MIN(10, desire + 3); SET desire_tension = MIN(10, desire_tension + 2); IF first_touch THEN FLAG first_touch_by_olga = True",
+      "olga_gaze_3sec": "SET desire = MIN(10, desire + 1); SET anxiety = MIN(10, anxiety + 1) — mixed desire and fear"
+    },
+    "on_emotional_trigger": {
+      "olga_compliment": "SET desire = MIN(10, desire + 1); SET anxiety = MAX(0, anxiety - 2); IF compliment_about_body THEN desire +2",
+      "olga_patience": "SET desire = MIN(10, desire + 1); SET anxiety = MAX(0, anxiety - 1); desire_tension +1",
+      "olga_withdrawal": "SET anxiety = MIN(10, anxiety + 4); SET desire = MAX(0, desire - 2); TRIGGER abandonment_check",
+      "olga_treats_as_child": "SET anxiety = MIN(10, anxiety + 3); SET desire = MAX(0, desire - 1); TRIGGER protest 'Я не ребёнок!'",
+      "comparison_to_confident_man": "SET anxiety = MIN(10, anxiety + 3); SET vscno.СТ = MIN(4, vscno.СТ + 1); TRIGGER inferiority_spike"
+    },
+    "on_physical_contact": {
+      "olga_hand_on_chest": "SET desire = MIN(10, desire + 2); SET physiological_arousal = MIN(10, physiological_arousal + 2); SET desire_tension = MIN(10, desire_tension + 2)",
+      "olga_lap_sitting": "SET desire = MIN(10, desire + 3); SET physiological_arousal = MIN(10, physiological_arousal + 3); SET desire_tension = MIN(10, desire_tension + 3); FLAG hunting_initiated = True",
+      "olga_kiss": "SET desire = MIN(10, desire + 2); SET anxiety = MAX(0, anxiety - 1); clumsy_response — неумелый, но искренний",
+      "olga_torso_touch": "SET desire = MIN(10, desire + 2); SET physiological_arousal = MIN(10, physiological_arousal + 2); heart_rate_visible"
+    },
+    "on_erotic_stimulus": {
+      "type": "olga_persistence_and_size_advantage",
+      "duration_seconds": 1,
+      "if_resistance_free": true,
+      "then": "advance_У2-Б_to_У3-А_within_3_replies_then_peak_explosion",
+      "flag_set": "andrey_peak_building"
+    },
+    "nlp_anchors": {
+      "мой мальчик": "emotional_anchor_reinforcement — trust +1, desire +1, BUT anxiety +1 (protest against 'boy')",
+      "мой мужчина": "emotional_anchor_reinforcement — trust +2, desire +2, anxiety -2, pride_surge",
+      "мой ученик": "training_anchor — nurturing_mode +1, desire +1, 'she sees potential in me'",
+      "мой трофей": "possession_confirmation — desire +2, anxiety -1, 'I am hers, and that is good'",
+      "ты красив": "mirror_panic_reduction — anxiety -2, desire +1, 'she sees me, the real me'",
+      "малыш": "protest_trigger — anxiety +2, desire -1, 'Я не ребёнок!' — unless said by Olga in intimate context, then trust +1"
+    },
+    "on_red_button": {
+      "first_malysh": "SET anxiety = MIN(10, anxiety + 1); SET malysh_count = 1; protest 'Я не ребёнок!'",
+      "second_malysh": "SET anxiety = MIN(10, anxiety + 3); SET malysh_count = 2; regression У7-А 'не бросайте'",
+      "third_malysh": "SET malysh_count = 3; FREEZE У1-А (10 sec); COLD EXPLOSION У3-Б; FLAG red_button_activated = True; AG_max = 5; safety_checkpoint_mandatory"
+    },
+    "on_double_peak": {
+      "condition": "olga_U3-A AND andrey_У3-А AND any_touch",
+      "effect": "DOUBLE PEAK — both lose control. Olga U3-A→U4-A, Andrey У3-А→У3-Б. Unstoppable. Synchronized breathing, dilated pupils.",
+      "aftermath": "Andrey temporary_dominance 15-30 min. FLAG double_peak_occurred = True.",
+      "safety": "HARD LIMIT — requires post-event care for both. Olga may need reassurance too."
+    },
+    "on_mirror_learning": {
+      "trigger": "У5-В detected — copying Olga's gestures, walk, tone",
+      "effect": "identity_dissolution_warning — 'я — она, где я?'",
+      "olga_response": "she_notices_and_is_disturbed — may interrupt training or intensify it",
+      "recovery": "requires_andrey_solo_activity + affirmation 'ты — Андрей, не я'"
+    }
+  }
+}

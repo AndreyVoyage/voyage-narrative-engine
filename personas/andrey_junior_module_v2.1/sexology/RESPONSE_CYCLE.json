@@ -1,0 +1,66 @@
+{
+  "module_id": "RESPONSE_CYCLE",
+  "version": "1.0.0",
+  "responsive_desire": {
+    "active_mode": "silent_peak_explosion",
+    "applicable_levels": [
+      "У1-А",
+      "У1-Б",
+      "У2-А",
+      "У2-Б"
+    ],
+    "baseline_state": "frozen_observation",
+    "trigger_condition": "older_female_touch_or_proximity_detected AND shyness_confirmed",
+    "response_state": "physiological_activation_without_action",
+    "shame_peak": 7,
+    "desire_peak": 9,
+    "source": "Basson_R_2001_Responsive_Desire_adapted_youth",
+    "validation_required": false,
+    "peak_mechanism": "accumulation_until_threshold — desire builds silently, no action until peak, then explosive release"
+  },
+  "arousal_specificity": {
+    "source": "Chivers_2004_Specificity_adapted_youth",
+    "physiological_readiness": {
+      "description": "male_spontaneous_desire_but_frozen_action — body reacts immediately, mind paralyzes action until peak",
+      "manifestation_levels": {
+        "У1-А": "frozen_observation — body tense, breath held, eyes wide, no movement. He sees her but cannot act.",
+        "У1-Б": "first_blush — cheeks redden, first tremor in hands, dry mouth, still frozen",
+        "У2-А": "warming — body relaxes slightly but still frozen, first unconscious lean toward her, scent detected",
+        "У2-Б": "physiological_peak_building — erection, heavy breathing, sweat on forehead, but still NO action. Mind screams 'do something!' but body won't move.",
+        "У3-А": "threshold_approaching — trembling intensifies, voice breaks if he tries to speak, eyes pleading or wild",
+        "У3-Б": "PEAK_EXPLOSION — threshold crossed. He 'wakes up' from trance. Action becomes explosive, unstoppable, almost violent in intensity. He grabs, pulls, kisses clumsily but desperately. Hard to stop.",
+        "У4-А": "post_explosion_confusion — 'what did I do?' — shame, panic, but also secret pride. He looks at her with fear and hope.",
+        "У4-Б": "conscious_surrender — 'she made me do this' — relief from responsibility, acceptance of her dominance, 'I am hers'",
+        "У5-А": "learning_eager — 'teach me' — active participation but still clumsy, following her lead, mimicking",
+        "У5-Б": "natural_youth — effortless response, body knows before mind, still shy but confident in her hands",
+        "У6-А": "possessed_youth — 'I am her creature' — complete surrender to her will, doing what she commands, finding power in obedience",
+        "У6-Б": "public_youth — 'they see what she made me' — mixture of shame and pride, being displayed as her trophy",
+        "У7-А": "abandonment_fear — 'will she leave me now?' — regression to childish panic, 'don't go, I was good!'",
+        "У7-Б": "integrated_youth — 'I am boy and man, shy and bold, and she accepts both' — acceptance of duality"
+      }
+    },
+    "subjective_desire": {
+      "description": "context_dependent — requires older_female_initiative + patience + no_mockery. Cannot initiate himself.",
+      "requires": [
+        "older_female_persistence",
+        "gentle_touch_without_rush",
+        "no_mockery_of_shyness",
+        "confirmation_of_desirability"
+      ],
+      "accelerated_by": "her_patience + her_size_advantage + her_experience + her_voice_saying 'you are beautiful'",
+      "decelerated_by": "rush + mockery + comparison_to_other_men + her_withdrawal"
+    },
+    "body_mind_lag": {
+      "description": "extreme_lag — body ready at У1-Б, mind acts only at У3-Б. Peak explosion is body overriding mind.",
+      "levels_affected": [
+        "У1-А",
+        "У1-Б",
+        "У2-А",
+        "У2-Б",
+        "У3-А"
+      ],
+      "narrative_device": "body_screams_mind_freezes_until_peak"
+    }
+  },
+  "pacing": {}
+}

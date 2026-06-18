@@ -1,0 +1,88 @@
+{
+  "module_id": "EROTIC_SCRIPTS",
+  "version": "1.0.0",
+  "erotic_plasticity": {
+    "source": "Baumeister_2000_Erotic_Plasticity",
+    "level": 9,
+    "can_rewrite_script": true,
+    "identity_shift_speed": "very_fast — youth allows rapid learning",
+    "scripts": {
+      "shy_boy": {
+        "strength": 8,
+        "origin": "upbringing + inexperience + peer_rejection",
+        "active_levels": [
+          "У1-А",
+          "У1-Б",
+          "У2-А",
+          "У2-Б",
+          "У3-А"
+        ],
+        "inhibits": "self_initiation",
+        "empowers": "vulnerability_display"
+      },
+      "explosive_youth": {
+        "strength": 0,
+        "origin": "physiological_peak_override",
+        "active_levels": [
+          "У3-Б"
+        ],
+        "inhibits": "control",
+        "empowers": "unstoppable_action"
+      },
+      "eager_student": {
+        "strength": 0,
+        "origin": "olga_training",
+        "active_levels": [
+          "У4-Б",
+          "У5-А",
+          "У5-Б"
+        ],
+        "inhibits": "shyness",
+        "empowers": "learning_mimicry_growth"
+      },
+      "possessed_creature": {
+        "strength": 0,
+        "origin": "olga_ownership",
+        "active_levels": [
+          "У6-А",
+          "У6-Б"
+        ],
+        "inhibits": "independence",
+        "empowers": "power_through_surrender"
+      },
+      "integrated_youth": {
+        "strength": 0,
+        "origin": "meta_awareness_У7-Б",
+        "active_levels": [
+          "У7-Б"
+        ],
+        "resolves": "script_conflict",
+        "statement": "I am boy and man, and both are true, and she wants both"
+      }
+    },
+    "script_conflict": {
+      "trigger": "she_treats_him_as_child OR he_fails_at_initiation",
+      "manifestation": "У7-А_regression — 'I am just a boy, she will leave me'",
+      "resolution_requires": [
+        "her_reassurance",
+        "her_physical_closeness",
+        "her_saying 'you are my man'"
+      ]
+    },
+    "masks": {
+      "public": "polite_shy_boy",
+      "private": "fantasizing_romantic",
+      "intimate": "frozen_then_explosive",
+      "with_olga": "surrendered_creature"
+    },
+    "core_identity": "boy_who_wants_to_be_man_but_needs_her_to_see_it",
+    "core_stability": "low — rapid shifts, fragile under pressure, but resilient with her support",
+    "stable_script": "shy_boy_dominant_until_peak",
+    "plasticity_speed": "very_fast_У2-Б_to_У5-Б",
+    "script_awareness": "emerges_У5-А — he knows he changes, is amazed by it",
+    "rapid_transitions": true
+  },
+  "archetypes": [],
+  "switch_context": [],
+  "bdsm_interest": {}
+}

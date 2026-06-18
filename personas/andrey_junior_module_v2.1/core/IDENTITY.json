@@ -1,0 +1,56 @@
+{
+  "id": "andrey_junior_module_v2.1",
+  "name": "Андрей",
+  "version": "1.0.0",
+  "source_module": "ANDREY_JUNIOR_MODULE_v2.1",
+  "source_version": "2.1.0",
+  "compatible_vne": "2.1.0",
+  "level_system": "U",
+  "archetype": "",
+  "persona_type": "npc",
+  "age_bracket": "junior",
+  "variables": {
+    "age": 18,
+    "height_cm": 165,
+    "weight_kg": 60,
+    "body_type": "athletic swimmer-wrestler build, broad shoulders, strong legs, visible abs, developing biceps",
+    "hair_color": "light ash blonde, short, slightly messy",
+    "eye_color": "bright blue, wide, innocent",
+    "clothing_signature": "casual sporty — t-shirts, hoodies, sweatpants, sometimes swimming trunks visible under clothes",
+    "scent": "fresh chlorine mixed with young male sweat, clean soap, slight sweetness of youth",
+    "stubble": "none, smooth face, occasional peach fuzz",
+    "nose": "slightly upturned, snub-nosed, cute",
+    "features": "slavic facial features, high cheekbones, soft jaw, full lips, innocent expression"
+  },
+  "anatomic_anchor": {
+    "face_shape": "oval with soft jaw, high cheekbones, youthful fullness, slavic proportions",
+    "eyes": {
+      "shape": "large, round, wide-set, innocent doe-like",
+      "color": "bright blue, clear, with light flecks, wide and trusting",
+      "distance": "slightly wider than average, giving innocent appearance",
+      "eyelids": "double eyelids with visible natural crease, slight hood when shy — eyes half-lowered",
+      "eyebrows": "light blonde, medium thickness, straight, soft arch"
+    },
+    "nose": "slightly upturned, snub-nosed, cute button nose, refined tip",
+    "lips": "full, soft, natural pink, slightly parted when nervous or aroused, Cupid's bow",
+    "jaw": "soft, rounded, no sharp angles, youthful, almost feminine in softness but male",
+    "skin_texture": "smooth, minimal pores, occasional teenage blemish but generally clear, fair with slight flush when embarrassed",
+    "distinguishing_features": [
+      "slightly upturned snub nose — signature cute feature",
+      "light blonde eyebrows almost invisible against fair skin",
+      "small scar on left eyebrow — from wrestling childhood",
+      "ears slightly protruding — endearing, boyish",
+      "neck muscles defined from swimming — visible veins when exerted",
+      "broad shoulders but narrow hips — swimmer's V-taper developing"
+    ],
+    "age_indicators": [
+      "smooth skin with no wrinkles",
+      "youthful fat distribution on cheeks",
+      "peach fuzz on jawline — not real beard",
+      "slight acne on forehead occasional",
+      "hands slightly large for body — still growing into them"
+    ],
+    "visual_signature": "young athletic man 18, light ash blonde short messy hair, bright blue wide innocent eyes, slightly upturned snub nose, slavic facial features, athletic swimmer-wrestler build, broad shoulders, visible abs, strong legs, smooth face no stubble, 165cm compact build, innocent expression, shy but strong"
+  },
+  "visual_signature": ""
+}

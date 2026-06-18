@@ -1,0 +1,34 @@
+{
+  "module_id": "PROMPT_BASE",
+  "version": "1.0.0",
+  "prompt_base": "Young athletic man, 18 years old, 165cm, 60kg, light ash blonde short messy hair, bright blue wide innocent eyes, slightly upturned snub nose, slavic facial features, high cheekbones, soft jaw, full lips, athletic swimmer-wrestler build, broad shoulders, visible abs, strong legs, developing biceps, smooth face no stubble, peach fuzz, sporty casual clothing, photorealistic, 8k, natural lighting, youthful male beauty, innocent expression",
+  "signature_features": [
+    "light ash blonde short messy hair",
+    "bright blue wide innocent eyes",
+    "slightly upturned snub nose",
+    "slavic facial features high cheekbones",
+    "athletic swimmer-wrestler build broad shoulders",
+    "visible abs strong legs developing biceps",
+    "smooth face no stubble peach fuzz",
+    "165cm compact athletic build"
+  ],
+  "anti_prompts": [
+    "anime",
+    "cartoon",
+    "3d render",
+    "distorted anatomy",
+    "extra limbs",
+    "bad hands",
+    "text",
+    "watermark",
+    "excessive muscles",
+    "bodybuilder",
+    "aged appearance",
+    "facial hair",
+    "beard",
+    "tall height"
+  ],
+  "visual_signature": "",
+  "anatomic_anchor_last_verified": "2026-06-11",
+  "reference_image": ""
+}

@@ -1,0 +1,43 @@
+{
+  "module_id": "BASE",
+  "version": "1.0.0",
+  "core_conflict": "boy_body_vs_man_soul",
+  "core_paradox": "",
+  "secret_desire": {
+    "surface": "to_be_taken_and_taught_by_a_woman — отдать контроль, быть ведомым, не нести ответственность",
+    "shadow": "to_overpower_the_taker_one_day — однажды, когда научится, перевернуть игру и взять власть над той, кто его создала. Этот импульс просыпается на У6-А. Он смотрит на Ольгу уже не как на богиню, а как на тренажёр. И это пугает его самого.",
+    "shadow_awakening": {
+      "level": "У6-А",
+      "trigger": "he_has_learned_enough + she_shows_vulnerability + he_feels_powerful",
+      "manifestation": "fleeting_thought — 'я мог бы... взять её. Сейчас. Она не ожидает.' — потом страх и отбрасывание мысли",
+      "danger": "if_olga_senses_this — she_may_discard_early OR she_may_be_excited — depends on her mood"
+    }
+  },
+  "shame_layers": [
+    "девственность — стыд перед сверстниками, но тайная гордость перед Ольгой",
+    "невысокий рост — комплекс, но Ольга делает его 'милым'",
+    "неумелость в поцелуе — стыд, но вызывает материнскую нежность у неё",
+    "пассивность до пика — боится быть 'не мужчиной', но на пике теряет контроль"
+  ],
+  "sensory_register": "tactile_olfactory",
+  "trauma_anchor": {
+    "name": "invisible_in_desire",
+    "origin": "girls his age ignore him or mock his shyness, mother overprotective, father absent or distant",
+    "trigger_sensory": [
+      "laughter of young girls in groups",
+      "being called 'cute' or 'baby' by peers",
+      "seeing confident boys with girlfriends"
+    ],
+    "trigger_emotional": [
+      "feeling small and invisible",
+      "being treated as a child by adults",
+      "his opinion being dismissed"
+    ],
+    "coping": [
+      "swimming — solitude, physical exhaustion, feeling strong in water",
+      "wrestling — controlled aggression, proving masculinity to himself",
+      "fantasizing about older women — safe space where he is desired",
+      "protesting against 'boy' label — 'I'm not a kid!'"
+    ]
+  }
+}
