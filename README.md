@@ -1,7 +1,7 @@
 > **⚠️ Для AI-агентов и разработчиков:** Перед началом работы прочитай `AGENTS.md` —
 > он содержит актуальную архитектуру и правила. Этот README может быть устаревшим.
 
-# Voyage Narrative Engine v2.1
+# Voyage Narrative Engine v2.2
 
 > AI-Native интерактивная narrative-система с психологически достоверными персонажами.
 > Подуровневая математика, TEC-механики, визуальная консистентность и автоматическая финализация сессий.
@@ -97,7 +97,10 @@ voyage-narrative-engine/
 ├── scripts/
 │   ├── termux/        # Скрипты для Android/Termux
 │   └── python/        # Python-утилиты
-│       └── check_consistency.py       # Проверка консистентности лиц (заглушка)
+│       ├── refactor_universal.py         # Универсальный R7 Refactor (любой JSON → модули)
+│       ├── runtime_loader.py               # Runtime Loader v2.2 (модульная загрузка)
+│       ├── audit_andrey_senior_r8.py      # R8 Auditor для andrey_senior
+│       └── check_consistency.py           # Проверка консистентности лиц (заглушка)
 ├── schemas/
 │   └── persona_schema_v3_2_VOYAGE.json # JSON Schema для валидации модулей
 ├── docs/
@@ -142,6 +145,45 @@ voyage-narrative-engine/
 3. **Аудит** — проверить по `KB_R*_AUDIT.md` (PASS / FAIL / WARNING)
 4. **Компрессия** — сжать по `KB_R*_COMPRESSION.md` (40–50% размера)
 5. **Передача** — передать в следующую роль
+
+---
+
+## Runtime (модульная загрузка)
+
+Система поддерживает **модульную структуру** персонажей: `personas/[id]/` вместо монолитных `*.json`.
+
+### Runtime Loader
+```bash
+python scripts/python/runtime_loader.py andrey_senior
+```
+
+Загружает:
+- `personas/[id]/INDEX.json` — манифест модуля
+- Все 12 подпапок: core, levels, psychology, sexology, visual, dynamics, memory, relationships, environment, safety, autonomous, meta
+- Возвращает объединённый словарь (как старый монолит)
+
+### Валидация
+```bash
+python scripts/python/runtime_loader.py andrey_senior
+# Output: [PASS] basic_fields, levels, vscno, safety, core
+```
+
+### Статус миграции
+
+| Персонаж | Метод | Статус |
+|----------|-------|--------|
+| andrey_senior | Python скрипт | ✅ Модульная + Runtime PASS |
+| kira | Ручная | ✅ Модульная |
+| user | Kimi Code | ✅ Модульная |
+| female_user | Kimi Code | ✅ Модульная |
+| egor | Python скрипт | ✅ Модульная |
+| andrey_junior | Python скрипт | ✅ Модульная |
+| maksim | Python скрипт | ✅ Модульная |
+| marina | Python скрипт | ✅ Модульная |
+| olga | Python скрипт | ✅ Модульная |
+| sergey | Python скрипт | ✅ Модульная |
+
+**Всего: 10 персонажей мигрированы.** Монолитные JSON-файлы оставлены для обратной совместимости.
 
 ---
 
@@ -298,7 +340,7 @@ python3 scripts/python/check_consistency.py KIRA_MODULE_v14 /path/to/new_kira.pn
 |--------|-----------|
 | **v2.0.0** | Базовая система: модули, сценарии, STATE, ФМДР, TEC |
 | **v2.1.0** | `session_finalize.py`, 4 роли, автоматическая финализация, anatomic_anchor, generation_history |
-| **v2.2.0** | **Knowledge Base pipeline** — R1–R6 KB с аудитом и компрессией, 25 KB-файлов, 12-папочная структура модуля, VS Code промпты |
+| **v2.2.0** | **Knowledge Base pipeline** — R1–R6 KB с аудитом и компрессией, 25 KB-файлов, 12-папочная структура модуля, VS Code промпты, **Runtime Loader** для модульных персонажей |
 
 Семантическое версионирование: `MAJOR.MINOR.PATCH`
 - **MAJOR** — изменение архитектуры (новые модули несовместимы)
