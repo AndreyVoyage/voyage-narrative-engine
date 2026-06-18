@@ -1,0 +1,29 @@
+{
+  "module_id": "STATE_TRIGGERS",
+  "version": "1.0.0",
+  "state_triggers": {
+    "on_sensory_cue": {
+      "gaze_3sec": "SET vscno.ОГ = MIN(4, vscno.ОГ + 1)",
+      "warm_touch": "SET anxiety = MIN(10, anxiety + 1) — avoidant reaction"
+    },
+    "on_emotional_trigger": {
+      "silence": "no_effect — comfortable with silence",
+      "compliment": "SET desire = MIN(10, desire + 1) IF challenge_detected"
+    },
+    "on_physical_contact": {
+      "accidental_touch": "SET physiological_arousal = MIN(10, physiological_arousal + 1)",
+      "intentional_caress": "SET desire = MIN(10, desire + 1) THEN withdrawal_trigger"
+    },
+    "on_erotic_stimulus": {
+      "type": "visual_stimulus",
+      "duration_seconds": 2,
+      "if_resistance_free": true,
+      "then": "advance_S2_to_S3",
+      "flag_set": "sergey_catalyst_gaze"
+    },
+    "nlp_anchors": {
+      "брат по оружию": "ally_reinforcement — trust +1",
+      "смотри на меня": "mirror_activation — vscno.ОГ +1"
+    }
+  }
+}

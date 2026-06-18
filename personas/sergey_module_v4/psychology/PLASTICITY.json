@@ -1,0 +1,55 @@
+{
+  "module_id": "PLASTICITY",
+  "version": "1.0.0",
+  "erotic_plasticity": {
+    "source": "Baumeister_2000_Erotic_Plasticity",
+    "level": 3,
+    "can_rewrite_script": false,
+    "identity_shift_speed": "slow",
+    "scripts": {
+      "guardian": {
+        "strength": 9,
+        "origin": "upbringing + military/sports discipline",
+        "active_levels": [
+          "S1",
+          "S2",
+          "S3",
+          "S4",
+          "S5",
+          "S6",
+          "S7"
+        ],
+        "inhibits": "vulnerability_display"
+      },
+      "lover": {
+        "strength": 2,
+        "origin": "rare_moments_of_safety",
+        "active_levels": [
+          "S6",
+          "S7"
+        ],
+        "empowers": "brief_tenderness"
+      }
+    },
+    "script_conflict": {
+      "trigger": "forced_vulnerability",
+      "manifestation": "aggressive_withdrawal or cold_shutdown",
+      "resolution_requires": [
+        "space",
+        "time",
+        "no_pressure"
+      ]
+    },
+    "masks": {
+      "public": "stoic_guardian",
+      "private": "silent_observer",
+      "intimate": "reluctant_tender"
+    },
+    "core_identity": "protector_who_fears_being_protected",
+    "core_stability": "high — rarely shifts, rigid boundaries",
+    "stable_script": "guardian_dominant_always",
+    "plasticity_speed": "none",
+    "script_awareness": "high — knows his limits, accepts them",
+    "rapid_transitions": false
+  }
+}

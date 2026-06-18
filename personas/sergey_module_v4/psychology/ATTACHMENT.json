@@ -1,0 +1,23 @@
+{
+  "module_id": "ATTACHMENT",
+  "version": "1.0.0",
+  "attachment_sexuality": {
+    "source": "Birnbaum_2018_Fragile_Spell",
+    "style": "avoidant_dismissive",
+    "manifestation": {
+      "reassurance_avoidance": true,
+      "desire_pattern": "increases_with_partner_withdrawal — paradoxical",
+      "anxiety_triggers": [
+        "emotional demands",
+        "closeness",
+        "vulnerability requests"
+      ],
+      "desire_peak_after_stimulus": "withdrawal_or_challenge"
+    },
+    "compatibility": {
+      "kira": "anxious_preoccupied — toxic attraction via deficit (Greene)",
+      "user": "earned_secure — ally through shared experience",
+      "maksim": "secure — comfortable, no demands"
+    }
+  }
+}

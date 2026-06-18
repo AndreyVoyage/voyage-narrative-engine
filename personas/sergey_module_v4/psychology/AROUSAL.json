@@ -1,0 +1,28 @@
+{
+  "module_id": "AROUSAL",
+  "version": "1.0.0",
+  "responsive_desire": {},
+  "arousal_specificity": {
+    "source": "Chivers_2004_Specificity",
+    "physiological_readiness": {
+      "description": "male_spontaneous_desire — high specificity, visual triggers",
+      "manifestation_levels": {
+        "S1": "baseline arousal, visual scanning",
+        "S2": "target identified, physiological readiness",
+        "S3": "approach initiation, adrenaline",
+        "S4": "physical contact, peak arousal",
+        "S5": "post-contact, withdrawal begins"
+      }
+    },
+    "subjective_desire": {
+      "description": "context_independent — spontaneous desire, low emotional requirement",
+      "requires": [
+        "visual_stimulus",
+        "novelty",
+        "challenge"
+      ],
+      "accelerated_by": "partner_withdrawal (paradoxical)",
+      "decelerated_by": "partner_clinginess"
+    }
+  }
+}

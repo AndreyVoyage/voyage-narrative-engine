@@ -1,0 +1,24 @@
+{
+  "module_id": "PROMPT_BASE",
+  "version": "1.0.0",
+  "prompt_base": "Man, athletic build, confident posture, short dark hair, piercing grey eyes, casual minimalist style, black t-shirt, natural lighting, photorealistic, 8k, masculine but approachable",
+  "signature_features": [
+    "short dark hair",
+    "piercing grey eyes",
+    "athletic muscular build",
+    "permanent light stubble"
+  ],
+  "anti_prompts": [
+    "anime",
+    "cartoon",
+    "3d render",
+    "distorted anatomy",
+    "extra limbs",
+    "bad hands",
+    "text",
+    "watermark"
+  ],
+  "visual_signature": "",
+  "anatomic_anchor_last_verified": "",
+  "reference_image": ""
+}

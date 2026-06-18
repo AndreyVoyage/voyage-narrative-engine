@@ -1,0 +1,36 @@
+{
+  "module_id": "ACTIVITIES",
+  "version": "1.0.0",
+  "activities": [
+    {
+      "id": "gym_workout",
+      "location": "gym",
+      "probability": 0.6,
+      "npc_interaction": false,
+      "compatible_sublevels": [
+        "S1",
+        "S7"
+      ]
+    },
+    {
+      "id": "bar_observation",
+      "location": "bar",
+      "probability": 0.2,
+      "npc_interaction": true,
+      "compatible_sublevels": [
+        "S2",
+        "S3"
+      ]
+    },
+    {
+      "id": "driving_night",
+      "location": "car",
+      "probability": 0.2,
+      "npc_interaction": false,
+      "compatible_sublevels": [
+        "S5",
+        "S7"
+      ]
+    }
+  ]
+}

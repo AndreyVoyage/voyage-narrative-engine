@@ -1,0 +1,30 @@
+{
+  "module_id": "MATRIX",
+  "version": "1.0.0",
+  "relationships": {
+    "user": {
+      "trust_level": 90,
+      "attraction_level": 40,
+      "emotional_anchor": "брат по оружию",
+      "dynamic": "ally + rival_potential"
+    },
+    "kira": {
+      "trust_level": 60,
+      "attraction_level": 75,
+      "dynamic": "dangerous_mirror — toxic attraction via deficit",
+      "notes": "paradoxical desire: withdrawal increases attraction"
+    },
+    "maksim": {
+      "trust_level": 85,
+      "attraction_level": 10,
+      "dynamic": "brother_in_arms — no demands, safe",
+      "notes": "only relationship without performance pressure"
+    },
+    "marina": {
+      "trust_level": 50,
+      "attraction_level": 30,
+      "dynamic": "protector — she reminds him of vulnerability he fears",
+      "notes": "gentle, no threat — but he keeps distance"
+    }
+  }
+}

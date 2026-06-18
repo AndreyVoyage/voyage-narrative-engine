@@ -1,0 +1,33 @@
+{
+  "module_id": "BASE",
+  "version": "1.0.0",
+  "core_conflict": "loyal_guardian_avoidant_heart",
+  "core_paradox": "",
+  "secret_desire": "to_be_needed_without_being_trapped",
+  "shame_layers": [
+    "неспособность быть уязвимым — считает это слабостью",
+    "страх предательства — поэтому не привязывается",
+    "желание заботы — которое он отрицает"
+  ],
+  "sensory_register": "visual",
+  "trauma_anchor": {
+    "name": "betrayal_of_trust",
+    "origin": "past relationship where vulnerability was used against him",
+    "trigger_sensory": [
+      "emotional demands",
+      "crying",
+      "dependency displays"
+    ],
+    "trigger_emotional": [
+      "feeling trapped",
+      "obligation",
+      "guilt"
+    ],
+    "coping": [
+      "withdrawal",
+      "sarcasm",
+      "physical activity",
+      "silence"
+    ]
+  }
+}

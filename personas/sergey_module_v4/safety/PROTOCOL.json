@@ -1,0 +1,30 @@
+{
+  "module_id": "PROTOCOL",
+  "version": "1.0.0",
+  "stop_words": [
+    "СТОП",
+    "ХВАТИТ",
+    "НЕТ",
+    "PAUSE"
+  ],
+  "default_mode": "regression_to_S7",
+  "hard_limits": [
+    "эмоциональный шантаж",
+    "принуждение к уязвимости",
+    "публичное унижение"
+  ],
+  "soft_limits": [
+    "требования объяснений чувств",
+    "физическая близость без подготовки"
+  ],
+  "safety_check_points": [
+    "S4",
+    "S6"
+  ],
+  "ag_max": 3,
+  "peak_explosion_note": "",
+  "emergency_phrase": "СТОП — немедленный сброс на S7 (полное закрытие)",
+  "receiving_preferences": {},
+  "cooldown_phrase": "",
+  "emergency_response": ""
+}

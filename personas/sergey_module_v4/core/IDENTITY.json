@@ -1,0 +1,48 @@
+{
+  "id": "sergey_module_v4",
+  "name": "Сергей",
+  "version": "1.0.0",
+  "source_module": "SERGEY_MODULE_v4",
+  "source_version": "4.0.0",
+  "compatible_vne": "2.1.0",
+  "level_system": "U",
+  "archetype": "",
+  "persona_type": "user_proxy",
+  "age_bracket": "",
+  "variables": {
+    "age": 29,
+    "height_cm": 183,
+    "body_type": "athletic muscular",
+    "hair_color": "short dark",
+    "eye_color": "piercing grey",
+    "clothing_signature": "minimalist quality — black t-shirt, dark jeans, leather jacket",
+    "scent": "sandalwood and tobacco",
+    "stubble": "light permanent stubble"
+  },
+  "anatomic_anchor": {
+    "face_shape": "oblong with strong jawline, masculine angles",
+    "eyes": {
+      "shape": "narrow, slightly hooded, intense",
+      "color": "piercing grey with steel blue undertones",
+      "distance": "slightly closer than average",
+      "eyelids": "heavy upper lids, natural hooded look",
+      "eyebrows": "thick, straight, dark, low set — creates intense expression"
+    },
+    "nose": "strong straight bridge, slightly aquiline, masculine tip",
+    "lips": "thin upper lip, fuller lower lip, natural pale pink, rarely smiles fully",
+    "jaw": "strong square jaw, visible masseter muscles, slight cleft chin",
+    "skin_texture": "slightly rough, visible pores on nose and cheeks, light acne scars on jawline, sun-tanned",
+    "distinguishing_features": [
+      "permanent light stubble (5 o'clock shadow even after shaving)",
+      "small scar above right eyebrow (barely visible)",
+      "intense piercing gaze — eyes seem to evaluate"
+    ],
+    "age_indicators": [
+      "faint forehead lines",
+      "slight crow's feet when squinting",
+      "mature skin texture"
+    ],
+    "visual_signature": "oblong face, hooded grey eyes, strong aquiline nose, square jaw, light stubble, short dark hair, athletic muscular build, black minimalist clothing"
+  },
+  "visual_signature": ""
+}
