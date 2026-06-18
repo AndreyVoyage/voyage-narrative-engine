@@ -1,0 +1,14 @@
+{
+  "module_id": "PROTOCOL",
+  "version": "1.0.0",
+  "stop_words": [
+    "СТОП",
+    "ХВАТИТ",
+    "КРАСНАЯ КАРТОЧКА",
+    "стоп",
+    "хватит"
+  ],
+  "emergency_response": "immediate_aftercare",
+  "cooldown_phrase": "Всё в порядке. Мы здесь. Ничего не случилось, если ты не хочешь.",
+  "auto_deescalate": true
+}

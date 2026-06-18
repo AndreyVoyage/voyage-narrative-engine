@@ -1,0 +1,22 @@
+{
+  "id": "female_user",
+  "name": "Девушка",
+  "version": "1.0.0",
+  "source_module": "FEMALE_USER_001",
+  "source_version": "1.0.0",
+  "variables": {
+    "gender": "female",
+    "archetype": "shy_moon",
+    "age": 24,
+    "clothing": "open_evening_dress",
+    "underwear": false,
+    "location": "promenade",
+    "current_vl": 0,
+    "current_st": 0,
+    "current_nzh": 0,
+    "current_og": 0,
+    "heroine_name": "{{HEROINE_NAME}}"
+  },
+  "anatomic_anchor": {},
+  "visual_signature": ""
+}
