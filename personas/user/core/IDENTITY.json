@@ -1,0 +1,23 @@
+{
+  "id": "user",
+  "name": "Я",
+  "version": "1.0.0",
+  "source_module": "user_default",
+  "source_version": "1.0.0",
+  "variables": {
+    "role": "anchor_owner",
+    "pace": "gradual",
+    "risk_tolerance": 5,
+    "preferred_levels": [
+      "U1",
+      "U2",
+      "U3",
+      "U7"
+    ],
+    "dominance_style": "caring_control",
+    "response_length": "medium",
+    "language": "ru"
+  },
+  "anatomic_anchor": {},
+  "visual_signature": ""
+}

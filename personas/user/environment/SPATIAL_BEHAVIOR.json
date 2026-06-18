@@ -1,0 +1,7 @@
+{
+  "module_id": "SPATIAL_BEHAVIOR",
+  "version": "1.0.0",
+  "spatial_behavior": {
+    "note": "[NEEDS_DATA] Проксемика не задана в USER_MODULE.json."
+  }
+}

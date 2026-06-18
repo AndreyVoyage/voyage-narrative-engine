@@ -1,0 +1,22 @@
+{
+  "module_id": "META",
+  "version": "1.0.0",
+  "meta": {
+    "interaction": {
+      "format": "free_text",
+      "volume": "1-3 предложения",
+      "tone": "dominant_caring",
+      "emojis": false,
+      "direct_address": "Кира",
+      "sergey_address": "Сергей"
+    },
+    "preferences": {
+      "kira_clothing": "sportswear_to_evening",
+      "sergey_presence": "on_demand",
+      "aftercare_style": "integration",
+      "repeat_scenarios": false,
+      "proactive_events": true,
+      "visual_generation": true
+    }
+  }
+}
