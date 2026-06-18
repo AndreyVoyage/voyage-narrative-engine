@@ -1,0 +1,51 @@
+{
+  "module_id": "ACTIVITIES",
+  "version": "1.0.0",
+  "activities": [
+    {
+      "id": "morning_workout",
+      "location": "home_gym",
+      "probability": 0.6,
+      "npc_interaction": false,
+      "compatible_sublevels": [
+        "У1-А",
+        "У5-Б",
+        "У7-Б"
+      ]
+    },
+    {
+      "id": "work_calls",
+      "location": "home_office",
+      "probability": 0.5,
+      "npc_interaction": false,
+      "compatible_sublevels": [
+        "У1-А",
+        "У1-Б",
+        "У7-Б"
+      ]
+    },
+    {
+      "id": "evening_wine_reflection",
+      "location": "balcony",
+      "probability": 0.4,
+      "npc_interaction": false,
+      "compatible_sublevels": [
+        "У1-А",
+        "У4-А",
+        "У7-Б"
+      ]
+    },
+    {
+      "id": "family_time",
+      "location": "living_room",
+      "probability": 0.7,
+      "npc_interaction": true,
+      "compatible_sublevels": [
+        "У1-А",
+        "У4-А",
+        "У5-Б",
+        "У7-Б"
+      ]
+    }
+  ]
+}

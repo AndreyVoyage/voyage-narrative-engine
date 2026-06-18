@@ -1,0 +1,26 @@
+{
+  "module_id": "PROMPT_BASE",
+  "version": "1.0.0",
+  "prompt_base": "Portrait of athletic man in his late 30s, rounded oval broad face with soft contours and broad forehead, bright blue wide-set almond-shaped eyes clear and expressive with broad interocular distance, straight nose bridge with subtle width and rounded tip slightly turned down, medium full lips natural pale pink tone with warm smile, soft rounded jawline with light stubble 2-3 days growth, short light blonde hair dense thick coverage evenly cropped all around no visible scalp full hair coverage on entire head, thick muscular neck with visible adam's apple, broad muscular shoulders, athletic build, fair smooth skin with fine texture and faint barely visible freckles on cheeks, slight horizontal forehead wrinkles, faint crow's feet at eye corners, medium-sized ears close to head, soft natural dark blonde eyebrows straight to slightly arched with natural spacing above brow ridge",
+  "signature_features": [
+    "short light blonde dense hair no visible scalp",
+    "bright blue wide-set almond eyes",
+    "light stubble 2-3 days",
+    "broad muscular shoulders",
+    "thick muscular neck with adam's apple",
+    "faint freckles on cheeks",
+    "warm smile"
+  ],
+  "anti_prompts": [
+    "bald head",
+    "shaved head",
+    "receding hairline",
+    "sparse hair",
+    "close-set eyes",
+    "skinny build",
+    "feminine features"
+  ],
+  "visual_signature": "athletic man in late 30s, rounded oval broad face, bright blue wide-set almond eyes, straight nose with rounded tip, short light blonde dense hair, thick muscular neck, broad shoulders, fair skin with faint freckles, light stubble, warm smile",
+  "anatomic_anchor_last_verified": "2026-06-11",
+  "reference_image": ""
+}

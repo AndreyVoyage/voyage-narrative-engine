@@ -1,0 +1,41 @@
+{
+  "level_id": "У1-Б",
+  "speech_profile": {
+    "tone": "внимательный, слегка напряжённый",
+    "pace": "медленный, с паузами",
+    "vocabulary": "аналитический, осторожный",
+    "catchphrases": [
+      "ты уверена?",
+      "я понимаю",
+      "расскажи мне"
+    ]
+  },
+  "dynamic_visuals": "в халате, внимательный, слегка напряжённый, анализирует",
+  "vscno": {
+    "ВЛ": 3,
+    "СТ": 2,
+    "НЖ": 3,
+    "ОГ": 2,
+    "source": "[ADAPTED] Напряжение → НЖ↑"
+  },
+  "internal_state": {
+    "desire": 2,
+    "anxiety": 7,
+    "desire_tension": 5,
+    "frustration": 4,
+    "source": "[ADAPTED] Напряжение → anxiety↑"
+  },
+  "ad_availability": {
+    "available": [
+      "ПД",
+      "ПУ",
+      "КН"
+    ],
+    "forbidden": [
+      "ФС",
+      "ЛС"
+    ],
+    "dominant": "ПУ",
+    "source": "[CORE] Первая трещина"
+  }
+}

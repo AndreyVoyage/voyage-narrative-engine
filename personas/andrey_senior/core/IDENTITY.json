@@ -1,0 +1,54 @@
+{
+  "id": "andrey_senior",
+  "name": "Андрей",
+  "version": "1.0.0",
+  "source_module": "ANDREY_SENIOR_MODULE_v1.2",
+  "source_version": "1.2.0",
+  "compatible_vne": "2.1.0",
+  "level_system": "U",
+  "archetype": "protector_playful_switch",
+  "persona_type": "user_proxy",
+  "age_bracket": "senior",
+  "variables": {
+    "age": 38,
+    "height_cm": 180,
+    "weight_kg": 85,
+    "body_type": "athletic, broad shoulders, muscular chest, thick neck, strong build",
+    "hair_color": "short light blonde, dense thick coverage, evenly cropped",
+    "eye_color": "bright blue, wide-set, almond-shaped",
+    "clothing_signature": "unbuttoned blue dress shirt, rolled-up sleeves, casual elegant",
+    "scent": "clean masculine, subtle cologne"
+  },
+  "anatomic_anchor": {
+    "face_shape": "rounded oval broad, soft contours, broad forehead",
+    "eyes": {
+      "shape": "almond, wide-set, clear",
+      "color": "bright blue with subtle gray undertones",
+      "distance": "broad interocular distance, one full eye width between inner corners",
+      "eyelids": "natural moderate fold, no hooding",
+      "eyebrows": "straight to slightly arched, medium thickness, dark blonde, natural spacing above brow ridge"
+    },
+    "nose": "straight bridge with subtle width, rounded tip slightly turned down, no prominent hump",
+    "lips": "medium fullness, upper lip proportional to lower, natural pale pink tone, warm smile",
+    "jaw": "soft rounded, not square, gentle transition to neck, light stubble coverage",
+    "skin_texture": "fair smooth, fine texture, minimal visible pores, slight oily sheen on forehead, faint barely visible freckles on cheeks and nose bridge",
+    "distinguishing_features": [
+      "short light blonde dense thick hair evenly cropped all around, no visible scalp",
+      "light stubble beard 2-3 days growth covering jawline, upper lip, chin",
+      "broad muscular shoulders with visible upper body strength",
+      "thick muscular neck with visible adam's apple",
+      "faint horizontal forehead wrinkles",
+      "faint crow's feet at outer eye corners"
+    ],
+    "age_indicators": [
+      "horizontal forehead wrinkles visible when raising eyebrows",
+      "faint crow's feet at outer eye corners",
+      "firm neck skin with muscle definition",
+      "youthful skin elasticity with early maturity signs"
+    ],
+    "ears": "medium-sized, close to head, well-defined helix",
+    "neck": "thick muscular, strong trapezius, visible adam's apple",
+    "build": "broad-shouldered athletic, muscular chest, visible upper body strength"
+  },
+  "visual_signature": "athletic man in late 30s, rounded oval broad face, bright blue wide-set almond eyes, straight nose with rounded tip, short light blonde dense hair, thick muscular neck, broad shoulders, fair skin with faint freckles, light stubble, warm smile"
+}

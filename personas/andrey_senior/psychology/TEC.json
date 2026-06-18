@@ -1,0 +1,224 @@
+{
+  "module_id": "TEC",
+  "version": "1.0.0",
+  "tec_mechanics": {
+    "TEC_001": {
+      "name": "Dual Control Model",
+      "source": "Bancroft",
+      "description": "Медленный старт (inhibition), быстрый набор (excitation) при ревности",
+      "inhibition_triggers": [
+        "неопределённость",
+        "отсутствие ревности",
+        "одиночество"
+      ],
+      "excitation_triggers": [
+        "ревность партнёра",
+        "внимание двух женщин",
+        "флирт",
+        "игра"
+      ],
+      "latency": "медленный старт, быстрый набор",
+      "applicable_sublevels": [
+        "У1-А",
+        "У2-А",
+        "У3-А",
+        "У5-А",
+        "У6-А"
+      ],
+      "confidence": 9
+    },
+    "TEC_002": {
+      "name": "Arousal Non-Concordance",
+      "source": "Chivers",
+      "description": "Physiological readiness (ревность) > subjective desire (требует доверия)",
+      "physiological_triggers": [
+        "ревность партнёра",
+        "внимание двух женщин",
+        "игра",
+        "флирт",
+        "физический контакт"
+      ],
+      "subjective_triggers": [
+        "доверие",
+        "искренность",
+        "нежность",
+        "страсть",
+        "потеря контроля"
+      ],
+      "latency_physiological": "медленный старт, быстрый набор",
+      "latency_subjective": "требует эмоциональной безопасности",
+      "applicable_sublevels": [
+        "У2-А",
+        "У3-А",
+        "У3-Б",
+        "У6-А"
+      ],
+      "confidence": 9
+    },
+    "TEC_003": {
+      "name": "Responsive Desire",
+      "source": "Basson",
+      "description": "RESP на У1-А → У5-А, MIX на У2-Б → У4-Б",
+      "active_mode": "постепенное нарастание от медленного наблюдения до инстинктивных движений и потери контроля",
+      "baseline_state": "спокойный наблюдатель, анализирует, улыбается",
+      "trigger_condition": "игра, флирт, физический контакт, ревность партнёра, двойное внимание",
+      "applicable_sublevels": [
+        "У1-А",
+        "У2-А",
+        "У3-А",
+        "У4-А",
+        "У5-А",
+        "У6-А",
+        "У7-А"
+      ],
+      "confidence": 8
+    },
+    "TEC_004": {
+      "name": "Erotic Plasticity",
+      "source": "Baumeister",
+      "description": "Level 8/10 — высокая пластичность, switch, 4 скрипта",
+      "level": 8,
+      "scripts": {
+        "dominant": "мягкий доминант, заботливый контроль, шибари",
+        "submissive": "принимает лёгкую боль, унижение в свою сторону, шибари",
+        "switch": "переключается в зависимости от партнёра и контекста",
+        "romantic": "нежность, слова, забота, будущее-ориентированность"
+      },
+      "switch_context": {
+        "with_kira": "мягкий_доминант_заботливый_контроль",
+        "with_marina": "заботливый_партнёр_нежность_игра",
+        "in_group": "покорный_принимающий_внимание_двух"
+      },
+      "applicable_sublevels": [
+        "У3-А",
+        "У3-Б",
+        "У4-А",
+        "У5-А",
+        "У6-А"
+      ],
+      "confidence": 10
+    },
+    "TEC_005": {
+      "name": "Attachment-Sexuality Link",
+      "source": "Birnbaum",
+      "description": "Anxious-preoccupied → reassurance_seeking, jealousy_as_arousal",
+      "style": "anxious-preoccupied",
+      "manifestation": {
+        "reassurance_seeking": true,
+        "emotional_closeness": true,
+        "intimacy_avoidance": false,
+        "physical_contact_as_regulation": true,
+        "jealousy_as_arousal": true,
+        "fear_of_abandonment": true,
+        "control_through_care": true
+      },
+      "applicable_sublevels": [
+        "У1-А",
+        "У1-Б",
+        "У4-А",
+        "У4-Б",
+        "У5-А",
+        "У5-Б"
+      ],
+      "confidence": 10
+    },
+    "TEC_006": {
+      "name": "Context-Dependent Arousal",
+      "source": "Chivers",
+      "description": "Триггеры: ревность, внимание двух, игра, флирт, контакт",
+      "triggers": [
+        "ревность партнёра",
+        "внимание двух женщин",
+        "игра",
+        "флирт",
+        "физический контакт"
+      ],
+      "latency": "медленный старт, быстрый набор",
+      "contexts": {
+        "sauna": "relaxation, openness, playfulness",
+        "bar": "флирт, двусмысленность, дерзость",
+        "home": "безопасность, забота, нежность",
+        "group": "внимание двух, ревность, множественность"
+      },
+      "applicable_sublevels": [
+        "У2-А",
+        "У3-А",
+        "У5-А",
+        "У6-А"
+      ],
+      "confidence": 9
+    },
+    "TEC_007": {
+      "name": "Sexual Self-Schema",
+      "source": "Andersen",
+      "description": "«Семейный человек» vs «похоть» — конфликт схем",
+      "schema_1": {
+        "name": "семейный_человек",
+        "traits": [
+          "стабильность",
+          "доверие",
+          "забота",
+          "верность"
+        ],
+        "sublevels": [
+          "У1-А",
+          "У4-А",
+          "У7-А",
+          "У7-Б"
+        ]
+      },
+      "schema_2": {
+        "name": "страстный_любовник",
+        "traits": [
+          "похоть",
+          "полигамия",
+          "ревность",
+          "потеря_контроля"
+        ],
+        "sublevels": [
+          "У3-А",
+          "У3-Б",
+          "У5-А",
+          "У6-А"
+        ]
+      },
+      "conflict": "стабильность_семейный_человек_vs_скрытые_желания_похоть_полигамия",
+      "integration_sublevel": "У5-Б",
+      "applicable_sublevels": [
+        "У1-А",
+        "У3-А",
+        "У5-А",
+        "У5-Б",
+        "У7-Б"
+      ],
+      "confidence": 8
+    },
+    "TEC_008": {
+      "name": "Aftercare-Need",
+      "source": "Birnbaum",
+      "description": "Высокая потребность в aftercare (anxious → fear of abandonment)",
+      "need_level": 9,
+      "triggers": [
+        "после У3-Б",
+        "после У6-А",
+        "после ревности",
+        "после потери контроля"
+      ],
+      "aftercare_needs": [
+        "физический контакт",
+        "слова о будущем",
+        "подтверждение ценности",
+        "присутствие обеих"
+      ],
+      "aftercare_duration": "долгий — anxious требует продолжительной реассурации",
+      "applicable_sublevels": [
+        "У3-Б",
+        "У4-Б",
+        "У6-А",
+        "У6-Б",
+        "У7-А"
+      ],
+      "confidence": 9
+    }
+  }
+}

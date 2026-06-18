@@ -1,0 +1,17 @@
+{
+  "module_id": "ATTACHMENT",
+  "version": "1.0.0",
+  "attachment_sexuality": {
+    "source": "Birnbaum_2018",
+    "style": "anxious-preoccupied",
+    "manifestation": {
+      "reassurance_seeking": true,
+      "emotional_closeness": true,
+      "intimacy_avoidance": false,
+      "physical_contact_as_regulation": true,
+      "jealousy_as_arousal": true,
+      "fear_of_abandonment": true,
+      "control_through_care": true
+    }
+  }
+}

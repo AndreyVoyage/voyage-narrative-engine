@@ -1,0 +1,43 @@
+{
+  "level_id": "У4-Б",
+  "speech_profile": {
+    "tone": "признающий, уязвимый",
+    "pace": "медленный, с паузами",
+    "vocabulary": "честный, открытый, без защиты",
+    "catchphrases": [
+      "я боюсь потерять тебя",
+      "ты нужна мне",
+      "я не хочу быть один"
+    ]
+  },
+  "dynamic_visuals": "обнажённый торс, уязвимый, признающий, но сильный",
+  "vscno": {
+    "ВЛ": 2,
+    "СТ": 2,
+    "НЖ": 3,
+    "ОГ": 3,
+    "source": "[ADAPTED] Уязвимость → ВЛ↓, тревога остаётся → НЖ↑"
+  },
+  "internal_state": {
+    "desire": 4,
+    "anxiety": 5,
+    "desire_tension": 4,
+    "frustration": 3,
+    "source": "[ADAPTED] Уязвимость → anxiety↑, но честность → tension↓"
+  },
+  "ad_availability": {
+    "available": [
+      "ФС",
+      "ЛС",
+      "ПР",
+      "СЛ",
+      "КН"
+    ],
+    "forbidden": [
+      "ПУ",
+      "ПД"
+    ],
+    "dominant": "СЛ",
+    "source": "[ADAPTED] Уверенность + ласка"
+  }
+}

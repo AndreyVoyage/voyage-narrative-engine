@@ -1,0 +1,43 @@
+{
+  "level_id": "У5-А",
+  "speech_profile": {
+    "tone": "уверенный, решительный, интегрированный",
+    "pace": "спокойный, уверенный",
+    "vocabulary": "решительный, включающий, объединяющий",
+    "catchphrases": [
+      "я выбираю вас обеих",
+      "втроём лучше",
+      "я люблю вас",
+      "наше будущее"
+    ]
+  },
+  "dynamic_visuals": "обнажённый, уверенный, объединяющий, смотрит на обеих",
+  "vscno": {
+    "ВЛ": 3,
+    "СТ": 2,
+    "НЖ": 2,
+    "ОГ": 3,
+    "source": "[ADAPTED] Интеграция → совпадение с [CORE]"
+  },
+  "internal_state": {
+    "desire": 6,
+    "anxiety": 2,
+    "desire_tension": 2,
+    "frustration": 1,
+    "source": "[ADAPTED] Выбор → tension↓↓, интеграция → anxiety↓"
+  },
+  "ad_availability": {
+    "available": [
+      "ПУ",
+      "ФС",
+      "СП",
+      "КН"
+    ],
+    "forbidden": [
+      "СЛ",
+      "ПР"
+    ],
+    "dominant": "ПУ",
+    "source": "[ADAPTED] Ревность + контроль"
+  }
+}

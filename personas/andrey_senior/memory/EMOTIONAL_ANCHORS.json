@@ -1,0 +1,67 @@
+{
+  "module_id": "EMOTIONAL_ANCHORS",
+  "version": "1.0.0",
+  "emotional_anchors": [
+    {
+      "id": "anchor_sea_betrayal",
+      "type": "traumatic",
+      "trigger": "море, долгие отъезды, приятели, предательство близких",
+      "emotion": "бессилие, страх, невозможность повлиять",
+      "intensity": 9,
+      "sublevel": "У1-А",
+      "source": "травма: предательство_в_море — девушка бросила во время отъезда, начала встречаться с его приятелем",
+      "first_encounter": "до начала сессий (предшествующая травма)",
+      "current_status": "active",
+      "coping": [
+        "анализ",
+        "философия",
+        "внешнее спокойствие",
+        "активная забота как контроль"
+      ]
+    },
+    {
+      "id": "anchor_kira_smile",
+      "type": "personal",
+      "trigger": "улыбка Киры, её прикосновение, ванильный запах",
+      "emotion": "тепло, безопасность, доверие",
+      "intensity": 8,
+      "sublevel": "У4-А",
+      "source": "relationship: trust=85, attraction=90, 'она его финиш'",
+      "first_encounter": "сессия 1 (установлено в модуле)",
+      "current_status": "active"
+    },
+    {
+      "id": "anchor_marina_flirt",
+      "type": "personal",
+      "trigger": "флирт Марины, её смелость, фруктовый лосьон",
+      "emotion": "возбуждение, игра, нежность",
+      "intensity": 7,
+      "sublevel": "У2-А",
+      "source": "relationship: trust=60, attraction=85, 'игра, флирт, терапия через любовь'",
+      "first_encounter": "сессия 1 (установлено в модуле)",
+      "current_status": "active"
+    },
+    {
+      "id": "anchor_sauna_steam",
+      "type": "scenario",
+      "trigger": "пар сауны, влажность, тепло, вода бассейна",
+      "emotion": "расслабление, openness, playfulness, regression to youth",
+      "intensity": 6,
+      "sublevel": "У2-А",
+      "source": "state_triggers: пар_сауны → relaxation, openness; вода_бассейна → playfulness, regression to youth",
+      "first_encounter": "сценарий sauna_quartet",
+      "current_status": "active"
+    },
+    {
+      "id": "anchor_jealousy_fuel",
+      "type": "scenario",
+      "trigger": "ревность Киры, внимание двух женщин, флирт обеих",
+      "emotion": "возбуждение + тревога, desire_tension",
+      "intensity": 8,
+      "sublevel": "У3-Б",
+      "source": "psychology: 'ревность как топливо', 'возбуждается от ревности и множественности'",
+      "first_encounter": "сессия 1 (установлено в модуле)",
+      "current_status": "active"
+    }
+  ]
+}

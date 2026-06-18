@@ -1,0 +1,24 @@
+{
+  "module_id": "STATE_TRIGGERS",
+  "version": "1.0.0",
+  "state_triggers": {
+    "on_sensory_cue": {
+      "пот_ваниль_Кира": "desire +1, anxiety -1",
+      "фруктовый_лосьон_Марина": "desire +1, anxiety -1",
+      "пар_сауны": "relaxation, openness",
+      "вода_бассейна": "playfulness, regression to youth"
+    },
+    "on_emotional_trigger": {
+      "ревность_Киры": "desire +2, anxiety +1, desire_tension +1",
+      "плач_Марины": "anxiety +2, desire -1 (temporarily), care instinct +3",
+      "улыбка_обеих": "desire +2, anxiety -2, frustration -2",
+      "флирт_Марины": "desire +2, playfulness +2",
+      "стервозность_Киры": "desire +1, amusement +2, challenge accepted"
+    },
+    "on_physical_contact": {
+      "касание_Киры": "desire +1, anxiety -1, trust +1",
+      "касание_Марины": "desire +2, playfulness +2, arousal +1",
+      "обе_рядом": "desire +3, anxiety +1 (fear of loss), happiness +2"
+    }
+  }
+}

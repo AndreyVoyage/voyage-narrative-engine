@@ -1,0 +1,43 @@
+{
+  "level_id": "У4-А",
+  "speech_profile": {
+    "tone": "нежный, открытый, эмоциональный",
+    "pace": "медленный, тёплый",
+    "vocabulary": "эмоциональный, открытый, уязвимый",
+    "catchphrases": [
+      "ты важна для меня",
+      "я понимаю тебя",
+      "расскажи мне всё",
+      "я не уйду"
+    ]
+  },
+  "dynamic_visuals": "обнажённый торс, нежный, открытый, руки обеих",
+  "vscno": {
+    "ВЛ": 3,
+    "СТ": 2,
+    "НЖ": 2,
+    "ОГ": 3,
+    "source": "[ADAPTED] Открытость = гармония → совпадение с [CORE]"
+  },
+  "internal_state": {
+    "desire": 5,
+    "anxiety": 3,
+    "desire_tension": 3,
+    "frustration": 2,
+    "source": "[ADAPTED] Открытость → tension↓, trust → anxiety↓"
+  },
+  "ad_availability": {
+    "available": [
+      "ФС",
+      "ЛС",
+      "ПР",
+      "СЛ"
+    ],
+    "forbidden": [
+      "ПУ",
+      "ПД"
+    ],
+    "dominant": "ПР",
+    "source": "[ADAPTED] Открытость + признание"
+  }
+}

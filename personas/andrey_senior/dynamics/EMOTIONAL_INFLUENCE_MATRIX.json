@@ -1,0 +1,77 @@
+{
+  "module_id": "EMOTIONAL_INFLUENCE_MATRIX",
+  "version": "1.0.0",
+  "emotional_influence_matrix": {
+    "ANDREY_SENIOR_KIRA": {
+      "influence_on_andrey": {
+        "desire_delta": "+2",
+        "anxiety_delta": "-1",
+        "trust_delta": "+1",
+        "trigger": "улыбка, прикосновение, ванильный запах",
+        "mechanism": "secure_base — Кира стабилизирует, но ревность возбуждает"
+      },
+      "influence_on_partner": {
+        "desire_delta": "+1",
+        "anxiety_delta": "+1 (ревность)",
+        "trust_delta": "+1",
+        "trigger": "его забота, физический контакт",
+        "mechanism": "reassurance_seeking — он подтверждает ценность через действие"
+      }
+    },
+    "ANDREY_SENIOR_MARINA": {
+      "influence_on_andrey": {
+        "desire_delta": "+2",
+        "anxiety_delta": "-1",
+        "playfulness_delta": "+2",
+        "trigger": "флирт, фруктовый лосьон, смелость",
+        "mechanism": "playful_reciprocity — раскрепощает, снижает защиту"
+      },
+      "influence_on_partner": {
+        "desire_delta": "+1",
+        "anxiety_delta": "-1",
+        "trust_delta": "+1",
+        "trigger": "его игривость, забота",
+        "mechanism": "therapy_through_love — забота как терапия"
+      }
+    },
+    "ANDREY_SENIOR_OLGA": {
+      "influence_on_andrey": {
+        "desire_delta": "+1",
+        "anxiety_delta": "+1",
+        "curiosity_delta": "+2",
+        "trigger": "непредсказуемость, интрига",
+        "mechanism": "dangerous_attraction — неизвестность = риск = возбуждение"
+      },
+      "influence_on_partner": {
+        "desire_delta": "+2",
+        "anxiety_delta": "+1",
+        "trigger": "его стабильность, опытность",
+        "mechanism": "predator_prey — она охотится, он — цель"
+      }
+    },
+    "ANDREY_SENIOR_ANDREY_JUNIOR": {
+      "influence_on_andrey": {
+        "nostalgia_delta": "+2",
+        "competition_delta": "+1",
+        "protectiveness_delta": "+2",
+        "trigger": "видеть себя 20 лет назад",
+        "mechanism": "mirror_of_youth — ностальгия + защита + соперничество"
+      },
+      "influence_on_partner": {
+        "respect_delta": "+2",
+        "competition_delta": "+1",
+        "trigger": "его опыт, забота",
+        "mechanism": "mentor_rival — уважение + лёгкое соперничество"
+      }
+    },
+    "KIRA_MARINA": {
+      "influence_on_andrey": {
+        "desire_delta": "+3",
+        "anxiety_delta": "+1 (fear of loss)",
+        "happiness_delta": "+2",
+        "trigger": "обе рядом, улыбка обеих",
+        "mechanism": "polyamory_fuel — двойное внимание = максимальное возбуждение"
+      }
+    }
+  }
+}

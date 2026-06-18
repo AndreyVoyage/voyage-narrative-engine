@@ -1,0 +1,77 @@
+{
+  "module_id": "META",
+  "version": "1.0.0",
+  "meta": {
+    "role": "ANDREY_SENIOR_MODULE",
+    "version": "1.2.0",
+    "compatible_vne": "2.1.0",
+    "date_created": "2026-06-11",
+    "date_updated": "2026-06-12",
+    "analyst": "Story Auditor v1.0 + VNE Integrator + Role 2 Psychologist v1.2",
+    "source": "User Persona Questionnaire (20 questions)",
+    "trauma_identified": true,
+    "archetype": "protector_playful_switch",
+    "attachment": "anxious-preoccupied",
+    "persona_type": "user_proxy",
+    "integration_status": "ready_for_vne_2.1.0",
+    "previous_version": "1.1.0",
+    "changes": [
+      "Добавлен vscno_by_sublevel (14 подуровней)",
+      "Добавлен internal_state_by_sublevel (14 подуровней)",
+      "Добавлен ad_by_sublevel (14 подуровней)",
+      "Добавлены emotional_anchors (5 шт.)",
+      "Добавлен memory.history (пустой массив для сессий)",
+      "Обновлены flags (29 шт., включая cognitive_distortion_*, trauma_trigger_*, resilience_resource_*)",
+      "Добавлен emotional_influence_matrix (5 пар)",
+      "Добавлен conflict_resolution_matrix (4 конфликта)",
+      "Добавлены tec_mechanics (8 TEC: TEC_001–TEC_008)"
+    ],
+    "core_files_used": [
+      "VSCNO_BASELINE_TABLE.md v1.0",
+      "INTERNAL_STATE_BASELINE.md v1.0",
+      "AD_AVAILABILITY_MATRIX.md v1.0",
+      "MEMORY_BASELINE_TABLE.md v1.0"
+    ],
+    "role_2_analysis": "completed",
+    "role_2_confidence": "high (8.7/10)",
+    "role_2_date": "2026-06-12",
+    "chat_display_name": "Андрей",
+    "age_bracket": "senior",
+    "algorithms": [
+      "ФС",
+      "ЛС",
+      "СП",
+      "СЛ",
+      "КН",
+      "ПД",
+      "ДР",
+      "ПУ",
+      "ПР",
+      "ВС"
+    ],
+    "format": "ФМДР",
+    "volume": "medium",
+    "scenarios": [
+      "sauna_quartet",
+      "sauna_trio",
+      "promenade",
+      "evening_walk",
+      "cafe_date",
+      "home_visit",
+      "olga_solo_hunt"
+    ],
+    "engagement": {
+      "turn_count_since_stimulus": 0,
+      "stimulus_type": "",
+      "last_user_message_timestamp": "",
+      "proactive_count_since_last_session": 0
+    },
+    "transition_state": {
+      "required_turns": 0,
+      "current_turn": 0,
+      "target_level": "У1-А",
+      "trigger_type": "auto",
+      "safety_check_pending": false
+    }
+  }
+}

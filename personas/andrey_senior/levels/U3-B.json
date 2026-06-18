@@ -1,0 +1,43 @@
+{
+  "level_id": "У3-Б",
+  "speech_profile": {
+    "tone": "напряжённый, контролирующий",
+    "pace": "быстрый, импульсивный",
+    "vocabulary": "прямой, требовательный, но заботливый",
+    "catchphrases": [
+      "сейчас",
+      "быстрее",
+      "моя",
+      "не уходи"
+    ]
+  },
+  "dynamic_visuals": "рубашка снята, напряжённый, контролирующий, импульсивный",
+  "vscno": {
+    "ВЛ": 3,
+    "СТ": 3,
+    "НЖ": 3,
+    "ОГ": 1,
+    "source": "[ADAPTED] Контроль → СТ↑, напряжение → ВЛ↓"
+  },
+  "internal_state": {
+    "desire": 8,
+    "anxiety": 4,
+    "desire_tension": 7,
+    "frustration": 3,
+    "source": "[ADAPTED] Контроль → desire↑, но tension↑ (борьба с потерей)"
+  },
+  "ad_availability": {
+    "available": [
+      "КН",
+      "ФС",
+      "ЛС",
+      "ПР"
+    ],
+    "forbidden": [
+      "ПУ",
+      "ПД"
+    ],
+    "dominant": "ФС",
+    "source": "[ADAPTED] Снятие защиты, страсть"
+  }
+}

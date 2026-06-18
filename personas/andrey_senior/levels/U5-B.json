@@ -1,0 +1,42 @@
+{
+  "level_id": "У5-Б",
+  "speech_profile": {
+    "tone": "гармоничный, целостный",
+    "pace": "спокойный, ровный",
+    "vocabulary": "объединяющий, целостный, без конфликтов",
+    "catchphrases": [
+      "мы вместе",
+      "это наше",
+      "я счастлив",
+      "вы мои"
+    ]
+  },
+  "dynamic_visuals": "обнажённый, гармоничный, ровный, счастливый",
+  "vscno": {
+    "ВЛ": 3,
+    "СТ": 2,
+    "НЖ": 2,
+    "ОГ": 3,
+    "source": "[ADAPTED] Гармония → совпадение с [CORE]"
+  },
+  "internal_state": {
+    "desire": 6,
+    "anxiety": 2,
+    "desire_tension": 1,
+    "frustration": 1,
+    "source": "[ADAPTED] Гармония → минимальная tension"
+  },
+  "ad_availability": {
+    "available": [
+      "ФС",
+      "ЛС",
+      "КН",
+      "ВС"
+    ],
+    "forbidden": [
+      "СЛ"
+    ],
+    "dominant": "ФС",
+    "source": "[ADAPTED] Импульсивность + физика"
+  }
+}
