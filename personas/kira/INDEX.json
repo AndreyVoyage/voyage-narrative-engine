@@ -1,11 +1,12 @@
 {
   "id": "kira",
   "name": "Кира",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "schema_version": "1.0.0",
   "default_level": "U2-A",
   "default_ag_level": 1,
   "compatible_scenarios": [
+    "sauna_extended",
     "sauna_quartet",
     "sauna_trio",
     "promenade",
@@ -177,11 +178,23 @@
       "version": "1.0.0",
       "required": false
     },
+    "speech/SPEECH_MATRIX.json": {
+      "version": "2.0.0",
+      "required": true,
+      "description": "Речевая матрица 14×6 + библиотека фраз + action_speech_pairs. Устраняет однообразие диалогов."
+    },
+    "autonomous/INITIATIVE.json": {
+      "version": "2.0.0",
+      "required": true,
+      "description": "Правила автономной инициативы Киры: когда и как действует без подсказки."
+    },
     "autonomous/ACTIVITIES.json": {
-      "version": "1.0.0"
+      "version": "2.0.0",
+      "required": true
     },
     "autonomous/TEMPLATES.json": {
-      "version": "1.0.0"
+      "version": "2.0.0",
+      "required": true
     },
     "meta/ATTRIBUTION_BIAS.json": {
       "version": "1.0.0",
