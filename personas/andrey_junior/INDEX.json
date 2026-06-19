@@ -1,7 +1,7 @@
 {
   "id": "andrey_junior",
   "name": "Андрей",
-  "version": "2.0.0",
+  "version": "2.2.0",
   "schema_version": "1.0.0",
   "default_level": "U1-A",
   "default_ag_level": 1,
@@ -115,12 +115,20 @@
       "version": "1.0.0",
       "required": true
     },
+    "autonomous/INITIATIVE.json": {
+      "version": "2.0.0",
+      "required": true
+    },
     "autonomous/ACTIVITIES.json": {
-      "version": "1.0.0",
+      "version": "2.0.0",
       "required": true
     },
     "autonomous/TEMPLATES.json": {
-      "version": "1.0.0",
+      "version": "2.0.0",
+      "required": true
+    },
+    "speech/SPEECH_MATRIX.json": {
+      "version": "2.0.0",
       "required": true
     },
     "meta/META.json": {

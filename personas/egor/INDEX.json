@@ -1,7 +1,7 @@
 {
   "id": "egor",
   "name": "Егор",
-  "version": "2.0.0",
+  "version": "2.2.0",
   "schema_version": "1.0.0",
   "default_level": "U1-A",
   "default_ag_level": 1,
@@ -148,72 +148,80 @@
       "version": "1.0.0",
       "required": true
     },
+    "autonomous/INITIATIVE.json": {
+      "version": "2.0.0",
+      "required": true
+    },
     "autonomous/ACTIVITIES.json": {
-      "version": "1.0.0",
+      "version": "2.0.0",
       "required": true
     },
     "autonomous/TEMPLATES.json": {
-      "version": "1.0.0",
+      "version": "2.0.0",
+      "required": true
+    },
+    "speech/SPEECH_MATRIX.json": {
+      "version": "2.0.0",
       "required": true
     },
     "meta/META.json": {
-      "version": "1.0.0",
+      "version": "2.0.0",
       "required": true
     },
     "levels/U1-A.json": {
-      "version": "1.0.0",
+      "version": "2.0.0",
       "required": true
     },
     "levels/U1-B.json": {
-      "version": "1.0.0",
+      "version": "2.0.0",
       "required": true
     },
     "levels/U2-A.json": {
-      "version": "1.0.0",
+      "version": "2.0.0",
       "required": true
     },
     "levels/U2-B.json": {
-      "version": "1.0.0",
+      "version": "2.0.0",
       "required": true
     },
     "levels/U3-A.json": {
-      "version": "1.0.0",
+      "version": "2.0.0",
       "required": true
     },
     "levels/U3-B.json": {
-      "version": "1.0.0",
+      "version": "2.0.0",
       "required": true
     },
     "levels/U4-A.json": {
-      "version": "1.0.0",
+      "version": "2.0.0",
       "required": true
     },
     "levels/U4-B.json": {
-      "version": "1.0.0",
+      "version": "2.0.0",
       "required": true
     },
     "levels/U5-A.json": {
-      "version": "1.0.0",
+      "version": "2.0.0",
       "required": true
     },
     "levels/U5-B.json": {
-      "version": "1.0.0",
+      "version": "2.0.0",
       "required": true
     },
     "levels/U6-A.json": {
-      "version": "1.0.0",
+      "version": "2.0.0",
       "required": true
     },
     "levels/U6-B.json": {
-      "version": "1.0.0",
+      "version": "2.0.0",
       "required": true
     },
     "levels/U7-A.json": {
-      "version": "1.0.0",
+      "version": "2.0.0",
       "required": true
     },
     "levels/U7-B.json": {
-      "version": "1.0.0",
+      "version": "2.0.0",
       "required": true
     }
   },

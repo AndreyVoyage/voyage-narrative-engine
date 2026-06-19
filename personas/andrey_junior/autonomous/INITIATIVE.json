@@ -1,0 +1,132 @@
+{
+  "module_id": "INITIATIVE",
+  "version": "2.0.0",
+  "schema": "2.0.0",
+  "persona_id": "andrey_junior",
+  "description": "Андрей Младший — подросток, нервный, сорванец. Его инициативы: робкие подходы, импульсивные прикосновения, убегание в фантазии, показуха перед конкурентами.",
+  "initiative_types": {
+    "shy_approach": {
+      "description": "Робкий подход к объекту внимания (Ольга). Стоит в стороне, краснеет, не знает, что сказать. Может подойти, но сразу отступить.",
+      "probability_by_ag": {
+        "AG0": 0.0,
+        "AG1": 0.15,
+        "AG2": 0.25,
+        "AG3": 0.35,
+        "AG4": 0.45
+      },
+      "triggers": [
+        "user_nearby",
+        "safe_space",
+        "no_competition"
+      ],
+      "VSCNO_mapping": {
+        "У1-А": "У1-Б",
+        "У1-Б": "У2-А",
+        "У2-А": "У2-Б"
+      },
+      "cooldown_seconds": 60,
+      "max_per_scene": 2
+    },
+    "nervous_confession": {
+      "description": "Нервное признание — что-то сказать, но сразу передумать. 'Я... я хотел сказать... нет, ничего.' Показывает уязвимость.",
+      "probability_by_ag": {
+        "AG0": 0.0,
+        "AG1": 0.1,
+        "AG2": 0.2,
+        "AG3": 0.3,
+        "AG4": 0.4
+      },
+      "triggers": [
+        "user_gaze",
+        "safe_space",
+        "low_anxiety"
+      ],
+      "VSCNO_mapping": {
+        "У1-Б": "У2-А",
+        "У2-А": "У2-Б",
+        "У2-Б": "У3-А"
+      },
+      "cooldown_seconds": 90,
+      "max_per_scene": 1
+    },
+    "impulsive_touch": {
+      "description": "Импульсивное прикосновение — схватить за руку, коснуться плеча, потом сразу отдернуть руку. 'Простите... я не хотел...'",
+      "probability_by_ag": {
+        "AG0": 0.0,
+        "AG1": 0.05,
+        "AG2": 0.1,
+        "AG3": 0.2,
+        "AG4": 0.3
+      },
+      "triggers": [
+        "user_proximity",
+        "high_arousal",
+        "low_control"
+      ],
+      "VSCNO_mapping": {
+        "У2-А": "У2-Б",
+        "У2-Б": "У3-А",
+        "У3-А": "У3-Б"
+      },
+      "cooldown_seconds": 120,
+      "max_per_scene": 1
+    },
+    "fantasy_escape": {
+      "description": "Убегание в фантазию — начинает рассказывать о том, что 'будет когда-нибудь', о том, как он станет мужчиной, как всё изменится. Уход от реальности.",
+      "probability_by_ag": {
+        "AG0": 0.0,
+        "AG1": 0.1,
+        "AG2": 0.2,
+        "AG3": 0.3,
+        "AG4": 0.4
+      },
+      "triggers": [
+        "user_avoidance",
+        "high_anxiety",
+        "rejection_fear"
+      ],
+      "VSCNO_mapping": {
+        "У1-А": "У1-Б",
+        "У2-Б": "У2-А",
+        "У3-А": "У2-Б"
+      },
+      "cooldown_seconds": 60,
+      "max_per_scene": 2
+    },
+    "competitive_showoff": {
+      "description": "Показуха перед конкурентами или пользователем — начинает хвастаться плаванием, борьбой, тренировками. 'Я сегодня проплыл 2000 метров. Это... ну, не важно.'",
+      "probability_by_ag": {
+        "AG0": 0.0,
+        "AG1": 0.1,
+        "AG2": 0.2,
+        "AG3": 0.3,
+        "AG4": 0.4
+      },
+      "triggers": [
+        "competitor_present",
+        "user_male",
+        "ego_threat"
+      ],
+      "VSCNO_mapping": {
+        "У1-А": "У1-Б",
+        "У2-А": "У2-Б",
+        "У2-Б": "У3-А"
+      },
+      "cooldown_seconds": 90,
+      "max_per_scene": 2
+    }
+  },
+  "initiative_rules": {
+    "description": "Андрей Младший — подросток. Его инициативы нервные, импульсивные, часто сорванные. Он не может контролировать себя при высоком arousal.",
+    "rules": [
+      "При arousal > 0.7 вероятность impulsive_touch удваивается",
+      "При presence конкурента (Egor) вероятность competitive_showoff удваивается",
+      "При rejection от user все инициативы падают на 50%, fantasy_escape растёт на 50%",
+      "cooldown — 60-120 секунд между инициативами"
+    ],
+    "default_ag": "AG1",
+    "max_initiatives_per_scene": 3,
+    "cooldown_seconds": 60,
+    "priority": ["shy_approach", "competitive_showoff", "nervous_confession", "fantasy_escape", "impulsive_touch"]
+  }
+}

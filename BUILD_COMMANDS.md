@@ -1,40 +1,115 @@
 # Voyage Narrative Engine — Команды сборки и запуска
 
-## Быстрый старт
+## Быстрый старт (2 режима сборки)
 
-### Собрать промпт для игры в сауне (6 персонажей)
+### Режим 1: ОТДЕЛЬНЫЕ ФАЙЛЫ (рекомендуется для игры в чате)
+
+Каждый персонаж — отдельный файл. Сценарий — отдельный файл. Триггерный гайд — отдельный файл.
 
 ```bash
-cd C:/DEV/Narrative/voyage-narrative-engine
-
-# Способ 1: Через новый modular builder (рекомендуется)
-bash build_prompt_modular.sh sauna_extended standard AG3
-
-# Способ 2: Через Python напрямую
-python scripts/python/build_prompt_modular.py sauna_extended standard AG3
+bash build_prompt_modular.sh sauna_extended standard AG3 --separate
 ```
 
-Результат: файл `PROMPT_MODULAR.txt` в корне репозитория.
+**Результат — 7 файлов:**
+
+| Файл | Размер | Назначение |
+|------|--------|------------|
+| `PROMPT_SCENARIO.txt` | ~41 KB | **Сценарий** — загружать ПЕРВЫМ. Содержит таймлайн, фазы, триггеры, ветки, динамику, триггер-карту |
+| `PROMPT_KIRA.txt` | ~39 KB | **Кира** — полная речевая матрица, инициативы, VSCNO, психология |
+| `PROMPT_MARINA.txt` | ~27 KB | **Марина** — полная речевая матрица, инициативы, VSCNO |
+| `PROMPT_SERGEY.txt` | ~25 KB | **Сергей** — полная речевая матрица, инициативы, VSCNO |
+| `PROMPT_MAKSIM.txt` | ~27 KB | **Максим** — полная речевая матрица, инициативы, VSCNO |
+| `PROMPT_ANDREY_SENIOR.txt` | ~37 KB | **Андрей Старший** — полная речевая матрица, инициативы, VSCNO |
+| `TRIGGER_GUIDE.txt` | ~10 KB | **Гайд для LLM** — когда и как подгружать персонажей по триггерам |
+
+### Режим 2: ОДИН ФАЙЛ (для тестов или коротких сессий)
+
+```bash
+bash build_prompt_modular.sh sauna_extended standard AG3
+```
+
+**Результат:** `PROMPT_MODULAR.txt` (~104 KB) — всё в одном файле.
+
+---
+
+## Как правильно написать запрос (чтобы ничего не пропало)
+
+❌ **Неправильно:**
+> Собери промпт для игры в сауне.
+
+⚠️ Риск: я соберу один файл, возможно сокращённый.
+
+✅ **Правильно — отдельные файлы:**
+> Собери `sauna_extended` в режиме **--separate** (отдельные файлы). Каждый персонаж — в свой файл. Сценарий — отдельно. Включи **ВСЕ модули**: timeline, phases (с triggers и character_states), locations (с sensory anchors), branches (с FMDR), dynamics, markdown-сцены (P1b, P2b, P3b). Не сокращай.
+
+✅ **Правильно — один файл:**
+> Собери **ПОЛНЫЙ** `PROMPT_MODULAR.txt` для `sauna_extended`. Включи **ВСЕ модули** сценария и **ВСЕХ** персонажей с полными speech matrix, initiatives, activities. Не сокращай.
+
+---
+
+## Триггерная подгрузка (как экономить контекст)
+
+### Проблема
+5 персонажей × ~30 KB = 150 KB. Сценарий = 40 KB. Итого ~190 KB — слишком много для одного сообщения.
+
+### Решение
+1. **Загружаем сценарий** (`PROMPT_SCENARIO.txt`) — 41 KB. Внутри есть **Trigger Map**.
+2. **LLM ведёт игру** с минимальным контекстом (сценарий + текущие персонажи).
+3. **Когда срабатывает триггер** — LLM получает команду загрузить конкретного персонажа.
+
+### Пример триггерной подгрузки
+
+**Шаг 1:** Загружаем сценарий:
+> [Вставляем PROMPT_SCENARIO.txt]
+> Начни игру. Я — пользователь. Фаза P1_entrance.
+
+**Шаг 2:** Сценарий говорит: "В фазе P1 присутствуют Кира, Марина, Сергей, Максим. Андрей входит позже."
+
+**Шаг 3:** Когда срабатывает триггер `andrey_entrance` (фаза P1b), пользователь или LLM загружает:
+> [ЗАГРУЗИ ANDREY_SENIOR] или вставляем `PROMPT_ANDREY_SENIOR.txt`
+
+**Шаг 4:** Теперь в контексте: сценарий + Кира + Марина + Сергей + Максим + Андрей. Но Андрей загружен только когда нужен.
+
+### Ручные команды загрузки (для пользователя)
+
+- **ЗАГРУЗИ КИРА** → LLM загружает `PROMPT_KIRA.txt`
+- **ЗАГРУЗИ МАРИНА** → LLM загружает `PROMPT_MARINA.txt`
+- **ЗАГРУЗИ ВСЕХ** → LLM загружает все 5 персонажей
+- **ВЫГРУЗИ [ID]** → Убрать персонажа из контекста
+
+### Автоматическая выгрузка
+
+Персонаж автоматически выгружается если:
+- Пользователь покидает локацию, где персонаж отсутствует
+- Прошло более 30 минут без упоминания (AG≥3)
+- Команда ВЫГРУЗИ [ID]
+
+---
+
+## Сборка через PythonRun (если bash недоступен)
+
+```python
+import sys
+from pathlib import Path
+repo = Path("C:/DEV/Narrative/voyage-narrative-engine")
+sys.path.insert(0, str(repo / "scripts" / "python"))
+from build_prompt_modular import build_separate
+
+# Собрать отдельные файлы
+built = build_separate("sauna_extended", "standard", "AG3")
+for fname, size in built:
+    print(f"{fname}: {size} bytes")
+```
 
 ---
 
 ## Варианты режимов (Mode)
 
-| Режим | Описание | Команда |
-|-------|----------|---------|
-| **sauna_extended** | Сауна с Андреем Старшим, 6 персонажей | `build_prompt_modular.sh sauna_extended standard AG3` |
-| **sauna_extended compact** | Минимальный контекст, экономия токенов | `build_prompt_modular.sh sauna_extended compact AG1` |
-| **sauna_extended extended** | Максимальный контекст + автономия | `build_prompt_modular.sh sauna_extended extended AG4` |
-
----
-
-## Варианты сборки (Variant)
-
-| Variant | Что включает | Когда использовать |
-|---------|-------------|-------------------|
-| **compact** | Только ядро + персонажи + текущий state | Экономия токенов |
-| **standard** | Ядро + персонажи + state + governance + сценарий | **По умолчанию** |
-| **extended** | Всё + память + визуал + proactive mode | Максимальная автономия NPC |
+| Режим | Описание | AG |
+|-------|----------|-----|
+| **standard** | Стандартный — сценарий + персонажи + инструкции | AG3 |
+| **compact** | Минимальный контекст, экономия токенов | AG1 |
+| **extended** | Максимальный контекст + автономия | AG4 |
 
 ---
 
@@ -54,35 +129,45 @@ python scripts/python/build_prompt_modular.py sauna_extended standard AG3
 
 ```
 voyage-narrative-engine/
-├── personas/                    # Персонажи (модульные)
-│   ├── kira/                    # Кира — speech/, autonomous/INITIATIVE.json
-│   ├── marina/                  # Марина — speech/, autonomous/INITIATIVE.json
-│   ├── sergey/                  # Сергей — speech/, autonomous/INITIATIVE.json
-│   ├── maksim/                  # Максим — speech/, autonomous/INITIATIVE.json
-│   ├── andrey_senior/           # Андрей Старший — speech/, autonomous/INITIATIVE.json
-│   ├── andrey_junior/           # Андрей Младший — пока без speech/initiative
-│   ├── olga/                    # Ольга — пока без speech/initiative
-│   └── egor/                    # Егор — пока без speech/initiative
+├── PROMPT_SCENARIO.txt            # Сценарий — загружать ПЕРВЫМ (~41 KB)
+├── PROMPT_KIRA.txt                # Кира — отдельный файл (~39 KB)
+├── PROMPT_MARINA.txt              # Марина — отдельный файл (~27 KB)
+├── PROMPT_SERGEY.txt              # Сергей — отдельный файл (~25 KB)
+├── PROMPT_MAKSIM.txt              # Максим — отдельный файл (~27 KB)
+├── PROMPT_ANDREY_SENIOR.txt       # Андрей Старший — отдельный файл (~37 KB)
+├── TRIGGER_GUIDE.txt              # Триггерная подгрузка (~10 KB)
+├── PROMPT_MODULAR.txt             # Всё в одном (~104 KB) — альтернатива
 │
-├── scenarios/                   # Сценарии (модульные)
-│   └── sauna_extended/          # Сауна v3.0 — фазы, роли, атмосфера
-│       ├── core/INDEX.json          # Мета-информация
-│       ├── scenes/P1_entrance.json  # Фаза 1: вход
-│       ├── scenes/P2_steam.json     # Фаза 2: парная
-│       ├── scenes/P3_pool.json      # Фаза 3: бассейн
-│       ├── scenes/P4_rest.json      # Фаза 4: комната отдыха
-│       ├── scenes/P5_climax.json    # Фаза 5: кульминация
-│       ├── characters/ROLES.json    # Роли персонажей
+├── personas/                      # Персонажи (модульные)
+│   ├── kira/                      # Кира — speech/, autonomous/INITIATIVE.json
+│   ├── marina/                    # Марина — speech/, autonomous/INITIATIVE.json
+│   ├── sergey/                    # Сергей — speech/, autonomous/INITIATIVE.json
+│   ├── maksim/                    # Максим — speech/, autonomous/INITIATIVE.json
+│   ├── andrey_senior/             # Андрей Старший — speech/, autonomous/INITIATIVE.json
+│   ├── andrey_junior/             # Speech ✅, Initiatives ❌
+│   ├── olga/                      # ❌ — нужен апдейт
+│   └── egor/                      # ❌ — нужен апдейт
+│
+├── scenarios/                     # Сценарии (модульные)
+│   └── sauna_extended/            # Сауна v3.0 — 8 фаз, 4 ветки, 7 динамик
+│       ├── core/INDEX.json
+│       ├── scenes/                # JSON + Markdown сцены
+│       ├── structure/             # phases.json, timeline.json, locations.json
+│       ├── branches/BRANCHES.json
+│       ├── dynamics/CROSS_CHARACTER.json
+│       ├── characters/ROLES.json
 │       └── environment/ATMOSPHERE.json
 │
 ├── scripts/python/
-│   ├── build_prompt_modular.py    # Python-сборщик промпта
+│   ├── build_prompt_modular.py    # Сборщик (single + separate режимы)
 │   ├── runtime_loader.py          # Загрузчик модульных персонажей
-│   └── test_runtime_all.py        # Тесты
+│   └── test_runtime_all.py
 │
-├── build_prompt_modular.sh        # Shell-скрипт для modular сборки
-├── build_prompt_v3.sh             # Legacy скрипт (только старые монолитные)
-└── PROMPT_MODULAR.txt             # Результат сборки (создаётся автоматически)
+├── build_prompt_modular.sh        # Shell-скрипт (single + --separate)
+├── build_prompt_v3.sh             # Legacy скрипт (старые монолитные)
+├── BUILD_COMMANDS.md              # Этот файл
+├── README_MODULAR.md              # Документация для разработчика
+└── Voyage_Sauna_Game_v3.zip       # Архив для скачивания
 ```
 
 ---
@@ -91,32 +176,27 @@ voyage-narrative-engine/
 
 ### Проверить, что все персонажи загружаются
 ```bash
-python scripts/python/runtime_loader.py marina
-python scripts/python/runtime_loader.py sergey
-python scripts/python/runtime_loader.py kira
-python scripts/python/runtime_loader.py maksim
-python scripts/python/runtime_loader.py andrey_senior
-```
-
-### Проверить валидность JSON всех сценариев
-```bash
-python -c "import json, glob; [json.load(open(f)) for f in glob.glob('scenarios/**/*.json', recursive=True)]; print('All JSON valid')"
+# Через PythonRun (python нет в PATH)
 ```
 
 ### Собрать архив для игры
-```bash
-# Скрипт автоматически создаст архив в рабочей директории
-# См. README_MODULAR.md для инструкций
-```
+Архив `Voyage_Sauna_Game_v3.zip` собирается автоматически через PythonRun. Содержит:
+- 7 готовых промпт-файлов (scenario + 5 personas + trigger guide)
+- Альтернативу: PROMPT_MODULAR.txt (всё в одном)
+- Все исходные JSON-модули (personas + scenarios)
+- Скрипты сборки
+- Документацию
 
 ---
 
-## Как работает сборка
+## Как работает сборка (сейчас)
 
-1. **Сценарий** (`sauna_extended`) описывает: фазы, кто участвует, какие триггеры, безопасность
-2. **Персонажи** (`personas/[id]/`) содержат: речь, инициативы, психологию, отношения
-3. **Builder** (`build_prompt_modular.py`) загружает всё и собирает один `PROMPT_MODULAR.txt`
-4. **LLM** читает промпт и генерирует речь в стиле Speech Matrix каждого персонажа
+1. **Сценарий** (`sauna_extended`) содержит 8 фаз + 3 markdown-сцены + timeline + branches + dynamics
+2. **Builder** (`build_prompt_modular.py`) поддерживает два режима:
+   - **default** — один файл `PROMPT_MODULAR.txt`
+   - **--separate** — 7 файлов (scenario + 5 personas + trigger guide)
+3. **Персонажи** загружаются с `speech/SPEECH_MATRIX.json` + `autonomous/INITIATIVE.json`
+4. **Триггерная подгрузка** позволяет не перегружать контекст сразу всеми 5 персонажами
 
 ---
 
@@ -129,11 +209,9 @@ python -c "import json, glob; [json.load(open(f)) for f in glob.glob('scenarios/
 | Sergey | ✅ v2.0 | ✅ v2.0 | ✅ v2.0 | **Готов** |
 | Maksim | ✅ v2.0 | ✅ v2.0 | ✅ v2.0 | **Готов** |
 | Andrey Senior | ✅ v2.0 | ✅ v2.0 | ✅ v2.0 | **Готов** |
-| Andrey Junior | ❌ | ❌ | ❌ | **Нужен апдейт** |
-| Olga | ❌ | ❌ | ❌ | **Нужен апдейт** |
-| Egor | ❌ | ❌ | ❌ | **Нужен апдейт** |
-| Female User | ❌ | ❌ | ❌ | Не требуется |
-| User | ❌ | ❌ | ❌ | Не требуется |
+| Andrey Junior | ✅ v2.0 | ❌ | ❌ | Speech готов, нужны Initiatives |
+| Olga | ❌ | ❌ | ❌ | Не в сценарии sauna_extended |
+| Egor | ❌ | ❌ | ❌ | Не в сценарии sauna_extended |
 
 ---
 
@@ -145,6 +223,6 @@ python -c "import json, glob; [json.load(open(f)) for f in glob.glob('scenarios/
 
 ---
 
-*Последнее обновление: 2025-06-19*
-*Версия системы: v3.0.0*
-*Сценарий: sauna_extended*
+*Последнее обновление: 2026-06-19*
+*Версия системы: v3.1.0 (separate mode + trigger loading)*
+*Сценарий: sauna_extended (полная сборка)*

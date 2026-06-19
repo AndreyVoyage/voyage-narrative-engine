@@ -99,6 +99,14 @@ def load_scenario(scenario_id: str) -> dict:
         with open(dynamics_path, "r", encoding="utf-8") as f:
             dynamics = json.load(f)
     
+    # Load markdown scenes
+    md_scenes = {}
+    scenes_dir = scenario_dir / "scenes"
+    if scenes_dir.exists():
+        for md_file in scenes_dir.glob("*.md"):
+            with open(md_file, "r", encoding="utf-8") as f:
+                md_scenes[md_file.stem] = f.read()
+    
     return {
         "id": scenario_id,
         "meta": index,
@@ -109,6 +117,7 @@ def load_scenario(scenario_id: str) -> dict:
         "atmosphere": atmosphere,
         "safety": safety,
         "dynamics": dynamics,
+        "md_scenes": md_scenes,
     }
 
 # =============================================================================
@@ -318,7 +327,7 @@ def build_persona_section(persona: dict) -> str:
     return "\n".join(lines)
 
 def build_scenario_section(scenario: dict) -> str:
-    """Собирает секцию сценария"""
+    """Собирает ПОЛНУЮ секцию сценария (все модули)"""
     lines = []
     meta = scenario.get("meta", {})
     lines.append(f"# СЦЕНАРИЙ: {meta.get('name', 'Unknown')} (ID: {meta.get('id', '')})")
@@ -326,7 +335,6 @@ def build_scenario_section(scenario: dict) -> str:
     lines.append(f"Синопсис: {meta.get('synopsis', '')}")
     lines.append("")
     
-    # Participants
     participants = meta.get("participants", [])
     if participants:
         lines.append(f"**Участники**: {', '.join(participants)}")
@@ -335,34 +343,151 @@ def build_scenario_section(scenario: dict) -> str:
     lines.append(f"**NPC-to-NPC**: {meta.get('npc_to_npc', 'no')}")
     lines.append("")
     
-    # Phases
-    phases = scenario.get("phases", {})
-    if phases:
-        lines.append("## ФАЗЫ СЦЕНАРИЯ")
-        lines.append("")
-        for phase_name, phase_data in phases.items():
-            lines.append(f"### {phase_name}")
-            desc = phase_data.get("description", "")
-            if desc:
-                lines.append(f"{desc}")
-            chars = phase_data.get("characters_present", [])
-            if chars:
-                lines.append(f"**Персонажи**: {', '.join(chars)}")
-            loc = phase_data.get("location", "")
-            if loc:
-                lines.append(f"**Локация**: {loc}")
+    # Locations
+    locations = scenario.get("structure", {}).get("locations", {})
+    if locations:
+        loc = locations.get("location", {})
+        if loc:
+            lines.append("## ЛОКАЦИИ (Locations)")
+            lines.append(f"Название: {loc.get('name', '')}")
+            lines.append(f"Тип: {loc.get('type', '')}")
+            lines.append(f"Этажи: {loc.get('floors', '')}")
+            lines.append(f"Температура: {loc.get('temperature_range', '')}")
+            lines.append(f"Освещение: {loc.get('lighting', '')}")
+            lines.append(f"Атмосфера: {loc.get('atmosphere', '')}")
+            lines.append(f"Звук: {loc.get('soundscape', '')}")
+            lines.append("")
+            anchors = loc.get("sensory_anchors", {})
+            if anchors:
+                lines.append("### Сенсорные якоря:")
+                for name, desc in anchors.items():
+                    lines.append(f"- **{name}**: {desc}")
+                lines.append("")
+        time = locations.get("time", {})
+        if time:
+            lines.append("### Время:")
+            lines.append(f"- Сезон: {time.get('season', '')}")
+            lines.append(f"- Время суток: {time.get('time_of_day', '')}")
+            lines.append(f"- Начало: {time.get('start_time', '')}")
+            lines.append(f"- Конец: {time.get('end_time', '')}")
+            lines.append(f"- Нарративное: {time.get('narrative_time', '')}")
+            lines.append("")
+    
+    # Timeline
+    timeline = scenario.get("structure", {}).get("timeline", {})
+    timeline_items = timeline.get("timeline", [])
+    if timeline_items:
+        lines.append("## ТАЙМЛАЙН (Timeline)")
+        for item in timeline_items:
+            lines.append(f"### {item.get('phase_id', '')}: {item.get('name', '')}")
+            lines.append(f"- Длительность: {item.get('duration_minutes', 0)} мин")
+            lines.append(f"- Локация: {item.get('location', '')}")
+            lines.append(f"- Описание: {item.get('description', '')}")
+            lines.append(f"- Ожидаемое настроение: {item.get('expected_mood', '')}")
+            flags = item.get('flags_set', [])
+            if flags:
+                lines.append(f"- Флаги: {', '.join(flags)}")
+            lines.append("")
+    
+    # Phases (detailed with triggers & character states)
+    phases = scenario.get("structure", {}).get("phases", {})
+    phases_data = phases.get("phases", {})
+    if phases_data:
+        lines.append("## ДЕТАЛЬНЫЕ ФАЗЫ (Phases with Triggers & Character States)")
+        for phase_id, phase in phases_data.items():
+            lines.append(f"### {phase_id}: {phase.get('name', '')}")
+            lines.append(f"- Длительность: {phase.get('duration_minutes', 0)} мин")
+            lines.append(f"- Локация: {phase.get('location', '')}")
+            lines.append(f"- Описание: {phase.get('description', '')}")
+            lines.append(f"- Ожидаемое настроение: {phase.get('expected_mood', '')}")
+            lines.append(f"- POV правила: {phase.get('pov_rules', '')}")
+            
+            char_states = phase.get("character_states", {})
+            if char_states:
+                lines.append("- **Состояния персонажей:**")
+                for char, state in char_states.items():
+                    lines.append(f"  - {char}: target={state.get('target_level','')}, desire_delta={state.get('desire_delta',0)}, anxiety_delta={state.get('anxiety_delta',0)}")
+            
+            triggers = phase.get("triggers", [])
+            if triggers:
+                lines.append("- **Триггеры:**")
+                for t in triggers:
+                    lines.append(f"  - [{t.get('type','')}] → {t.get('target','')}: {t.get('effect','')}")
+            
+            safety_checks = phase.get("safety_checks", [])
+            if safety_checks:
+                lines.append(f"- **Safety checks:** {', '.join(safety_checks)}")
+            
+            flags = phase.get("flags_set", [])
+            if flags:
+                lines.append(f"- **Флаги:** {', '.join(flags)}")
+            lines.append("")
+    
+    # Markdown scenes
+    md_scenes = scenario.get("md_scenes", {})
+    if md_scenes:
+        lines.append("## РАСШИРЕННЫЕ СЦЕНЫ (Extended Markdown Scenes)")
+        for name, content in md_scenes.items():
+            lines.append(f"### {name}")
+            lines.append(content)
             lines.append("")
     
     # Roles
     roles = scenario.get("roles", {})
     if roles and "characters" in roles:
         lines.append("## РОЛИ ПЕРСОНАЖЕЙ В СЦЕНАРИИ")
-        lines.append("")
         for char_id, role_data in roles["characters"].items():
             lines.append(f"### {char_id}")
             lines.append(f"- **Роль**: {role_data.get('role', '')}")
             lines.append(f"- **Описание**: {role_data.get('description', '')}")
             lines.append(f"- **Уровень**: {role_data.get('target_level_start', '')} → {role_data.get('target_level_end', '')}")
+            lines.append("")
+    
+    # Branches
+    branches = scenario.get("branches", {})
+    branches_data = branches.get("branches", {})
+    if branches_data:
+        lines.append("## ВЕТКИ СЦЕНАРИЯ (Branches)")
+        for bid, bdata in branches_data.items():
+            lines.append(f"### {bid}: {bdata.get('name', '')}")
+            lines.append(f"- **Описание**: {bdata.get('description', '')}")
+            lines.append(f"- **Триггер**: {bdata.get('trigger', '')}")
+            lines.append(f"- **Условия**: {', '.join(bdata.get('conditions', []))}")
+            result = bdata.get("result", {})
+            if result:
+                lines.append("- **Результаты:**")
+                for char, res in result.items():
+                    lines.append(f"  - {char}: {res}")
+            fmdr = bdata.get("fmdr_climax", "")
+            if fmdr:
+                lines.append(f"- **FMDR Climax:** {fmdr}")
+            safety_after = bdata.get("safety_aftercare", "")
+            if safety_after:
+                lines.append(f"- **Aftercare:** {safety_after}")
+            lines.append("")
+    
+    # Dynamics
+    dynamics = scenario.get("dynamics", {})
+    dynamics_data = dynamics.get("dynamics", {})
+    if dynamics_data:
+        lines.append("## ДИНАМИКА МЕЖДУ ПЕРСОНАЖАМИ (Cross-Character Dynamics)")
+        for pair, ddata in dynamics_data.items():
+            lines.append(f"### {pair}")
+            lines.append(f"- **Динамика**: {ddata.get('dynamic', '')}")
+            lines.append(f"- **Описание**: {ddata.get('description', '')}")
+            stages = ddata.get("stages", [])
+            if stages:
+                lines.append("- **Стадии:**")
+                for st in stages:
+                    lines.append(f"  - {st.get('stage','')} ({st.get('phase','')}): {st.get('description','')}")
+            mechanics = ddata.get("key_mechanics", [])
+            if mechanics:
+                lines.append("- **Механики:**")
+                for m in mechanics:
+                    lines.append(f"  - {m}")
+            triangles = ddata.get("triangles", [])
+            if triangles:
+                lines.append(f"- **Треугольники:** {', '.join(triangles)}")
             lines.append("")
     
     # Atmosphere
@@ -384,9 +509,13 @@ def build_scenario_section(scenario: dict) -> str:
         checks = safety.get("safety_checks", {})
         for check, status in checks.items():
             lines.append(f"- **{check}**: {status}")
+        hard_limits = safety.get("hard_limits", [])
+        if hard_limits:
+            lines.append(f"- **Hard limits:** {', '.join(hard_limits)}")
         lines.append("")
     
     return "\n".join(lines)
+
 
 def build_instructions(scenario_id: str, mode: str, ag_level: str) -> str:
     """Собирает инструкции для LLM"""
@@ -481,24 +610,306 @@ def build_prompt(scenario_id: str, mode: str = "standard", variant: str = "stand
     
     return "\n".join(lines)
 
-# =============================================================================
-# CLI
-# =============================================================================
+
+# --- Режим SEPARATE: отдельные файлы на каждого персонажа + триггерная подгрузка ---
+
+from datetime import datetime
+
+def build_separate(scenario_id: str, mode: str = "standard", ag_level: str = "AG3"):
+    """
+    Собирает сценарий и каждого персонажа в ОТДЕЛЬНЫЕ файлы.
+    Создаёт:
+      - PROMPT_SCENARIO.txt
+      - PROMPT_[char_id].txt (для каждого персонажа)
+      - TRIGGER_GUIDE.txt (инструкции для LLM по триггерной подгрузке)
+    """
+    repo_dir = REPO_DIR
+    scenario = load_scenario(scenario_id)
+    participants = scenario.get("meta", {}).get("participants", [])
+    npc_ids = [c for c in participants if c != "user"]
+    
+    built_files = []
+    
+    # 1. SCENARIO — отдельный файл
+    scenario_lines = []
+    scenario_lines.append("=" * 80)
+    scenario_lines.append("Voyage Narrative Engine — Scenario Prompt (STANDALONE)")
+    scenario_lines.append(f"Scenario: {scenario_id} | Mode: {mode} | AG: {ag_level}")
+    scenario_lines.append(f"Built: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    scenario_lines.append("=" * 80)
+    scenario_lines.append("")
+    scenario_lines.append("# INSTRUCTIONS FOR LLM: Load this FIRST. Then load personas on demand via triggers.")
+    scenario_lines.append("# Each persona has a TRIGGER_CODE listed below. When trigger fires, load the persona file.")
+    scenario_lines.append("")
+    scenario_lines.append(build_scenario_section(scenario))
+    
+    # Add trigger map inside scenario
+    scenario_lines.append("## TRIGGER MAP (Persona Loading Codes)")
+    scenario_lines.append("When a trigger fires, load the corresponding persona file into context:")
+    for char_id in npc_ids:
+        scenario_lines.append(f"- **[LOAD_{char_id.upper()}]** → Load PROMPT_{char_id.upper()}.txt")
+    scenario_lines.append("")
+    scenario_lines.append("## КОМАНДЫ ПОЛЬЗОВАТЕЛЯ")
+    scenario_lines.append("- УX-А/Б — переключить уровень")
+    scenario_lines.append("- ТГX — изменить тревогу")
+    scenario_lines.append("- АД [код] — активировать драйвер")
+    scenario_lines.append("- Г [0-4] — изменить AG")
+    scenario_lines.append("- СТОП — мгновенный сброс")
+    scenario_lines.append("")
+    scenario_lines.append("=" * 80)
+    scenario_lines.append("END OF SCENARIO PROMPT")
+    scenario_lines.append("=" * 80)
+    
+    scenario_text = "\n".join(scenario_lines)
+    scenario_path = repo_dir / "PROMPT_SCENARIO.txt"
+    with open(scenario_path, "w", encoding="utf-8") as f:
+        f.write(scenario_text)
+    built_files.append(("PROMPT_SCENARIO.txt", len(scenario_text)))
+    
+    # 2. PERSONAS — каждый в отдельный файл, ПОЛНЫЙ (не сокращённый)
+    for char_id in npc_ids:
+        persona = load_modular_persona(char_id)
+        if not persona:
+            continue
+        
+        plines = []
+        plines.append("=" * 80)
+        plines.append(f"Voyage Narrative Engine — Persona Prompt: {persona.get('name', char_id).upper()}")
+        plines.append(f"ID: {char_id} | Version: {persona.get('version', '')} | AG: {ag_level}")
+        plines.append(f"Built: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        plines.append("=" * 80)
+        plines.append("")
+        plines.append(f"# INSTRUCTIONS FOR LLM: This is persona '{char_id}'. Load ONLY after scenario is loaded.")
+        plines.append(f"# TRIGGER CODE: [LOAD_{char_id.upper()}]")
+        plines.append("")
+        
+        # FULL persona data — same as build_persona_section but with ALL levels
+        plines.append(build_persona_section_full(persona))
+        
+        # Trigger-based activation rules
+        plines.append("## ТРИГГЕРНАЯ АКТИВАЦИЯ (Trigger-Based Loading)")
+        plines.append(f"This persona activates when:")
+        plines.append(f"- Scenario phase includes this character")
+        plines.append(f"- User interacts with this character")
+        plines.append(f"- Cross-character dynamics involve this character (see TRIGGER_GUIDE.txt)")
+        plines.append(f"- NPC-to-NPC interaction triggers this character's initiative")
+        plines.append("")
+        
+        plines.append("=" * 80)
+        plines.append(f"END OF PERSONA PROMPT: {char_id.upper()}")
+        plines.append("=" * 80)
+        
+        ptext = "\n".join(plines)
+        ppath = repo_dir / f"PROMPT_{char_id.upper()}.txt"
+        with open(ppath, "w", encoding="utf-8") as f:
+            f.write(ptext)
+        built_files.append((f"PROMPT_{char_id.upper()}.txt", len(ptext)))
+    
+    # 3. TRIGGER GUIDE — инструкции для LLM
+    tlines = []
+    tlines.append("=" * 80)
+    tlines.append("Voyage Narrative Engine — Trigger-Based Loading Guide")
+    tlines.append("This file tells the LLM WHEN and HOW to load persona modules.")
+    tlines.append("=" * 80)
+    tlines.append("")
+    tlines.append("## ПРИНЦИП РАБОТЫ")
+    tlines.append("1. Сначала загружается PROMPT_SCENARIO.txt (сценарий + триггер-карта).")
+    tlines.append("2. LLM ведёт игру с минимальным контекстом (сценарий + текущие персонажи).")
+    tlines.append("3. Когда срабатывает триггер — LLM загружает соответствующий PROMPT_[ID].txt.")
+    tlines.append("4. Загруженный персонаж остаётся в контексте до конца сессии или до команды СТОП.")
+    tlines.append("5. Это позволяет не перегружать контекст сразу всеми 5 персонажами.")
+    tlines.append("")
+    tlines.append("## ТРИГГЕРЫ ЗАГРУЗКИ ПЕРСОНАЖЕЙ")
+    tlines.append("")
+    
+    # Extract triggers from scenario phases
+    phases_data = scenario.get("structure", {}).get("phases", {}).get("phases", {})
+    for phase_id, phase in phases_data.items():
+        triggers = phase.get("triggers", [])
+        char_states = phase.get("character_states", {})
+        for trig in triggers:
+            t_type = trig.get("type", "")
+            t_target = trig.get("target", "")
+            t_effect = trig.get("effect", "")
+            # Determine which persona to load
+            for char_id in npc_ids:
+                if char_id in t_target or char_id in t_effect.lower():
+                    tlines.append(f"- **[{phase_id}]** trigger `{t_type}` → target `{t_target}` → **LOAD [LOAD_{char_id.upper()}]** (PROMPT_{char_id.upper()}.txt)")
+                    tlines.append(f"  Effect: {t_effect}")
+        # Also load by character presence in phase
+        for char_id, state in char_states.items():
+            if char_id in npc_ids:
+                tlines.append(f"- **[{phase_id}]** character_state `{char_id}` → target `{state.get('target_level','')}` → **LOAD [LOAD_{char_id.upper()}]**")
+    
+    tlines.append("")
+    tlines.append("## РУЧНЫЕ КОМАНДЫ ЗАГРУЗКИ (для пользователя)")
+    tlines.append("Пользователь может вручную загрузить персонажа командой:")
+    for char_id in npc_ids:
+        tlines.append(f"- **ЗАГРУЗИ {char_id.upper()}** → LLM загружает PROMPT_{char_id.upper()}.txt в контекст")
+    tlines.append("")
+    tlines.append("## АВТОМАТИЧЕСКАЯ ВЫГРУЗКА")
+    tlines.append("Персонаж автоматически выгружается из контекста если:")
+    tlines.append("- Пользователь покидает локацию, где персонаж отсутствует")
+    tlines.append("- Прошло более 30 минут без упоминания персонажа (AG≥3)")
+    tlines.append("- Команда ВЫГРУЗИ [ID]")
+    tlines.append("")
+    tlines.append("=" * 80)
+    tlines.append("END OF TRIGGER GUIDE")
+    tlines.append("=" * 80)
+    
+    ttext = "\n".join(tlines)
+    tpath = repo_dir / "TRIGGER_GUIDE.txt"
+    with open(tpath, "w", encoding="utf-8") as f:
+        f.write(ttext)
+    built_files.append(("TRIGGER_GUIDE.txt", len(ttext)))
+    
+    return built_files
+
+def build_persona_section_full(persona: dict) -> str:
+    """Собирает ПОЛНУЮ секцию персонажа (без сокращений)"""
+    lines = []
+    lines.append(f"# ПЕРСОНАЖ: {persona.get('name', 'Unknown').upper()} (ID: {persona.get('id', '')})")
+    lines.append(f"Версия: {persona.get('version', '')}")
+    lines.append("")
+    
+    # Core / Identity
+    core = persona.get("anatomic_anchor", {})
+    if core:
+        lines.append("## CORE / IDENTITY")
+        for k, v in core.items():
+            lines.append(f"- **{k}**: {v}")
+        lines.append("")
+    
+    # Psychology (FULL)
+    psych = persona.get("psychology", {})
+    if psych:
+        lines.append("## ПСИХОЛОГИЯ (Полная)")
+        for section, data in psych.items():
+            if isinstance(data, dict):
+                lines.append(f"### {section}")
+                for k, v in data.items():
+                    lines.append(f"- **{k}**: {v}")
+            else:
+                lines.append(f"- **{section}**: {data}")
+        lines.append("")
+    
+    # Speech Matrix (FULL — все уровни)
+    speech_matrix = persona.get("speech_matrix", {})
+    signature_patterns = persona.get("speech_signature_patterns", {})
+    if speech_matrix:
+        lines.append("## РЕЧЕВАЯ МАТРИЦА (Speech Matrix — ALL LEVELS)")
+        lines.append("")
+        if signature_patterns:
+            lines.append("### Signature Patterns:")
+            for pn, pd in signature_patterns.items():
+                lines.append(f"- **{pn}**: {pd}")
+            lines.append("")
+        lines.append("### All Levels:")
+        for level in sorted(speech_matrix.keys()):
+            data = speech_matrix[level]
+            lines.append(f"#### {level}")
+            lines.append(f"- **Тон**: {data.get('ton', '')}")
+            lines.append(f"- **Темп**: {data.get('tempo', '')}")
+            lines.append(f"- **Словарь**: {data.get('vocabulary', '')}")
+            lines.append(f"- **Длина мысли**: {data.get('thought_length', '')}")
+            lines.append(f"- **Детальность действий**: {data.get('action_detail', '')}")
+            phrases = data.get('signature_phrases', [])
+            if phrases:
+                lines.append(f"- **Фразы-ключи**: {phrases}")
+            pairs = data.get('action_speech_pairs', [])
+            if pairs:
+                for p in pairs:
+                    lines.append(f"- **Пример**: [{p.get('action','')}] → \"{p.get('speech','')}\"")
+            lines.append("")
+    
+    # Initiatives (FULL)
+    auto = persona.get("autonomous", {})
+    initiative_data = auto if isinstance(auto, dict) and "initiative_types" in auto else {}
+    if initiative_data:
+        lines.append(format_initiatives(initiative_data))
+    
+    # Activities (FULL)
+    activities_data = auto if isinstance(auto, dict) and "activities" in auto else {}
+    if activities_data:
+        lines.append(format_activities(activities_data))
+    
+    # Relationships (FULL)
+    rel = persona.get("relationships", {})
+    if rel and isinstance(rel, dict):
+        lines.append(format_relationships(rel))
+    
+    # VSCNO (FULL — all levels)
+    vscno = persona.get("vscno_by_sublevel", {})
+    if vscno:
+        lines.append("## VSCNO (ПО ВСЕМ ПОДУРОВНЯМ)")
+        lines.append("| Уровень | ВЛ | СТ | НЖ | ОГ |")
+        lines.append("|---------|----|----|----|----|")
+        for level in sorted(vscno.keys()):
+            vals = vscno[level]
+            vl = vals.get("ВЛ", "?")
+            st = vals.get("СТ", "?")
+            nz = vals.get("НЖ", "?")
+            og = vals.get("ОГ", "?")
+            lines.append(f"| {level} | {vl} | {st} | {nz} | {og} |")
+        lines.append("")
+    
+    # Levels (FULL — all 14 sublevels)
+    levels = persona.get("levels", {})
+    if levels:
+        lines.append("## LEVELS (Полные данные по 14 подуровням)")
+        for level in sorted(levels.keys()):
+            lvl = levels[level]
+            lines.append(f"### {level}")
+            for k, v in lvl.items():
+                if isinstance(v, dict):
+                    lines.append(f"- **{k}**:")
+                    for vk, vv in v.items():
+                        lines.append(f"  - {vk}: {vv}")
+                else:
+                    lines.append(f"- **{k}**: {v}")
+            lines.append("")
+    
+    return "\n".join(lines)
+
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python build_prompt_modular.py <scenario_id> [mode] [ag_level]")
+        print("Usage: python build_prompt_modular.py <scenario_id> [mode] [ag_level] [--separate]")
         print("Examples:")
         print("  python build_prompt_modular.py sauna_extended standard AG3")
+        print("  python build_prompt_modular.py sauna_extended standard AG3 --separate")
         print("  python build_prompt_modular.py sauna_extended compact AG1")
-        print("  python build_prompt_modular.py sauna_extended extended AG4")
         sys.exit(1)
     
     scenario_id = sys.argv[1]
     mode = sys.argv[2] if len(sys.argv) > 2 else "standard"
     ag_level = sys.argv[3] if len(sys.argv) > 3 else "AG3"
     
-    print(f"Building modular prompt for: {scenario_id}")
+    # Check for --separate flag
+    separate_mode = "--separate" in sys.argv
+    
+    if separate_mode:
+        print(f"Building SEPARATE prompts for: {scenario_id}")
+        print(f"Mode: {mode}, AG: {ag_level}")
+        print("Each persona gets its own file + scenario + trigger guide.")
+        print("")
+        
+        built_files = build_separate(scenario_id, mode, ag_level)
+        
+        print("=" * 60)
+        print("✓ SEPARATE PROMPTS BUILT")
+        print("=" * 60)
+        for fname, size in built_files:
+            print(f"  {fname}: {size} bytes ({size/1024:.1f} KB)")
+        print("")
+        print("Next steps:")
+        print("  1. Load PROMPT_SCENARIO.txt FIRST")
+        print("  2. Load personas on demand via triggers (see TRIGGER_GUIDE.txt)")
+        print("  3. Or load all at once if context allows")
+        return
+    
+    # Default: single-file mode
+    print(f"Building single-file modular prompt for: {scenario_id}")
     print(f"Mode: {mode}, AG: {ag_level}")
     print("")
     
@@ -530,6 +941,7 @@ def main():
             print(f"  ✓ {char_id}: speech={speech_levels} levels, initiatives={initiatives}, activities={activities}")
         else:
             print(f"  ✗ {char_id}: NOT FOUND")
+
 
 if __name__ == "__main__":
     main()

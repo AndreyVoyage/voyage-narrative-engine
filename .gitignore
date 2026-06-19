@@ -1,3 +1,8 @@
+archive_dist/
+__pycache__/
+*.pyc
+PROMPT_*.txt
+TRIGGER_*.txt
 *.zip
 .unpack_temp*
 *.bak

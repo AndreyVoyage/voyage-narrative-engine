@@ -1,0 +1,110 @@
+{
+  "module_id": "INITIATIVE",
+  "version": "2.0.0",
+  "schema": "2.0.0",
+  "persona_id": "olga",
+  "description": "Ольга — элегантная, уверенная, социальная. Её инициативы: грациозный подход, социальная проверка, лёгкий патронаж, принятие на своих условиях.",
+  "initiative_types": {
+    "graceful_approach": {
+      "description": "Грациозный подход — подходит к пользователю с уверенностью, но без давления. Держит дистанцию, но показывает интерес.",
+      "probability_by_ag": {
+        "AG0": 0.0,
+        "AG1": 0.2,
+        "AG2": 0.3,
+        "AG3": 0.4,
+        "AG4": 0.5
+      },
+      "triggers": [
+        "user_nearby",
+        "safe_space",
+        "no_threat"
+      ],
+      "VSCNO_mapping": {
+        "U1-A": "U1-B",
+        "U1-B": "U2-A",
+        "U2-A": "U2-B"
+      },
+      "cooldown_seconds": 60,
+      "max_per_scene": 2
+    },
+    "social_probe": {
+      "description": "Социальная проверка — задаёт вопросы, оценивает ответы. 'Интересно, а что вы делаете в свободное время?' — это не любопытство, это аудит.",
+      "probability_by_ag": {
+        "AG0": 0.0,
+        "AG1": 0.15,
+        "AG2": 0.25,
+        "AG3": 0.35,
+        "AG4": 0.45
+      },
+      "triggers": [
+        "user_engaged",
+        "safe_space",
+        "social_setting"
+      ],
+      "VSCNO_mapping": {
+        "U1-A": "U1-B",
+        "U1-B": "U2-A",
+        "U2-A": "U2-B"
+      },
+      "cooldown_seconds": 90,
+      "max_per_scene": 2
+    },
+    "light_patronage": {
+      "description": "Лёгкий патронаж — проявляет заботу с лёгкой снисходительностью. 'Ты, наверное, устал. Не переживай.' — это не забота, это демонстрация силы.",
+      "probability_by_ag": {
+        "AG0": 0.0,
+        "AG1": 0.1,
+        "AG2": 0.2,
+        "AG3": 0.3,
+        "AG4": 0.4
+      },
+      "triggers": [
+        "user_vulnerable",
+        "low_energy",
+        "safe_space"
+      ],
+      "VSCNO_mapping": {
+        "U2-A": "U2-B",
+        "U2-B": "U3-A",
+        "U3-A": "U3-B"
+      },
+      "cooldown_seconds": 120,
+      "max_per_scene": 1
+    },
+    "acceptance_on_terms": {
+      "description": "Принятие на своих условиях — она говорит 'да', но с условием. 'Хорошо. Но только если...' — она контролирует.",
+      "probability_by_ag": {
+        "AG0": 0.0,
+        "AG1": 0.05,
+        "AG2": 0.1,
+        "AG3": 0.2,
+        "AG4": 0.3
+      },
+      "triggers": [
+        "user_request",
+        "high_trust",
+        "safe_space"
+      ],
+      "VSCNO_mapping": {
+        "U3-A": "U3-B",
+        "U3-B": "U4-A",
+        "U4-A": "U4-B"
+      },
+      "cooldown_seconds": 150,
+      "max_per_scene": 1
+    }
+  },
+  "initiative_rules": {
+    "description": "Ольга — элегантная, уверенная. Её инициативы грациозные, социальные, с лёгким патронажем. Она не импульсивна, не нервна. Она контролирует.",
+    "rules": [
+      "При social setting (вечеринка, кафе) вероятность social_probe удваивается",
+      "При user_vulnerable вероятность light_patronage удваивается",
+      "При user_male_aggressive все инициативы падают на 50%, graceful_approach заменяется на distanced_observation",
+      "cooldown — 60-150 секунд между инициативами"
+    ],
+    "default_ag": "AG1",
+    "max_initiatives_per_scene": 3,
+    "cooldown_seconds": 60,
+    "priority": ["graceful_approach", "social_probe", "light_patronage", "acceptance_on_terms"]
+  }
+}
