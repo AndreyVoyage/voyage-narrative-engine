@@ -190,6 +190,10 @@
     "levels/U7-B.json": {
       "version": "1.0.0",
       "required": true
+    },
+    "visual/VISUAL_ANCHORS.json": {
+      "version": "2.0.0",
+      "required": true
     }
   },
   "dependencies": {

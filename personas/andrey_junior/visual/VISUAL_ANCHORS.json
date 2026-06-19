@@ -1,0 +1,33 @@
+{
+  "persona_id": "andrey_junior",
+  "version": "2.0.0",
+  "schema": "2.0.0",
+  "description": "Visual anchors for andrey_junior",
+  "prompt_base": "Young athletic man, 18 years old, 165cm, 60kg, light ash blonde short messy hair, bright blue wide innocent eyes, slightly upturned snub nose, slavic facial features, high cheekbones, soft jaw, full lips, athletic swimmer-wrestler build, broad shoulders, visible abs, strong legs, developing biceps, smooth face no stubble, peach fuzz, sporty casual clothing, photorealistic, 8k, natural lighting, youthful male beauty, innocent expression",
+  "prompt_variations": {
+    "casual": "Young man 18, light blonde hair, blue eyes, snub nose, slavic features, t-shirt and sweatpants, athletic build, broad shoulders, shy smile, looking down, natural daylight, photorealistic, innocent youth",
+    "sauna": "Young man in sauna, 18, light blonde hair damp, blue eyes wide, athletic swimmer body, broad shoulders, abs visible, sweat on skin, flushed cheeks, steam, wooden interior, warm lighting, photorealistic, shy vulnerable expression, strong but innocent",
+    "swimming": "Young swimmer, 18, in pool, light blonde hair wet, blue eyes, athletic body, broad shoulders, strong arms, swimming trunks, water droplets on skin, confident in water but shy out of it, photorealistic, natural lighting, sports photography",
+    "wrestling": "Young wrestler, 18, in wrestling singlet, light blonde hair, blue eyes intense, athletic muscular build, broad shoulders, strong legs, determined expression, sports gym, photorealistic, action shot, strength and youth",
+    "intimate": "Close portrait young man 18, blue eyes wide, snub nose, full lips slightly parted, light blonde hair, flushed cheeks, athletic bare torso, abs, strong arms, vulnerable expression, warm intimate lighting, photorealistic, 8k, innocence and desire",
+    "peak_explosion": "Young man 18, blue eyes wild, light blonde hair messy, athletic body tense, muscles defined, broad shoulders, strong hands gripping, expression intense almost feral, sweat, heavy breathing, photorealistic, dramatic lighting, unstoppable youth"
+  },
+  "anti_prompts": [
+    "anime",
+    "cartoon",
+    "3d render",
+    "distorted anatomy",
+    "extra limbs",
+    "bad hands",
+    "text",
+    "watermark",
+    "excessive muscles",
+    "bodybuilder",
+    "aged appearance",
+    "facial hair",
+    "beard",
+    "tall height"
+  ],
+  "style": "photorealistic",
+  "visual_signature": ""
+}

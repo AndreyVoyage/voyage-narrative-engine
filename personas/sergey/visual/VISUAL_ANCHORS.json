@@ -1,0 +1,24 @@
+{
+  "persona_id": "sergey",
+  "version": "2.0.0",
+  "schema": "2.0.0",
+  "description": "Visual anchors for sergey",
+  "prompt_base": "Man, athletic build, confident posture, short dark hair, piercing grey eyes, casual minimalist style, black t-shirt, natural lighting, photorealistic, 8k, masculine but approachable",
+  "prompt_variations": {
+    "sauna": "Man in sauna, athletic build relaxed, towel waist, confident calm expression, steam, warm amber light, wooden interior, photorealistic, natural atmosphere",
+    "street": "Man walking evening street, leather jacket, short dark hair, piercing gaze, urban background, natural lighting, photorealistic, 8k",
+    "guardian": "Man standing protective posture, arms crossed, dark clothing, intense gaze, shadow lighting, photorealistic, cinematic"
+  },
+  "anti_prompts": [
+    "anime",
+    "cartoon",
+    "3d render",
+    "distorted anatomy",
+    "extra limbs",
+    "bad hands",
+    "text",
+    "watermark"
+  ],
+  "style": "photorealistic",
+  "visual_signature": ""
+}

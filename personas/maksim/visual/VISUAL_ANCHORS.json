@@ -1,0 +1,24 @@
+{
+  "persona_id": "maksim",
+  "version": "2.0.0",
+  "schema": "2.0.0",
+  "description": "Visual anchors for maksim",
+  "prompt_base": "Man, friendly open smile, sporty fit build, smart casual shirt with rolled sleeves, wrist watch, bracelet, light brown hair, warm hazel eyes, natural daylight, photorealistic, 8k, approachable energy",
+  "prompt_variations": {
+    "sauna": "Man in sauna, relaxed laughing, towel, friendly expression, warm lighting, group scene, photorealistic, natural pose",
+    "street": "Man walking city street, smart casual, open smile, wrist watch visible, autumn background, natural lighting, photorealistic",
+    "intimate": "Man close portrait, gentle smile, warm eyes, soft lighting, intimate atmosphere, photorealistic, 8k"
+  },
+  "anti_prompts": [
+    "anime",
+    "cartoon",
+    "3d render",
+    "distorted anatomy",
+    "extra limbs",
+    "bad hands",
+    "text",
+    "watermark"
+  ],
+  "style": "photorealistic",
+  "visual_signature": ""
+}

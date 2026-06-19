@@ -324,6 +324,29 @@ def build_persona_section(persona: dict) -> str:
             lines.append(f"| {level} | {vl} | {st} | {nz} | {og} |")
         lines.append("")
     
+    # Visual Anchors (for image generation)
+    visual = persona.get("visual_data", {})
+    if visual and isinstance(visual, dict):
+        lines.append("## ВИЗУАЛЬНЫЕ ЯКОРЯ (Visual Anchors for Image Generation)")
+        prompt_base = visual.get("prompt_base", "")
+        if prompt_base:
+            lines.append(f"**Базовый промпт:** {prompt_base}")
+        style = visual.get("style", "")
+        if style:
+            lines.append(f"**Стиль:** {style}")
+        sig = visual.get("visual_signature", "")
+        if sig:
+            lines.append(f"**Визуальная сигнатура:** {sig}")
+        variations = visual.get("prompt_variations", {})
+        if variations:
+            lines.append("**Вариации:**")
+            for vname, vprompt in variations.items():
+                lines.append(f"- {vname}: {vprompt}")
+        anti = visual.get("anti_prompts", [])
+        if anti:
+            lines.append(f"**Anti-prompts:** {', '.join(anti)}")
+        lines.append("")
+    
     return "\n".join(lines)
 
 def build_scenario_section(scenario: dict) -> str:
@@ -868,6 +891,29 @@ def build_persona_section_full(persona: dict) -> str:
                 else:
                     lines.append(f"- **{k}**: {v}")
             lines.append("")
+    
+    # Visual Anchors (FULL — for image generation)
+    visual = persona.get("visual_data", {})
+    if visual and isinstance(visual, dict):
+        lines.append("## ВИЗУАЛЬНЫЕ ЯКОРЯ (Visual Anchors for Image Generation)")
+        prompt_base = visual.get("prompt_base", "")
+        if prompt_base:
+            lines.append(f"**Базовый промпт:** {prompt_base}")
+        style = visual.get("style", "")
+        if style:
+            lines.append(f"**Стиль:** {style}")
+        sig = visual.get("visual_signature", "")
+        if sig:
+            lines.append(f"**Визуальная сигнатура:** {sig}")
+        variations = visual.get("prompt_variations", {})
+        if variations:
+            lines.append("**Вариации:**")
+            for vname, vprompt in variations.items():
+                lines.append(f"- {vname}: {vprompt}")
+        anti = visual.get("anti_prompts", [])
+        if anti:
+            lines.append(f"**Anti-prompts:** {', '.join(anti)}")
+        lines.append("")
     
     return "\n".join(lines)
 

@@ -1,0 +1,27 @@
+{
+  "persona_id": "egor",
+  "version": "2.0.0",
+  "schema": "2.0.0",
+  "description": "Визуальные якоря для Егора. Хищная элегантность, волчий взгляд, дорогие часы.",
+  "prompt_base": "handsome athletic man 35 years old, 180cm, 83kg, dark ash-blond short military cut textured top, intense gray almond eyes with predatory calculating gaze and slight left eye squint, sharp angular jaw with visible clench muscles, high prominent cheekbones, slight asymmetrical smirk, defined cupid bow lips, light olive smooth skin, no facial hair, broad shoulders narrow waist, visible muscle definition, expensive watch, photorealistic, 8k, cinematic",
+  "prompt_variations": {
+    "casual": "Man 35, dark ash-blond short military hair, intense gray almond eyes, predatory gaze, sharp angular jaw, high cheekbones, asymmetrical smirk, light olive smooth skin, expensive watch, smart casual dark shirt, confident posture, natural daylight, photorealistic, 8k",
+    "sauna": "Man in sauna, 35, dark ash-blond short damp hair, intense gray eyes predatory, sharp angular jaw, sweat on skin, broad shoulders, visible muscle definition, expensive watch, towel or trunks, steam, warm amber lighting, wooden interior, photorealistic, dominant energy",
+    "predatory": "Close portrait man 35, gray almond eyes intense predatory, slight left squint, sharp angular jaw clenched, high cheekbones, asymmetrical smirk, cupid bow lips, dark ash-blond short hair, light olive skin, intense focused lighting, photorealistic, 8k, wolf-like presence",
+    "dominant": "Man 35, athletic build, dark ash-blond hair, gray predatory eyes, broad shoulders, visible muscles, expensive watch, black fitted shirt, confident forward-leaning posture, city lights bokeh, night scene, photorealistic, 8k, commanding presence"
+  },
+  "anti_prompts": [
+    "messy hair",
+    "weak posture",
+    "baby face",
+    "excessive facial hair",
+    "short man",
+    "overweight",
+    "nerdy glasses",
+    "friendly smile",
+    "warm eyes",
+    "approachable energy"
+  ],
+  "style": "photorealistic",
+  "visual_signature": "handsome athletic man 35yo, 180cm/83kg, dark ash-blond short military cut textured top, intense gray almond eyes with predatory calculating gaze and slight left eye squint, sharp angular jaw with visible clench muscles, high prominent cheekbones, slight asymmetrical smirk, defined cupid bow lips, light olive smooth skin, no facial hair, broad shoulders narrow waist, visible muscle definition, expensive watch"
+}

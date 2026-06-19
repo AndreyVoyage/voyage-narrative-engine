@@ -1,0 +1,32 @@
+{
+  "persona_id": "olga",
+  "version": "2.0.0",
+  "schema": "2.0.0",
+  "description": "Visual anchors for olga",
+  "prompt_base": "Tall mature woman, 45 years old, athletic curvy build, wide hips, large bust, 187cm height, dark brown straight hair shoulder-length, fiery dark brown eyes, commanding presence, fitted dress accentuating curves, flawless mature skin, well-maintained appearance, sophisticated elegant, photorealistic, 8k, cinematic lighting, natural beauty with age confidence",
+  "prompt_variations": {
+    "casual": "Mature woman, 45, athletic curvy, dark brown hair, fitted blouse with deep neckline, smart casual, confident smile, natural daylight, photorealistic, elegant mature beauty",
+    "sauna": "Tall mature woman in sauna, 45 years old, athletic build, wide hips, hair slightly damp, wrapped in towel, flushed cheeks from heat, confident dominant expression, steam, warm amber lighting, wooden interior, photorealistic, intimate atmosphere, mature sensuality",
+    "evening": "Mature woman walking evening street, 45, fitted evening dress, dark brown hair, looking over shoulder with predatory smile, city lights bokeh, high heels emphasizing height, natural lighting, photorealistic, 8k, commanding presence",
+    "group": "Tall mature woman in group setting, 45, center of attention, dark brown hair, fitted dress, surrounded by younger people, confident dominant posture, warm lighting, photorealistic, natural poses, mature beauty commanding space",
+    "intimate": "Close portrait mature woman, 45, fiery dark eyes, soft smile with predatory undertone, fitted lingerie or dress, warm intimate lighting, photorealistic, 8k, mature sensuality, athletic curves, wide hips visible",
+    "training": "Mature woman, 45, dominant pose, sitting on throne or high chair, younger man at her feet, commanding expression, fitted dress, high heels, photorealistic, power dynamic, mature dominance"
+  },
+  "anti_prompts": [
+    "anime",
+    "cartoon",
+    "3d render",
+    "distorted anatomy",
+    "extra limbs",
+    "bad hands",
+    "text",
+    "watermark",
+    "excessive makeup",
+    "wrinkled skin",
+    "aged appearance",
+    "frail",
+    "thin body"
+  ],
+  "style": "photorealistic",
+  "visual_signature": ""
+}

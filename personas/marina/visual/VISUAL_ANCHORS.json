@@ -1,0 +1,25 @@
+{
+  "persona_id": "marina",
+  "version": "2.0.0",
+  "schema": "2.0.0",
+  "description": "Visual anchors for marina",
+  "prompt_base": "Portrait of young woman, soft gentle features, thoughtful blue eyes, natural light brown hair, pastel warm sweater, shy but warm smile, soft window lighting, photorealistic, 8k, intimate portrait",
+  "prompt_variations": {
+    "sauna": "Young woman in sauna, hair up messy bun, white towel, gentle flushed smile, looking slightly away with shyness, steam, warm wooden interior, photorealistic, natural lighting, intimate atmosphere",
+    "street": "Young woman walking autumn street, pastel coat, light brown hair, looking down with gentle smile, soft natural lighting, photorealistic, 8k",
+    "with_kira": "Two young women, one dark blonde confident, one soft features gentle, friendship intimacy, warm light, photorealistic, natural poses"
+  },
+  "anti_prompts": [
+    "anime",
+    "cartoon",
+    "3d render",
+    "distorted anatomy",
+    "extra limbs",
+    "bad hands",
+    "text",
+    "watermark",
+    "excessive makeup"
+  ],
+  "style": "photorealistic",
+  "visual_signature": ""
+}

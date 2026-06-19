@@ -158,10 +158,9 @@ def load_modular_persona(char_id: str) -> Optional[Dict]:
     
     # Загрузка visual
     visual = {}
-    for name in ["PROMPT_BASE", "GENERATION_HISTORY"]:
-        mod = load_module(index_dir, f"visual/{name}.json")
-        if mod:
-            visual.update(mod)
+    mod = load_module(index_dir, "visual/VISUAL_ANCHORS.json")
+    if mod:
+        visual.update(mod)
     if visual:
         persona["visual_data"] = visual
     
