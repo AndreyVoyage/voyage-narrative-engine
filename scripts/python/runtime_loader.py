@@ -198,9 +198,15 @@ def load_modular_persona(char_id: str) -> Optional[Dict]:
     if safety:
         persona["safety"] = safety
     
+    # Загрузка speech
+    speech = load_module(index_dir, "speech/SPEECH_MATRIX.json")
+    if speech:
+        persona["speech_matrix"] = speech.get("matrix", {})
+        persona["speech_signature_patterns"] = speech.get("signature_patterns", {})
+    
     # Загрузка autonomous
     auto = {}
-    for name in ["ACTIVITIES", "TEMPLATES"]:
+    for name in ["ACTIVITIES", "TEMPLATES", "INITIATIVE"]:
         mod = load_module(index_dir, f"autonomous/{name}.json")
         if mod:
             auto.update(mod)
@@ -266,6 +272,21 @@ def validate_modular_persona(persona: Dict) -> Dict[str, Any]:
     # 5. Core
     core_ok = bool(persona.get("anatomic_anchor", {}))
     results["core"] = ("PASS" if core_ok else "FAIL", "anatomic_anchor загружен" if core_ok else "Отсутствует")
+    
+    # 6. Speech Matrix
+    speech_matrix = persona.get("speech_matrix", {})
+    has_speech = len(speech_matrix) >= 10  # минимум 10 уровней
+    results["speech"] = ("PASS" if has_speech else "FAIL",
+                         f"{len(speech_matrix)} подуровней речевой матрицы" if speech_matrix else "Отсутствует SPEECH_MATRIX.json")
+    
+    # 7. Autonomous Initiative
+    auto = persona.get("autonomous", {})
+    has_initiative = bool(auto.get("initiative_types", {}))
+    has_activities = bool(auto.get("activities", {}))
+    has_templates = bool(auto.get("message_templates", {}))
+    auto_ok = has_initiative and has_activities and has_templates
+    results["autonomous"] = ("PASS" if auto_ok else "WARNING",
+                             f"INITIATIVE: {'yes' if has_initiative else 'no'}, ACTIVITIES: {'yes' if has_activities else 'no'}, TEMPLATES: {'yes' if has_templates else 'no'}")
     
     return results
 
