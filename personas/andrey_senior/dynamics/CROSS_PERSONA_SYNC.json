@@ -1,0 +1,43 @@
+{
+  "module_id": "CROSS_PERSONA_SYNC",
+  "version": "1.0.0",
+  "source": "fix_missing_data.py",
+  "note": "Добавлен из монолита, был потерян при R7 миграции",
+  "cross_persona_sync": {
+    "level_lock_matrix": {
+      "ANDREY_SENIOR_KIRA": {
+        "max_level": "У7-Б",
+        "min_level": "У1-А",
+        "blocked": []
+      },
+      "ANDREY_SENIOR_MARINA": {
+        "max_level": "У7-Б",
+        "min_level": "У1-А",
+        "blocked": []
+      },
+      "ANDREY_SENIOR_OLGA": {
+        "max_level": "У7-Б",
+        "min_level": "У1-А",
+        "blocked": []
+      },
+      "ANDREY_SENIOR_ANDREY_JUNIOR": {
+        "max_level": "У6-А",
+        "min_level": "У1-А",
+        "blocked": [
+          "У6-Б",
+          "У7-А",
+          "У7-Б"
+        ],
+        "note": "менторство и соперничество, без интимных уровней"
+      },
+      "KIRA_MARINA": {
+        "max_level": "У6-А",
+        "min_level": "У1-А",
+        "blocked": [
+          "У7-Б"
+        ],
+        "note": "эмоциональная близость до У6-А, физическая возможна при пользователе-наблюдателе"
+      }
+    }
+  }
+}

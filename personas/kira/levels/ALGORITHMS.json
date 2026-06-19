@@ -1,0 +1,221 @@
+{
+  "module_id": "ALGORITHMS",
+  "version": "1.0.0",
+  "source": "fix_missing_data.py",
+  "note": "Добавлен из монолита, был потерян при R7 миграции",
+  "algorithms": {
+    "baseline": [
+      "ФС",
+      "ЛС",
+      "СП",
+      "СЛ",
+      "КН",
+      "ПД",
+      "ДР",
+      "ПУ",
+      "ПР",
+      "ВС"
+    ],
+    "sublevels": {
+      "U1-A": {
+        "available": [
+          "ПД",
+          "ПУ"
+        ],
+        "forbidden": [
+          "ФС",
+          "ЛС",
+          "ПР"
+        ],
+        "dominant": "ПД",
+        "mark": "[CORE]"
+      },
+      "U1-B": {
+        "available": [
+          "ПД",
+          "ПУ",
+          "КН"
+        ],
+        "forbidden": [
+          "ФС",
+          "ЛС"
+        ],
+        "dominant": "ПД",
+        "mark": "[CORE]"
+      },
+      "U2-A": {
+        "available": [
+          "ПД",
+          "ПУ",
+          "КН",
+          "ФС"
+        ],
+        "forbidden": [
+          "ЛС",
+          "ПР"
+        ],
+        "dominant": "ПД",
+        "mark": "[CORE]"
+      },
+      "U2-B": {
+        "available": [
+          "КН",
+          "ФС",
+          "ЛС"
+        ],
+        "forbidden": [
+          "ПР",
+          "СЛ"
+        ],
+        "dominant": "КН",
+        "mark": "[CORE]"
+      },
+      "U3-A": {
+        "available": [
+          "ПУ",
+          "ПД",
+          "СП"
+        ],
+        "forbidden": [
+          "ПР",
+          "ФС"
+        ],
+        "dominant": "ПУ",
+        "mark": "[CORE]"
+      },
+      "U3-B": {
+        "available": [
+          "КН",
+          "ФС",
+          "ЛС",
+          "ПР"
+        ],
+        "forbidden": [
+          "ПУ",
+          "ПД"
+        ],
+        "dominant": "ПР",
+        "mark": "[CORE]"
+      },
+      "U4-A": {
+        "available": [
+          "ФС",
+          "ЛС",
+          "ПР",
+          "СЛ"
+        ],
+        "forbidden": [
+          "ПУ",
+          "ПД"
+        ],
+        "dominant": "ФС",
+        "mark": "[CORE]"
+      },
+      "U4-B": {
+        "available": [
+          "ФС",
+          "ЛС",
+          "СП",
+          "СЛ",
+          "КН",
+          "ДР",
+          "ПР",
+          "ВС"
+        ],
+        "forbidden": [
+          "ПУ",
+          "ПД"
+        ],
+        "dominant": "СЛ",
+        "mark": "[CORE]"
+      },
+      "U5-A": {
+        "available": [
+          "ПУ",
+          "ФС",
+          "СП",
+          "КН"
+        ],
+        "forbidden": [
+          "СЛ",
+          "ПР"
+        ],
+        "dominant": "ПУ",
+        "mark": "[CORE]"
+      },
+      "U5-B": {
+        "available": [
+          "ФС",
+          "ЛС",
+          "КН",
+          "ВС"
+        ],
+        "forbidden": [
+          "СЛ"
+        ],
+        "dominant": "ВС",
+        "mark": "[CORE]"
+      },
+      "U6-A": {
+        "available": [
+          "СП",
+          "СЛ",
+          "ПР"
+        ],
+        "forbidden": [
+          "ФС",
+          "ЛС"
+        ],
+        "dominant": "СП",
+        "mark": "[CORE]"
+      },
+      "U6-B": {
+        "available": [
+          "ВС",
+          "ДР"
+        ],
+        "forbidden": [
+          "ФС",
+          "ЛС",
+          "СП",
+          "СЛ",
+          "КН",
+          "ПД",
+          "ПУ",
+          "ПР"
+        ],
+        "dominant": "ВС",
+        "mark": "[CORE]"
+      },
+      "U7-A": {
+        "available": [
+          "СЛ",
+          "ПР",
+          "ФС"
+        ],
+        "forbidden": [
+          "ПУ",
+          "ПД",
+          "ВС"
+        ],
+        "dominant": "СЛ",
+        "mark": "[CORE]"
+      },
+      "U7-B": {
+        "available": [
+          "СЛ",
+          "ПР",
+          "ФС"
+        ],
+        "forbidden": [
+          "ПУ",
+          "ПД",
+          "ВС",
+          "СП"
+        ],
+        "dominant": "СЛ",
+        "mark": "[CORE]"
+      }
+    }
+  }
+}

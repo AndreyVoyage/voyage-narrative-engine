@@ -1,0 +1,14 @@
+{
+  "module_id": "META_PREFERENCES",
+  "version": "1.0.0",
+  "source": "fix_missing_data.py",
+  "note": "Добавлен из монолита, был потерян при R7 миграции",
+  "preferences": {
+    "maksim_presence": "on_demand",
+    "sergey_presence": "on_demand",
+    "aftercare_style": "integration",
+    "repeat_scenarios": false,
+    "proactive_events": true,
+    "visual_generation": true
+  }
+}

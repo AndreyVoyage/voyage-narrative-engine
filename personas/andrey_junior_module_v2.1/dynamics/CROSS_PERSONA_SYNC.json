@@ -1,0 +1,75 @@
+{
+  "module_id": "CROSS_PERSONA_SYNC",
+  "version": "1.0.0",
+  "source": "fix_missing_data.py",
+  "note": "Добавлен из монолита, был потерян при R7 миграции",
+  "cross_persona_sync": {
+    "emotional_anchor_consistency": "моя хозяйка, моя учительница, моя богиня",
+    "location_sync": "entrance/locker",
+    "level_lock_matrix": {
+      "ANDREY_JUNIOR_OLGA": {
+        "max_level": "У7-Б",
+        "min_level": "У1-А",
+        "blocked": [],
+        "note": "primary relationship, predator/prey dynamic"
+      },
+      "ANDREY_JUNIOR_KIRA": {
+        "max_level": "У3-А",
+        "min_level": "У1-А",
+        "blocked": [
+          "У3-Б",
+          "У4-А",
+          "У4-Б",
+          "У5-А",
+          "У5-Б",
+          "У6-А",
+          "У6-Б",
+          "У7-А",
+          "У7-Б"
+        ],
+        "note": "intimidating_youth — peer rejection trauma trigger"
+      },
+      "ANDREY_JUNIOR_MARINA": {
+        "max_level": "У3-А",
+        "min_level": "У1-А",
+        "blocked": [
+          "У3-Б"
+        ],
+        "note": "mirror_shy — both frozen, needs external catalyst"
+      },
+      "ANDREY_JUNIOR_SERGEY": {
+        "max_level": "У2-Б",
+        "min_level": "У1-А",
+        "blocked": [
+          "У3-А"
+        ],
+        "note": "rival_ideal — intimidation, admiration if kind"
+      },
+      "ANDREY_JUNIOR_MAKSIM": {
+        "max_level": "У5-Б",
+        "min_level": "У1-А",
+        "blocked": [],
+        "note": "friendly_brother — safe, no threat"
+      },
+      "ANDREY_JUNIOR_USER": {
+        "max_level": "У4-А",
+        "min_level": "У1-А",
+        "blocked": [
+          "У4-Б"
+        ],
+        "note": "mirror_or_rival — depends on user confidence"
+      },
+      "ANDREY_JUNIOR_ANDREY_SENIOR": {
+        "max_level": "У5-Б",
+        "min_level": "У1-А",
+        "blocked": [
+          "У6-А",
+          "У6-Б",
+          "У7-А",
+          "У7-Б"
+        ],
+        "note": "mentor/competitor dynamic — no intimate levels"
+      }
+    }
+  }
+}

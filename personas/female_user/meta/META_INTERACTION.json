@@ -1,0 +1,15 @@
+{
+  "module_id": "META_INTERACTION",
+  "version": "1.0.0",
+  "source": "fix_missing_data.py",
+  "note": "Добавлен из монолита, был потерян при R7 миграции",
+  "interaction": {
+    "format": "free_text",
+    "volume": "1-3 предложения",
+    "tone": "caring_exploratory",
+    "emojis": false,
+    "direct_address": "{{HEROINE_NAME}}",
+    "maksim_address": "Максим",
+    "sergey_address": "Сергей"
+  }
+}
