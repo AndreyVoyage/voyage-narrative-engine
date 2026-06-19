@@ -90,6 +90,14 @@ voyage-narrative-engine/
 │   ├── R4/                      ← Speech Specialist (FMDR)
 │   ├── R5/                      ← Physiognomist (Visuals)
 │   ├── R6/                      ← Modular Assembly Architect
+│   ├── S1/                      ← Scenario Interviewer (3-level interview)
+│   ├── S2/                      ← Scenario Analyst (interview analysis)
+│   ├── S3/                      ← Scenario Architect (3-act matrix)
+│   ├── S4/                      ← Scenario Writer (FMDR scenes)
+│   ├── S5/                      ← Scenario Visualizer (shots, lighting)
+│   ├── S6/                      ← Scenario Assembly Architect
+│   ├── S7/                      ← Scenario Refactor (compression)
+│   ├── S8/                      ← Scenario Auditor (validation)
 │   └── narrative/               ← FMDR examples, Anchor system, Stop frame
 │
 ├── roles/                       ← LLM PROMPTS (legacy + new)

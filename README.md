@@ -132,8 +132,16 @@ voyage-narrative-engine/
 | **R5** Physiognomist | Anatomic Anchor, Visual Signature, Dynamic Visuals (14×7) | 3 | `KB_R5_DYNAMIC_VISUALS.md` |
 | **R6** Assembly Architect | Persona Module, HUMAN/AUTONOMOUS/META, отношения | 3 | `KB_R6_BLOCK_SCHEMA.md` |
 | **Narrative** | ФМДР примеры, Anchor System, Stop Frame, Runtime Compression | 4 | `KB_NARRATIVE_FMDR_EXAMPLES.md` |
+| **S1** Scenario Interviewer | 3-уровневое интервью с пользователем | 1 | `KB_S1_CORE.md` |
+| **S2** Scenario Analyst | Анализ интервью, извлечение структуры | 1 | `KB_S2_CORE.md` |
+| **S3** Scenario Architect | Матрица сценария (3 акта, ветвления) | 1 | `KB_S3_CORE.md` |
+| **S4** Scenario Writer | Сцены в ФМДР-формате | 1 | `KB_S4_CORE.md` |
+| **S5** Scenario Visualizer | Кадры, свет, камера, мизансцена | 1 | `KB_S5_CORE.md` |
+| **S6** Assembly Architect | Сборка модуля сценария | 1 | `KB_S6_CORE.md` |
+| **S7** Refactor | Компрессия для runtime (200K) | 1 | `KB_S7_CORE.md` |
+| **S8** Auditor | Валидация сценария (8 секций) | 1 | `KB_S8_CORE.md` |
 
-**Всего: 25 KB-файлов (~200 KB).** Каждый файл содержит:
+**Всего: 33 KB-файла (~500 KB).** Каждый файл содержит:
 - **Core** — теория и правила
 - **Audit** — чек-лист валидации (5 секций)
 - **Compression** — правила сжатия (3 метода)
@@ -307,6 +315,20 @@ python3 scripts/python/check_consistency.py KIRA_MODULE_v14 /path/to/new_kira.pn
 | **R6** Assembly Architect | Модуль, отношения, PREVIOUS/CURRENT/FUTURE | VISUAL от R5 | PERSONA MODULE (12 папок) | `KB_R6_BLOCK_SCHEMA.md` |
 
 **Каждая роль:** загружает KB → генерирует артефакт → аудит по KB → компрессия → передача в следующую роль.
+
+### Scenario Pipeline (S1–S8)
+```
+S1 Scenario Interviewer → INTERVIEW (3-level user immersion: Surface/Emotional/Deep)
+S2 Scenario Analyst     → ANALYSIS (extract Scenario DNA, Conflict Map, Agency Map)
+S3 Scenario Architect   → SCENARIO MATRIX (3 acts, branching, emotional arcs)
+S4 Scenario Writer      → SCENES (FMDR: Thought / Action / Speech)
+S5 Scenario Visualizer  → VISUALIZATION (shots, lighting, mise-en-scène)
+S6 Assembly Architect   → SCENARIO MODULE (aggregation into folders)
+S7 Refactor            → COMPACT (3-layer runtime: BASE + STATE + LIVE)
+S8 Auditor             → AUDIT REPORT (structure, safety, VSCNO, agency)
+```
+
+---
 
 ### Legacy роли (для финализации сессий)
 
