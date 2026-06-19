@@ -1,6 +1,6 @@
 {
-  "id": "sergey_module_v4",
-  "name": "Сергей",
+  "id": "marina",
+  "name": "Марина",
   "version": "2.0.0",
   "schema_version": "1.0.0",
   "default_level": "U1-A",
@@ -10,6 +10,7 @@
     "sauna_trio",
     "promenade",
     "evening_walk",
+    "shy_girl_initiation",
     "cafe_date"
   ],
   "modules": {

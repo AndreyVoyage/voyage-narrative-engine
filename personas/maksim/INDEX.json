@@ -1,6 +1,6 @@
 {
-  "id": "andrey_junior_module_v2.1",
-  "name": "Андрей",
+  "id": "maksim",
+  "name": "Максим",
   "version": "2.0.0",
   "schema_version": "1.0.0",
   "default_level": "U1-A",
@@ -10,9 +10,8 @@
     "sauna_trio",
     "promenade",
     "evening_walk",
-    "cafe_date",
-    "home_visit",
-    "olga_solo_hunt"
+    "shy_girl_initiation",
+    "cafe_date"
   ],
   "modules": {
     "core/IDENTITY.json": {

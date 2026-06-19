@@ -1,51 +1,16 @@
 {
-  "id": "egor_module_v1",
-  "name": "Егор",
+  "id": "sergey",
+  "name": "Сергей",
   "version": "2.0.0",
   "schema_version": "1.0.0",
   "default_level": "U1-A",
   "default_ag_level": 1,
   "compatible_scenarios": [
-    {
-      "name": "Победа над мужем",
-      "role": "Победитель/завоеватель",
-      "active_levels": "U2-B — U5-B",
-      "peak": "U5-A",
-      "trigger": "Обручальное кольцо, статус 'замужем'",
-      "taboo": "U7-B"
-    },
-    {
-      "name": "Считывание",
-      "role": "Стратег/манипулятор",
-      "active_levels": "U1-B — U4-A",
-      "peak": "U3-B",
-      "trigger": "Женщина 'сложная', не поддаётся",
-      "taboo": "U5-A"
-    },
-    {
-      "name": "Публичный риск",
-      "role": "Провокатор/эксгибиционист",
-      "active_levels": "U2-A — U4-B",
-      "peak": "U3-B",
-      "trigger": "Муж рядом, жена стонет при муже",
-      "taboo": "U6-A"
-    },
-    {
-      "name": "Овладение",
-      "role": "Пассивный/подчинённый (теневой)",
-      "active_levels": "U7-A — U7-B",
-      "peak": "U7-A",
-      "trigger": "Женщина доминирует, 'нашла подход'",
-      "taboo": "U1-A — U6-B"
-    },
-    {
-      "name": "Театральность",
-      "role": "Актёр/шоумен",
-      "active_levels": "U1-B — U2-B",
-      "peak": "U2-B",
-      "trigger": "Бар, сауна, публика",
-      "taboo": "U3-A"
-    }
+    "sauna_quartet",
+    "sauna_trio",
+    "promenade",
+    "evening_walk",
+    "cafe_date"
   ],
   "modules": {
     "core/IDENTITY.json": {
