@@ -1,7 +1,9 @@
 # SYSTEM.md
 # Voyage Narrative Engine — System Architecture & Cold Start Guide
-# Version: 2.2.0 | Last updated: 2026-06-18
+# Version: 3.0.0 | Last updated: 2025-01-20
 # Purpose: Single source of truth for AI agents and developers
+
+---
 
 ---
 
@@ -80,8 +82,38 @@ voyage-narrative-engine/
 │   │
 │   └── [id]_MODULE_vN.json      ← LEGACY monoliths (kept for reference)
 │
-├── scenarios/                   ← SCENARIO MODULES (work in progress)
-│   └── (see Section 5 below)
+├── scenarios/                   ← SCENARIO MODULES (first modular: sauna_extended)
+│   ├── sauna_extended/            ← 🆕 MODULAR SCENARIO v3.0.0
+│   │   ├── core/
+│   │   │   └── INDEX.json         ← Manifest: 6 participants, v3.0.0
+│   │   ├── structure/
+│   │   │   ├── phases.json        ← 8 phases (P1-P5 + P1b,P2b,P3b)
+│   │   │   ├── timeline.json      ← Narrative timeline
+│   │   │   └── locations.json     ← 2 floors, 8 rooms
+│   │   ├── scenes/
+│   │   │   ├── P1_entrance.json   ← Modular scene files (JSON + MD)
+│   │   │   ├── P1b_andrey_plays.md
+│   │   │   ├── P2_steam.json
+│   │   │   ├── P2b_andrey_kira_duel.md
+│   │   │   ├── P3_pool.json
+│   │   │   ├── P3b_andrey_kira_pool.md
+│   │   │   ├── P4_rest.json
+│   │   │   └── P5_climax.json
+│   │   ├── branches/
+│   │   │   └── BRANCHES.json      ← 4 branching paths (B1-B4)
+│   │   ├── characters/
+│   │   │   └── ROLES.json         ← Roles, VSCNO targets, level locks
+│   │   ├── dynamics/
+│   │   │   └── CROSS_CHARACTER.json ← Cross-character interactions
+│   │   ├── environment/
+│   │   │   └── ATMOSPHERE.json    ← Visual prompts, sensory anchors
+│   │   ├── safety/
+│   │   │   └── SAFETY.json        ← Hard limits, safety checks, aftercare
+│   │   ├── meta/
+│   │   │   └── META.json          ← Version, changelog, author notes
+│   │   └── scenario_validator.py  ← Scenario validation script
+│   │
+│   └── (legacy scenarios: SCENARIO_SAUNA_QUARTET.json, etc.)
 │
 ├── knowledge_base/              ← KNOWLEDGE BASE (source of truth for all roles)
 │   ├── R1/                      ← Portrait Writer
@@ -190,58 +222,59 @@ When running a session, the AI receives **3 layers** of context:
 
 ---
 
-## 5. HOW TO BUILD A SCENARIO (planned structure)
+## 5. HOW TO BUILD A SCENARIO (modular structure — implemented)
 
 ```
 scenarios/
 └── [scenario_id]/
-    ├── INDEX.json               ← Manifest
-    ├── ASSEMBLY.md              ← How to assemble
     ├── core/
-    │   ├── CONCEPT.md           ← Logline, premise, genre
-    │   ├── GENRE.json           ← Genre, tone, rating, tags
-    │   └── TARGET_AUDIENCE.md   ← Who is this for
+    │   └── INDEX.json               ← Manifest: id, name, version, participants, synopsis
     ├── structure/
-    │   ├── THREE_ACT.json       ← Act 1 (25%), Act 2 (50%), Act 3 (25%)
-    │   ├── HERO_JOURNEY.json    ← 12 stages mapped to sublevels
-    │   └── EMOTIONAL_ARC.json   ← Emotion peaks and valleys
+    │   ├── phases.json              ← Phase definitions with character states, triggers, flags
+    │   ├── timeline.json            ← Narrative timeline (ordered phases)
+    │   └── locations.json           ← Setting descriptions, atmosphere, sensory anchors
     ├── scenes/
-    │   ├── S001_Prologue.md     ← Each scene: setting, characters, conflict, resolution
-    │   ├── S002_Inciting.md
-    │   ├── ...
-    │   └── S999_Epilogue.md
+    │   ├── P1_*.json / P1_*.md      ← Modular scene files (one per phase)
+    │   ├── P2_*.json / P2_*.md
+    │   └── ...
     ├── branches/
-    │   ├── BRANCH_A.json        ← Branching logic
-    │   ├── BRANCH_B.json
-    │   └── BRANCH_MERGE.json
+    │   └── BRANCHES.json            ← Branching logic: conditions, results, FMDR
     ├── characters/
-    │   ├── ROLES.json           ← Which personas participate
-    │   ├── ARCS.json            ← How each persona evolves
-    │   └── ENTRANCES.json       ← How they enter/exit
+    │   └── ROLES.json               ← Which personas participate + their roles
     ├── dynamics/
-    │   ├── PACING.json          ← Tempo by scene
-    │   ├── ESCALATION.json      ← Conflict escalation
-    │   └── TONE_MAP.json        ← Tone by scene
+    │   └── CROSS_CHARACTER.json     ← Cross-character interactions, psychology
     ├── environment/
-    │   ├── LOCATIONS.json       ← Setting descriptions
-    │   ├── LIGHTING.json        ← Lighting design
-    │   └── PROPS.json           ← Key props
+    │   └── ATMOSPHERE.json          ← Visual prompts, sensory details
     ├── safety/
-    │   ├── PROTOCOL.json        ← Hard limits, trigger warnings
-    │   └── AFTERCARE.md         ← De-escalation plan
-    └── meta/
-        ├── CHANGELOG.md
-        └── TEST_CASES.md
+    │   └── SAFETY.json              ← Hard limits, safety checks, emergency protocols
+    ├── meta/
+    │   └── META.json                ← Changelog, author notes
+    └── scenario_validator.py        ← Validation script (checks all files, phases, sync)
 ```
 
 ### Scenario Assembly (for runtime)
-1. Read `scenarios/[id]/INDEX.json`
-2. Load `core/CONCEPT.md` + `structure/THREE_ACT.json`
+1. Read `scenarios/[id]/core/INDEX.json`
+2. Load `structure/phases.json` + `structure/timeline.json` + `structure/locations.json`
 3. Load `characters/ROLES.json` → discover which personas needed
 4. Load each persona's modules (via runtime_loader)
-5. Assemble scenes in order: `scenes/S001.md` → `scenes/S002.md`
-6. Apply branches based on user choices
+5. Assemble scenes in order: `scenes/P1_*.json` → `scenes/P2_*.md` → ...
+6. Apply branches based on user choices: `branches/BRANCHES.json`
 7. Output: `SCENARIO_[id]_RUNTIME.md` (single file for LLM)
+
+### Validation
+```bash
+python scenarios/[id]/scenario_validator.py [id]
+# Checks: directory structure, required files, JSON validity,
+#          phases/timeline sync, characters/roles sync,
+#          safety checks, scene coverage, branch definitions
+```
+
+### First Modular Scenario: `sauna_extended` (v3.0.0)
+- 8 phases (P1–P5 + P1b, P2b, P3b with Andrey Senior)
+- 4 branches (B1–B4): user_kira, user_andrey_kira, user_marina, group
+- 6 characters: user, kira, marina, sergey, maksim, andrey_senior
+- Andrey Senior stays through P1–P3, interacts with Kira, creates tension triangle
+- ~120 minutes narrative time, AG1–AG4
 
 ---
 
@@ -336,6 +369,9 @@ python scripts/python/generate_vscno.py
 # Fix missing data
 python scripts/python/fix_missing_data.py
 
+# Validate scenario
+python scenarios/[id]/scenario_validator.py [id]
+
 # Check sizes
 python scripts/python/analyze_sizes.py
 
@@ -350,10 +386,10 @@ git push origin main
 ## 10. CONTACT & VERSIONING
 
 - **Repository:** https://github.com/AndreyVoyage/voyage-narrative-engine
-- **Version:** 2.2.0 (semantic: MAJOR.MINOR.PATCH)
+- **Version:** 3.0.0 (semantic: MAJOR.MINOR.PATCH)
 - **Schema version:** 1.0.0
-- **Last major update:** 2026-06-18 (R7/R8 migration complete, VSCNO generation, Runtime Loader)
+- **Last major update:** 2025-01-20 (First modular scenario: sauna_extended with Andrey Senior)
 
 ---
 
-*SYSTEM.md | Voyage Narrative Engine | 2026-06-18*
+*SYSTEM.md | Voyage Narrative Engine | 2025-01-20*

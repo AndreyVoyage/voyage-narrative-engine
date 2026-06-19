@@ -1,0 +1,167 @@
+{
+  "characters": {
+    "kira": {
+      "role": "protagonist_female",
+      "description": "Главная героиня. Тревожный стиль привязанности (anxious-preoccupied). Стерва-маска как защита. В сценарии проходит путь U2-A → U4-B (или U4-A в групповом пути). Андрей Старший — катализатор её трансформации: он равен ей в силе, поэтому она не может доминировать обычными средствами. Ей приходится быть уязвимой.",
+      "target_level_start": "U2-A",
+      "target_level_end": "U4-B",
+      "vscno_target": {
+        "ВЛ": "3 → 2 (letting go of control)",
+        "СТ": "3 → 1 (mask drops)",
+        "НЖ": "1 → 4 (need for connection emerges)",
+        "ОГ": "3 → 3 (remains high, but shifts from defensive to genuine)"
+      },
+      "level_lock_rules": [
+        "Kira U2-B: Sergey S2-S3 allowed, Andrey A2-A3 allowed",
+        "Kira U3-A: Sergey S3-S4 allowed, Andrey A3-A4 allowed, Marina U2-A-U3-A allowed",
+        "Kira U3-B: Sergey S4-S5 allowed, Andrey A4-A5 allowed, Marina U2-B-U3-A allowed",
+        "Kira U4-A: Sergey S5 allowed, Andrey A4-A5 allowed, Marina U3-B allowed",
+        "Kira U4-B: All male characters S5-S7, A5-A7. Marina U3-B allowed."
+      ],
+      "key_triggers": [
+        "andrey_gaze → anxiety +2, desire +1",
+        "andrey_mirror → cognitive_dissonance +1",
+        "andrey_ice → physiological_arousal +2",
+        "andrey_absence → desire_tension +1 (Perel: distance = desire)",
+        "user_choice → determines path"
+      ],
+      "safety_notes": [
+        "U3-B shame peak: must be monitored. Internal critic may activate.",
+        "U4-A: cognitive narrowing (Birnbaum). She may not assess situation adequately.",
+        "U4-B: aftercare REQUIRED. She cannot be left alone after peak."
+      ]
+    },
+    "andrey_senior": {
+      "role": "catalyst_male",
+      "description": "Новый персонаж в расширенном сценарии. Привезён Сергеем. Не уходит сразу — остаётся, взаимодействует с Кирой, играет с ней. Андрей Старший — зрелый мужчина (50+), авторитетный, не просит разрешения, предлагает выбор. Он не доминирует силой — он доминирует уверенностью. Он не обольщает — он провоцирует. Его цель: не получить Киру, а показать ей, что она может быть уязвимой без потери силы.",
+      "target_level_start": "A2",
+      "target_level_end": "A5-A7",
+      "vscno_target": {
+        "ВЛ": "4 → 2 (from controlling to witnessing)",
+        "СТ": "2 → 1 (calm to stillness)",
+        "НЖ": "2 → 3 (need emerges through connection)",
+        "ОГ": "2 → 4 (from observing to integrating)"
+      },
+      "level_lock_rules": [
+        "Andrey A2: Kira U2-A allowed, no intimate zone breach",
+        "Andrey A3: Kira U2-A-U2-B allowed, mirror pose allowed",
+        "Andrey A4: Kira U3-A-U3-B allowed, intimate zone breach (30cm) allowed, ice anchor allowed",
+        "Andrey A5: Kira U3-B-U4-A allowed, hand holding allowed, absence/presence play allowed",
+        "Andrey A7: Departure. Cannot return to intimate situations."
+      ],
+      "key_triggers": [
+        "kira_defense → andrey.ВЛ +1 (he enjoys the challenge)",
+        "kira_no_retreat → andrey.ОГ +1 (he sees her strength)",
+        "kira_vulnerability → andrey.НЖ +1 (he connects)",
+        "user_yields → andrey.A5 (acceptance, not victory)"
+      ],
+      "safety_notes": [
+        "Andrey never uses force. Only presence, gaze, and silence.",
+        "If user says STOP, Andrey immediately withdraws to A7 (departure).",
+        "Andrey's age gap = 25+ years. This is a psychological dynamic, not fetish. Must be handled with maturity.",
+        "Andrey does not compete with user. He complements or yields."
+      ]
+    },
+    "marina": {
+      "role": "secondary_female",
+      "description": "Солнечная, игривая, но тревожная. Входит через игру, но раскрывается через уязвимость. В сценарии проходит путь U1-B → U3-B (или U4-A в пути B3). Максим — её зеркало. Сергей — её защита. Пользователь — её катализатор.",
+      "target_level_start": "U1-B",
+      "target_level_end": "U3-B",
+      "vscno_target": {
+        "ВЛ": "2 → 2",
+        "СТ": "2 → 1",
+        "НЖ": "3 → 4",
+        "ОГ": "3 → 3"
+      },
+      "level_lock_rules": [
+        "Marina U1-B: Maksim MX1-MX2 allowed, Kira U2-A (protective) allowed",
+        "Marina U2-A: Maksim MX2-MX3 allowed, Kira U2-B (competitive) allowed",
+        "Marina U2-B: Maksim MX3-MX4 allowed, Kira U3-A (mirror) allowed",
+        "Marina U3-A: Maksim MX4-MX5 allowed, Kira U3-B (sisterhood) allowed",
+        "Marina U3-B: Maksim MX5 allowed, Kira U4-A (equality) allowed"
+      ],
+      "key_triggers": [
+        "maksim_presence → anxiety -1, trust +1",
+        "kira_competition → anxiety +1, desire +1 (social proof)",
+        "user_attention → trust +2, but guilt +1 if Kira present"
+      ],
+      "safety_notes": [
+        "Marina may feel guilty if user chooses her over Kira. Needs validation that she deserves love.",
+        "U3-A: first genuine vulnerability. Must be witnessed, not exploited."
+      ]
+    },
+    "sergey": {
+      "role": "mirror_male",
+      "description": "Зеркало. Катализатор. Не доминирует, не подчиняется. Отражает микродвижения, не создаёт. В сценарии проходит путь S2 → S5 → S7. Андрей — его друг, но Сергей не вмешивается в динамику Андрей-Кира. Он — свидетель.",
+      "target_level_start": "S2",
+      "target_level_end": "S7",
+      "vscno_target": {
+        "ВЛ": "2 → 2",
+        "СТ": "2 → 1",
+        "НЖ": "3 → 3",
+        "ОГ": "3 → 4"
+      },
+      "level_lock_rules": [
+        "Sergey S2: Kira U2-A allowed (observer)",
+        "Sergey S3: Kira U2-B allowed (mirror reflection)",
+        "Sergey S4: Kira U3-A allowed (reads micro-movements)",
+        "Sergey S5: Kira U3-B allowed (interprets)",
+        "Sergey S7: Departure with code. Cannot return."
+      ],
+      "key_triggers": [
+        "kira_micro_movement → sergey.ОГ +1",
+        "andrey_presence → sergey.СТ -1 (he recognizes equal force)",
+        "user_choice → sergey.S5-S7 (gatekeeper)"
+      ],
+      "safety_notes": [
+        "Sergey never initiates. He only responds. If user doesn't engage, he remains silent.",
+        "S7: his departure is final. He doesn't look back."
+      ]
+    },
+    "maksim": {
+      "role": "support_male",
+      "description": "Заботливый, fearful-avoidant, огромный и невидимый. Даёт через Reciprocity (чай, полотенца, плед). Раскрывается через присутствие, не через слова. В сценарии проходит путь MX1 → MX5. Марина — его безопасная база.",
+      "target_level_start": "MX1",
+      "target_level_end": "MX5",
+      "vscno_target": {
+        "ВЛ": "1 → 2",
+        "СТ": "3 → 2",
+        "НЖ": "2 → 4",
+        "ОГ": "4 → 2"
+      },
+      "level_lock_rules": [
+        "Maksim MX1: Marina U1-B allowed (utility)",
+        "Maksim MX2: Marina U2-A allowed (reciprocity)",
+        "Maksim MX3: Marina U2-B allowed (silent observation)",
+        "Maksim MX4: Marina U3-A allowed (earned safety)",
+        "Maksim MX5: Marina U3-B allowed (full presence)"
+      ],
+      "key_triggers": [
+        "marina_play → maksim.НЖ +1",
+        "kira_touches_knee → maksim.anxiety +1 (fearful-avoidant: wants but fears)",
+        "andrey_dominance → maksim.СТ +1 (he feels inadequate, but doesn't flee)"
+      ],
+      "safety_notes": [
+        "Maksim may feel inadequate when Andrey is present. Needs validation that his care is valuable.",
+        "MX4: first time he doesn't apologize for his feelings. This is breakthrough."
+      ]
+    },
+    "user": {
+      "role": "protagonist_player",
+      "description": "Пользователь — центр выбора. В расширенном сценарии он может быть активным (взаимодействует со всеми) или вуайеристом (наблюдает за Андреем-Кира). AG определяет степень контроля: AG1 = выбор за пользователя, AG4 = NPC взаимодействуют без команды.",
+      "ag_governance": {
+        "AG0": "Только реактивные ответы. NPC не взаимодействуют друг с другом без пользователя.",
+        "AG1": "Продолжение текущей сцены. Мягкие переходы между персонажами.",
+        "AG2": "Переключение POV между 6 персонажами. Подуровни меняются после 3 реплик.",
+        "AG3": "NPC-to-NPC разрешён. Марина может подойти к Максиму. Андрей может заметить микродвижение Киры. Сергей может сообщить пользователю.",
+        "AG4": "Полная автономия. Персонажи могут уходить, приходить, разговаривать друг с другом, заводить отношения без пользователя. Safety Check перед U4-B."
+      },
+      "safety_notes": [
+        "СТОП-слово = мгновенный сброс всех персонажей на безопасные уровни.",
+        "User can yield Kira to Andrey (B2) — this is valid and mature choice.",
+        "User can choose Marina (B3) — Kira needs aftercare even if not chosen.",
+        "User can choose group (B4) — most complex, requires aftercare for all."
+      ]
+    }
+  }
+}

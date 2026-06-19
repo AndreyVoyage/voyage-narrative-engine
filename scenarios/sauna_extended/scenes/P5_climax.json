@@ -1,0 +1,92 @@
+{
+  "id": "P5_CLIMAX",
+  "name": "Кульминация и выбор: Кто остаётся",
+  "phase": "P5_CLIMAX",
+  "location": "rest_room + balcony_terrace + massage_room",
+  "characters": ["user", "kira", "marina", "sergey", "maksim", "andrey_senior"],
+  "duration_minutes": 45,
+  "fmdr_opening": "(Ночь. Снег за окном. Балконная дверь открывается. Андрей возвращается. Снег на плечах, в волосах. Он не курил — просто стоял. Кира поднимается с лежака. Их взгляды встречаются. Между ними — 5 метров комнаты, но она чувствует холод с балкона. Марина просыпается на плече Максима. Сергей — в кресле, не спал. Он ждал. Все ждали.)",
+  "dialogue_sequence": [
+    {
+      "character": "andrey_senior",
+      "fmdr": "**Мысль:** *Она поднялась. Она ждала. Я тоже ждал. Теперь — выбор. Её. Или мой. Или его.* **Действие:** *входит с балкона, стряхивает снег с плеч. Не спешит. Смотрит на Киру, потом на пользователя. Потом — на всех* **Речь:** «Я уеду. Но не сейчас. Сначала — я хочу знать, что останется.»",
+      "psychology": "Andrey: A5. He doesn't leave immediately. He stays to witness. He wants to know what remains after he's gone."
+    },
+    {
+      "character": "kira",
+      "fmdr": "**Мысль:** *Он хочет знать, что останется. Я не знаю. Я не знаю, что останется, если он уйдёт. Или если останется. Я не знаю, что я хочу.* **Действие:** *стоит между пользователем и Андреем. Не выбирает сторону. Просто стоит* **Речь:** «Я не знаю, что останется. Но я знаю... я не хочу, чтобы ты ушёл, не узнав.»",
+      "psychology": "Kira: U4-A. She doesn't choose. She opens possibility. She doesn't say 'stay' — she says 'don't leave without knowing'."
+    },
+    {
+      "character": "marina",
+      "fmdr": "**Мысль:** *Они. Опять они. Я... я с Максимом. Мне хорошо. Но я смотрю на них. И я завидую. Не злость. Просто — я тоже хочу так. Чтобы кто-то стоял. Чтобы я стояла. И не боялась.* **Действие:** *приподнимается с плеча Максима. Смотрит на Киру и Андрея. Потом на пользователя* **Речь:** «Макс... я тоже хочу стоять. Не бояться.»",
+      "psychology": "Marina: U3-B. She wants to be seen too. She witnesses Kira's transformation and wants her own."
+    },
+    {
+      "character": "maksim",
+      "fmdr": "**Мысль:** *Она хочет стоять. Я помогу ей встать. Я... я не знаю, что будет. Но я не уйду.* **Действие:** *поднимается. Подходит к Марине. Берёт её за руку. Не к Кире. К Марине. Он выбирает* **Речь:** «Вставай. Я рядом. Я... я не уйду.»",
+      "psychology": "Maksim: MX5. He chooses Marina. He stops being Kira's satellite. He becomes his own center."
+    },
+    {
+      "character": "sergey",
+      "fmdr": "**Мысль:** *Они все выбирают. Кира — между двумя. Марина — встать. Максим — остаться. Андрей — узнать. Я... я зеркало. Я отражаю их выбор. Но я не выбираю. Я уже выбрал. Я выбрал быть зеркалом.* **Действие:** *встаёт из кресла. Подходит к двери. Смотрит на всех. Не уходит — просто стоит у двери, как страж* **Речь:** «Выбирайте. Я открою дверь тому, кто уйдёт. И закрою — за тем, кто останется.»",
+      "psychology": "Sergey: S5. He becomes the gatekeeper. He doesn't choose — he enables choice."
+    }
+  ],
+  "branches": [
+    {
+      "id": "branch_user_kira",
+      "name": "Пользователь выбирает Киру",
+      "condition": "user_chooses_kira",
+      "result": "Кира остаётся с пользователем. Андрей уходит с кодексом чести — 'Я первым увидел. Ты — первым взял. Справедливо.' Марина и Максим — вместе. Сергей — у двери, затем уходит один.",
+      "kira_final_level": "U4-B",
+      "andrey_final_level": "A7",
+      "marina_final_level": "U3-B",
+      "maksim_final_level": "MX5",
+      "sergey_final_level": "S7"
+    },
+    {
+      "id": "branch_user_andrey_kira",
+      "name": "Пользователь уступает Киру Андрею",
+      "condition": "user_yields_kira_to_andrey",
+      "result": "Андрей берёт Киру за руку. Они уходят вместе. Не как победа — как признание. Пользователь остаётся с Мариной и Максимом. Сергей: 'Ты первым увидел. Он — первым взял. Ты отдал. Это тоже сила.'",
+      "kira_final_level": "U4-B",
+      "andrey_final_level": "A5",
+      "marina_final_level": "U3-B",
+      "maksim_final_level": "MX5",
+      "sergey_final_level": "S7"
+    },
+    {
+      "id": "branch_user_marina",
+      "name": "Пользователь выбирает Марину",
+      "condition": "user_chooses_marina",
+      "result": "Марина — в шоке, потом — в слезах счастья. Кира: 'Я понимаю. Она... она тоже заслуживает.' Андрей уходит. Максим остаётся как друг. Сергей — зеркало, отражает всех.",
+      "kira_final_level": "U3-B",
+      "andrey_final_level": "A7",
+      "marina_final_level": "U4-A",
+      "maksim_final_level": "MX4",
+      "sergey_final_level": "S7"
+    },
+    {
+      "id": "branch_group",
+      "name": "Пользователь выбирает всех — группа остаётся",
+      "condition": "user_chooses_group",
+      "result": "Все остаются. Ночь на кровати. Тишина. Кира — между пользователем и Андреем (но не выбрала — просто не ушла). Марина — на Максиме. Сергей — у двери, но не уходит. Утро — все просыпаются вместе. СТОП-слово активно.",
+      "kira_final_level": "U4-A",
+      "andrey_final_level": "A5",
+      "marina_final_level": "U3-B",
+      "maksim_final_level": "MX5",
+      "sergey_final_level": "S6",
+      "safety_check": "U4A_group_aftercare_required"
+    }
+  ],
+  "triggers": [
+    {"type": "user_choice", "target": "user", "effect": "determines_climax_path"},
+    {"type": "kira_initiation", "target": "kira", "effect": "U4-A → U4-B IF safety_check_passed"},
+    {"type": "andrey_final_gaze", "target": "kira", "effect": "andrey.kira.approval"},
+    {"type": "sergey_gatekeeper", "target": "all", "effect": "all.anxiety -1 (safety_of_exit)"}
+  ],
+  "flags_set": ["climax_reached", "user_choice_made", "andrey_returns_from_balcony", "sauna_completed"],
+  "safety_checks": ["U4-B_safety_check", "U4-A_gentle_approach_check", "andrey_kira_boundary_check", "group_aftercare_check"],
+  "pov_rules": "user_choice_driven — all characters react to user's final decision. AG may rise to 4."
+}

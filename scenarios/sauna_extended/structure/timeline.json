@@ -1,0 +1,76 @@
+{
+  "timeline": [
+    {
+      "phase_id": "P1_ENTRANCE",
+      "name": "Вход и раздевалка",
+      "duration_minutes": 15,
+      "location": "entrance_locker",
+      "description": "Лёгкое неловкое/игривое напряжение. Кира комментирует одежду/тело шутливо. Марина сдержаннее. Сергей — уверенная опора. Максим — невидимый гигант. Андрей Старший входит последним — внезапно, снисходительно, властно.",
+      "expected_mood": "playful_tension",
+      "flags_set": ["sauna_started", "locker_room_awkwardness", "andrey_introduced"]
+    },
+    {
+      "phase_id": "P1b_ANDREY_PLAYS",
+      "name": "Андрей остаётся: Игра власти",
+      "duration_minutes": 20,
+      "location": "entrance_locker + steam_room",
+      "description": "Андрей Старший не уходит. Он остаётся, садится на верхнюю полку, смотрит на Киру сверху вниз. Играет с ней — холодно, снисходительно, властно. Кира не знает, как реагировать: её стервозность встречает равную силу. Пользователь наблюдает.",
+      "expected_mood": "dominance_tension",
+      "flags_set": ["andrey_stays", "andrey_kira_tension_initiated", "power_play_started"]
+    },
+    {
+      "phase_id": "P2_STEAM",
+      "name": "Парилка: Пять тел, пять температур",
+      "duration_minutes": 30,
+      "location": "steam_room",
+      "description": "Жара, полотенца, расслабление. Андрей Старший на верхней полке — доминирует пространством. Кира на нижней, напряжена. Марина начинает улыбаться. Сергей — зеркало. Максим — забота. Психология: тепло → расслабление → снижение защит.",
+      "expected_mood": "relaxed_flirtation_with_undercurrent",
+      "flags_set": ["steam_room_relaxed", "kira_flirt_initiated", "marina_first_smile", "andrey_observes_from_above"]
+    },
+    {
+      "phase_id": "P2b_ANDREY_KIRA_DUEL",
+      "name": "Андрей vs Кира: Дуэль взглядов",
+      "duration_minutes": 25,
+      "location": "steam_room",
+      "description": "Андрей спускается. Садится напротив Киры. Между ними — 50 см. Он начинает отзеркаливать её позу. Говорит первый раз: 'Ты дрожишь. Не от жара.' Кира не отступает. Это не флирт — это дуэль. Максим и Сергей наблюдают. Пользователь — свидетель или участник.",
+      "expected_mood": "intimate_confrontation",
+      "flags_set": ["andrey_mirror_pose", "kira_andrey_duel", "andrey_intimate_zone_breach"]
+    },
+    {
+      "phase_id": "P3_POOL",
+      "name": "Обливение и бассейн: Контрасты",
+      "duration_minutes": 25,
+      "location": "shower_pool + cold_plunge",
+      "description": "Контраст температур, всплески, физическая близость становится естественной. Андрей первым ныряет в холодную воду — вызов. Кира 'случайно' касается пользователя, но глазами ищет Андрея. Марина принимает игру. Максим — опора. Психология: контраст холода/жары → адреналин + эндорфины.",
+      "expected_mood": "physical_proximity_with_competition",
+      "flags_set": ["pool_splashed", "kira_accidental_touch", "marina_accepted_play", "andrey_cold_challenge"]
+    },
+    {
+      "phase_id": "P3b_ANDREY_KIRA_POOL",
+      "name": "Андрей и Кира в воде: Зеркало и лёд",
+      "duration_minutes": 20,
+      "location": "pool + cold_plunge",
+      "description": "Андрей берёт кубик льда. Кладёт на запястье Киры. Холодный контраст. Потом касается её плеча — холод + горячая кожа. Якорь 'вызов'. Кира не отстраняется. Это не флирт — это инициация. Максим видит, молчит. Сергей понимает. Пользователь — центр выбора.",
+      "expected_mood": "ice_and_fire",
+      "flags_set": ["andrey_ice_anchor", "kira_andrey_pool_moment", "maxim_silent_observation"]
+    },
+    {
+      "phase_id": "P4_REST",
+      "name": "Комната отдыха: Глубина и тишина",
+      "duration_minutes": 45,
+      "location": "rest_room + massage_room",
+      "description": "Чай, тихий свет. Андрей уходит на балкон — курит, смотрит на город. Но он не уходит из сауны. Его присутствие — тень. Кира расслабляется, но глазами ищет дверь на балкон. Марина — тепло. Сергей — зеркало. Максим — плед и чай. Психология: тишина → интимность без слов.",
+      "expected_mood": "emotional_intimacy_with_absence",
+      "flags_set": ["rest_room_intimacy", "deep_talk_unlocked", "andrey_balcony_presence", "kira_seeks_andrey"]
+    },
+    {
+      "phase_id": "P5_CLIMAX",
+      "name": "Кульминация и выбор: Кто остаётся",
+      "duration_minutes": 45,
+      "location": "rest_room + balcony_terrace + massage_room",
+      "description": "Выбор пользователя — с кем остаться, как развить. Андрей возвращается с балкона. Кира — между двумя мужчинами (Пользователь и Андрей). Марина — между Максимом и Сергеем. Эмерджентность. Психология: тишина ночи → финальная интимность.",
+      "expected_mood": "climax_choice",
+      "flags_set": ["climax_reached", "user_choice_made", "andrey_returns_from_balcony", "sauna_completed"]
+    }
+  ]
+}

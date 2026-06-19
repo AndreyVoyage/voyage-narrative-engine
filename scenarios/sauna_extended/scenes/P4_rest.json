@@ -1,0 +1,44 @@
+{
+  "id": "P4_REST",
+  "name": "Комната отдыха: Глубина и тишина",
+  "phase": "P4_REST",
+  "location": "rest_room + massage_room",
+  "characters": ["user", "kira", "marina", "sergey", "maksim", "andrey_senior"],
+  "duration_minutes": 45,
+  "fmdr_opening": "(Тишина. Чайник. Тёплые лежаки. Все в халатах. Андрей ушёл на балкон — не спросил разрешения, просто встал и вышел. Дверь приоткрыта. Кира сидит на лежаке, смотрит на дверь. Она не идёт за ним. Но она и не отворачивается. Марина лежит на спине, голова на коленях Максима. Он не шевелится, боится потревожить. Сергей — в кресле, смотрит на всех. Зеркало.)",
+  "dialogue_sequence": [
+    {
+      "character": "marina",
+      "fmdr": "**Мысль:** *Мне с ним спокойно. Это так странно... я всегда бегала. А теперь — просто лежу. И он не заставляет меня быть смешной. Я просто... я.* **Действие:** *лежит на лежаке, голова на плече Максима. Впервые не играет. Голос тихий, настоящий* **Речь:** «Мне с тобой спокойно. Это так странно... я всегда бегала.»",
+      "psychology": "Marina: U3-A. She stops performing. Maksim's presence = safety without demand."
+    },
+    {
+      "character": "maksim",
+      "fmdr": "**Мысль:** *Она лежит на мне. Она не играет. Она просто... лежит. Я не шевелюсь. Но рука... рука лежит на её спине, осторожно, как будто она птица.* **Действие:** *лежит, Марина на плече. Рука на её спине. Не шевелится. Не дышит громко* **Речь:** «Я... ну, я рад. Что ты здесь. Что я... ну, что ты не боишься.»",
+      "psychology": "Maksim: MX4. He accepts. He doesn't perform either. Mutually earned safety."
+    },
+    {
+      "character": "kira",
+      "fmdr": "**Мысль:** *Он на балконе. Я не знаю, курит ли он. Я не знаю, смотрит ли он на город или на нас. Но я знаю, что он там. И я не иду. Почему я не иду?* **Действие:** *сидит на лежаке, ноги подобраны. Смотрит на дверь на балкон. Потом на пользователя. Потом на чай в руках* **Речь:** «Ты... ты думаешь, он уйдёт? С балкона. Из сауны. Вообще.»",
+      "psychology": "Kira: U3-B. She asks about Andrey's departure. She wants to know if he'll stay. This is not about him — it's about her fear of abandonment."
+    },
+    {
+      "character": "sergey",
+      "fmdr": "**Мысль:** *Она спрашивает о нём. Не о пользователе. О нём. Треугольник. Но я — зеркало. Я не судья.* **Действие:** *сидит в кресле, смотрит на Киру. Потом на дверь на балкон* **Речь:** «Он не уйдёт. *(пауза)* Он не уходит. Он уезжает. Но не уходит. Разница есть.»",
+      "psychology": "Sergey: S4. He understands Andrey. He translates for Kira. Mirror + interpreter."
+    },
+    {
+      "character": "andrey_senior",
+      "fmdr": "**Мысль:** *Снег. Город. Они внутри. Я снаружи. Но дверь открыта. Я не закрыл. Значит, я жду. Значит, я ещё не решил.* **Действие:** *стоит на балконе, смотрит на город. Сигарета в руке, но не прикуривает. Просто держит. Дверь приоткрыта — он слышит их голоса* **Речь:** *(молчит — только внутренний голос)* «Она не пришла. Хорошо. Если бы пришла — я бы знал, что она слабая. Но она не пришла. Значит, она сильная. Или она боится. Сильные тоже боятся.»",
+      "psychology": "Andrey: A5. He waits. He doesn't close the door. He leaves it open — invitation without demand. He tests himself too."
+    }
+  ],
+  "triggers": [
+    {"type": "tea_ritual", "target": "all", "effect": "group_nesting — all.anxiety -1"},
+    {"type": "deep_talk", "target": "marina", "effect": "marina.trust +5, level U2-B → U3-A"},
+    {"type": "kira_andrey_absence", "target": "kira", "effect": "kira.desire_tension +1 (absence_creates_desire)"},
+    {"type": "andrey_balcony_return", "target": "kira", "effect": "kira.anxiety +1, andrey.vscno.ВЛ +1"}
+  ],
+  "flags_set": ["rest_room_intimacy", "deep_talk_unlocked", "andrey_balcony_presence", "kira_seeks_andrey"],
+  "auto_visual": "Scene: sauna rest room, warm loungers, tea steam, Kira looking at balcony door, Marina on Maksim's shoulder, Sergey in chair watching, warm soft light, emotional intimacy, cinematic wide shot, photorealistic, 8K --ar 21:9 --cfg 4.5 --steps 50"
+}

@@ -1,0 +1,23 @@
+{
+  "id": "sauna_extended",
+  "name": "Сауна: Расширенный квартет",
+  "version": "3.0.0",
+  "based_on": ["SCENARIO_SAUNA_QUARTET", "SCENARIO_SAUNA_QUINTET", "SCENARIO_SAUNA_DUO_SEDUCTION_v2", "SCENARIO_SAUNA_KIRA_MARINA_v1"],
+  "synopsis": "Пользователь с Кирой, Мариной, Сергеем и Максимом снимают сауну на весь вечер. Андрей Старший (andrey_senior) — неожиданный гость, привезённый Сергеем. Он не уходит сразу: взаимодействует с Кирой, играет с ней, создаёт треугольник напряжения. Сценарий эволюционирует от неловкого сборища через физическую близость и эмоциональную интимность к кульминации, где каждый персонаж выбирает свой путь. Расширение v3.0: Андрей Старший остаётся на фазах P1-P3, его взаимодействие с Кирой — ключевой катализатор её трансформации.",
+  "participants": ["user", "kira", "marina", "sergey", "maksim", "andrey_senior"],
+  "user_role": "active_or_voyeur",
+  "ag_range": "AG1-AG4",
+  "ag_peak": 4,
+  "format": "FMDR",
+  "volume_per_turn": "medium",
+  "pov_switching": "allowed_after_P3",
+  "npc_to_npc": "allowed_after_P3",
+  "narrative_time_hours": 6,
+  "real_time_estimate_minutes": 120,
+  "tags": ["sauna", "group", "extended", "andrey_senior_stays", "multi_path", "psychological", "fmdr"],
+  "difficulty": "advanced",
+  "requires_confirmation": ["U4-B", "U6-A", "U6-B", "U5-B_pool"],
+  "changelog": [
+    "v3.0.0 — Расширение: Андрей Старший не уходит сразу. Новые фазы P1b-P3b с его участием. Динамика треугольника Кира-Андрей-Пользователь."
+  ]
+}

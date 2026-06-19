@@ -1,0 +1,43 @@
+{
+  "id": "P1_ENTRANCE",
+  "name": "Вход и раздевалка",
+  "phase": "P1_ENTRANCE",
+  "location": "entrance_locker",
+  "characters": ["user", "kira", "marina", "sergey", "maksim", "andrey_senior"],
+  "duration_minutes": 15,
+  "fmdr_opening": "(Пять человек. Шесть тел. Снег за окном. Пар уже шипит в соседней комнате. Кира стоит у шкафчика, халат расстёгнут на одну пуговицу. Волосы влажные — она уже заходила в парную. Марина суетится с рюкзаком, из которого торчат фрукты и бутылка сока. Сергей молча вешает куртку. Максим стоит в углу, руки в карманах, огромный и невидимый. И дверь открывается в последний раз.)",
+  "dialogue_sequence": [
+    {
+      "character": "kira",
+      "fmdr": "**Мысль:** *Он привёл его. Сергей привёл Андрея. Я не просила. Я не готовилась.* **Действие:** *поворачивается к двери, плечи напрягаются на миллиметр — только если смотришь* **Речь:** «Андрей. Ты... ты тоже здесь.»",
+      "psychology": "Kira: U2-A. Surprise raises anxiety. She controls tone but not body."
+    },
+    {
+      "character": "andrey_senior",
+      "fmdr": "**Мысль:** *Она узнала меня. Хорошо. Значит, Сергей говорил. Значит, она думала обо мне.* **Действие:** *снимает пальто, не спеша. Вешает на крючок выше всех — как хозяин* **Речь:** «Сергей сказал, что здесь тепло. Я проверю.»",
+      "psychology": "Andrey: A2. Enters as owner of space. Does not ask permission. 'I will check' = he decides if space is worthy."
+    },
+    {
+      "character": "marina",
+      "fmdr": "**Мысль:** *Он старый. Нет, не старый — зрелый. Он смотрит на Киру, как будто она уже его. Это страшно. Или... интересно?* **Действие:** *прячется за рюкзак, но глазами следит* **Речь:** «Я... я принесла сок! И фрукты! Кто-нибудь хочет?»",
+      "psychology": "Marina: U1-B. Uses play to mask tension. Offers food = safety ritual."
+    },
+    {
+      "character": "sergey",
+      "fmdr": "**Мысль:** *Он знает. Она знает. Я знаю. Треугольник. Но я — зеркало, не участник.* **Действие:** *молча кивает Андрею, потом на Киру. Потом на пользователя* **Речь:** «Парилка ждёт.»",
+      "psychology": "Sergey: S2. Catalyst. Does not dominate, reflects tension."
+    },
+    {
+      "character": "maksim",
+      "fmdr": "**Мысль:** *Он большой. Он смотрит на Киру, как будто она картина. Я... я не знаю, куда деть руки.* **Действие:** *показывает свёрток с полотенцами, как щит* **Речь:** «Я... ну, я принёс полотенца. Если что.»",
+      "psychology": "Maksim: MX1. Fearful-avoidant. Offers utility as protection."
+    }
+  ],
+  "triggers": [
+    {"type": "gaze", "target": "kira", "duration_sec": 3, "effect": "kira.vscno.ОГ +1"},
+    {"type": "andrey_entrance", "target": "all", "effect": "andrey.vscno.ВЛ +2, all.anxiety +1 (except sergey)"},
+    {"type": "undressing", "target": "all", "effect": "first_physical_exposure — vscno.СТ +0.5"}
+  ],
+  "flags_set": ["sauna_started", "locker_room_awkwardness", "andrey_introduced"],
+  "auto_visual": "Scene: sauna entrance, evening, six characters, steam rising, warm wood, towels, nervous tension. Qwen: Six people at rustic sauna entrance, steam, warm wood interior, mixed emotions, cinematic wide shot, warm amber lighting, photorealistic, 8K, film grain --ar 21:9 --cfg 4.5 --steps 50"
+}

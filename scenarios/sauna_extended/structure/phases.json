@@ -1,0 +1,190 @@
+{
+  "phases": {
+    "P1_ENTRANCE": {
+      "name": "Вход и раздевалка",
+      "duration_minutes": 15,
+      "location": "entrance_locker",
+      "description": "Лёгкое неловкое/игривое напряжение. Пять человек входят в сауну. Кира комментирует одежду/тело шутливо. Марина сдержаннее. Сергей — уверенная опора. Максим — невидимый гигант в углу. Андрей Старший входит последним — снисходительно, властно, как хозяин пространства.",
+      "expected_mood": "playful_tension",
+      "character_states": {
+        "kira": {"target_level": "U2-A", "desire_delta": 0, "anxiety_delta": 0},
+        "marina": {"target_level": "U1-B", "desire_delta": 0, "anxiety_delta": -1},
+        "sergey": {"target_level": "S2", "desire_delta": 0, "anxiety_delta": 0},
+        "maksim": {"target_level": "MX1", "desire_delta": 0, "anxiety_delta": 1},
+        "andrey_senior": {"target_level": "A2", "desire_delta": 0, "anxiety_delta": 0}
+      },
+      "triggers": [
+        {"type": "gaze", "target": "kira", "duration_sec": 3, "effect": "kira.vscno.ОГ +1"},
+        {"type": "joke", "target": "marina", "effect": "marina.anxiety -1 IF user_or_maksim_delivers"},
+        {"type": "undressing", "target": "all", "effect": "first_physical_exposure — vscno.СТ +0.5"},
+        {"type": "andrey_entrance", "target": "all", "effect": "andrey.vscno.ВЛ +2, all.anxiety +1 (except sergey)"}
+      ],
+      "flags_set": ["sauna_started", "locker_room_awkwardness", "andrey_introduced"],
+      "safety_checks": [],
+      "pov_rules": "user_centered — all characters react to user's choices"
+    },
+    "P1b_ANDREY_PLAYS": {
+      "name": "Андрей остаётся: Игра власти",
+      "duration_minutes": 20,
+      "location": "entrance_locker + steam_room",
+      "description": "Андрей Старший не уходит. Он садится на верхнюю полку, смотрит на Киру сверху вниз. Играет с ней — холодно, снисходительно, властно. Кира не знает, как реагировать: её стервозность встречает равную силу. Пользователь наблюдает. Максим предлагает чай — Reciprocity. Сергей — молчит, анализирует. Марина — прячется за игру.",
+      "expected_mood": "dominance_tension",
+      "character_states": {
+        "kira": {"target_level": "U2-A", "desire_delta": 1, "anxiety_delta": 2},
+        "marina": {"target_level": "U1-B", "desire_delta": 0, "anxiety_delta": 0},
+        "sergey": {"target_level": "S2", "desire_delta": 0, "anxiety_delta": 0},
+        "maksim": {"target_level": "MX2", "desire_delta": 0, "anxiety_delta": -1},
+        "andrey_senior": {"target_level": "A3", "desire_delta": 1, "anxiety_delta": 0}
+      },
+      "triggers": [
+        {"type": "andrey_gaze_from_above", "target": "kira", "effect": "kira.anxiety +2, andrey.vscno.ВЛ +1"},
+        {"type": "maksim_tea", "target": "kira", "effect": "kira.anxiety -1, maksim.reciprocity_activated"},
+        {"type": "sergey_silence", "target": "all", "effect": "sergey.authority_established"},
+        {"type": "kira_defense", "target": "andrey", "effect": "kira.vscno.СТ +1, andrey.vscno.ОГ +1"}
+      ],
+      "flags_set": ["andrey_stays", "andrey_kira_tension_initiated", "power_play_started", "maksim_reciprocity_activated"],
+      "safety_checks": [],
+      "pov_rules": "user_centered + andrey_mirror — Andrey may observe Kira and report to user"
+    },
+    "P2_STEAM": {
+      "name": "Парилка: Пять тел, пять температур",
+      "duration_minutes": 30,
+      "location": "steam_room",
+      "description": "Жара, полотенца, расслабление. Андрей на верхней полке — доминирует пространством. Кира на нижней, напряжена. Марина начинает улыбаться. Сергей — зеркало. Максим — забота. Психология: тепло → расслабление → снижение защит. Андрей льёт воду на камни — шипение, температура растёт, Кира вздрагивает.",
+      "expected_mood": "relaxed_flirtation_with_undercurrent",
+      "character_states": {
+        "kira": {"target_level": "U2-B", "desire_delta": 1, "anxiety_delta": 1},
+        "marina": {"target_level": "U2-A", "desire_delta": 0, "anxiety_delta": -2},
+        "sergey": {"target_level": "S3", "desire_delta": 1, "anxiety_delta": 0},
+        "maksim": {"target_level": "MX2", "desire_delta": 1, "anxiety_delta": 0},
+        "andrey_senior": {"target_level": "A3", "desire_delta": 1, "anxiety_delta": 0}
+      },
+      "triggers": [
+        {"type": "heat", "target": "all", "effect": "anxiety -1, physiological_arousal +1"},
+        {"type": "towel_slip", "target": "kira", "effect": "unconscious_odsc_test — kira.vscno.ОГ +1"},
+        {"type": "andrey_pour_water", "target": "kira", "effect": "kira.anxiety +1, andrey.vscno.ВЛ +1"},
+        {"type": "shared_silence", "target": "marina", "effect": "marina.vscno.НЖ +1 IF no_pressure"},
+        {"type": "sergey_gaze", "target": "kira", "effect": "kira.desire_tension +1 (TEC_M_002)"}
+      ],
+      "flags_set": ["steam_room_relaxed", "kira_flirt_initiated", "marina_first_smile", "andrey_observes_from_above"],
+      "safety_checks": [],
+      "pov_rules": "user_centered + sergey_mirror + andrey_observation"
+    },
+    "P2b_ANDREY_KIRA_DUEL": {
+      "name": "Андрей vs Кира: Дуэль взглядов",
+      "duration_minutes": 25,
+      "location": "steam_room",
+      "description": "Андрей спускается. Садится напротив Киры. Между ними — 50 см. Он отзеркаливает её позу через кафель. Говорит: 'Ты дрожишь. Не от жара.' Кира не отступает. Это не флирт — это дуэль. Максим видит, молчит. Сергей понимает. Пользователь — свидетель или участник.",
+      "expected_mood": "intimate_confrontation",
+      "character_states": {
+        "kira": {"target_level": "U3-A", "desire_delta": 2, "anxiety_delta": 2},
+        "marina": {"target_level": "U2-A", "desire_delta": 0, "anxiety_delta": -1},
+        "sergey": {"target_level": "S3", "desire_delta": 1, "anxiety_delta": 0},
+        "maksim": {"target_level": "MX3", "desire_delta": 1, "anxiety_delta": 1},
+        "andrey_senior": {"target_level": "A4", "desire_delta": 2, "anxiety_delta": 1}
+      },
+      "triggers": [
+        {"type": "andrey_mirror", "target": "kira", "effect": "kira.cognitive_dissonance +1, andrey.vscno.ОГ +1"},
+        {"type": "andrey_statement", "target": "kira", "effect": "kira.anxiety +1, andrey.authority +1"},
+        {"type": "kira_response", "target": "andrey", "effect": "kira.vscno.СТ +1, andrey.vscno.ВЛ +1"},
+        {"type": "maksim_silence", "target": "all", "effect": "maksim.anxiety +1 (fearful-avoidant)"}
+      ],
+      "flags_set": ["andrey_mirror_pose", "kira_andrey_duel", "andrey_intimate_zone_breach"],
+      "safety_checks": ["kira_U3A_anxiety_peak"],
+      "pov_rules": "user_centered + multi_pov — characters may interact (Kira↔Andrey, Sergey↔Maksim)"
+    },
+    "P3_POOL": {
+      "name": "Обливение и бассейн: Контрасты",
+      "duration_minutes": 25,
+      "location": "shower_pool + cold_plunge",
+      "description": "Контраст температур. Андрей первым ныряет в холодную воду — вызов. Кира 'случайно' касается пользователя, но глазами ищет Андрея. Марина принимает игру. Максим — опора. Сергей — зеркало. Психология: контраст холода/жары → адреналин + эндорфины.",
+      "expected_mood": "physical_proximity_with_competition",
+      "character_states": {
+        "kira": {"target_level": "U3-A", "desire_delta": 2, "anxiety_delta": 1},
+        "marina": {"target_level": "U2-B", "desire_delta": 1, "anxiety_delta": -1},
+        "sergey": {"target_level": "S3", "desire_delta": 1, "anxiety_delta": 0},
+        "maksim": {"target_level": "MX3", "desire_delta": 1, "anxiety_delta": 0},
+        "andrey_senior": {"target_level": "A4", "desire_delta": 2, "anxiety_delta": 0}
+      },
+      "triggers": [
+        {"type": "cold_splash", "target": "all", "effect": "adrenaline + endorphins — desire +1, anxiety -1"},
+        {"type": "andrey_cold_dive", "target": "kira", "effect": "kira.desire +1, andrey.vscno.ВЛ +1"},
+        {"type": "accidental_touch", "target": "kira_user", "effect": "kira.physiological_arousal +1, user.desire +1"},
+        {"type": "water_play", "target": "all", "effect": "group_bonding — all.vscno.НЖ +1"}
+      ],
+      "flags_set": ["pool_splashed", "kira_accidental_touch", "marina_accepted_play", "andrey_cold_challenge"],
+      "safety_checks": [],
+      "pov_rules": "multi-pov_allowed — characters may interact with each other"
+    },
+    "P3b_ANDREY_KIRA_POOL": {
+      "name": "Андрей и Кира в воде: Зеркало и лёд",
+      "duration_minutes": 20,
+      "location": "pool + cold_plunge",
+      "description": "Андрей берёт кубик льда. Кладёт на запястье Киры. Холодный контраст. Касается её плеча — холод + горячая кожа. Якорь 'вызов'. Кира не отстраняется. Это инициация. Максим видит, молчит. Сергей понимает. Пользователь — центр выбора.",
+      "expected_mood": "ice_and_fire",
+      "character_states": {
+        "kira": {"target_level": "U3-B", "desire_delta": 2, "anxiety_delta": 2},
+        "marina": {"target_level": "U2-B", "desire_delta": 1, "anxiety_delta": -1},
+        "sergey": {"target_level": "S4", "desire_delta": 1, "anxiety_delta": 1},
+        "maksim": {"target_level": "MX4", "desire_delta": 1, "anxiety_delta": 1},
+        "andrey_senior": {"target_level": "A4", "desire_delta": 3, "anxiety_delta": 1}
+      },
+      "triggers": [
+        {"type": "andrey_ice", "target": "kira", "effect": "kira.physiological_arousal +2, andrey.vscno.ВЛ +1"},
+        {"type": "kira_no_retreat", "target": "andrey", "effect": "andrey.vscno.ОГ +1, kira.vscno.СТ +1"},
+        {"type": "maksim_observation", "target": "all", "effect": "maksim.anxiety +1 (fearful-avoidant)"},
+        {"type": "sergey_understanding", "target": "all", "effect": "sergey.level S4"}
+      ],
+      "flags_set": ["andrey_ice_anchor", "kira_andrey_pool_moment", "maxim_silent_observation"],
+      "safety_checks": ["U3B_shame_peak_check"],
+      "pov_rules": "user_choice — stay with Kira+Andrey or comfort Marina+Maksim"
+    },
+    "P4_REST": {
+      "name": "Комната отдыха: Глубина и тишина",
+      "duration_minutes": 45,
+      "location": "rest_room + massage_room",
+      "description": "Чай, тихий свет. Андрей уходит на балкон — курит, смотрит на город. Но не уходит из сауны. Его присутствие — тень. Кира расслабляется, но глазами ищет дверь на балкон. Марина — тепло. Сергей — зеркало. Максим — плед и чай. Психология: тишина → интимность без слов.",
+      "expected_mood": "emotional_intimacy_with_absence",
+      "character_states": {
+        "kira": {"target_level": "U3-B", "desire_delta": 2, "anxiety_delta": 2},
+        "marina": {"target_level": "U3-A", "desire_delta": 1, "anxiety_delta": -2},
+        "sergey": {"target_level": "S4", "desire_delta": 2, "anxiety_delta": 1},
+        "maksim": {"target_level": "MX4", "desire_delta": 2, "anxiety_delta": 0},
+        "andrey_senior": {"target_level": "A5", "desire_delta": 2, "anxiety_delta": 2}
+      },
+      "triggers": [
+        {"type": "tea_ritual", "target": "all", "effect": "group_nesting — all.anxiety -1"},
+        {"type": "deep_talk", "target": "marina", "effect": "marina.trust +5, level U2-B → U3-A"},
+        {"type": "kira_andrey_absence", "target": "kira", "effect": "kira.desire_tension +1 (absence_creates_desire)"},
+        {"type": "andrey_balcony_return", "target": "kira", "effect": "kira.anxiety +1, andrey.vscno.ВЛ +1"}
+      ],
+      "flags_set": ["rest_room_intimacy", "deep_talk_unlocked", "andrey_balcony_presence", "kira_seeks_andrey"],
+      "safety_checks": ["U3-B_shame_peak_check"],
+      "pov_rules": "user_centered — choice: stay with Kira (desire path) or comfort Marina (trust path) or observe Andrey (power path)"
+    },
+    "P5_CLIMAX": {
+      "name": "Кульминация и выбор: Кто остаётся",
+      "duration_minutes": 45,
+      "location": "rest_room + balcony_terrace + massage_room",
+      "description": "Выбор пользователя. Андрей возвращается с балкона. Кира — между двумя мужчинами (Пользователь и Андрей). Марина — между Максимом и Сергеем. Эмерджентность. Психология: тишина ночи → финальная интимность. Андрей может уйти один, уйти с Кирой, или остаться как свидетель.",
+      "expected_mood": "climax_choice",
+      "character_states": {
+        "kira": {"target_level": "U4-A", "desire_delta": 3, "anxiety_delta": 3},
+        "marina": {"target_level": "U3-B", "desire_delta": 2, "anxiety_delta": -1},
+        "sergey": {"target_level": "S5", "desire_delta": 2, "anxiety_delta": 2},
+        "maksim": {"target_level": "MX5", "desire_delta": 2, "anxiety_delta": 2},
+        "andrey_senior": {"target_level": "A5", "desire_delta": 3, "anxiety_delta": 2}
+      },
+      "triggers": [
+        {"type": "user_choice", "target": "user", "effect": "determines_climax_path — Kira/Marina/Andrey/Group"},
+        {"type": "kira_initiation", "target": "kira", "effect": "U4-A → U4-B IF safety_check_passed AND user_consents"},
+        {"type": "andrey_final_gaze", "target": "kira", "effect": "kira.level U4-A → U4-B IF andrey_approves"},
+        {"type": "marina_opening", "target": "marina", "effect": "U3-B → U4-A IF trust >= 60 AND gentle_approach"},
+        {"type": "sergey_mirror", "target": "sergey", "effect": "S5 → S6 (aftercare_attempt) OR S7 (withdrawal)"}
+      ],
+      "flags_set": ["climax_reached", "user_choice_made", "andrey_returns_from_balcony", "sauna_completed"],
+      "safety_checks": ["U4-B_safety_check", "U4-A_gentle_approach_check", "andrey_kira_boundary_check"],
+      "pov_rules": "user_choice_driven — all characters react to user's final decision. AG may rise to 4."
+    }
+  }
+}

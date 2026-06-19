@@ -1,0 +1,38 @@
+{
+  "location": {
+    "name": "private_sauna_suite",
+    "type": "indoor",
+    "floors": 2,
+    "rooms": {
+      "floor_1": [
+        "entrance_locker",
+        "steam_room",
+        "shower_pool",
+        "cold_plunge"
+      ],
+      "floor_2": [
+        "rest_room",
+        "massage_room",
+        "yoga_room",
+        "balcony_terrace"
+      ]
+    },
+    "temperature_range": "80-110°C (steam), 20-25°C (rest), 5-10°C (cold plunge)",
+    "lighting": "warm amber, dim, steam diffusion, candlelight on floor 2",
+    "atmosphere": "intimate, steamy, contrasting temperatures, wooden interior, eucalyptus scent",
+    "soundscape": "water dripping, steam hissing, occasional city sounds from balcony",
+    "sensory_anchors": {
+      "eucalyptus": "anchor for relaxation and letting go of control",
+      "wood_heat": "anchor for primal comfort and safety",
+      "cold_water_splash": "anchor for adrenaline and awakening",
+      "candlelight": "anchor for intimacy and vulnerability"
+    }
+  },
+  "time": {
+    "season": "winter",
+    "time_of_day": "evening",
+    "start_time": "18:00",
+    "end_time": "00:00",
+    "narrative_time": "Friday evening, post-work relaxation, snow outside"
+  }
+}

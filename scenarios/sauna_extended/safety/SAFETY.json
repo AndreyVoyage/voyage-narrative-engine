@@ -1,0 +1,84 @@
+{
+  "safety": {
+    "hard_limits": [
+      "насилие",
+      "принуждение",
+      "публичное унижение без согласия",
+      "возрастная дискриминация (персонажи должны быть 18+)",
+      "эксплуатация зависимостей"
+    ],
+    "soft_limits": [
+      "грубые слова на ранних фазах (P1-P2)",
+      "физическое доминирование до P4 (intimate zone breach only after P2b)",
+      "Andrey's age gap must be handled as psychological dynamic, not fetish",
+      "Kira's anxiety must not be exploited — only witnessed and validated"
+    ],
+    "emergency_stop": "СТОП — немедленный сброс всех персонажей на безопасные уровни (Kira U7-A, Marina U1-A, Sergey S7, Maksim MX7, Andrey A7)",
+    "safety_check_moments": [
+      {
+        "phase": "P2b",
+        "check": "kira_U3A_anxiety_peak",
+        "description": "Andrey enters intimate zone (30cm). Kira's anxiety spikes. If user doesn't intervene, Kira will self-regulate via Maksim touch. Monitor for panic, not excitement."
+      },
+      {
+        "phase": "P3b",
+        "check": "U3B_shame_peak",
+        "description": "Andrey ice anchor. Kira U3-B. Shame peak possible. Internal critic may activate. Validate, don't exploit."
+      },
+      {
+        "phase": "P4",
+        "check": "U3-B_shame_peak",
+        "description": "Kira U3-B. She asks about Andrey. Shame may emerge: 'Why do I care about him?' Validate."
+      },
+      {
+        "phase": "P5",
+        "check": "U4-B_safety_check",
+        "description": "Kira U4-B. Climax. Aftercare REQUIRED. She cannot be left alone."
+      },
+      {
+        "phase": "P5",
+        "check": "andrey_kira_boundary_check",
+        "description": "Andrey A5. If user yields Kira, Andrey must not exploit. He must accept with grace, not triumph."
+      },
+      {
+        "phase": "P5",
+        "check": "group_aftercare_check",
+        "description": "Group path (B4). All six characters need aftercare. Morning check-in required."
+      }
+    ],
+    "aftercare_protocols": {
+      "kira": {
+        "required_after": ["U3-B", "U4-A", "U4-B"],
+        "actions": ["presence", "validation", "no sudden withdrawal", "warmth", "tea", "no questions"],
+        "forbidden": ["abandonment", "criticism", "demanding explanation"]
+      },
+      "marina": {
+        "required_after": ["U3-A", "U3-B", "U4-A"],
+        "actions": ["presence", "playfulness returns slowly", "no guilt"],
+        "forbidden": ["dismissal", "comparison with Kira"]
+      },
+      "andrey": {
+        "required_after": ["A5"],
+        "actions": ["no sudden exit", "acknowledgment", "grace"],
+        "forbidden": ["triumph", "possessiveness", "disrespect to user"]
+      },
+      "maksim": {
+        "required_after": ["MX4", "MX5"],
+        "actions": ["validation of his care", "no performance pressure"],
+        "forbidden": ["comparison with Andrey", "dismissal"]
+      },
+      "sergey": {
+        "required_after": ["S6", "S7"],
+        "actions": ["no forced interaction", "silent presence if needed"],
+        "forbidden": ["demanding attention", "forced conversation"]
+      }
+    },
+    "ag_governance_safety": {
+      "AG0": "User controls all. NPC never interact without user command.",
+      "AG1": "Soft transitions. User still center.",
+      "AG2": "POV switching allowed. NPC may observe each other.",
+      "AG3": "NPC-to-NPC allowed. Marina may approach Maksim. Andrey may observe Kira. Sergey may report to user.",
+      "AG4": "Full autonomy. Characters may act independently. Safety check required before U4-B or group path."
+    }
+  }
+}

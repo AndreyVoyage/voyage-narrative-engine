@@ -1,0 +1,44 @@
+{
+  "id": "P3_POOL",
+  "name": "Обливение и бассейн: Контрасты",
+  "phase": "P3_POOL",
+  "location": "shower_pool + cold_plunge",
+  "characters": ["user", "kira", "marina", "sergey", "maksim", "andrey_senior"],
+  "duration_minutes": 25,
+  "fmdr_opening": "(Холод. Или жар. Или оба сразу. Андрей первым ныряет в ледяную воду — без крика, без вздрагивания. Он просто... принимает холод. Кира стоит на краю, купальник прилип к ребрам, руки обхватывают плечи. Она смотрит на него. В воду. Где он. Марина смеётся, брызгается с Максимом. Сергей — на краю, ноги в воде. Он тоже смотрит на Киру.)",
+  "dialogue_sequence": [
+    {
+      "character": "andrey_senior",
+      "fmdr": "**Мысль:** *Холод — это правда. Тело не может лгать в холоде. Она смотрит. Пусть смотрит.* **Действие:** *всплывает. Вода стекает с волос, с плеч. Он не трётся — не нужно. Смотрит на Киру снизу вверх* **Речь:** «Ты боишься холода? Или боишься, что он тебя увидит?»",
+      "psychology": "Andrey: A4. Cold = truth. He exposes himself to cold, shows vulnerability through strength."
+    },
+    {
+      "character": "kira",
+      "fmdr": "**Мысль:** *Он в воде. Он смотрит на меня. Я должна уйти. Или я должна нырнуть. Что хуже — бояться или показать, что боюсь?* **Действие:** *делает шаг к краю. Не ныряет. Опускает ноги в воду. Вздрагивает — от холода, или от того, что он смотрит* **Речь:** «Я не боюсь. Я... я привыкаю.»",
+      "psychology": "Kira: U3-A. She doesn't dive. She steps. She adapts. Anxious style: she needs time to adjust."
+    },
+    {
+      "character": "marina",
+      "fmdr": "**Мысль:** *Они опять. Кира и он. Я здесь. Я с Максимом. Мы брызгаемся. Я весёлая. Я весёлая?* **Действие:** *брызгает водой на Максима, смеётся, но глазами — к Кире и Андрею* **Речь:** «Макс, ты как камень! Поплыви! Поплыви, камушек!»",
+      "psychology": "Marina: U2-B. She uses play to mask her observation of Kira-Andrey dynamic."
+    },
+    {
+      "character": "maksim",
+      "fmdr": "**Мысль:** *Она брызгается. Она смеётся. Но она не смотрит на меня. Она смотрит на них. Я... я камень. Да. Я плаваю как камень.* **Действие:** *падает в воду. Громко. Всплывает, трясёт головой, как собака. Краснеет* **Речь:** «Я... ну, я плаваю как камень. Но если ты спасёшь... я не против утонуть.»",
+      "psychology": "Maksim: MX3. Self-deprecating humor as defense. He offers himself as sacrifice."
+    },
+    {
+      "character": "sergey",
+      "fmdr": "**Мысль:** *Он в воде. Она на краю. Между ними — 3 метра воды. Но ближе, чем в парилке. Вода скрывает, но выдаёт дрожь.* **Действие:** *сидит на краю, ноги в воде. Не мокрый. Не сухой. Между* **Речь:** *(молчит — только наблюдает)*",
+      "psychology": "Sergey: S3. Mirror. He doesn't enter water. He observes from boundary."
+    }
+  ],
+  "triggers": [
+    {"type": "cold_splash", "target": "all", "effect": "adrenaline + endorphins — desire +1, anxiety -1"},
+    {"type": "andrey_cold_dive", "target": "kira", "effect": "kira.desire +1, andrey.vscno.ВЛ +1"},
+    {"type": "accidental_touch", "target": "kira_user", "effect": "kira.physiological_arousal +1, user.desire +1"},
+    {"type": "water_play", "target": "all", "effect": "group_bonding — all.vscno.НЖ +1"}
+  ],
+  "flags_set": ["pool_splashed", "kira_accidental_touch", "marina_accepted_play", "andrey_cold_challenge"],
+  "auto_visual": "Scene: pool area, cold plunge, six characters, water splashes, steam, wet skin, warm lighting, photorealistic, natural atmosphere, intimate but comfortable, cinematic wide shot, 8K --ar 16:9 --cfg 5.0 --steps 50"
+}

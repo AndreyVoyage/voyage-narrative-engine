@@ -1,0 +1,50 @@
+{
+  "environment": {
+    "visual_templates": {
+      "entrance_locker": "Scene: sauna entrance, warm wood, six characters, steam rising, towels, nervous tension. Qwen: Six people at rustic sauna entrance, steam, warm wood interior, mixed emotions, cinematic wide shot, warm amber lighting, photorealistic, 8K, film grain --ar 21:9 --cfg 4.5 --steps 50",
+      "steam_room": "Scene: steam room, evening, six characters on wooden benches, steam, sweat, swimsuits, mixed intimacy levels. Qwen: Steam room interior, six people on wooden benches, steam rising, swimsuits, sweat on skin, warm amber wood, cinematic medium shot, intimate tension, photorealistic, 8K --ar 16:9 --cfg 5.0 --steps 50",
+      "pool_area": "Scene: pool area, cold plunge, six characters, water splashes, steam, wet skin, warm lighting, photorealistic, natural atmosphere, intimate but comfortable, cinematic wide shot, 8K --ar 16:9 --cfg 5.0 --steps 50",
+      "rest_room": "Scene: sauna rest room, warm loungers, tea steam, soft dim lights, relaxed after sauna glow, warmth intimacy, photorealistic, natural atmosphere, wooden interior, cinematic wide shot, 8K --ar 21:9 --cfg 4.5 --steps 50",
+      "balcony_terrace": "Scene: sauna balcony at night, snow, city lights, one man standing alone, cold air, warm interior behind glass, contemplative, cinematic wide shot, photorealistic, 8K --ar 21:9 --cfg 4.5 --steps 50",
+      "andrey_kira_duel": "Scene: steam room, mature man and athletic woman facing each other 30cm apart, mirroring poses, intense eye contact, steam, warm amber light, another man with thermos watching, cinematic close-up, shallow depth of field, photorealistic, 8K, film grain --ar 16:9 --cfg 5.0 --steps 50",
+      "andrey_kira_pool": "Scene: night pool, mature man and athletic woman standing in water facing each other, hand with ice cube on wrist, water up to chest, steam rising, another man watching from edge, warm water lighting, cinematic close-up, shallow depth of field, photorealistic, 8K, film grain --ar 16:9 --cfg 5.5 --steps 50"
+    },
+    "sensory_anchors": {
+      "eucalyptus": {
+        "description": "Запах эвкалипта в парной — якорь расслабления и отпускания контроля.",
+        "triggered_in": ["P2_STEAM", "P2b_ANDREY_KIRA_DUEL"],
+        "effect": "all.anxiety -1, kira.control -1"
+      },
+      "wood_heat": {
+        "description": "Тепло деревянных стен и полок — якорь примитивного комфорта и безопасности.",
+        "triggered_in": ["P1_ENTRANCE", "P2_STEAM", "P4_REST"],
+        "effect": "all.ВЛ +0.5, marina.trust +1"
+      },
+      "cold_water_splash": {
+        "description": "Холодная вода после жара — якорь адреналина и пробуждения.",
+        "triggered_in": ["P3_POOL", "P3b_ANDREY_KIRA_POOL"],
+        "effect": "all.physiological_arousal +1, kira.desire +1"
+      },
+      "candlelight": {
+        "description": "Свечи на втором этаже — якорь интимности и уязвимости.",
+        "triggered_in": ["P4_REST", "P5_CLIMAX"],
+        "effect": "all.НЖ +1, kira.shame_vulnerability +1"
+      },
+      "ice_cube": {
+        "description": "Кубик льда на коже — якорь 'вызов', созданный Андреем.",
+        "triggered_in": ["P3b_ANDREY_KIRA_POOL"],
+        "effect": "kira.physiological_arousal +2, andrey.vscno.ВЛ +1, kira.memory_anchor = true"
+      }
+    },
+    "atmosphere_layers": {
+      "P1": "nervous anticipation, first exposure, laughter too loud, silence too deep",
+      "P1b": "dominance enters, laughter fades, someone is louder than the room",
+      "P2": "heat, steam, bodies relax but minds sharpen, gazes become longer",
+      "P2b": "intimacy without touch, words as weapons, silence as caress",
+      "P3": "contrast, shock, adrenaline, bodies remember what minds deny",
+      "P3b": "ice and fire, touch that burns cold, the moment before choice",
+      "P4": "softness, tea, warmth, but eyes drift to the door, to the balcony, to the absent",
+      "P5": "night, snow, final choices, the end of 'what if' and the beginning of 'what is'"
+    }
+  }
+}

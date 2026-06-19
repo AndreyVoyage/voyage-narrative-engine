@@ -1,0 +1,44 @@
+{
+  "id": "P2_STEAM",
+  "name": "Парилка: Пять тел, пять температур",
+  "phase": "P2_STEAM",
+  "location": "steam_room",
+  "characters": ["user", "kira", "marina", "sergey", "maksim", "andrey_senior"],
+  "duration_minutes": 30,
+  "fmdr_opening": "(Жар. Пар. Шесть тел в маленькой комнате. Андрей на верхней полке — силуэт в пару. Широкие плечи, чёрные шорты, пот на груди. Кира на нижней — в 150 см от него, в 100 см от Максима. Марина сидит рядом с пользователем, смеётся, размахивает руками. Сергей — между Максимом и Андреем, зеркало. Максим держит термос, не открывает. Ждёт разрешения.)",
+  "dialogue_sequence": [
+    {
+      "character": "andrey_senior",
+      "fmdr": "**Мысль:** *Она дышит ртом. Когда нервничаешь. Сейчас она нервничает. Не от жара. От меня.* **Действие:** *берёт ковш. Льёт воду на камни. Шипение. Пар вздымается. Температура подскакивает* **Речь:** «Ты дрожишь. Не от жара. От чего-то другого.»",
+      "psychology": "Andrey: A3. Authority. He doesn't ask — he states. He controls environment (water on stones = he controls heat)."
+    },
+    {
+      "character": "kira",
+      "fmdr": "**Мысль:** *Он говорит первый раз. Не вопрос. Утверждение. Он не спрашивает — он знает. Это вызов. Или это чтение. Я не понимаю, что хуже.* **Действие:** *смотрит на него. Вверх. Он — силуэт в пару. Она не должна видеть этого. Но видит* **Речь:** «Я не дрожу. Это пар. Пар такой... он в глаза бьёт.»",
+      "psychology": "Kira: U2-B. She answers. She doesn't retreat. But she makes excuses. Anxious style: afraid he sees truth."
+    },
+    {
+      "character": "marina",
+      "fmdr": "**Мысль:** *Они говорят. Кира и он. Как будто мы не здесь. Но я здесь. Я тоже здесь.* **Действие:** *щекочет пользователя, смеётся звонко, как колокольчик в пустом зале* **Речь:** «...и он сказал, что я слишком много внимания требую! А я просто хотела, чтобы он меня заметил!»",
+      "psychology": "Marina: U2-A. Uses play to demand attention. Her laughter is louder than usual — she's competing."
+    },
+    {
+      "character": "maksim",
+      "fmdr": "**Мысль:** *Она смеётся. Она смеётся с ним. А я... я сижу с термосом. Что я делаю?* **Действие:** *открывает термос. Наливает в пластиковый стаканчик. Протягивает Кире* **Речь:** «Ты как вообще? Жар нормально переносишь? Я могу... эээ... налить прохладной.»",
+      "psychology": "Maksim: MX2. Reciprocity. He gives. She must take. To take, she must relax."
+    },
+    {
+      "character": "sergey",
+      "fmdr": "fmdr": "**Мысль:** *Он льёт воду. Она дрожит. Максим даёт чай. Марина смеётся. Я — зеркало. Я отражаю всё, но не создаю.* **Действие:** *сверху, сквозь пар, смотрит на Киру. Голос тихий, только для себя* **Речь:** *(не говорит вслух — только мысль)* «Она дышит ртом. Когда нервничаешь. Сейчас ты нервничаешь. Не от меня. От себя.»",
+      "psychology": "Sergey: S3. Mirror. He observes Kira's micro-movements. He knows but doesn't intervene."
+    }
+  ],
+  "triggers": [
+    {"type": "heat", "target": "all", "effect": "anxiety -1, physiological_arousal +1"},
+    {"type": "andrey_pour_water", "target": "kira", "effect": "kira.anxiety +1, andrey.vscno.ВЛ +1"},
+    {"type": "towel_slip", "target": "kira", "effect": "unconscious_odsc_test — kira.vscno.ОГ +1"},
+    {"type": "shared_silence", "target": "marina", "effect": "marina.vscno.НЖ +1 IF no_pressure"}
+  ],
+  "flags_set": ["steam_room_relaxed", "kira_flirt_initiated", "marina_first_smile", "andrey_observes_from_above"],
+  "auto_visual": "Scene: steam room, evening, six characters on wooden benches, steam, sweat, swimsuits, mixed intimacy levels. Qwen: Steam room interior, six people on wooden benches, steam rising, swimsuits, sweat on skin, warm amber wood, cinematic medium shot, intimate tension, photorealistic, 8K --ar 16:9 --cfg 5.0 --steps 50"
+}

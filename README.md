@@ -1,7 +1,7 @@
 > **⚠️ Для AI-агентов и разработчиков:** Перед началом работы прочитай `AGENTS.md` —
 > он содержит актуальную архитектуру и правила. Этот README может быть устаревшим.
 
-# Voyage Narrative Engine v2.2
+# Voyage Narrative Engine v3.0
 
 > AI-Native интерактивная narrative-система с психологически достоверными персонажами.
 > Подуровневая математика, TEC-механики, визуальная консистентность и автоматическая финализация сессий.
@@ -30,6 +30,41 @@ ls sessions/stories/      # литературный рассказ
 ls sessions/visuals/      # промпты для картинок
 ls sessions/state/        # обновлённые метрики
 ```
+
+---
+
+#### 5.2 Запуск сценария в сессии
+
+```bash
+# Загрузите модульный сценарий в LLM:
+# 1. scenarios/sauna_extended/core/INDEX.json — манифест
+# 2. scenarios/sauna_extended/structure/phases.json — фазы
+# 3. scenarios/sauna_extended/characters/ROLES.json — роли
+# 4. Затем загружайте сцены по мере прохождения: scenes/P1_entrance.json → scenes/P1b_andrey_plays.md → ...
+# 5. Для ветвлений — branches/BRANCHES.json
+
+# Валидация сценария перед запуском:
+python scenarios/sauna_extended/scenario_validator.py sauna_extended
+```
+
+**Результат:** 8 фаз, 4 ветки, 6 персонажей, ~120 минут narrative time.
+
+| Фаза | Название | Что происходит |
+|------|----------|---------------|
+| P1 | Вход и раздевалка | 6 персонажей входят. Андрей Старший — последний. |
+| **P1b** | **Андрей остаётся** | **🆕 Он не уходит. Игра власти с Кирой.** |
+| P2 | Парилка | Жара, пять тел, пять температур. Андрей наверху. |
+| **P2b** | **Андрей vs Кира** | **🆕 Дуэль взглядов. Зеркала. 30 см.** |
+| P3 | Бассейн | Контрасты. Андрей ныряет в ледяную воду. |
+| **P3b** | **Зеркало и лёд** | **🆕 Кубик льда на запястье. Якорь 'вызов'.** |
+| P4 | Комната отдыха | Тишина. Андрей на балконе. Кира ищет его глазами. |
+| P5 | Кульминация | Выбор: Кира, Марина, Андрей, или все. |
+
+**Ветки:**
+- **B1** — Пользователь выбирает Киру (классический путь)
+- **B2** — Пользователь уступает Киру Андрею (зрелость, отсутствие ревности)
+- **B3** — Пользователь выбирает Марину (Кира требует aftercare)
+- **B4** — Группа остаётся вместе (сложнейший путь, aftercare для всех)
 
 ---
 
@@ -70,9 +105,23 @@ voyage-narrative-engine/
 │   ├── kira_v11.json    # Кира v11.0.0
 │   ├── FEMALE_USER_001.json    # Девушка v1.0.0
 │   └── MAKSIM_MODULE_v2.json          # Максим (secure, bridge)
-├── scenarios/                          # Сценарии (JSON)
-│   ├── SCENARIO_SAUNA_QUARTET.json    # Сауна вчетвером (5 фаз)
-│   └── SCENARIO_SHY_BLOOM.json        # Знакомство со скромной девушкой
+├── scenarios/                          # Сценарии (JSON + модульные)
+│   ├── sauna_extended/                  # 🆕 Модульный сценарий: Сауна (6 персонажей, Андрей Старший остаётся)
+│   │   ├── core/INDEX.json             # Манифест: 6 участников, v3.0.0
+│   │   ├── structure/                  # 8 фаз (P1-P5 + P1b,P2b,P3b)
+│   │   ├── scenes/                       # 8 модульных сцен (JSON + MD)
+│   │   ├── branches/                     # 4 ветки: user_kira, user_andrey_kira, user_marina, group
+│   │   ├── characters/                   # Роли, VSCNO, level locks
+│   │   ├── dynamics/                     # Кросс-динамики (Кира-Андрей, Марина-Максим)
+│   │   ├── environment/                  # Визуальные промпты, sensory anchors
+│   │   ├── safety/                       # Hard limits, safety checks, aftercare
+│   │   ├── meta/                         # Changelog, author notes
+│   │   └── scenario_validator.py         # Валидатор модульного сценария
+│   ├── SCENARIO_SAUNA_QUARTET.json      # Сауна вчетвером (legacy, 5 фаз)
+│   ├── SCENARIO_SAUNA_QUINTET.json    # Сауна впятером (legacy)
+│   ├── SCENARIO_SAUNA_DUO_SEDUCTION_v2.md # Сауна: дуэт обольстителей (legacy)
+│   ├── SCENARIO_SAUNA_KIRA_MARINA_v1.md   # Сауна: Кира-Марина (legacy)
+│   └── SCENARIO_SHY_BLOOM.json        # Знакомство со скромной девушкой (legacy)
 ├── state/                              # Текущее состояние сессии
 │   └── STATE_TEMPLATE_v2.json       # Шаблон с vscno, levels, flags
 ├── knowledge_base/                      # Knowledge Base для всех ролей (R1–R6 + Narrative)
@@ -362,6 +411,7 @@ S8 Auditor             → AUDIT REPORT (structure, safety, VSCNO, agency)
 |--------|-----------|
 | **v2.0.0** | Базовая система: модули, сценарии, STATE, ФМДР, TEC |
 | **v2.1.0** | `session_finalize.py`, 4 роли, автоматическая финализация, anatomic_anchor, generation_history |
+| **v3.0.0** | **Модульные сценарии** — `sauna_extended` (8 фаз, 4 ветки, 6 персонажей). Андрей Старший остаётся, взаимодействует с Кирой. Валидатор сценариев. Полная структура: core/structure/scenes/branches/characters/dynamics/environment/safety/meta. |
 | **v2.2.0** | **Knowledge Base pipeline** — R1–R6 KB с аудитом и компрессией, 25 KB-файлов, 12-папочная структура модуля, VS Code промпты, **Runtime Loader** для модульных персонажей |
 
 Семантическое версионирование: `MAJOR.MINOR.PATCH`

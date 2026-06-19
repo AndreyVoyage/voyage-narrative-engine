@@ -1,0 +1,38 @@
+{
+  "meta": {
+    "version": "3.0.0",
+    "author": "Voyage Engine Team",
+    "created_date": "2025-01-20",
+    "based_on": ["SCENARIO_SAUNA_QUARTET", "SCENARIO_SAUNA_QUINTET", "SCENARIO_SAUNA_DUO_SEDUCTION_v2", "SCENARIO_SAUNA_KIRA_MARINA_v1"],
+    "extension_notes": "v3.0.0 adds Andrey Senior as a staying participant. He does not leave immediately — he interacts with Kira, plays with her, creates a tension triangle. This extends the narrative from P1 through P5, adding new phases P1b, P2b, P3b.",
+    "changelog": [
+      {
+        "version": "3.0.0",
+        "date": "2025-01-20",
+        "changes": [
+          "Added Andrey Senior as 6th participant",
+          "Andrey stays through P1-P3 (previously would leave immediately)",
+          "New phase: P1b_ANDREY_PLAYS (dominance play in locker room)",
+          "New phase: P2b_ANDREY_KIRA_DUEL (mirror confrontation in steam room)",
+          "New phase: P3b_ANDREY_KIRA_POOL (ice anchor in pool)",
+          "New branch: B2_USER_ANDREY_KIRA (user yields Kira to Andrey)",
+          "Expanded dynamics: Kira-Andrey duel, Maksim-Andrey shadow, Sergey-Andrey brothers",
+          "Added VSCNO targets for Andrey (A2-A7 system)",
+          "Added safety checks for Andrey's age gap and Kira's anxiety peaks",
+          "Added aftercare protocols for all 6 characters"
+        ]
+      }
+    ],
+    "tested": false,
+    "notes_for_ai": [
+      "Andrey Senior is NOT a rival to user. He is a mirror, a catalyst, a choice.",
+      "If user chooses B2 (yields Kira), this is valid and mature. Andrey accepts with grace, not triumph.",
+      "Andrey's age gap must be handled psychologically, not fetishistically. He is mature, not old.",
+      "Kira's touch of Maksim during Andrey confrontation is self-regulation, not rejection of Andrey.",
+      "Sergey is always mirror. He never initiates, never judges, never leaves until the end.",
+      "Maksim's care is valuable. Never dismiss him as 'just nice guy'. He is the warmth others lack.",
+      "Marina's playfulness is armor. When she stops playing — she's vulnerable. Protect her.",
+      "The sauna is a character. Heat, cold, steam, water — all are agents of change."
+    ]
+  }
+}
