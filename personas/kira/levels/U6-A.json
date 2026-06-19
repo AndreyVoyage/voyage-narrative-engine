@@ -25,5 +25,12 @@
   "cognitive_distortions": [
     "projection"
   ],
-  "ifs_part": "firefighter_bitch"
+  "ifs_part": "firefighter_bitch",
+  "vscno": {
+    "ВЛ": 2,
+    "СТ": 4,
+    "НЖ": 1,
+    "ОГ": 3,
+    "note": "Крах: тревога максимум"
+  }
 }

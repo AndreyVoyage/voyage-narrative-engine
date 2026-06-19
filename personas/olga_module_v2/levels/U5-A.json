@@ -2,7 +2,13 @@
   "level_id": "U5-A",
   "speech_profile": {},
   "dynamic_visuals": "",
-  "vscno": {},
+  "vscno": {
+    "ВЛ": 3,
+    "СТ": 2,
+    "НЖ": 2,
+    "ОГ": 3,
+    "note": "Пик: смешанные эмоции"
+  },
   "internal_state": {},
   "ad_availability": {}
 }

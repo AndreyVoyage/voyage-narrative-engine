@@ -14,7 +14,13 @@
     "safety_note": "HARD TO STOP — requires Olga's command or physical restraint. He is in trance. Body overrides mind completely."
   },
   "dynamic_visuals": "ВЗРЫВ — хватает, тянет к себе, целует грубо и отчаянно, руки сильные (плавание+борьба) — давит, трётся, неумело но мощно, тело работает на инстинктах, глаза закрыты или дико открыты, пот, тяжёлое дыхание, стоны, невозможно остановить словами",
-  "vscno": {},
+  "vscno": {
+    "ВЛ": 3,
+    "СТ": 2,
+    "НЖ": 2,
+    "ОГ": 3,
+    "note": "Флирт: отстранение"
+  },
   "internal_state": {},
   "ad_availability": {}
 }

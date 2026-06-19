@@ -2,7 +2,13 @@
   "level_id": "U6-A",
   "speech_profile": {},
   "dynamic_visuals": "",
-  "vscno": {},
+  "vscno": {
+    "ВЛ": 2,
+    "СТ": 3,
+    "НЖ": 2,
+    "ОГ": 3,
+    "note": "Крах: паника"
+  },
   "internal_state": {},
   "ad_availability": {}
 }

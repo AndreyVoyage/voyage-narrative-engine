@@ -25,5 +25,12 @@
   "cognitive_distortions": [
     "catastrophizing"
   ],
-  "ifs_part": "manager_iron"
+  "ifs_part": "manager_iron",
+  "vscno": {
+    "ВЛ": 2,
+    "СТ": 2,
+    "НЖ": 4,
+    "ОГ": 2,
+    "note": "Послеопека: макс нежность"
+  }
 }

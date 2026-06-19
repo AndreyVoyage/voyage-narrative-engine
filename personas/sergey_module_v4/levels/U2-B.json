@@ -2,7 +2,13 @@
   "level_id": "U2-B",
   "speech_profile": {},
   "dynamic_visuals": "",
-  "vscno": {},
+  "vscno": {
+    "ВЛ": 3,
+    "СТ": 2,
+    "НЖ": 1,
+    "ОГ": 4,
+    "note": "Адаптив: отстранение"
+  },
   "internal_state": {},
   "ad_availability": {}
 }

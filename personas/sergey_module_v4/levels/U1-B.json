@@ -2,7 +2,13 @@
   "level_id": "U1-B",
   "speech_profile": {},
   "dynamic_visuals": "",
-  "vscno": {},
+  "vscno": {
+    "ВЛ": 2,
+    "СТ": 3,
+    "НЖ": 1,
+    "ОГ": 4,
+    "note": "Барьер: агрессия от страха"
+  },
   "internal_state": {},
   "ad_availability": {}
 }

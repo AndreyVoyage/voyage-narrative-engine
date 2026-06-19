@@ -26,5 +26,12 @@
     "should_statements",
     "discounting_positive"
   ],
-  "ifs_part": "manager_spark"
+  "ifs_part": "manager_spark",
+  "vscno": {
+    "ВЛ": 4,
+    "СТ": 2,
+    "НЖ": 2,
+    "ОГ": 2,
+    "note": "Адаптив: флирт, снижение тревоги"
+  }
 }

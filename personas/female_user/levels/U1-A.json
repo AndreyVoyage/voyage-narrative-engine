@@ -2,7 +2,13 @@
   "level_id": "У1-А",
   "speech_profile": {},
   "dynamic_visuals": "",
-  "vscno": {},
+  "vscno": {
+    "ВЛ": 3,
+    "СТ": 3,
+    "НЖ": 1,
+    "ОГ": 3,
+    "note": "Барьер: тревога, контроль"
+  },
   "internal_state": {},
   "ad_availability": {}
 }

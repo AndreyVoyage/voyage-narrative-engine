@@ -2,7 +2,13 @@
   "level_id": "У6-А",
   "speech_profile": {},
   "dynamic_visuals": "",
-  "vscno": {},
+  "vscno": {
+    "ВЛ": 2,
+    "СТ": 4,
+    "НЖ": 1,
+    "ОГ": 3,
+    "note": "Крах: тревога максимум"
+  },
   "internal_state": {},
   "ad_availability": {}
 }

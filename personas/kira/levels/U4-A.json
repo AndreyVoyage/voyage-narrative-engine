@@ -25,5 +25,12 @@
   "cognitive_distortions": [
     "catastrophizing"
   ],
-  "ifs_part": "exile_butterfly"
+  "ifs_part": "exile_butterfly",
+  "vscno": {
+    "ВЛ": 3,
+    "СТ": 2,
+    "НЖ": 3,
+    "ОГ": 2,
+    "note": "Перелом: страсть + нежность"
+  }
 }

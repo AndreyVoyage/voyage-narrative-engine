@@ -23,5 +23,12 @@
     "altruism"
   ],
   "cognitive_distortions": [],
-  "ifs_part": "self_integrated"
+  "ifs_part": "self_integrated",
+  "vscno": {
+    "ВЛ": 2,
+    "СТ": 1,
+    "НЖ": 4,
+    "ОГ": 3,
+    "note": "Опека: нежность"
+  }
 }

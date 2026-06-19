@@ -2,7 +2,13 @@
   "level_id": "U6-B",
   "speech_profile": {},
   "dynamic_visuals": "",
-  "vscno": {},
+  "vscno": {
+    "ВЛ": 1,
+    "СТ": 3,
+    "НЖ": 2,
+    "ОГ": 4,
+    "note": "Диссоциация: отстранение"
+  },
   "internal_state": {},
   "ad_availability": {}
 }

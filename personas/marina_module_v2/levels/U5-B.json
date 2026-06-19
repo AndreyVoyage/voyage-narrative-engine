@@ -2,7 +2,13 @@
   "level_id": "U5-B",
   "speech_profile": {},
   "dynamic_visuals": "",
-  "vscno": {},
+  "vscno": {
+    "ВЛ": 2,
+    "СТ": 3,
+    "НЖ": 2,
+    "ОГ": 3,
+    "note": "Пик: агрессия от стресса"
+  },
   "internal_state": {},
   "ad_availability": {}
 }

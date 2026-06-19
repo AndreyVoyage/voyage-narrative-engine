@@ -26,5 +26,12 @@
     "emotional_reasoning",
     "should_statements"
   ],
-  "ifs_part": "exile_butterfly"
+  "ifs_part": "exile_butterfly",
+  "vscno": {
+    "ВЛ": 4,
+    "СТ": 2,
+    "НЖ": 2,
+    "ОГ": 2,
+    "note": "Флирт: активное влечение"
+  }
 }

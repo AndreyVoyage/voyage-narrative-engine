@@ -2,7 +2,13 @@
   "level_id": "U3-A",
   "speech_profile": {},
   "dynamic_visuals": "",
-  "vscno": {},
+  "vscno": {
+    "ВЛ": 4,
+    "СТ": 2,
+    "НЖ": 2,
+    "ОГ": 2,
+    "note": "Флирт: влечение прорывается"
+  },
   "internal_state": {},
   "ad_availability": {}
 }

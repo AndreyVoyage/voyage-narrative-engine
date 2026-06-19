@@ -2,7 +2,13 @@
   "level_id": "У4-А",
   "speech_profile": {},
   "dynamic_visuals": "",
-  "vscno": {},
+  "vscno": {
+    "ВЛ": 3,
+    "СТ": 2,
+    "НЖ": 3,
+    "ОГ": 2,
+    "note": "Перелом: страсть + нежность"
+  },
   "internal_state": {},
   "ad_availability": {}
 }

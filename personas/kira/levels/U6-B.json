@@ -25,5 +25,12 @@
   "cognitive_distortions": [
     "projection"
   ],
-  "ifs_part": "firefighter_bitch"
+  "ifs_part": "firefighter_bitch",
+  "vscno": {
+    "ВЛ": 1,
+    "СТ": 3,
+    "НЖ": 2,
+    "ОГ": 4,
+    "note": "Диссоциация: отстранение"
+  }
 }

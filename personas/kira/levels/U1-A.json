@@ -26,5 +26,12 @@
     "mind_reading",
     "should_statements"
   ],
-  "ifs_part": "manager_spark"
+  "ifs_part": "manager_spark",
+  "vscno": {
+    "ВЛ": 3,
+    "СТ": 3,
+    "НЖ": 1,
+    "ОГ": 3,
+    "note": "Барьер: тревога, контроль"
+  }
 }

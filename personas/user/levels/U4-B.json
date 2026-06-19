@@ -2,7 +2,13 @@
   "level_id": "У4-Б",
   "speech_profile": {},
   "dynamic_visuals": "",
-  "vscno": {},
+  "vscno": {
+    "ВЛ": 2,
+    "СТ": 2,
+    "НЖ": 4,
+    "ОГ": 2,
+    "note": "Послеопека: макс нежность"
+  },
   "internal_state": {},
   "ad_availability": {}
 }

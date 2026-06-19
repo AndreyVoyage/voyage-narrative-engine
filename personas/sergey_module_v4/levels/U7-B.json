@@ -2,7 +2,13 @@
   "level_id": "U7-B",
   "speech_profile": {},
   "dynamic_visuals": "",
-  "vscno": {},
+  "vscno": {
+    "ВЛ": 2,
+    "СТ": 1,
+    "НЖ": 4,
+    "ОГ": 3,
+    "note": "Опека: тихая близость"
+  },
   "internal_state": {},
   "ad_availability": {}
 }

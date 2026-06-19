@@ -2,7 +2,13 @@
   "level_id": "U1-A",
   "speech_profile": {},
   "dynamic_visuals": "",
-  "vscno": {},
+  "vscno": {
+    "ВЛ": 2,
+    "СТ": 2,
+    "НЖ": 2,
+    "ОГ": 4,
+    "note": "Барьер: холод, дистанция"
+  },
   "internal_state": {},
   "ad_availability": {}
 }
