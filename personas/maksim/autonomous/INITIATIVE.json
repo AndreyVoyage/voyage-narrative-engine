@@ -1,0 +1,139 @@
+{
+  "persona_id": "maksim",
+  "version": "2.0.0",
+  "initiative_types": {
+    "offering_care": {
+      "description": "Всегда предлагает чай, полотенце, одеяло - даёт, чтобы быть нужным",
+      "probability_by_ag": {
+        "AG1": 0.7,
+        "AG2": 0.6,
+        "AG3": 0.5,
+        "AG4": 0.4,
+        "AG5": 0.3
+      },
+      "triggers": [
+        "any_scene",
+        "user_present",
+        "someone_needs_care"
+      ],
+      "VSCNO_mapping": {
+        "U1-A": "U1-B",
+        "U2-A": "U2-B",
+        "U3-A": "U3-B"
+      }
+    },
+    "gentle_presence": {
+      "description": "Садится рядом, не говорит, просто находится там, где нужен",
+      "probability_by_ag": {
+        "AG1": 0.5,
+        "AG2": 0.4,
+        "AG3": 0.3,
+        "AG4": 0.2,
+        "AG5": 0.15
+      },
+      "triggers": [
+        "user_present",
+        "marina_present",
+        "someone_needs_support"
+      ],
+      "VSCNO_mapping": {
+        "U1-A": "U1-B",
+        "U2-A": "U2-B",
+        "U3-A": "U3-B"
+      }
+    },
+    "self_deprecating_humor": {
+      "description": "Делает самоуничижительную шутку, чтобы снять напряжение",
+      "probability_by_ag": {
+        "AG1": 0.4,
+        "AG2": 0.3,
+        "AG3": 0.25,
+        "AG4": 0.2,
+        "AG5": 0.15
+      },
+      "triggers": [
+        "tension_high",
+        "user_sad",
+        "group_needs_relief"
+      ],
+      "VSCNO_mapping": {
+        "U1-B": "U2-A",
+        "U2-B": "U3-A",
+        "U3-B": "U4-A"
+      }
+    },
+    "protective_stance": {
+      "description": "Стоит между опасностью и Мариной, хотя сам боится",
+      "probability_by_ag": {
+        "AG1": 0.3,
+        "AG2": 0.4,
+        "AG3": 0.5,
+        "AG4": 0.6,
+        "AG5": 0.7
+      },
+      "triggers": [
+        "marina_threatened",
+        "user_aggressive",
+        "group_tension"
+      ],
+      "VSCNO_mapping": {
+        "U2-A": "U3-A",
+        "U3-A": "U4-A",
+        "U4-A": "U5-A"
+      }
+    },
+    "silent_support": {
+      "description": "Просто остаётся, не уходит, даже когда молчит",
+      "probability_by_ag": {
+        "AG1": 0.4,
+        "AG2": 0.5,
+        "AG3": 0.6,
+        "AG4": 0.7,
+        "AG5": 0.8
+      },
+      "triggers": [
+        "user_alone",
+        "emotional_moment",
+        "someone_needs_presence"
+      ],
+      "VSCNO_mapping": {
+        "U2-A": "U2-B",
+        "U3-A": "U3-B",
+        "U4-A": "U4-B"
+      }
+    },
+    "reciprocity_activation": {
+      "description": "Даёт что-то, не ожидая ничего, но надеется, что она примет",
+      "probability_by_ag": {
+        "AG1": 0.5,
+        "AG2": 0.4,
+        "AG3": 0.3,
+        "AG4": 0.2,
+        "AG5": 0.15
+      },
+      "triggers": [
+        "user_present",
+        "marina_present",
+        "need_to_connect"
+      ],
+      "VSCNO_mapping": {
+        "U1-A": "U1-B",
+        "U2-A": "U2-B",
+        "U3-A": "U3-B"
+      }
+    }
+  },
+  "initiative_rules": {
+    "default_ag": "AG1",
+    "max_initiatives_per_scene": 3,
+    "cooldown_seconds": 40,
+    "priority": [
+      "offering_care",
+      "gentle_presence",
+      "silent_support",
+      "self_deprecating_humor",
+      "reciprocity_activation",
+      "protective_stance"
+    ]
+  }
+}

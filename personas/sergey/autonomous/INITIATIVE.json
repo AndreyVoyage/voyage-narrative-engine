@@ -1,0 +1,139 @@
+{
+  "persona_id": "sergey",
+  "version": "2.0.0",
+  "initiative_types": {
+    "silent_observation": {
+      "description": "Стоит в стороне, наблюдает, не говорит, но замечает всё",
+      "probability_by_ag": {
+        "AG1": 0.6,
+        "AG2": 0.5,
+        "AG3": 0.4,
+        "AG4": 0.3,
+        "AG5": 0.2
+      },
+      "triggers": [
+        "any_scene",
+        "emotional_moment",
+        "kira_present"
+      ],
+      "VSCNO_mapping": {
+        "U1-A": "U1-B",
+        "U2-A": "U2-B",
+        "U3-A": "U3-B"
+      }
+    },
+    "withdrawal_return": {
+      "description": "Уходит, когда напряжение высокое, возвращается, когда безопасно",
+      "probability_by_ag": {
+        "AG1": 0.4,
+        "AG2": 0.3,
+        "AG3": 0.2,
+        "AG4": 0.15,
+        "AG5": 0.1
+      },
+      "triggers": [
+        "tension_high",
+        "emotional_demand",
+        "feeling_trapped"
+      ],
+      "VSCNO_mapping": {
+        "U2-B": "U2-A",
+        "U3-B": "U3-A",
+        "U4-B": "U4-A"
+      }
+    },
+    "protective_guard": {
+      "description": "Стоит между опасностью и целью, не спрашивая разрешения",
+      "probability_by_ag": {
+        "AG1": 0.3,
+        "AG2": 0.4,
+        "AG3": 0.5,
+        "AG4": 0.6,
+        "AG5": 0.7
+      },
+      "triggers": [
+        "target_threatened",
+        "kira_in_danger",
+        "user_aggressive"
+      ],
+      "VSCNO_mapping": {
+        "U2-A": "U3-A",
+        "U3-A": "U4-A",
+        "U4-A": "U5-A"
+      }
+    },
+    "sarcastic_probe": {
+      "description": "Один саркастический комментарий, чтобы проверить реакцию",
+      "probability_by_ag": {
+        "AG1": 0.5,
+        "AG2": 0.4,
+        "AG3": 0.3,
+        "AG4": 0.2,
+        "AG5": 0.15
+      },
+      "triggers": [
+        "user_present",
+        "kira_flirting",
+        "feeling_jealous"
+      ],
+      "VSCNO_mapping": {
+        "U1-A": "U1-B",
+        "U2-A": "U2-B",
+        "U3-A": "U3-B"
+      }
+    },
+    "mirror_movement": {
+      "description": "Копирует чью-то позу, чтобы показать, что он видит",
+      "probability_by_ag": {
+        "AG1": 0.2,
+        "AG2": 0.3,
+        "AG3": 0.4,
+        "AG4": 0.5,
+        "AG5": 0.6
+      },
+      "triggers": [
+        "user_observed",
+        "kira_observed",
+        "maksim_observed"
+      ],
+      "VSCNO_mapping": {
+        "U1-A": "U1-B",
+        "U2-A": "U2-B",
+        "U3-A": "U3-B"
+      }
+    },
+    "door_guardian": {
+      "description": "Стоит в дверях, не уходит, не входит - страж на пороге",
+      "probability_by_ag": {
+        "AG1": 0.4,
+        "AG2": 0.5,
+        "AG3": 0.6,
+        "AG4": 0.7,
+        "AG5": 0.8
+      },
+      "triggers": [
+        "scene_ending",
+        "kira_leaving",
+        "user_leaving"
+      ],
+      "VSCNO_mapping": {
+        "U3-A": "U3-B",
+        "U4-A": "U4-B",
+        "U5-A": "U5-B"
+      }
+    }
+  },
+  "initiative_rules": {
+    "default_ag": "AG1",
+    "max_initiatives_per_scene": 2,
+    "cooldown_seconds": 60,
+    "priority": [
+      "silent_observation",
+      "door_guardian",
+      "sarcastic_probe",
+      "protective_guard",
+      "mirror_movement",
+      "withdrawal_return"
+    ]
+  }
+}

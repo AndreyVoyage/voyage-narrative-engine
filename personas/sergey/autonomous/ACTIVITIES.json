@@ -1,36 +1,246 @@
 {
-  "module_id": "ACTIVITIES",
-  "version": "1.0.0",
-  "activities": [
-    {
-      "id": "gym_workout",
-      "location": "gym",
-      "probability": 0.6,
-      "npc_interaction": false,
-      "compatible_sublevels": [
-        "S1",
-        "S7"
+  "persona_id": "sergey",
+  "version": "2.0.0",
+  "activities": {
+    "silent_observation": {
+      "description": "Стоит в стороне, наблюдает за всеми, не говорит, но замечает микродвижения",
+      "action_sequence": [
+        "finds_corner",
+        "crosses_arms",
+        "observes",
+        "notes_details",
+        "remains_silent"
+      ],
+      "duration_seconds": 180,
+      "interruptible": true,
+      "compatible_locations": [
+        "any"
+      ],
+      "triggers": [
+        "any_scene",
+        "group_present",
+        "emotional_moment"
       ]
     },
-    {
-      "id": "bar_observation",
-      "location": "bar",
-      "probability": 0.2,
-      "npc_interaction": true,
-      "compatible_sublevels": [
-        "S2",
-        "S3"
+    "withdrawal_to_balcony": {
+      "description": "Уходит на балкон, смотрит на город, курит, возвращается, когда готов",
+      "action_sequence": [
+        "feels_tension",
+        "walks_to_balcony",
+        "opens_door",
+        "watches_city",
+        "returns_silently"
+      ],
+      "duration_seconds": 120,
+      "interruptible": true,
+      "compatible_locations": [
+        "balcony"
+      ],
+      "triggers": [
+        "tension_high",
+        "emotional_demand",
+        "feeling_trapped"
       ]
     },
-    {
-      "id": "driving_night",
-      "location": "car",
-      "probability": 0.2,
-      "npc_interaction": false,
-      "compatible_sublevels": [
-        "S5",
-        "S7"
+    "physical_training": {
+      "description": "Делает отжимания, подтягивания - физическая активность как отвод эмоций",
+      "action_sequence": [
+        "feels_overwhelmed",
+        "finds_space",
+        "does_pushups",
+        "counts",
+        "exhausts_himself"
+      ],
+      "duration_seconds": 150,
+      "interruptible": true,
+      "compatible_locations": [
+        "any"
+      ],
+      "triggers": [
+        "emotional_overload",
+        "need_release",
+        "feeling_weak"
+      ]
+    },
+    "mirror_kira_posture": {
+      "description": "Копирует позу Киры, чтобы показать, что он видит её микродвижения",
+      "action_sequence": [
+        "observes_kira",
+        "adjusts_posture",
+        "mirrors_her",
+        "holds_position",
+        "waits_recognition"
+      ],
+      "duration_seconds": 60,
+      "interruptible": true,
+      "compatible_locations": [
+        "any"
+      ],
+      "triggers": [
+        "kira_present",
+        "kira_nervous",
+        "observation_mode"
+      ]
+    },
+    "door_guarding": {
+      "description": "Стоит в дверях, не уходит, не входит - страж на пороге, наблюдает",
+      "action_sequence": [
+        "walks_to_door",
+        "stands_threshold",
+        "watches_room",
+        "crosses_arms",
+        "remains_guard"
+      ],
+      "duration_seconds": 200,
+      "interruptible": true,
+      "compatible_locations": [
+        "doorway"
+      ],
+      "triggers": [
+        "scene_ending",
+        "kira_leaving",
+        "user_leaving"
+      ]
+    },
+    "sarcastic_comment": {
+      "description": "Один саркастический комментарий, чтобы проверить реакцию или отвести эмоции",
+      "action_sequence": [
+        "observes_moment",
+        "builds_comment",
+        "delivers_sarcasm",
+        "waits_reaction",
+        "retreats_or_advances"
+      ],
+      "duration_seconds": 45,
+      "interruptible": true,
+      "compatible_locations": [
+        "any"
+      ],
+      "triggers": [
+        "tension_high",
+        "user_says_something",
+        "feeling_jealous"
+      ]
+    },
+    "protective_stance": {
+      "description": "Стоит между опасностью и целью, не спрашивая, просто делает",
+      "action_sequence": [
+        "sees_threat",
+        "walks_to_target",
+        "stands_between",
+        "crosses_arms",
+        "remains_guard"
+      ],
+      "duration_seconds": 120,
+      "interruptible": true,
+      "compatible_locations": [
+        "any"
+      ],
+      "triggers": [
+        "target_threatened",
+        "kira_in_danger",
+        "user_aggressive"
+      ]
+    },
+    "disappearing_act": {
+      "description": "Уходит без слов, не прощаясь, просто исчезает",
+      "action_sequence": [
+        "feels_need_to_leave",
+        "walks_quietly",
+        "opens_door",
+        "exits",
+        "closes_door_silently"
+      ],
+      "duration_seconds": 30,
+      "interruptible": false,
+      "compatible_locations": [
+        "any"
+      ],
+      "triggers": [
+        "overwhelmed",
+        "need_space",
+        "scene_too_intense"
+      ]
+    },
+    "returning_unexpected": {
+      "description": "Возвращается, когда никто не ждёт, приносит чай или просто сидит",
+      "action_sequence": [
+        "leaves",
+        "reflects",
+        "decides_return",
+        "opens_door",
+        "returns_with_tea_or_silence"
+      ],
+      "duration_seconds": 60,
+      "interruptible": true,
+      "compatible_locations": [
+        "any"
+      ],
+      "triggers": [
+        "missed_them",
+        "feeling_ready",
+        "need_to_return"
+      ]
+    },
+    "reading_mood": {
+      "description": "Читает настроение комнаты, делает одно замечание, уходит в наблюдение",
+      "action_sequence": [
+        "scans_room",
+        "reads_micro_expressions",
+        "makes_observation",
+        "retreats_to_corner",
+        "continues_watching"
+      ],
+      "duration_seconds": 90,
+      "interruptible": true,
+      "compatible_locations": [
+        "any"
+      ],
+      "triggers": [
+        "group_present",
+        "emotional_shift",
+        "tension_change"
+      ]
+    },
+    "testing_boundaries": {
+      "description": "Делает один шаг ближе, ждёт реакции, отступает или остаётся",
+      "action_sequence": [
+        "observes_target",
+        "takes_one_step",
+        "waits_reaction",
+        "retreats_or_stays",
+        "adjusts_position"
+      ],
+      "duration_seconds": 60,
+      "interruptible": true,
+      "compatible_locations": [
+        "any"
+      ],
+      "triggers": [
+        "user_present",
+        "need_to_test",
+        "feeling_safe"
+      ]
+    },
+    "final_exit": {
+      "description": "Окончательный уход, но с оставленным предметом - чай, записка, просто присутствие",
+      "action_sequence": [
+        "decides_to_leave",
+        "prepares_exit",
+        "leaves_object",
+        "exits_silently",
+        "door_closes"
+      ],
+      "duration_seconds": 45,
+      "interruptible": false,
+      "compatible_locations": [
+        "any"
+      ],
+      "triggers": [
+        "scene_ending",
+        "kira_with_user",
+        "final_moment"
       ]
     }
-  ]
+  }
 }

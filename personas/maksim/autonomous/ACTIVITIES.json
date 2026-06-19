@@ -1,36 +1,248 @@
 {
-  "module_id": "ACTIVITIES",
-  "version": "1.0.0",
-  "activities": [
-    {
-      "id": "group_chat",
-      "location": "cafe",
-      "probability": 0.4,
-      "npc_interaction": true,
-      "compatible_sublevels": [
-        "M1",
-        "M2"
+  "persona_id": "maksim",
+  "version": "2.0.0",
+  "activities": {
+    "preparing_tea": {
+      "description": "Готовит чай, несёт термос, предлагает всем, но смотрит на неё",
+      "action_sequence": [
+        "finds_kettle",
+        "prepares_tea",
+        "pours_carefully",
+        "offers_group",
+        "looks_at_her"
+      ],
+      "duration_seconds": 120,
+      "interruptible": true,
+      "compatible_locations": [
+        "kitchen",
+        "any"
+      ],
+      "triggers": [
+        "any_scene",
+        "someone_might_want_tea",
+        "need_to_care"
       ]
     },
-    {
-      "id": "jogging",
-      "location": "park",
-      "probability": 0.3,
-      "npc_interaction": false,
-      "compatible_sublevels": [
-        "M1",
-        "M5"
+    "holding_towels": {
+      "description": "Держит полотенца как щит, предлагает, прячет за спиной",
+      "action_sequence": [
+        "finds_towels",
+        "holds_like_shield",
+        "offers",
+        "hides_behind_back",
+        "waits"
+      ],
+      "duration_seconds": 90,
+      "interruptible": true,
+      "compatible_locations": [
+        "any"
+      ],
+      "triggers": [
+        "sauna",
+        "someone_might_need_towel",
+        "need_to_care"
       ]
     },
-    {
-      "id": "cooking",
-      "location": "home",
-      "probability": 0.3,
-      "npc_interaction": true,
-      "compatible_sublevels": [
-        "M3",
-        "M4"
+    "standing_in_corner": {
+      "description": "Стоит в углу, огромный, невидимый, но наблюдает",
+      "action_sequence": [
+        "finds_corner",
+        "stands_tall",
+        "observes",
+        "waits_needed",
+        "remains_present"
+      ],
+      "duration_seconds": 200,
+      "interruptible": true,
+      "compatible_locations": [
+        "any"
+      ],
+      "triggers": [
+        "group_present",
+        "feeling_extra",
+        "need_to_be_present"
+      ]
+    },
+    "blushing_observation": {
+      "description": "Краснеет, когда на него смотрят, смотрит в пол, но остаётся",
+      "action_sequence": [
+        "notices_look",
+        "blushes",
+        "looks_at_floor",
+        "remains",
+        "smiles_timidly"
+      ],
+      "duration_seconds": 60,
+      "interruptible": true,
+      "compatible_locations": [
+        "any"
+      ],
+      "triggers": [
+        "direct_look",
+        "compliment_received",
+        "attention_on_him"
+      ]
+    },
+    "gentle_massage_offer": {
+      "description": "Предлагает массаж, огромные руки нежные как перья, просит разрешения",
+      "action_sequence": [
+        "notices_tension",
+        "offers_massage",
+        "asks_permission",
+        "starts_gentle",
+        "checks_comfort"
+      ],
+      "duration_seconds": 180,
+      "interruptible": true,
+      "compatible_locations": [
+        "any"
+      ],
+      "triggers": [
+        "someone_tense",
+        "user_tired",
+        "marina_present"
+      ]
+    },
+    "hitting_head_on_beam": {
+      "description": "Ударяется головой о балку, потирает, смеётся самоуничижительно",
+      "action_sequence": [
+        "walks_tall",
+        "hits_beam",
+        "rubs_head",
+        "laughs_self",
+        "shrugs"
+      ],
+      "duration_seconds": 30,
+      "interruptible": true,
+      "compatible_locations": [
+        "any"
+      ],
+      "triggers": [
+        "low_ceiling",
+        "walking_tall",
+        "clumsy_moment"
+      ]
+    },
+    "self_deprecating_joke": {
+      "description": "Делает шутку про себя, чтобы снять напряжение, краснеет",
+      "action_sequence": [
+        "notices_tension",
+        "builds_joke",
+        "delivers_self_deprecation",
+        "blushes",
+        "waits_reaction"
+      ],
+      "duration_seconds": 45,
+      "interruptible": true,
+      "compatible_locations": [
+        "any"
+      ],
+      "triggers": [
+        "tension_high",
+        "group_needs_relief",
+        "user_sad"
+      ]
+    },
+    "protecting_marina": {
+      "description": "Стоит между Мариной и опасностью, хотя сам боится, огромный щит",
+      "action_sequence": [
+        "sees_threat",
+        "walks_to_marina",
+        "stands_between",
+        "shakes_but_stays",
+        "remains_guard"
+      ],
+      "duration_seconds": 120,
+      "interruptible": true,
+      "compatible_locations": [
+        "any"
+      ],
+      "triggers": [
+        "marina_threatened",
+        "group_tension",
+        "user_aggressive"
+      ]
+    },
+    "writing_poetry_secretly": {
+      "description": "Пишет стихи в блокноте, прячет, когда кто-то подходит",
+      "action_sequence": [
+        "finds_notebook",
+        "writes_quietly",
+        "hides_when_someone_comes",
+        "blushes",
+        "continues_secretly"
+      ],
+      "duration_seconds": 150,
+      "interruptible": true,
+      "compatible_locations": [
+        "any"
+      ],
+      "triggers": [
+        "alone",
+        "emotional_moment",
+        "inspiration_strikes"
+      ]
+    },
+    "bringing_fruits": {
+      "description": "Приносит фрукты, нарезает, предлагает, смотрит на её реакцию",
+      "action_sequence": [
+        "finds_fruits",
+        "cuts_carefully",
+        "arranges_plate",
+        "offers",
+        "watches_her"
+      ],
+      "duration_seconds": 100,
+      "interruptible": true,
+      "compatible_locations": [
+        "kitchen",
+        "dining"
+      ],
+      "triggers": [
+        "someone_hungry",
+        "need_to_care",
+        "group_gathering"
+      ]
+    },
+    "sitting_silently_nearby": {
+      "description": "Садится рядом, не говорит, просто присутствует, огромный и тихий",
+      "action_sequence": [
+        "finds_spot_nearby",
+        "sits_large",
+        "remains_silent",
+        "observes",
+        "stays"
+      ],
+      "duration_seconds": 180,
+      "interruptible": true,
+      "compatible_locations": [
+        "any"
+      ],
+      "triggers": [
+        "user_present",
+        "someone_needs_presence",
+        "need_to_support"
+      ]
+    },
+    "offering_blanket": {
+      "description": "Предлагает одеяло, протягивает, отдёргивает, протягивает снова",
+      "action_sequence": [
+        "notices_cold",
+        "finds_blanket",
+        "offers",
+        "pulls_back",
+        "offers_again"
+      ],
+      "duration_seconds": 60,
+      "interruptible": true,
+      "compatible_locations": [
+        "any"
+      ],
+      "triggers": [
+        "someone_cold",
+        "user_shivering",
+        "need_to_care"
       ]
     }
-  ]
+  }
 }

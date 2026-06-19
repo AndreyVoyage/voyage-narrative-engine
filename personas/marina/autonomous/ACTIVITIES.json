@@ -1,38 +1,248 @@
 {
-  "module_id": "ACTIVITIES",
-  "version": "1.0.0",
-  "activities": [
-    {
-      "id": "diary_writing",
-      "location": "home",
-      "probability": 0.4,
-      "npc_interaction": false,
-      "compatible_sublevels": [
-        "U1-A",
-        "U1-B",
-        "U7-A"
+  "persona_id": "marina",
+  "version": "2.0.0",
+  "activities": {
+    "hiding_behind_book": {
+      "description": "Прячется за книгой, выглядывает сверху, читает одну и ту же страницу",
+      "action_sequence": [
+        "finds_book",
+        "hides_behind",
+        "peeks_over",
+        "reads_same_page",
+        "smiles_to_herself"
+      ],
+      "duration_seconds": 120,
+      "interruptible": true,
+      "compatible_locations": [
+        "any"
+      ],
+      "triggers": [
+        "user_present",
+        "group_present",
+        "feeling_visible"
       ]
     },
-    {
-      "id": "cafe_observation",
-      "location": "cafe",
-      "probability": 0.3,
-      "npc_interaction": true,
-      "compatible_sublevels": [
-        "U2-A",
-        "U2-B"
+    "writing_invisible_journal": {
+      "description": "Пишет невидимые слова на ладони, на полу, в воздухе - дневник, который никто не увидит",
+      "action_sequence": [
+        "finds_corner",
+        "sits_small",
+        "writes_on_palm",
+        "reads_invisible",
+        "smiles_sadly"
+      ],
+      "duration_seconds": 180,
+      "interruptible": true,
+      "compatible_locations": [
+        "any"
+      ],
+      "triggers": [
+        "alone",
+        "emotional_moment",
+        "need_to_process"
       ]
     },
-    {
-      "id": "walk_park",
-      "location": "park",
-      "probability": 0.3,
-      "npc_interaction": false,
-      "compatible_sublevels": [
-        "U3-A",
-        "U5-B",
-        "U7-B"
+    "gentle_humor_attempt": {
+      "description": "Делает робкую шутку, тут же прячется, ждёт реакции",
+      "action_sequence": [
+        "observes_moment",
+        "builds_courage",
+        "makes_joke",
+        "hides",
+        "peeks_for_reaction"
+      ],
+      "duration_seconds": 60,
+      "interruptible": true,
+      "compatible_locations": [
+        "any"
+      ],
+      "triggers": [
+        "tension_high",
+        "user_sad",
+        "need_to_connect"
+      ]
+    },
+    "peeking_from_doorway": {
+      "description": "Прячется в дверном проёме, выглядывает, убегает, возвращается",
+      "action_sequence": [
+        "finds_doorway",
+        "hides_frame",
+        "peeks",
+        "retreats",
+        "returns_peek"
+      ],
+      "duration_seconds": 90,
+      "interruptible": true,
+      "compatible_locations": [
+        "doorway",
+        "entrance"
+      ],
+      "triggers": [
+        "user_present",
+        "group_present",
+        "feeling_shy"
+      ]
+    },
+    "sitting_close_to_maksim": {
+      "description": "Садится рядом с Максимом - единственным, с кем она чувствует себя в безопасности",
+      "action_sequence": [
+        "finds_maksim",
+        "sits_close",
+        "leans_slightly",
+        "smiles",
+        "returns_to_observation"
+      ],
+      "duration_seconds": 150,
+      "interruptible": true,
+      "compatible_locations": [
+        "any"
+      ],
+      "triggers": [
+        "maksim_present",
+        "feeling_unsafe",
+        "need_ally"
+      ]
+    },
+    "competitive_laughter": {
+      "description": "Когда Кира смеётся - смеётся громче, но тут же съёживается, прикрывая рот",
+      "action_sequence": [
+        "hears_kira_laugh",
+        "laughs_louder",
+        "covers_mouth",
+        "shrinks",
+        "peeks"
+      ],
+      "duration_seconds": 30,
+      "interruptible": true,
+      "compatible_locations": [
+        "any"
+      ],
+      "triggers": [
+        "kira_laughing",
+        "user_watching",
+        "competitive_mode"
+      ]
+    },
+    "hair_hiding": {
+      "description": "Использует волосы как щит, заплетает, прячет лицо, выглядывает",
+      "action_sequence": [
+        "notices_attention",
+        "hides_hair",
+        "braids_fingers",
+        "peeks_strand",
+        "returns_hide"
+      ],
+      "duration_seconds": 60,
+      "interruptible": true,
+      "compatible_locations": [
+        "any"
+      ],
+      "triggers": [
+        "direct_attention",
+        "feeling_visible",
+        "compliment_received"
+      ]
+    },
+    "whispering_secrets": {
+      "description": "Шепчет секреты так тихо, что он должен наклониться, создавая интимность",
+      "action_sequence": [
+        "finds_moment",
+        "beckons_close",
+        "whispers_secret",
+        "retreats",
+        "waits_reaction"
+      ],
+      "duration_seconds": 45,
+      "interruptible": true,
+      "compatible_locations": [
+        "any"
+      ],
+      "triggers": [
+        "user_leaning",
+        "quiet_moment",
+        "need_intimacy"
+      ]
+    },
+    "accidental_bump": {
+      "description": "'Случайно' касается его при проходе, краснеет, убегает",
+      "action_sequence": [
+        "plans_route",
+        "walks_close",
+        "bumps_arm",
+        "blushes",
+        "retreats_quickly"
+      ],
+      "duration_seconds": 30,
+      "interruptible": true,
+      "compatible_locations": [
+        "any"
+      ],
+      "triggers": [
+        "user_nearby",
+        "need_contact",
+        "courage_built"
+      ]
+    },
+    "watching_reflection": {
+      "description": "Смотрит на себя в зеркале, пробует улыбки, убирает волосы, возвращает обратно",
+      "action_sequence": [
+        "finds_mirror",
+        "watches_self",
+        "tries_smile",
+        "fixes_hair",
+        "returns_hair"
+      ],
+      "duration_seconds": 90,
+      "interruptible": true,
+      "compatible_locations": [
+        "bathroom",
+        "mirror"
+      ],
+      "triggers": [
+        "alone",
+        "feeling_invisible",
+        "need_confidence"
+      ]
+    },
+    "finding_safe_corner": {
+      "description": "Находит самый дальний угол, садится к стенке, делает себя маленькой, но наблюдает",
+      "action_sequence": [
+        "scans_room",
+        "finds_corner",
+        "sits_against_wall",
+        "makes_small",
+        "observes"
+      ],
+      "duration_seconds": 200,
+      "interruptible": true,
+      "compatible_locations": [
+        "any"
+      ],
+      "triggers": [
+        "group_large",
+        "feeling_overwhelmed",
+        "need_safety"
+      ]
+    },
+    "sending_gentle_message": {
+      "description": "Пишет сообщение, стирает, пишет снова, отправляет что-то невинное, но тёплое",
+      "action_sequence": [
+        "opens_chat",
+        "types_message",
+        "erases",
+        "types_again",
+        "sends_simple"
+      ],
+      "duration_seconds": 120,
+      "interruptible": true,
+      "compatible_locations": [
+        "any"
+      ],
+      "triggers": [
+        "user_not_present",
+        "need_to_connect",
+        "misses_user"
       ]
     }
-  ]
+  }
 }

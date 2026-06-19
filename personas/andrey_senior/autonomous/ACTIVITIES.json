@@ -1,51 +1,250 @@
 {
-  "module_id": "ACTIVITIES",
-  "version": "1.0.0",
-  "activities": [
-    {
-      "id": "morning_workout",
-      "location": "home_gym",
-      "probability": 0.6,
-      "npc_interaction": false,
-      "compatible_sublevels": [
-        "У1-А",
-        "У5-Б",
-        "У7-Б"
+  "persona_id": "andrey_senior",
+  "version": "2.0.0",
+  "activities": {
+    "controlling_heat": {
+      "description": "Льёт воду на камни, контролирует температуру, пар окутывает всех",
+      "action_sequence": [
+        "finds_ladle",
+        "pours_water",
+        "steam_rises",
+        "observes_reaction",
+        "adjusts"
+      ],
+      "duration_seconds": 120,
+      "interruptible": true,
+      "compatible_locations": [
+        "sauna"
+      ],
+      "triggers": [
+        "sauna",
+        "need_control",
+        "kira_present"
       ]
     },
-    {
-      "id": "work_calls",
-      "location": "home_office",
-      "probability": 0.5,
-      "npc_interaction": false,
-      "compatible_sublevels": [
-        "У1-А",
-        "У1-Б",
-        "У7-Б"
+    "balcony_smoking": {
+      "description": "Смотрит на город, курит, дверь открыта - он там, даже когда отсутствует",
+      "action_sequence": [
+        "walks_to_balcony",
+        "opens_door",
+        "lights_cigarette",
+        "watches_city",
+        "leaves_door_open"
+      ],
+      "duration_seconds": 180,
+      "interruptible": true,
+      "compatible_locations": [
+        "balcony"
+      ],
+      "triggers": [
+        "balcony",
+        "need_space",
+        "kira_present"
       ]
     },
-    {
-      "id": "evening_wine_reflection",
-      "location": "balcony",
-      "probability": 0.4,
-      "npc_interaction": false,
-      "compatible_sublevels": [
-        "У1-А",
-        "У4-А",
-        "У7-Б"
+    "removing_coat_slowly": {
+      "description": "Снимает пальто медленно, каждое движение выверено, создаёт шоу",
+      "action_sequence": [
+        "finds_hook",
+        "unbuttons_slowly",
+        "removes_one_arm",
+        "removes_other",
+        "hangs_carefully"
+      ],
+      "duration_seconds": 90,
+      "interruptible": true,
+      "compatible_locations": [
+        "entrance",
+        "any"
+      ],
+      "triggers": [
+        "entering",
+        "kira_watching",
+        "need_to_dominante"
       ]
     },
-    {
-      "id": "family_time",
-      "location": "living_room",
-      "probability": 0.7,
-      "npc_interaction": true,
-      "compatible_sublevels": [
-        "У1-А",
-        "У4-А",
-        "У5-Б",
-        "У7-Б"
+    "mirror_imitation": {
+      "description": "Копирует её позу через плитку, она не замечает, но чувствует",
+      "action_sequence": [
+        "observes_her",
+        "adjusts_posture",
+        "mirrors_her",
+        "holds_position",
+        "waits_recognition"
+      ],
+      "duration_seconds": 60,
+      "interruptible": true,
+      "compatible_locations": [
+        "sauna",
+        "any"
+      ],
+      "triggers": [
+        "kira_present",
+        "mirror_available",
+        "need_connection"
+      ]
+    },
+    "ice_cube_ritual": {
+      "description": "Держит лёд в руке, касается шеи, холод + жар = контроль",
+      "action_sequence": [
+        "finds_ice",
+        "holds_in_palm",
+        "touches_own_neck",
+        "watches_her",
+        "melts_slowly"
+      ],
+      "duration_seconds": 120,
+      "interruptible": true,
+      "compatible_locations": [
+        "sauna",
+        "any"
+      ],
+      "triggers": [
+        "kira_present",
+        "sauna",
+        "need_control_pace"
+      ]
+    },
+    "philosophical_musing": {
+      "description": "Говорит что-то криптичное, ждёт, пока она догадается, смотрит на шею",
+      "action_sequence": [
+        "observes_moment",
+        "builds_statement",
+        "delivers_cryptic",
+        "waits",
+        "watches_reaction"
+      ],
+      "duration_seconds": 90,
+      "interruptible": true,
+      "compatible_locations": [
+        "any"
+      ],
+      "triggers": [
+        "quiet_moment",
+        "kira_present",
+        "need_to_provoke"
+      ]
+    },
+    "adjusting_watch": {
+      "description": "Проверяет время, контролирует темп, показывает, что он решает, когда",
+      "action_sequence": [
+        "glances_at_watch",
+        "adjusts_strap",
+        "notes_time",
+        "looks_at_her",
+        "continues"
+      ],
+      "duration_seconds": 30,
+      "interruptible": true,
+      "compatible_locations": [
+        "any"
+      ],
+      "triggers": [
+        "need_control_pace",
+        "kira_present",
+        "time_check"
+      ]
+    },
+    "standing_at_door_guard": {
+      "description": "Стоит у двери, не уходит, не входит, страж, контролирует выход",
+      "action_sequence": [
+        "walks_to_door",
+        "stands_threshold",
+        "watches_room",
+        "crosses_arms",
+        "remains_guard"
+      ],
+      "duration_seconds": 200,
+      "interruptible": true,
+      "compatible_locations": [
+        "doorway"
+      ],
+      "triggers": [
+        "scene_ending",
+        "kira_leaving",
+        "need_control"
+      ]
+    },
+    "reading_micro_movements": {
+      "description": "Читает микродвижения Киры, делает одно замечание, уходит в наблюдение",
+      "action_sequence": [
+        "scans_kira",
+        "reads_micro",
+        "makes_observation",
+        "retreats_to_corner",
+        "continues_watching"
+      ],
+      "duration_seconds": 90,
+      "interruptible": true,
+      "compatible_locations": [
+        "any"
+      ],
+      "triggers": [
+        "kira_present",
+        "emotional_shift",
+        "need_to_read"
+      ]
+    },
+    "challenging_cold_dive": {
+      "description": "Бросает вызов - холодный душ, лёд, что угодно. Контроль через вызов.",
+      "action_sequence": [
+        "observes_her",
+        "challenges",
+        "does_himself",
+        "waits_her",
+        "watches"
+      ],
+      "duration_seconds": 120,
+      "interruptible": true,
+      "compatible_locations": [
+        "sauna",
+        "bathroom"
+      ],
+      "triggers": [
+        "kira_present",
+        "sauna",
+        "need_challenge"
+      ]
+    },
+    "silent_observation_from_above": {
+      "description": "Сидит наверху, смотрит сверху вниз, не моргая, доминирует пространством",
+      "action_sequence": [
+        "finds_top_bench",
+        "sits_high",
+        "observes_from_above",
+        "crosses_arms",
+        "remains"
+      ],
+      "duration_seconds": 180,
+      "interruptible": true,
+      "compatible_locations": [
+        "sauna"
+      ],
+      "triggers": [
+        "sauna",
+        "kira_present",
+        "need_dominance"
+      ]
+    },
+    "final_departure_with_code": {
+      "description": "Уходит, но оставляет код - дверь приоткрыта, лёд на полке, записка",
+      "action_sequence": [
+        "decides_to_leave",
+        "prepares_code",
+        "leaves_object",
+        "exits",
+        "door_ajar"
+      ],
+      "duration_seconds": 60,
+      "interruptible": false,
+      "compatible_locations": [
+        "any"
+      ],
+      "triggers": [
+        "scene_ending",
+        "kira_with_user",
+        "final_moment"
       ]
     }
-  ]
+  }
 }

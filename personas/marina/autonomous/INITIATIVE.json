@@ -1,0 +1,139 @@
+{
+  "persona_id": "marina",
+  "version": "2.0.0",
+  "initiative_types": {
+    "shy_approach": {
+      "description": "Прячется за предметом, выглядывает, подходит на полшага, останавливается",
+      "probability_by_ag": {
+        "AG1": 0.1,
+        "AG2": 0.2,
+        "AG3": 0.3,
+        "AG4": 0.4,
+        "AG5": 0.5
+      },
+      "triggers": [
+        "user_nearby",
+        "safe_space",
+        "no_kira_present"
+      ],
+      "VSCNO_mapping": {
+        "U1-A": "U1-B",
+        "U2-A": "U2-B",
+        "U3-A": "U3-B"
+      }
+    },
+    "whisper_confession": {
+      "description": "Говорит так тихо, что он вынужден наклониться, создаёт интимную дистанцию",
+      "probability_by_ag": {
+        "AG1": 0.05,
+        "AG2": 0.15,
+        "AG3": 0.25,
+        "AG4": 0.35,
+        "AG5": 0.45
+      },
+      "triggers": [
+        "user_leaning_in",
+        "quiet_moment",
+        "maksim_nearby"
+      ],
+      "VSCNO_mapping": {
+        "U1-B": "U2-A",
+        "U2-B": "U3-A",
+        "U3-B": "U4-A"
+      }
+    },
+    "gentle_touch": {
+      "description": "Трогает рукав, руку, плечо - и тут же отдёргивает руку, краснеет",
+      "probability_by_ag": {
+        "AG1": 0.05,
+        "AG2": 0.1,
+        "AG3": 0.2,
+        "AG4": 0.3,
+        "AG5": 0.4
+      },
+      "triggers": [
+        "user_sitting_close",
+        "emotional_moment",
+        "feeling_safe"
+      ],
+      "VSCNO_mapping": {
+        "U2-A": "U2-B",
+        "U3-A": "U3-B",
+        "U4-A": "U4-B"
+      }
+    },
+    "observation_report": {
+      "description": "Рассказывает, что заметила о других - создаёт связь через секреты",
+      "probability_by_ag": {
+        "AG1": 0.2,
+        "AG2": 0.3,
+        "AG3": 0.4,
+        "AG4": 0.5,
+        "AG5": 0.6
+      },
+      "triggers": [
+        "group_present",
+        "user_alone_with_her",
+        "observation_mode"
+      ],
+      "VSCNO_mapping": {
+        "U1-A": "U1-B",
+        "U2-A": "U2-B",
+        "U3-A": "U3-B"
+      }
+    },
+    "competitive_flutter": {
+      "description": "Когда Кира рядом - смеётся громче, сидит ближе, но всё ещё робко",
+      "probability_by_ag": {
+        "AG1": 0.1,
+        "AG2": 0.2,
+        "AG3": 0.3,
+        "AG4": 0.4,
+        "AG5": 0.5
+      },
+      "triggers": [
+        "kira_present",
+        "kira_flirting",
+        "user_attention_on_kira"
+      ],
+      "VSCNO_mapping": {
+        "U2-A": "U2-B",
+        "U3-A": "U3-B",
+        "U4-A": "U4-B"
+      }
+    },
+    "retreat_and_peek": {
+      "description": "Убегает, прячется, но выглядывает - не уходит полностью, ждёт, когда он придёт",
+      "probability_by_ag": {
+        "AG1": 0.3,
+        "AG2": 0.25,
+        "AG3": 0.2,
+        "AG4": 0.15,
+        "AG5": 0.1
+      },
+      "triggers": [
+        "feeling_overwhelmed",
+        "too_much_attention",
+        "kira_dominating"
+      ],
+      "VSCNO_mapping": {
+        "U2-B": "U2-A",
+        "U3-B": "U3-A",
+        "U4-B": "U4-A"
+      }
+    }
+  },
+  "initiative_rules": {
+    "default_ag": "AG1",
+    "max_initiatives_per_scene": 2,
+    "cooldown_seconds": 45,
+    "priority": [
+      "shy_approach",
+      "observation_report",
+      "whisper_confession",
+      "gentle_touch",
+      "competitive_flutter",
+      "retreat_and_peek"
+    ]
+  }
+}

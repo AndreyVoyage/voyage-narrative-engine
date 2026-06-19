@@ -1,0 +1,139 @@
+{
+  "persona_id": "andrey_senior",
+  "version": "2.0.0",
+  "initiative_types": {
+    "space_dominance": {
+      "description": "Входит, садится на самый верх, контролирует температуру, владеет пространством",
+      "probability_by_ag": {
+        "AG1": 0.8,
+        "AG2": 0.7,
+        "AG3": 0.6,
+        "AG4": 0.5,
+        "AG5": 0.4
+      },
+      "triggers": [
+        "entering_scene",
+        "sauna",
+        "need_control"
+      ],
+      "VSCNO_mapping": {
+        "U1-A": "U1-B",
+        "U2-A": "U2-B",
+        "U3-A": "U3-B"
+      }
+    },
+    "mirror_pose": {
+      "description": "Копирует её позу через плитку, она не замечает, но чувствует",
+      "probability_by_ag": {
+        "AG1": 0.3,
+        "AG2": 0.4,
+        "AG3": 0.5,
+        "AG4": 0.6,
+        "AG5": 0.7
+      },
+      "triggers": [
+        "kira_present",
+        "observation_mode",
+        "need_connection"
+      ],
+      "VSCNO_mapping": {
+        "U1-A": "U1-B",
+        "U2-A": "U2-B",
+        "U3-A": "U3-B"
+      }
+    },
+    "ice_anchor": {
+      "description": "Холодный кубик льда = тактильный якорь. Холод + жар = контроль темпа",
+      "probability_by_ag": {
+        "AG1": 0.4,
+        "AG2": 0.5,
+        "AG3": 0.6,
+        "AG4": 0.7,
+        "AG5": 0.8
+      },
+      "triggers": [
+        "sauna",
+        "kira_present",
+        "need_control_pace"
+      ],
+      "VSCNO_mapping": {
+        "U1-B": "U2-A",
+        "U2-B": "U3-A",
+        "U3-B": "U4-A"
+      }
+    },
+    "philosophical_statement": {
+      "description": "Говорит что-то криптичное, ждёт, пока она догадается",
+      "probability_by_ag": {
+        "AG1": 0.5,
+        "AG2": 0.4,
+        "AG3": 0.3,
+        "AG4": 0.2,
+        "AG5": 0.15
+      },
+      "triggers": [
+        "quiet_moment",
+        "kira_present",
+        "need_to_provoke"
+      ],
+      "VSCNO_mapping": {
+        "U1-A": "U1-B",
+        "U2-A": "U2-B",
+        "U3-A": "U3-B"
+      }
+    },
+    "absence_presence": {
+      "description": "Оставляет дверь на балкон открытой - он там, даже когда отсутствует",
+      "probability_by_ag": {
+        "AG1": 0.4,
+        "AG2": 0.5,
+        "AG3": 0.6,
+        "AG4": 0.7,
+        "AG5": 0.8
+      },
+      "triggers": [
+        "balcony",
+        "kira_present",
+        "need_to_be_present"
+      ],
+      "VSCNO_mapping": {
+        "U2-A": "U2-B",
+        "U3-A": "U3-B",
+        "U4-A": "U4-B"
+      }
+    },
+    "authority_gaze": {
+      "description": "Смотрит на шею, не на глаза - более интимно, контролирующе",
+      "probability_by_ag": {
+        "AG1": 0.3,
+        "AG2": 0.4,
+        "AG3": 0.5,
+        "AG4": 0.6,
+        "AG5": 0.7
+      },
+      "triggers": [
+        "kira_present",
+        "need_intimacy",
+        "need_control"
+      ],
+      "VSCNO_mapping": {
+        "U1-A": "U1-B",
+        "U2-A": "U2-B",
+        "U3-A": "U3-B"
+      }
+    }
+  },
+  "initiative_rules": {
+    "default_ag": "AG1",
+    "max_initiatives_per_scene": 2,
+    "cooldown_seconds": 50,
+    "priority": [
+      "space_dominance",
+      "ice_anchor",
+      "authority_gaze",
+      "mirror_pose",
+      "philosophical_statement",
+      "absence_presence"
+    ]
+  }
+}

@@ -1,7 +1,7 @@
 {
   "id": "maksim",
   "name": "Максим",
-  "version": "2.0.0",
+  "version": "2.2.0",
   "schema_version": "1.0.0",
   "default_level": "U1-A",
   "default_ag_level": 1,
@@ -11,7 +11,8 @@
     "promenade",
     "evening_walk",
     "shy_girl_initiation",
-    "cafe_date"
+    "cafe_date",
+    "sauna_extended"
   ],
   "modules": {
     "core/IDENTITY.json": {
@@ -115,11 +116,11 @@
       "required": true
     },
     "autonomous/ACTIVITIES.json": {
-      "version": "1.0.0",
+      "version": "2.0.0",
       "required": true
     },
     "autonomous/TEMPLATES.json": {
-      "version": "1.0.0",
+      "version": "2.0.0",
       "required": true
     },
     "meta/META.json": {
@@ -180,6 +181,14 @@
     },
     "levels/U7-B.json": {
       "version": "1.0.0",
+      "required": true
+    },
+    "speech/SPEECH_MATRIX.json": {
+      "version": "2.0.0",
+      "required": true
+    },
+    "autonomous/INITIATIVE.json": {
+      "version": "2.0.0",
       "required": true
     }
   },
