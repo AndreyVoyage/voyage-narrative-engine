@@ -1,0 +1,8 @@
+Loading modular persona: marina_module_v2
+Traceback (most recent call last):
+  File "C:\DEV\Narrative\voyage-narrative-engine\scripts\python\runtime_loader.py", line 292, in <module>
+    print(f"Loaded: {persona['name']} (v{persona['version']})")
+  File "C:\Users\andrc\AppData\Roaming\kimi-desktop\daimon-bundle\runtime\python\cpython-3.12\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 8-13: character maps to <undefined>

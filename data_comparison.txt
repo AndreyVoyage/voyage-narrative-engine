@@ -1,0 +1,294 @@
+=== СРАВНЕНИЕ ДАННЫХ: Монолит vs Модуль ===
+
+
+andrey_junior_module_v2.1:
+  Монолит ключей: 713
+  Модуль ключей:  675
+  Потеряно:       453
+  Добавлено:      415
+  Потерянные ключи (первые 10):
+    - age_bracket
+    - compatible_vne
+    - cross_persona_sync
+    - cross_persona_sync.emotional_anchor_consistency
+    - cross_persona_sync.level_lock_matrix
+    - cross_persona_sync.level_lock_matrix.ANDREY_JUNIOR_ANDREY_SENIOR
+    - cross_persona_sync.level_lock_matrix.ANDREY_JUNIOR_ANDREY_SENIOR.blocked
+    - cross_persona_sync.level_lock_matrix.ANDREY_JUNIOR_ANDREY_SENIOR.max_level
+    - cross_persona_sync.level_lock_matrix.ANDREY_JUNIOR_ANDREY_SENIOR.min_level
+    - cross_persona_sync.level_lock_matrix.ANDREY_JUNIOR_ANDREY_SENIOR.note
+  Добавленные ключи (первые 10):
+    + ad_by_sublevel
+    + anatomic_anchor
+    + anatomic_anchor.age_indicators
+    + anatomic_anchor.distinguishing_features
+    + anatomic_anchor.eyes
+    + anatomic_anchor.eyes.color
+    + anatomic_anchor.eyes.distance
+    + anatomic_anchor.eyes.eyebrows
+    + anatomic_anchor.eyes.eyelids
+    + anatomic_anchor.eyes.shape
+  ❌ Есть потери!
+
+andrey_senior:
+  Монолит ключей: 361
+  Модуль ключей:  1095
+  Потеряно:       209
+  Добавлено:      943
+  Потерянные ключи (первые 10):
+    - age_bracket
+    - compatible_vne
+    - cross_persona_sync
+    - cross_persona_sync.level_lock_matrix
+    - cross_persona_sync.level_lock_matrix.ANDREY_SENIOR_ANDREY_JUNIOR
+    - cross_persona_sync.level_lock_matrix.ANDREY_SENIOR_ANDREY_JUNIOR.blocked
+    - cross_persona_sync.level_lock_matrix.ANDREY_SENIOR_ANDREY_JUNIOR.max_level
+    - cross_persona_sync.level_lock_matrix.ANDREY_SENIOR_ANDREY_JUNIOR.min_level
+    - cross_persona_sync.level_lock_matrix.ANDREY_SENIOR_ANDREY_JUNIOR.note
+    - cross_persona_sync.level_lock_matrix.ANDREY_SENIOR_KIRA
+  Добавленные ключи (первые 10):
+    + ad_by_sublevel
+    + ad_by_sublevel.У1-А
+    + ad_by_sublevel.У1-А.available
+    + ad_by_sublevel.У1-А.dominant
+    + ad_by_sublevel.У1-А.forbidden
+    + ad_by_sublevel.У1-А.source
+    + ad_by_sublevel.У1-Б
+    + ad_by_sublevel.У1-Б.available
+    + ad_by_sublevel.У1-Б.dominant
+    + ad_by_sublevel.У1-Б.forbidden
+  ❌ Есть потери!
+
+egor_module_v1:
+  Монолит ключей: 490
+  Модуль ключей:  306
+  Потеряно:       441
+  Добавлено:      257
+  Потерянные ключи (первые 10):
+    - _anchors
+    - _anchors.AD
+    - _anchors.ANX
+    - _anchors.AVOID
+    - _anchors.DIS
+    - _anchors.GAZE_3SEC
+    - _anchors.KAT
+    - _anchors.MIX
+    - _anchors.ODSC_PRIV
+    - _anchors.ODSC_PUB
+  Добавленные ключи (первые 10):
+    + ad_by_sublevel
+    + anatomic_anchor
+    + anatomic_anchor.body
+    + anatomic_anchor.body.build
+    + anatomic_anchor.body.height
+    + anatomic_anchor.body.muscle_definition
+    + anatomic_anchor.body.type
+    + anatomic_anchor.body.weight
+    + anatomic_anchor.chin
+    + anatomic_anchor.eyes
+  ❌ Есть потери!
+
+female_user:
+  Монолит ключей: 53
+  Модуль ключей:  180
+  Потеряно:       38
+  Добавлено:      165
+  Потерянные ключи (первые 10):
+    - interaction
+    - interaction.direct_address
+    - interaction.emojis
+    - interaction.format
+    - interaction.maksim_address
+    - interaction.sergey_address
+    - interaction.tone
+    - interaction.volume
+    - preferences
+    - preferences.aftercare_style
+  Добавленные ключи (первые 10):
+    + ad_by_sublevel
+    + algorithms
+    + anatomic_anchor
+    + archetype
+    + autonomous
+    + autonomous.activities
+    + autonomous.module_id
+    + autonomous.version
+    + chat_display_name
+    + compatible_scenarios
+  ❌ Есть потери!
+
+kira:
+  Монолит ключей: 809
+  Модуль ключей:  569
+  Потеряно:       743
+  Добавлено:      503
+  Потерянные ключи (первые 10):
+    - algorithms
+    - algorithms.baseline
+    - algorithms.sublevels
+    - algorithms.sublevels.U1-A
+    - algorithms.sublevels.U1-A.available
+    - algorithms.sublevels.U1-A.dominant
+    - algorithms.sublevels.U1-A.forbidden
+    - algorithms.sublevels.U1-A.mark
+    - algorithms.sublevels.U1-B
+    - algorithms.sublevels.U1-B.available
+  Добавленные ключи (первые 10):
+    + ad_by_sublevel
+    + anatomic_anchor
+    + anatomic_anchor.age_indicators
+    + anatomic_anchor.distinguishing_features
+    + anatomic_anchor.eyes
+    + anatomic_anchor.eyes.color
+    + anatomic_anchor.eyes.distance
+    + anatomic_anchor.eyes.eyebrows
+    + anatomic_anchor.eyes.eyelids
+    + anatomic_anchor.eyes.shape
+  ❌ Есть потери!
+
+maksim_module_v2:
+  Монолит ключей: 301
+  Модуль ключей:  381
+  Потеряно:       161
+  Добавлено:      241
+  Потерянные ключи (первые 10):
+    - dynamic_visuals
+    - dynamic_visuals.M1
+    - dynamic_visuals.M2
+    - dynamic_visuals.M3
+    - dynamic_visuals.M4
+    - dynamic_visuals.M5
+    - engagement.last_user_message_timestamp
+    - engagement.proactive_count_since_last_session
+    - engagement.stimulus_type
+    - engagement.turn_count_since_stimulus
+  Добавленные ключи (первые 10):
+    + ad_by_sublevel
+    + anatomic_anchor
+    + anatomic_anchor.age_indicators
+    + anatomic_anchor.distinguishing_features
+    + anatomic_anchor.eyes
+    + anatomic_anchor.eyes.color
+    + anatomic_anchor.eyes.distance
+    + anatomic_anchor.eyes.eyebrows
+    + anatomic_anchor.eyes.eyelids
+    + anatomic_anchor.eyes.shape
+  ❌ Есть потери!
+
+marina_module_v2:
+  Монолит ключей: 419
+  Модуль ключей:  409
+  Потеряно:       265
+  Добавлено:      255
+  Потерянные ключи (первые 10):
+    - dynamic_visuals
+    - dynamic_visuals.U1-A
+    - dynamic_visuals.U1-B
+    - dynamic_visuals.U2-A
+    - dynamic_visuals.U2-B
+    - dynamic_visuals.U3-A
+    - dynamic_visuals.U3-B
+    - dynamic_visuals.U4-A
+    - dynamic_visuals.U4-B
+    - dynamic_visuals.U5-A
+  Добавленные ключи (первые 10):
+    + ad_by_sublevel
+    + anatomic_anchor
+    + anatomic_anchor.age_indicators
+    + anatomic_anchor.distinguishing_features
+    + anatomic_anchor.eyes
+    + anatomic_anchor.eyes.color
+    + anatomic_anchor.eyes.distance
+    + anatomic_anchor.eyes.eyebrows
+    + anatomic_anchor.eyes.eyelids
+    + anatomic_anchor.eyes.shape
+  ❌ Есть потери!
+
+olga_module_v2:
+  Монолит ключей: 724
+  Модуль ключей:  584
+  Потеряно:       515
+  Добавлено:      375
+  Потерянные ключи (первые 10):
+    - compatible_vne
+    - cross_persona_olga_kira
+    - cross_persona_olga_kira.description
+    - cross_persona_olga_kira.dynamic_name
+    - cross_persona_olga_kira.kira_effect_on_olga
+    - cross_persona_olga_kira.kira_effect_on_olga.manifestation
+    - cross_persona_olga_kira.kira_effect_on_olga.olga_internal
+    - cross_persona_olga_kira.kira_effect_on_olga.rare_moment
+    - cross_persona_olga_kira.kira_effect_on_olga.trigger
+    - cross_persona_olga_kira.olga_strategy
+  Добавленные ключи (первые 10):
+    + ad_by_sublevel
+    + anatomic_anchor
+    + anatomic_anchor.age_indicators
+    + anatomic_anchor.distinguishing_features
+    + anatomic_anchor.eyes
+    + anatomic_anchor.eyes.color
+    + anatomic_anchor.eyes.distance
+    + anatomic_anchor.eyes.eyebrows
+    + anatomic_anchor.eyes.eyelids
+    + anatomic_anchor.eyes.shape
+  ❌ Есть потери!
+
+sergey_module_v4:
+  Монолит ключей: 320
+  Модуль ключей:  380
+  Потеряно:       181
+  Добавлено:      241
+  Потерянные ключи (первые 10):
+    - dynamic_visuals
+    - dynamic_visuals.S1
+    - dynamic_visuals.S2
+    - dynamic_visuals.S3
+    - dynamic_visuals.S4
+    - dynamic_visuals.S5
+    - dynamic_visuals.S6
+    - dynamic_visuals.S7
+    - engagement.last_user_message_timestamp
+    - engagement.proactive_count_since_last_session
+  Добавленные ключи (первые 10):
+    + ad_by_sublevel
+    + anatomic_anchor
+    + anatomic_anchor.age_indicators
+    + anatomic_anchor.distinguishing_features
+    + anatomic_anchor.eyes
+    + anatomic_anchor.eyes.color
+    + anatomic_anchor.eyes.distance
+    + anatomic_anchor.eyes.eyebrows
+    + anatomic_anchor.eyes.eyelids
+    + anatomic_anchor.eyes.shape
+  ❌ Есть потери!
+
+user:
+  Монолит ключей: 49
+  Модуль ключей:  181
+  Потеряно:       32
+  Добавлено:      164
+  Потерянные ключи (первые 10):
+    - interaction
+    - interaction.direct_address
+    - interaction.emojis
+    - interaction.format
+    - interaction.sergey_address
+    - interaction.tone
+    - interaction.volume
+    - preferences
+    - preferences.aftercare_style
+    - preferences.kira_clothing
+  Добавленные ключи (первые 10):
+    + ad_by_sublevel
+    + algorithms
+    + anatomic_anchor
+    + archetype
+    + autonomous
+    + autonomous.activities
+    + autonomous.module_id
+    + autonomous.version
+    + chat_display_name
+    + compatible_scenarios
+  ❌ Есть потери!
+
+=== ГОТОВО ===

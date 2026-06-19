@@ -88,8 +88,8 @@ voyage-narrative-engine/
 | R4 Persona Linguist | `roles/ROLE_4_PERSONA_LINGUIST_v1.3_PROMPT.md` | ✅ |
 | R5 Persona Physiognomist | `roles/ROLE_5_PERSONA_PHYSIOGNOMIST_v1.3_PROMPT.md` | ✅ |
 | R6 Modular Architect | `roles/ROLE_6_MODULAR_ARCHITECT_v2.3.md` | ✅ |
-| R7 Refactor | `roles/ROLE_7_REFACTOR_v1.0_PROMPT.md` | ⏳ (требуется создать/дописать) |
-| R8 Auditor | `roles/ROLE_8_AUDITOR_v1.0_PROMPT.md` | ⏳ (требуется создать/дописать) |
+| R7 Refactor | `roles/ROLE_7_REFACTOR_v1.0_PROMPT.md` | ✅ (протестирован на `ANDREY_SENIOR_MODULE_v1.2.json` → `personas/andrey_senior/`) |
+| R8 Auditor | `roles/ROLE_8_AUDITOR_v1.0_PROMPT.md` | ✅ (протестирован: `AUDIT_REPORT_ANDREY_SENIOR_R8.md` PASS) |
 
 Дополнительные роли: `COMP`, `V`, `SE`, `NE`, `SM`, `PA`, `TD`, `GCA`, `IE`, `MIA` — используются только в существующих файлах, новые роли не создавать.
 

@@ -1,0 +1,20 @@
+=== SIZE ANALYSIS ===
+
+andrey_junior_module_v2.1      | Module:   64.5 KB (46 files) | Monolith:   69.5 KB | Ratio: 0.93x
+andrey_senior                  | Module:   70.9 KB (45 files) | Monolith:   29.2 KB | Ratio: 2.43x
+egor_module_v1                 | Module:   22.4 KB (46 files) | Monolith:   26.3 KB | Ratio: 0.85x
+female_user                    | Module:   12.6 KB (44 files) | Monolith:    3.2 KB | Ratio: 3.90x
+kira                           | Module:   99.1 KB (60 files) | Monolith:   44.4 KB | Ratio: 2.23x
+maksim_module_v2               | Module:   26.7 KB (46 files) | Monolith:   19.6 KB | Ratio: 1.36x
+marina_module_v2               | Module:   29.0 KB (46 files) | Monolith:   29.3 KB | Ratio: 0.99x
+olga_module_v2                 | Module:   45.7 KB (46 files) | Monolith:   71.6 KB | Ratio: 0.64x
+sergey_module_v4               | Module:   26.5 KB (46 files) | Monolith:   21.1 KB | Ratio: 1.26x
+user                           | Module:   12.2 KB (44 files) | Monolith:    2.3 KB | Ratio: 5.20x
+
+=== SUMMARY ===
+Total Module:      409.6 KB
+Total Monolith:    374.3 KB
+Ratio:          1.09x
+
+PRELOAD target (40%):    163.8 KB
+PRELOAD target (50%):    204.8 KB

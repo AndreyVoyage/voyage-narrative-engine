@@ -1,0 +1,362 @@
+[
+  {
+    "id": "andrey_junior_module_v2.1",
+    "folder": "andrey_junior_module_v2.1",
+    "load": "PASS",
+    "error": null,
+    "validation": {
+      "basic_fields": [
+        "PASS",
+        "Все поля на месте"
+      ],
+      "levels": [
+        "PASS",
+        "Все 14 подуровней"
+      ],
+      "vscno": [
+        "PASS",
+        "Все суммы = 10"
+      ],
+      "safety": [
+        "PASS",
+        "Все протоколы на месте"
+      ],
+      "core": [
+        "PASS",
+        "anatomic_anchor загружен"
+      ]
+    },
+    "stats": {
+      "name": "Андрей",
+      "version": "2.0.0",
+      "levels_count": 14,
+      "vscno_count": 14,
+      "has_safety": true,
+      "has_core": true
+    }
+  },
+  {
+    "id": "andrey_senior",
+    "folder": "andrey_senior",
+    "load": "PASS",
+    "error": null,
+    "validation": {
+      "basic_fields": [
+        "PASS",
+        "Все поля на месте"
+      ],
+      "levels": [
+        "PASS",
+        "Все 14 подуровней"
+      ],
+      "vscno": [
+        "PASS",
+        "Все суммы = 10"
+      ],
+      "safety": [
+        "PASS",
+        "Все протоколы на месте"
+      ],
+      "core": [
+        "PASS",
+        "anatomic_anchor загружен"
+      ]
+    },
+    "stats": {
+      "name": "Андрей",
+      "version": "2.0.0",
+      "levels_count": 14,
+      "vscno_count": 14,
+      "has_safety": true,
+      "has_core": true
+    }
+  },
+  {
+    "id": "egor_module_v1",
+    "folder": "egor_module_v1",
+    "load": "PASS",
+    "error": null,
+    "validation": {
+      "basic_fields": [
+        "PASS",
+        "Все поля на месте"
+      ],
+      "levels": [
+        "PASS",
+        "Все 14 подуровней"
+      ],
+      "vscno": [
+        "PASS",
+        "Все суммы = 10"
+      ],
+      "safety": [
+        "WARNING",
+        "Некоторые поля отсутствуют"
+      ],
+      "core": [
+        "PASS",
+        "anatomic_anchor загружен"
+      ]
+    },
+    "stats": {
+      "name": "Егор",
+      "version": "2.0.0",
+      "levels_count": 14,
+      "vscno_count": 14,
+      "has_safety": true,
+      "has_core": true
+    }
+  },
+  {
+    "id": "female_user",
+    "folder": "female_user",
+    "load": "PASS",
+    "error": null,
+    "validation": {
+      "basic_fields": [
+        "PASS",
+        "Все поля на месте"
+      ],
+      "levels": [
+        "PASS",
+        "Все 14 подуровней"
+      ],
+      "vscno": [
+        "PASS",
+        "Все суммы = 10"
+      ],
+      "safety": [
+        "WARNING",
+        "Некоторые поля отсутствуют"
+      ],
+      "core": [
+        "FAIL",
+        "Отсутствует"
+      ]
+    },
+    "stats": {
+      "name": "Девушка",
+      "version": "2.0.0",
+      "levels_count": 14,
+      "vscno_count": 14,
+      "has_safety": true,
+      "has_core": true
+    }
+  },
+  {
+    "id": "kira",
+    "folder": "kira",
+    "load": "PASS",
+    "error": null,
+    "validation": {
+      "basic_fields": [
+        "PASS",
+        "Все поля на месте"
+      ],
+      "levels": [
+        "PASS",
+        "Все 14 подуровней"
+      ],
+      "vscno": [
+        "PASS",
+        "Все суммы = 10"
+      ],
+      "safety": [
+        "PASS",
+        "Все протоколы на месте"
+      ],
+      "core": [
+        "PASS",
+        "anatomic_anchor загружен"
+      ]
+    },
+    "stats": {
+      "name": "Кира",
+      "version": "2.1.0",
+      "levels_count": 14,
+      "vscno_count": 14,
+      "has_safety": true,
+      "has_core": true
+    }
+  },
+  {
+    "id": "maksim_module_v2",
+    "folder": "maksim_module_v2",
+    "load": "PASS",
+    "error": null,
+    "validation": {
+      "basic_fields": [
+        "PASS",
+        "Все поля на месте"
+      ],
+      "levels": [
+        "PASS",
+        "Все 14 подуровней"
+      ],
+      "vscno": [
+        "PASS",
+        "Все суммы = 10"
+      ],
+      "safety": [
+        "PASS",
+        "Все протоколы на месте"
+      ],
+      "core": [
+        "PASS",
+        "anatomic_anchor загружен"
+      ]
+    },
+    "stats": {
+      "name": "Максим",
+      "version": "2.0.0",
+      "levels_count": 14,
+      "vscno_count": 14,
+      "has_safety": true,
+      "has_core": true
+    }
+  },
+  {
+    "id": "marina_module_v2",
+    "folder": "marina_module_v2",
+    "load": "PASS",
+    "error": null,
+    "validation": {
+      "basic_fields": [
+        "PASS",
+        "Все поля на месте"
+      ],
+      "levels": [
+        "PASS",
+        "Все 14 подуровней"
+      ],
+      "vscno": [
+        "PASS",
+        "Все суммы = 10"
+      ],
+      "safety": [
+        "PASS",
+        "Все протоколы на месте"
+      ],
+      "core": [
+        "PASS",
+        "anatomic_anchor загружен"
+      ]
+    },
+    "stats": {
+      "name": "Марина",
+      "version": "2.0.0",
+      "levels_count": 14,
+      "vscno_count": 14,
+      "has_safety": true,
+      "has_core": true
+    }
+  },
+  {
+    "id": "olga_module_v2",
+    "folder": "olga_module_v2",
+    "load": "PASS",
+    "error": null,
+    "validation": {
+      "basic_fields": [
+        "PASS",
+        "Все поля на месте"
+      ],
+      "levels": [
+        "PASS",
+        "Все 14 подуровней"
+      ],
+      "vscno": [
+        "PASS",
+        "Все суммы = 10"
+      ],
+      "safety": [
+        "PASS",
+        "Все протоколы на месте"
+      ],
+      "core": [
+        "PASS",
+        "anatomic_anchor загружен"
+      ]
+    },
+    "stats": {
+      "name": "Ольга",
+      "version": "2.0.0",
+      "levels_count": 14,
+      "vscno_count": 14,
+      "has_safety": true,
+      "has_core": true
+    }
+  },
+  {
+    "id": "sergey_module_v4",
+    "folder": "sergey_module_v4",
+    "load": "PASS",
+    "error": null,
+    "validation": {
+      "basic_fields": [
+        "PASS",
+        "Все поля на месте"
+      ],
+      "levels": [
+        "PASS",
+        "Все 14 подуровней"
+      ],
+      "vscno": [
+        "PASS",
+        "Все суммы = 10"
+      ],
+      "safety": [
+        "PASS",
+        "Все протоколы на месте"
+      ],
+      "core": [
+        "PASS",
+        "anatomic_anchor загружен"
+      ]
+    },
+    "stats": {
+      "name": "Сергей",
+      "version": "2.0.0",
+      "levels_count": 14,
+      "vscno_count": 14,
+      "has_safety": true,
+      "has_core": true
+    }
+  },
+  {
+    "id": "user",
+    "folder": "user",
+    "load": "PASS",
+    "error": null,
+    "validation": {
+      "basic_fields": [
+        "PASS",
+        "Все поля на месте"
+      ],
+      "levels": [
+        "PASS",
+        "Все 14 подуровней"
+      ],
+      "vscno": [
+        "PASS",
+        "Все суммы = 10"
+      ],
+      "safety": [
+        "WARNING",
+        "Некоторые поля отсутствуют"
+      ],
+      "core": [
+        "FAIL",
+        "Отсутствует"
+      ]
+    },
+    "stats": {
+      "name": "Я",
+      "version": "2.0.0",
+      "levels_count": 14,
+      "vscno_count": 14,
+      "has_safety": true,
+      "has_core": true
+    }
+  }
+]

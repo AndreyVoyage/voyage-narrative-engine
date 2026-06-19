@@ -1,0 +1,26 @@
+=== FIX MISSING DATA ===
+
+andrey_junior_module_v2.1: Created levels/ALGORITHMS.json with 'algorithms'
+andrey_junior_module_v2.1: Created dynamics/CROSS_PERSONA_SYNC.json
+andrey_senior: Created levels/ALGORITHMS.json with 'algorithms'
+andrey_senior: Created dynamics/CROSS_PERSONA_SYNC.json
+egor_module_v1: Created psychology/ANCHORS.json with '_anchors'
+egor_module_v1: Created levels/ALGORITHMS.json with 'algorithms'
+egor_module_v1: Created visual/DYNAMIC_VISUALS.json
+female_user: Created meta/META_INTERACTION.json with 'interaction'
+female_user: Created meta/META_PREFERENCES.json with 'preferences'
+kira: Created levels/ALGORITHMS.json with 'algorithms'
+maksim_module_v2: Created levels/ALGORITHMS.json with 'algorithms'
+maksim_module_v2: Created visual/DYNAMIC_VISUALS.json
+marina_module_v2: Created levels/ALGORITHMS.json with 'algorithms'
+marina_module_v2: Created visual/DYNAMIC_VISUALS.json
+olga_module_v2: Created levels/ALGORITHMS.json with 'algorithms'
+olga_module_v2: Created visual/DYNAMIC_VISUALS.json
+olga_module_v2: Created dynamics/CROSS_PERSONA_SYNC.json
+sergey_module_v4: Created levels/ALGORITHMS.json with 'algorithms'
+sergey_module_v4: Created visual/DYNAMIC_VISUALS.json
+user: Created meta/META_INTERACTION.json with 'interaction'
+user: Created meta/META_PREFERENCES.json with 'preferences'
+
+=== DONE ===
+Report saved to: C:\DEV\Narrative\voyage-narrative-engine\fix_missing_report.txt
