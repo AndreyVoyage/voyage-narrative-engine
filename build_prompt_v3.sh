@@ -10,6 +10,7 @@
 #   shy           — Кира в режиме shy_to_bitch (Невинность → Стерва)
 #   quintet       — Все 5 персонажей в сауне (Квинтет)
 #   marina        — Марина + Кира + Сергей
+#   modular       — Модульные персонажи + сценарий sauna_extended (через runtime_loader.py)
 #   full          — Все модули + все сценарии (максимальный контекст)
 #
 # VARIANTS:
@@ -101,6 +102,21 @@ append_section "CORE" "$REPO_DIR/core/VOYAGE_NARRATIVE_CORE_v2.md"
 
 # --- Personas based on mode ---
 case "$MODE" in
+    # --- New: modular personas (sauna_extended) ---
+    modular|sauna_extended|sauna_v3)
+        echo -e "${BLUE}Using modular persona loader...${NC}"
+        if command -v python3 &> /dev/null; then
+            python3 "$REPO_DIR/scripts/python/build_prompt_modular.py" "${SCENARIO_ID:-sauna_extended}" "${VARIANT:-standard}" "AG3" > "$OUTPUT"
+            echo -e "${GREEN}✓${NC} Modular prompt built via Python"
+        elif command -v python &> /dev/null; then
+            python "$REPO_DIR/scripts/python/build_prompt_modular.py" "${SCENARIO_ID:-sauna_extended}" "${VARIANT:-standard}" "AG3" > "$OUTPUT"
+            echo -e "${GREEN}✓${NC} Modular prompt built via Python"
+        else
+            echo -e "${RED}[ERROR] Python not found. Cannot load modular personas.${NC}"
+            echo "Please install Python 3 or use legacy mode."
+            exit 1
+        fi
+        ;;
     default)
         append_section "PERSONA: KIRA (default)" "$REPO_DIR/personas/KIRA_MODULE_v12.json"
         append_section "PERSONA: SERGEY" "$REPO_DIR/personas/SERGEY_MODULE_v3.json"
