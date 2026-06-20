@@ -1,7 +1,7 @@
 ================================================================================
 Voyage Narrative Engine — Modular Prompt
 Scenario: sauna_extended | Mode: standard | AG: AG3
-Built: 2026-06-19 23:54:12
+Built: 2026-06-20 08:17:50
 ================================================================================
 
 # СЦЕНАРИЙ: Сауна: Расширенный квартет (ID: sauna_extended)
@@ -931,6 +931,7 @@ Params: --ar 16:9 --cfg 5.5 --steps 50
 ## ВИЗУАЛЬНЫЕ ЯКОРЯ (Visual Anchors for Image Generation)
 **Базовый промпт:** Portrait of young woman, dark blonde hair natural waves shoulder-length, expressive brown eyes, slender elegant build, wearing fitted red dress, soft smile with mystery, natural lighting, photorealistic, 8k, cinematic
 **Стиль:** photorealistic
+**Визуальная сигнатура:** Portrait of young woman, dark blonde hair natural waves shoulder-length, expressive brown eyes, slender elegant build, wearing fitted red dress, soft smile with mystery, natural lighting, photorealistic, 8k, cinematic
 **Вариации:**
 - casual: Young woman, dark blonde hair, white blouse and jeans, street style, smiling, natural daylight, photorealistic
 - sauna: Young woman in sauna, hair slightly damp messy natural, wrapped in white towel, flushed cheeks from heat, relaxed confident expression, steam, warm amber lighting, wooden interior, photorealistic, intimate atmosphere
@@ -1170,6 +1171,7 @@ Params: --ar 16:9 --cfg 5.5 --steps 50
 ## ВИЗУАЛЬНЫЕ ЯКОРЯ (Visual Anchors for Image Generation)
 **Базовый промпт:** Portrait of young woman, soft gentle features, thoughtful blue eyes, natural light brown hair, pastel warm sweater, shy but warm smile, soft window lighting, photorealistic, 8k, intimate portrait
 **Стиль:** photorealistic
+**Визуальная сигнатура:** Portrait of young woman, soft gentle features, thoughtful blue eyes, natural light brown hair, pastel warm sweater, shy but warm smile, soft window lighting, photorealistic, 8k, intimate portrait
 **Вариации:**
 - sauna: Young woman in sauna, hair up messy bun, white towel, gentle flushed smile, looking slightly away with shyness, steam, warm wooden interior, photorealistic, natural lighting, intimate atmosphere
 - street: Young woman walking autumn street, pastel coat, light brown hair, looking down with gentle smile, soft natural lighting, photorealistic, 8k
@@ -1408,6 +1410,7 @@ Params: --ar 16:9 --cfg 5.5 --steps 50
 ## ВИЗУАЛЬНЫЕ ЯКОРЯ (Visual Anchors for Image Generation)
 **Базовый промпт:** Man, athletic build, confident posture, short dark hair, piercing grey eyes, casual minimalist style, black t-shirt, natural lighting, photorealistic, 8k, masculine but approachable
 **Стиль:** photorealistic
+**Визуальная сигнатура:** Man, athletic build, confident posture, short dark hair, piercing grey eyes, casual minimalist style, black t-shirt, natural lighting, photorealistic, 8k, masculine but approachable
 **Вариации:**
 - sauna: Man in sauna, athletic build relaxed, towel waist, confident calm expression, steam, warm amber light, wooden interior, photorealistic, natural atmosphere
 - street: Man walking evening street, leather jacket, short dark hair, piercing gaze, urban background, natural lighting, photorealistic, 8k
@@ -1646,6 +1649,7 @@ Params: --ar 16:9 --cfg 5.5 --steps 50
 ## ВИЗУАЛЬНЫЕ ЯКОРЯ (Visual Anchors for Image Generation)
 **Базовый промпт:** Man, friendly open smile, sporty fit build, smart casual shirt with rolled sleeves, wrist watch, bracelet, light brown hair, warm hazel eyes, natural daylight, photorealistic, 8k, approachable energy
 **Стиль:** photorealistic
+**Визуальная сигнатура:** Man, friendly open smile, sporty fit build, smart casual shirt with rolled sleeves, wrist watch, bracelet, light brown hair, warm hazel eyes, natural daylight, photorealistic, 8k, approachable energy
 **Вариации:**
 - sauna: Man in sauna, relaxed laughing, towel, friendly expression, warm lighting, group scene, photorealistic, natural pose
 - street: Man walking city street, smart casual, open smile, wrist watch visible, autumn background, natural lighting, photorealistic
@@ -1880,6 +1884,12 @@ Params: --ar 16:9 --cfg 5.5 --steps 50
 ## ВИЗУАЛЬНЫЕ ЯКОРЯ (Visual Anchors for Image Generation)
 **Базовый промпт:** Portrait of athletic man in his late 30s, rounded oval broad face with soft contours and broad forehead, bright blue wide-set almond-shaped eyes clear and expressive with broad interocular distance, straight nose bridge with subtle width and rounded tip slightly turned down, medium full lips natural pale pink tone with warm smile, soft rounded jawline with light stubble 2-3 days growth, short light blonde hair dense thick coverage evenly cropped all around no visible scalp full hair coverage on entire head, thick muscular neck with visible adam's apple, broad muscular shoulders, athletic build, fair smooth skin with fine texture and faint barely visible freckles on cheeks, slight horizontal forehead wrinkles, faint crow's feet at eye corners, medium-sized ears close to head, soft natural dark blonde eyebrows straight to slightly arched with natural spacing above brow ridge
 **Стиль:** photorealistic
+**Визуальная сигнатура:** Portrait of athletic man in his late 30s, rounded oval broad face with soft contours and broad forehead, bright blue wide-set almond-shaped eyes clear and expressive with broad interocular distance, straight nose bridge with subtle width and rounded tip slightly turned down, medium full lips natural pale pink tone with warm smile, soft rounded jawline with light stubble 2-3 days growth, short light blonde hair dense thick coverage evenly cropped all around no visible scalp full hair coverage on entire head, thick muscular neck with visible adam's apple, broad muscular shoulders, athletic build, fair smooth skin with fine texture and faint barely visible freckles on cheeks, slight horizontal forehead wrinkles, faint crow's feet at eye corners, medium-sized ears close to head, soft natural dark blonde eyebrows straight to slightly arched with natural spacing above brow ridge
+**Вариации:**
+- casual: Man in casual clothes, late 30s, light blonde hair, blue eyes, athletic build, relaxed posture, natural lighting, photorealistic
+- sauna: Man in sauna, late 30s, light blonde hair slightly damp, blue eyes, athletic build, confident posture, steam, warm amber lighting, wooden interior, photorealistic
+- authoritative: Man in formal wear, late 30s, light blonde hair neatly styled, blue eyes intense, athletic build, commanding posture, dramatic lighting, photorealistic, 8k, cinematic
+- friendly: Man smiling, late 30s, light blonde hair, blue eyes warm, athletic build, approachable posture, natural lighting, photorealistic
 **Anti-prompts:** bald head, shaved head, receding hairline, sparse hair, close-set eyes, skinny build, feminine features
 
 # ИНСТРУКЦИИ ДЛЯ LLM

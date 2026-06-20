@@ -4,7 +4,12 @@
   "schema": "2.0.0",
   "description": "Visual anchors for andrey_senior",
   "prompt_base": "Portrait of athletic man in his late 30s, rounded oval broad face with soft contours and broad forehead, bright blue wide-set almond-shaped eyes clear and expressive with broad interocular distance, straight nose bridge with subtle width and rounded tip slightly turned down, medium full lips natural pale pink tone with warm smile, soft rounded jawline with light stubble 2-3 days growth, short light blonde hair dense thick coverage evenly cropped all around no visible scalp full hair coverage on entire head, thick muscular neck with visible adam's apple, broad muscular shoulders, athletic build, fair smooth skin with fine texture and faint barely visible freckles on cheeks, slight horizontal forehead wrinkles, faint crow's feet at eye corners, medium-sized ears close to head, soft natural dark blonde eyebrows straight to slightly arched with natural spacing above brow ridge",
-  "prompt_variations": {},
+  "prompt_variations": {
+    "casual": "Man in casual clothes, late 30s, light blonde hair, blue eyes, athletic build, relaxed posture, natural lighting, photorealistic",
+    "sauna": "Man in sauna, late 30s, light blonde hair slightly damp, blue eyes, athletic build, confident posture, steam, warm amber lighting, wooden interior, photorealistic",
+    "authoritative": "Man in formal wear, late 30s, light blonde hair neatly styled, blue eyes intense, athletic build, commanding posture, dramatic lighting, photorealistic, 8k, cinematic",
+    "friendly": "Man smiling, late 30s, light blonde hair, blue eyes warm, athletic build, approachable posture, natural lighting, photorealistic"
+  },
   "anti_prompts": [
     "bald head",
     "shaved head",
@@ -15,5 +20,5 @@
     "feminine features"
   ],
   "style": "photorealistic",
-  "visual_signature": ""
+  "visual_signature": "Portrait of athletic man in his late 30s, rounded oval broad face with soft contours and broad forehead, bright blue wide-set almond-shaped eyes clear and expressive with broad interocular distance, straight nose bridge with subtle width and rounded tip slightly turned down, medium full lips natural pale pink tone with warm smile, soft rounded jawline with light stubble 2-3 days growth, short light blonde hair dense thick coverage evenly cropped all around no visible scalp full hair coverage on entire head, thick muscular neck with visible adam's apple, broad muscular shoulders, athletic build, fair smooth skin with fine texture and faint barely visible freckles on cheeks, slight horizontal forehead wrinkles, faint crow's feet at eye corners, medium-sized ears close to head, soft natural dark blonde eyebrows straight to slightly arched with natural spacing above brow ridge"
 }

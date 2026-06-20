@@ -277,6 +277,66 @@ class ScenarioAuditor:
             else:
                 self._add("Agency", FAIL, "No emergency stop")
     
+    def audit_persona_visual(self):
+        """2.7b Persona Visual Anchors — проверка визуальных модулей у персонажей"""
+        participants = self.index.get("participants", []) if self.index else []
+        npc_ids = [c for c in participants if c != "user"]
+        
+        if not npc_ids:
+            self._add("Persona Visual", NA, "No NPCs in scenario")
+            return
+        
+        missing_visual = []
+        empty_base = []
+        few_variations = []
+        empty_signature = []
+        
+        for char_id in npc_ids:
+            visual_path = PERSONAS_DIR / char_id / "visual" / "VISUAL_ANCHORS.json"
+            if not visual_path.exists():
+                missing_visual.append(char_id)
+                continue
+            
+            try:
+                with open(visual_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+            except Exception:
+                self._add("Persona Visual", FAIL, f"{char_id}: VISUAL_ANCHORS.json invalid JSON")
+                continue
+            
+            prompt_base = data.get("prompt_base", "")
+            if not prompt_base or len(prompt_base) < 20:
+                empty_base.append(char_id)
+            
+            variations = data.get("prompt_variations", {})
+            if len(variations) < 3:
+                few_variations.append(f"{char_id} ({len(variations)})")
+            
+            signature = data.get("visual_signature", "")
+            if not signature or len(signature) < 20:
+                empty_signature.append(char_id)
+        
+        # Report
+        if missing_visual:
+            self._add("Persona Visual", FAIL, f"Missing VISUAL_ANCHORS.json: {', '.join(missing_visual)}")
+        else:
+            self._add("Persona Visual", PASS, f"All {len(npc_ids)} personas have VISUAL_ANCHORS.json")
+        
+        if empty_base:
+            self._add("Persona Visual", FAIL, f"Empty prompt_base: {', '.join(empty_base)}")
+        else:
+            self._add("Persona Visual", PASS, "All personas have non-empty prompt_base")
+        
+        if few_variations:
+            self._add("Persona Visual", WARN, f"Few variations (<3): {', '.join(few_variations)}")
+        else:
+            self._add("Persona Visual", PASS, "All personas have >= 3 prompt variations")
+        
+        if empty_signature:
+            self._add("Persona Visual", WARN, f"Empty visual_signature: {', '.join(empty_signature)}")
+        else:
+            self._add("Persona Visual", PASS, "All personas have visual_signature")
+    
     def audit_visual(self):
         """2.7 Visual consistency"""
         if not self.environment:
@@ -344,6 +404,7 @@ class ScenarioAuditor:
         self.audit_cross_persona()
         self.audit_agency()
         self.audit_visual()
+        self.audit_persona_visual()
         self.audit_test_assembly()
         
         # Generate report
