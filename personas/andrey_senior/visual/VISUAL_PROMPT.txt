@@ -1,0 +1,215 @@
+{
+  "persona": "Андрей старший",
+  "purpose": "Визуальные промпты для генерации консистентных изображений с разных ракурсов. Понятны комплекция, размеры, объёмы. Обновлено по фото: волосы с залысинами на висках, глаза средне посаженные.",
+  "source": "personas/andrey_senior/core/IDENTITY.json + personas/andrey_senior/visual/VISUAL_ANCHORS.json + photo_2026-06-20",
+  "version": "1.0.0"
+}
+
+---
+
+# БАЗОВЫЕ АНТРОПОМЕТРИЧЕСКИЕ ДАННЫЕ (ОБНОВЛЕНО ПО ФОТО)
+
+- **Возраст:** 38 лет
+- **Рост:** 180 см
+- **Вес:** 85 кг
+- **Телосложение:** athletic, broad shoulders, muscular chest, thick neck, strong build
+- **Пропорции:** Широкое округлое (rounded oval broad) лицо, мягкие контуры, широкий лоб
+- **Кожа:** светлая, гладкая, мелкая текстура, минимум пор, лёгкий жирный блеск на лбу, едва заметные веснушки на щеках и переносице
+- **Особые приметы:** короткие светло-русые волосы, ровно подстриженные, **естественное поредение на висках** (не густые, не плотные); лёгкая щетина 2-3 дней роста по челюстной линии, верхней губе, подбородку; широкие мускулистые плечи с видимой силой верхней части тела; толстая мускулистая шея с видимым кадыком; едва заметные горизонтальные морщины на лбу; едва заметные «гусиные лапки» во внешних уголках глаз; уши среднего размера, плотно прилегающие к голове, чётко очерченная раковина
+
+---
+
+# ДЕТАЛИ ЛИЦА (ОБНОВЛЕНО ПО ФОТО)
+
+## Глаза
+- **Форма:** миндалевидные, **средне посаженные** (medium-set), не wide-set, не close-set
+- **Цвет:** ярко-голубые, чистые, с лёгким серым подтоном
+- **Расстояние:** **среднее межглазничное расстояние**, натуральное расположение
+- **Веки:** натуральная умеренная складка, без нависания
+- **Брови:** прямые до слегка изогнутых, средней густоты, тёмно-русые, натуральный размах над надбровной дугой
+
+## Нос
+- Прямой мостик с лёгкой шириной, закруглённый кончик слегка опущен вниз, без выступающего горба
+
+## Губы
+- Средняя полнота, верхняя губа пропорциональна нижней, натуральный бледно-розовый тон, тёплая улыбка
+
+## Челюсть
+- Мягкая, округлая, не квадратная, плавный переход к шее, лёгкая щетина
+
+## Волосы (ОБНОВЛЕНО ПО ФОТО)
+- **Цвет:** светло-русые, короткие
+- **Стиль:** ровно подстриженные, аккуратные, **не густые, не плотные**
+- **Важно:** **естественное поредение на висках**, не залысины в полном смысле, но волосы не dense thick coverage — натуральный мужской паттерн
+
+## Уши
+- Среднего размера, плотно прилегающие к голове, чётко очерченная раковина
+
+## Шея
+- Толстая, мускулистая, сильная трапеция, видимый кадык
+
+---
+
+# ВИЗУАЛЬНЫЕ ПРОМПТЫ ПО РАКУРСАМ (ОБНОВЛЕНО ПО ФОТО)
+
+## 1. FULL BODY — ФРОНТАЛЬНЫЙ
+
+```
+Full body frontal portrait, athletic man 38yo, 180cm, 85kg, athletic build with broad shoulders and muscular chest, thick muscular neck with visible adam's apple, rounded oval broad face with soft contours and broad forehead, bright blue almond-shaped eyes clear and expressive with average natural medium-set spacing, straight nose bridge with subtle width and rounded tip slightly turned down, medium full lips natural pale pink tone with warm smile, soft rounded jawline with light stubble 2-3 days growth, short light blonde hair evenly cropped, natural male pattern with slight recession at temples, not dense thick, fair smooth skin with fine texture and faint barely visible freckles on cheeks and nose bridge, slight horizontal forehead wrinkles, faint crow's feet at outer eye corners, medium-sized ears close to head, soft natural dark blonde eyebrows straight to slightly arched with natural spacing above brow ridge, wearing unbuttoned blue dress shirt with rolled-up sleeves, casual elegant, broad muscular shoulders, visible upper body strength, photorealistic, 8k, cinematic lighting, neutral background, standing pose, full figure visible head to toe, athletic strong build, confident warm posture
+```
+
+## 2. FULL BODY — ПРОФИЛЬ
+
+```
+Full body side profile, athletic man 38yo, 180cm, 85kg, athletic build with broad shoulders and muscular chest, thick muscular neck with visible adam's apple, rounded oval broad face profile showing soft contours and broad forehead, straight nose bridge with subtle width and rounded tip slightly turned down in profile, medium full lips natural pale pink tone in profile, soft rounded jawline with light stubble 2-3 days growth, short light blonde hair evenly cropped with natural recession at temples visible from side, fair smooth skin, slight horizontal forehead wrinkles, faint crow's feet, broad muscular back and shoulders, thick neck, strong chest and abdomen, athletic legs, wearing unbuttoned blue dress shirt or casual clothes, photorealistic, 8k, cinematic lighting, neutral background, full figure visible head to toe, side view showing depth of chest, back thickness, shoulder slope, neck thickness, head posture, natural male hair pattern on side
+```
+
+## 3. FULL BODY — СЗАДИ
+
+```
+Full body back view, athletic man 38yo, 180cm, 85kg, athletic build with broad shoulders and muscular chest, short light blonde hair evenly cropped with natural recession at temples visible from back, thick muscular neck and strong back with visible trapezius muscles, broad shoulders tapering to waist, athletic glutes and strong thighs, wearing unbuttoned blue dress shirt or shirtless showing back muscles, arms relaxed at sides or one hand adjusting shirt, fair smooth skin on back, photorealistic, 8k, cinematic lighting, neutral background, full figure visible head to toe, back showing shoulder width and strength, spine line, neck thickness, head shape with short hair, natural male hair pattern from behind
+```
+
+## 4. FULL BODY — 3/4
+
+```
+Full body three-quarter view, athletic man 38yo, 180cm, 85kg, athletic build with broad shoulders and muscular chest, rounded oval broad face with soft contours and broad forehead visible at angle, bright blue almond-shaped eyes clear and expressive with average natural medium-set spacing looking slightly off-camera, straight nose bridge with subtle width and rounded tip slightly turned down catching light, medium full lips natural pale pink tone with warm smile, soft rounded jawline with light stubble 2-3 days growth, short light blonde hair evenly cropped with natural recession at temples visible from this angle, fair smooth skin with fine texture and faint barely visible freckles, slight horizontal forehead wrinkles, faint crow's feet, medium-sized ears close to head, broad shoulders turned three-quarter, thick muscular neck, visible upper body strength, wearing unbuttoned blue dress shirt with rolled-up sleeves, weight shifted to one leg, confident warm posture, photorealistic, 8k, cinematic lighting, neutral background, full figure visible head to toe, three-quarter showing broad face depth and athletic body width, commanding but approachable presence
+```
+
+## 5. CLOSE-UP ЛИЦА — ФРОНТАЛЬНЫЙ (как на фото 1)
+
+```
+Close-up portrait frontal, athletic man 38yo, rounded oval broad face with soft contours and broad forehead, bright blue almond-shaped eyes clear and expressive with average natural medium-set spacing looking directly at camera, not wide-set, straight nose bridge with subtle width and rounded tip slightly turned down, medium full lips natural pale pink tone with warm smile, soft rounded jawline with light stubble 2-3 days growth covering jawline upper lip and chin, short light blonde hair evenly cropped, natural male pattern with slight recession at temples, not dense thick coverage, fair smooth skin with fine texture and minimal visible pores slight oily sheen on forehead, faint barely visible freckles on cheeks and nose bridge, slight horizontal forehead wrinkles, faint crow's feet at outer eye corners, medium-sized ears close to head, soft natural dark blonde eyebrows straight to slightly arched with natural spacing above brow ridge, thick muscular neck base visible, photorealistic, 8k, cinematic lighting, shallow depth of field, skin texture visible but smooth, natural male aging signs, warm confident expression, approachable authority
+```
+
+## 6. CLOSE-UP ЛИЦА — ПРОФИЛЬ
+
+```
+Close-up side profile, athletic man 38yo, rounded oval broad face profile showing soft contours and broad forehead, straight nose bridge with subtle width and rounded tip slightly turned down in profile, medium full lips natural pale pink tone in profile, soft rounded jawline with light stubble 2-3 days growth, short light blonde hair evenly cropped with natural recession at temples visible from side, fair smooth skin, slight horizontal forehead wrinkles, faint crow's feet, thick muscular neck with visible adam's apple, medium-sized ear close to head with well-defined helix, gentle forehead slope, photorealistic, 8k, cinematic lighting, shallow depth of field, profile showing nose width and rounded tip, lip fullness, soft chin, rounded jaw, no sharp angles, natural male hair pattern on side, thick neck profile
+```
+
+## 7. CLOSE-UP ЛИЦА — 3/4
+
+```
+Close-up three-quarter portrait, athletic man 38yo, rounded oval broad face with soft contours and broad forehead, bright blue almond-shaped eyes clear and expressive with average natural medium-set spacing looking slightly off-camera, straight nose bridge with subtle width and rounded tip slightly turned down catching light, medium full lips natural pale pink tone with warm smile, soft rounded jawline with light stubble 2-3 days growth, short light blonde hair evenly cropped with natural recession at temples visible from this angle, fair smooth skin with fine texture and faint barely visible freckles on one cheek, slight horizontal forehead wrinkles, faint crow's feet at outer eye corner, medium-sized ear close to head, soft natural dark blonde eyebrows, thick muscular neck base visible, photorealistic, 8k, cinematic lighting, shallow depth of field, one side of face in soft shadow showing broad face depth, cheekbone softness, brow naturalness, jaw roundness, warm approachable expression, authority without aggression
+```
+
+## 8. СИДЯ / ПОЛУПРИГИБ (в баре, за стойкой, как на фото 2)
+
+```
+Full body seated pose, athletic man 38yo, 180cm, 85kg, athletic build with broad shoulders and muscular chest, sitting at bar counter or table, wearing unbuttoned blue dress shirt with rolled-up sleeves showing muscular forearms, thick muscular neck with visible adam's apple, rounded oval broad face with soft contours, bright blue almond-shaped eyes with average natural medium-set spacing looking forward or at companion, medium full lips with warm smile, soft rounded jawline with light stubble 2-3 days growth, short light blonde hair evenly cropped with natural recession at temples, fair smooth skin with faint freckles, broad shoulders and chest visible even when seated, arms resting on bar or table, hands large and strong, photorealistic, 8k, cinematic lighting, warm bar interior background, full figure visible, seated position showing torso thickness, shoulder width at rest, neck thickness, confident relaxed posture, approachable authority, casual elegant presence
+```
+
+## 9. ДЕТАЛЬ РУК / ПЛЕЧ / ШЕИ (для понимания пропорций)
+
+```
+Detail shot shoulders neck and upper chest, athletic man 38yo, broad muscular shoulders with visible upper body strength, thick muscular neck with visible adam's apple and strong trapezius, defined collarbone and upper chest muscular area, fair smooth skin with fine texture, short light blonde hair evenly cropped neckline, soft rounded jawline with light stubble, medium-sized ear close to head, wearing unbuttoned blue dress shirt with rolled-up sleeves or shirtless showing upper body, muscular forearms with visible veins, large strong hands, photorealistic, 8k, macro detail, shallow depth of field, understanding of shoulder width and strength, neck thickness and muscle, collarbone definition, chest depth, arm muscle definition, hand size and strength, overall athletic masculine proportions, thick neck and broad shoulders
+```
+
+## 10. ДЕТАЛЬ ВОЛОС / ЛБА (для понимания: не густые, залысины на висках)
+
+```
+Close-up detail of hair and forehead, athletic man 38yo, short light blonde hair evenly cropped all around, natural male pattern with slight recession at temples, not dense thick coverage, not full hair coverage on entire head, natural thinning on sides, fair smooth skin on forehead with slight oily sheen, faint horizontal forehead wrinkles, broad forehead, soft natural dark blonde eyebrows straight to slightly arched with natural spacing, photorealistic, 8k, macro detail, shallow depth of field, understanding of hair density, natural male hair pattern, temple recession, forehead width, skin texture, natural aging signs, realistic hair expectations, not dense thick hair, not shaved bald, natural 38-year-old male hair
+```
+
+---
+
+# ВАРИАЦИИ ОДЕЖДЫ / СИТУАЦИЙ
+
+## Бар (рубашка, подручные рукава, тёплый свет) — как на фото 2
+
+```
+Full body, athletic man 38yo, 180cm, 85kg, athletic build with broad shoulders and muscular chest, wearing unbuttoned blue dress shirt with rolled-up sleeves showing muscular forearms, thick muscular neck with visible adam's apple, rounded oval broad face with soft contours, bright blue almond-shaped eyes with average natural medium-set spacing, straight nose with rounded tip, medium full lips with warm smile, soft rounded jawline with light stubble 2-3 days growth, short light blonde hair evenly cropped with natural recession at temples, fair smooth skin with faint freckles, standing at bar counter with woman beside him, warm bar lighting, bottles in background, photorealistic, 8k, showing full figure in social setting, approachable authority, casual elegance, broad shoulders, thick neck, confident but warm presence, natural male hair pattern visible
+```
+
+## Сауна (пот, пар, обнажённый торс, щетина)
+
+```
+Full body, athletic man 38yo, 180cm, 85kg, athletic build with broad shoulders and muscular chest, bare torso showing defined muscles and fair smooth skin, thick muscular neck with visible adam's apple, rounded oval broad face with soft contours, bright blue almond-shaped eyes with average natural medium-set spacing, medium full lips, soft rounded jawline with light stubble 2-3 days growth, short light blonde hair slightly damp from steam, natural recession at temples visible, sweat on skin, steam, warm amber lighting, wooden interior, photorealistic, 8k, showing full athletic figure, mature male strength, thick neck, broad shoulders, natural male hair pattern in sauna, approachable authority even undressed, confident warm presence
+```
+
+## Официальный / Авторитетный (костюм, команда, драматичный свет)
+
+```
+Full body, athletic man 38yo, 180cm, 85kg, athletic build with broad shoulders and muscular chest, wearing tailored dark suit or formal wear, short light blonde hair neatly styled but natural recession at temples still visible, bright blue almond-shaped eyes with average natural medium-set spacing intense and authoritative, straight nose with rounded tip, medium full lips with serious warm expression, soft rounded jawline with light stubble or clean shaven, thick muscular neck with visible adam's apple, fair smooth skin with faint freckles, standing commanding posture, dramatic lighting, photorealistic, 8k, cinematic, showing full figure in power pose, mature authority, approachable leadership, broad shoulders in suit, thick neck, confident commanding presence, natural male hair pattern even in formal setting
+```
+
+## Дружелюбный / Улыбка (тепло, доступность, естественный свет)
+
+```
+Full body, athletic man 38yo, 180cm, 85kg, athletic build with broad shoulders and muscular chest, wearing casual clothes or unbuttoned blue dress shirt, short light blonde hair evenly cropped with natural recession at temples, bright blue almond-shaped eyes with average natural medium-set spacing warm and smiling, medium full lips with broad genuine smile, soft rounded jawline with light stubble, fair smooth skin with faint freckles and slight forehead wrinkles from smiling, thick muscular neck, standing relaxed posture, natural daylight, photorealistic, 8k, showing full figure with warm approachable energy, friendly authority, mature male beauty, confident but not intimidating, natural male hair pattern, slight temple recession adding character
+```
+
+## Снятие пальто (медленно, каждое движение выверено — сигнатура)
+
+```
+Full body, athletic man 38yo, 180cm, 85kg, athletic build with broad shoulders and muscular chest, in process of removing coat slowly, each movement deliberate, unbuttoned blue dress shirt underneath with rolled-up sleeves, thick muscular neck with visible adam's apple, rounded oval broad face with soft contours, bright blue almond-shaped eyes with average natural medium-set spacing watching, medium full lips with slight smile, soft rounded jawline with light stubble 2-3 days growth, short light blonde hair evenly cropped with natural recession at temples, fair smooth skin, broad shoulders becoming visible as coat opens, photorealistic, 8k, cinematic lighting, showing deliberate movement, revealing strength, casual elegance, approachable authority, natural male hair pattern, confident unhurried presence
+```
+
+---
+
+# ANTI-PROMPTS (ОБНОВЛЕНО ПО ФОТО)
+
+```
+anime, cartoon, 3d render, distorted anatomy, extra limbs, bad hands, bad fingers, text, watermark, bald head, shaved head, dense thick hair, full hair coverage on entire head, wide-set eyes, close-set eyes, skinny build, feminine features, baby face, sharp jaw, square jaw, angular face, excessive wrinkles, aged appearance, old man, weak build, narrow shoulders, thin neck, no adam's apple, low quality, worst quality, jpeg artifacts, perfect hair, unrealistic hair density, hair transplant look, youthful hairline, dense blonde hair, thick hair coverage, no temple recession, wrong eye color, wrong hair color, over-muscled, bodybuilder, steroid look, aggressive expression, cold eyes, intimidating presence
+```
+
+---
+
+# ТЕХНИЧЕСКИЕ ПАРАМЕТРЫ (для Stable Diffusion / Midjourney)
+
+## Stable Diffusion (SDXL / PonyXL / Flux)
+
+```
+Steps: 30-40
+Sampler: DPM++ 2M Karras / Euler a
+CFG Scale: 7-8
+Resolution: 832x1216 (portrait) or 1024x1536 (full body)
+Clip skip: 2
+Negative prompt: (anime:1.3), (cartoon:1.3), (3d render:1.2), (bad anatomy:1.4), (extra limbs:1.3), (bad hands:1.3), (distorted face:1.2), (watermark:1.2), (text:1.2), (bald head:1.2), (shaved head:1.2), (dense thick hair:1.3), (full hair coverage:1.3), (wide-set eyes:1.2), (close-set eyes:1.2), (skinny build:1.2), (feminine features:1.2), (baby face:1.2), (sharp jaw:1.2), (square jaw:1.2), (angular face:1.2), (excessive wrinkles:1.2), (aged appearance:1.2), (weak build:1.2), (narrow shoulders:1.2), (thin neck:1.2), (no adam's apple:1.2), (low quality:1.3), (worst quality:1.3), (jpeg artifacts:1.2), (perfect hair:1.3), (unrealistic hair density:1.3), (hair transplant:1.3), (youthful hairline:1.2), (thick hair coverage:1.3), (no temple recession:1.2), (over-muscled:1.2), (bodybuilder:1.2), (steroid look:1.2), (aggressive expression:1.2), (cold eyes:1.2), (intimidating presence:1.2), (wrong proportions:1.3)
+Recommended models: realisticVision, photorealistic, majicmixRealistic, realisticVisionV6, flux1-realistic
+LoRA: add_detail, detail_slider, mature male enhancement, skin texture enhancement, photorealistic portrait
+```
+
+## Midjourney
+
+```
+--ar 2:3 (portrait) or --ar 3:4 (full body)
+--style raw
+--s 250-500 (for more photorealistic)
+--no anime, cartoon, 3d render, bad anatomy, extra limbs, bad hands, bald head, shaved head, dense thick hair, full hair coverage, wide-set eyes, close-set eyes, skinny build, feminine features, baby face, sharp jaw, square jaw, angular face, excessive wrinkles, aged appearance, weak build, narrow shoulders, thin neck, low quality, perfect hair, unrealistic hair density, hair transplant, youthful hairline, thick hair coverage, no temple recession, over-muscled, bodybuilder, steroid look, aggressive expression, cold eyes, intimidating presence, wrong proportions
+```
+
+## DALL-E 3 / Ideogram
+
+```
+Style: photorealistic, natural lighting, detailed skin texture, professional photography, mature male beauty, approachable authority, natural male hair pattern, slight temple recession, realistic aging
+Avoid: illustrated, anime, 3d rendered, stylized, cartoon, bald head, shaved head, dense thick hair, full hair coverage, wide-set eyes, close-set eyes, skinny build, feminine features, baby face, sharp jaw, excessive wrinkles, weak build, narrow shoulders, perfect hair, unrealistic hair density, hair transplant, youthful hairline, no temple recession, over-muscled, bodybuilder, aggressive expression, cold eyes, intimidating presence
+```
+
+---
+
+# КОНТРОЛЬНЫЙ ЧЕКЛИСТ КОНСИСТЕНТНОСТИ (ОБНОВЛЁН ПО ФОТО)
+
+При генерации серии изображений проверять:
+
+- [ ] Рост: 180 см (средне-высокий, но не гигант)
+- [ ] Вес: 85 кг (атлетичный, крепкий, широкие плечи, мускулистый торс, толстая шея)
+- [ ] Телосложение: athletic, broad shoulders, muscular chest, thick neck, strong build
+- [ ] Лицо: широкое, округлое (rounded oval broad), мягкие контуры, широкий лоб
+- [ ] Глаза: ярко-голубые, миндалевидные, **СРЕДНЕ ПОСАЖЕННЫЕ** (medium-set), не wide-set, не close-set — ОБЯЗАТЕЛЬНО ✅
+- [ ] Нос: прямой мостик с лёгкой шириной, закруглённый кончик слегка опущен вниз
+- [ ] Губы: средняя полнота, верхняя пропорциональна нижней, бледно-розовый, тёплая улыбка
+- [ ] Челюсть: мягкая, округлая, не квадратная, лёгкая щетина 2-3 дней — ОБЯЗАТЕЛЬНО ✅
+- [ ] Кожа: светлая, гладкая, мелкая текстура, лёгкий жирный блеск на лбу, едва заметные веснушки на щеках и переносице — ОБЯЗАТЕЛЬНО ✅
+- [ ] Волосы: короткие, светло-русые, ровно подстриженные, **НЕ густые, не плотные, естественное поредение на висках** — ОБЯЗАТЕЛЬНО ✅
+- [ ] Волосы (anti): **НЕ dense thick coverage, НЕ full hair coverage on entire head, НЕ no visible scalp** — ОБЯЗАТЕЛЬНО ✅
+- [ ] Шея: толстая, мускулистая, сильная трапеция, видимый кадык — ОБЯЗАТЕЛЬНО ✅
+- [ ] Уши: среднего размера, плотно прилегающие к голове, чётко очерченная раковина — ОБЯЗАТЕЛЬНО ✅
+- [ ] Брови: прямые до слегка изогнутых, средней густоты, тёмно-русые, натуральный размах
+- [ ] Плечи: широкие, мускулистые, видимая сила верхней части тела — ОБЯЗАТЕЛЬНО ✅
+- [ ] Руки: большие, сильные, мускулистые предплечья, видимые вены
+- [ ] Осанка: уверенная, но не агрессивная, тёплая, доступная, власть без угрозы
+- [ ] Выражение: тёплое, уверенное, доступное, авторитетное без агрессии, защитник
+- [ ] Возрастные знаки: едва заметные горизонтальные морщины на лбу, едва заметные «гусиные лапки» во внешних уголках глаз — ОБЯЗАТЕЛЬНО ✅
+- [ ] Присутствие: approachable authority, тёплый защитник, игривый переключатель, опыт без агрессии

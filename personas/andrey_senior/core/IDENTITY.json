@@ -14,17 +14,17 @@
     "height_cm": 180,
     "weight_kg": 85,
     "body_type": "athletic, broad shoulders, muscular chest, thick neck, strong build",
-    "hair_color": "short light blonde, dense thick coverage, evenly cropped",
-    "eye_color": "bright blue, wide-set, almond-shaped",
+    "hair_color": "short light blonde, evenly cropped, slight natural recession at temples",
+    "eye_color": "bright blue, medium-set, almond-shaped",
     "clothing_signature": "unbuttoned blue dress shirt, rolled-up sleeves, casual elegant",
     "scent": "clean masculine, subtle cologne"
   },
   "anatomic_anchor": {
     "face_shape": "rounded oval broad, soft contours, broad forehead",
     "eyes": {
-      "shape": "almond, wide-set, clear",
+      "shape": "almond, medium-set, clear",
       "color": "bright blue with subtle gray undertones",
-      "distance": "broad interocular distance, one full eye width between inner corners",
+      "distance": "average interocular distance, natural spacing",
       "eyelids": "natural moderate fold, no hooding",
       "eyebrows": "straight to slightly arched, medium thickness, dark blonde, natural spacing above brow ridge"
     },
@@ -33,7 +33,7 @@
     "jaw": "soft rounded, not square, gentle transition to neck, light stubble coverage",
     "skin_texture": "fair smooth, fine texture, minimal visible pores, slight oily sheen on forehead, faint barely visible freckles on cheeks and nose bridge",
     "distinguishing_features": [
-      "short light blonde dense thick hair evenly cropped all around, no visible scalp",
+      "short light blonde hair evenly cropped, receding slightly at temples, natural male pattern on sides",
       "light stubble beard 2-3 days growth covering jawline, upper lip, chin",
       "broad muscular shoulders with visible upper body strength",
       "thick muscular neck with visible adam's apple",
