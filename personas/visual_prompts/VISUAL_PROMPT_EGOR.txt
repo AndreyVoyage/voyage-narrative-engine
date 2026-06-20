@@ -1,0 +1,239 @@
+{
+  "persona": "Егор",
+  "purpose": "Визуальные промпты для генерации консистентных изображений с разных ракурсов. Понятны комплекция, размеры, объёмы.",
+  "source": "personas/egor/core/IDENTITY.json + personas/egor/visual/VISUAL_ANCHORS.json",
+  "version": "1.0.0"
+}
+
+---
+
+# БАЗОВЫЕ АНТРОПОМЕТРИЧЕСКИЕ ДАННЫЕ
+
+- **Возраст:** 35 лет
+- **Рост:** 180 см
+- **Вес:** 83 кг
+- **Телосложение:** athletic — атлетичный, широкие плечи, узкая талия, видимый мышечный рельеф
+- **Пропорции:** Овальное лицо с угловатой челюстью, резко очерченной, мужественной. «Хищная элегантность, волчий взгляд».
+- **Кожа:** светлый оливковый, загорает здорово, гладкая, ухоженная, без шрамов (flawless)
+- **Особые приметы:** асимметричная ухмылка (левая сторона выше); левый глаз прищуривается при лжи; ноздри раздуваются при возбуждении; дорогие часы — сигнатурный аксессуар; пальцы постукивают или сжимаются в кулак при регрессе; щеки краснеют на U4-U5
+
+---
+
+# ДЕТАЛИ ЛИЦА (для всех ракурсов)
+
+## Лоб
+- Широкий, короткий
+
+## Подбородок
+- Сильный, с ямочкой (cleft chin)
+
+## Общее впечатление
+- Хищная элегантность, волчий взгляд, хищник в деловом костюме
+
+## Глаза
+- **Цвет:** серый
+- **Форма:** миндалевидные, узкие, тяжёлые нависшие веки
+- **Взгляд:** интенсивный, вычисляющий, хищный, холодный на U1-U3, расширенные зрачки на U4-U5
+- **Сигнатура:** левый глаз прищуривается при лжи
+- **Динамика зрачков:** U1-U3: нормальные/холодные; U4-U5: расширенные; U3A-U5B: суженные; U4B-U5A: максимально расширенные
+
+## Нос
+- Прямой, сильный, слегка орлиный (aquiline)
+- **Сигнатура:** ноздри раздуваются при возбуждении
+
+## Губы
+- Средние, купидон, тонкие
+- **Сигнатура:** асимметричная ухмылка (левая сторона выше)
+- **Динамика:** сжимаются при гневе, становятся плоскими при лжи
+- **Зубы:** видны на U3B-U4B
+
+## Кожа
+- **Тон:** светлый оливковый, загорает здорово
+- **Текстура:** гладкая, ухоженная
+- **Динамика:** щёки краснеют на U4-U5
+- **Шрамы:** нет, безупречная (flawless)
+- **Пот:** U1-U3: минимальный; U4-U5: умеренный на лбу; U5B: нет
+
+## Волосы
+- **Цвет:** тёмно-пепельный блонд (dark ash-blond)
+- **Стиль:** короткий, военный, текстурированный верх (short military textured top)
+- **Борода:** нет, или 3-дневная щетина (3-day stubble)
+
+## Тело
+- **Рост:** 180 см
+- **Вес:** 83 кг
+- **Тип:** athletic
+- **Построение:** широкие плечи, узкая талия (broad shoulders, narrow waist)
+- **Мышечный рельеф:** видимый (visible muscle definition)
+
+## Сигнатурные аксессуары
+- Дорогие часы (expensive watch)
+- Пальцы: постукивают при тревоге, сжимаются в кулак при регрессе
+
+## Осанка
+- Наклон вперёд, хищная, плечи назад, вес на передней части стоп (forward lean, predatory, shoulders back, weight on balls of feet)
+
+---
+
+# ВИЗУАЛЬНЫЕ ПРОМПТЫ ПО РАКУРСАМ
+
+## 1. FULL BODY — ФРОНТАЛЬНЫЙ (вид спереди)
+
+```
+Full body frontal portrait, handsome athletic man 35yo, 180cm, 83kg, dark ash-blond short military cut textured top, intense gray almond eyes with predatory calculating gaze and slight left eye squint, heavy hooded eyelids, sharp angular jaw with visible clench muscles and strong cleft chin, high prominent cheekbones, slight asymmetrical smirk left side higher, defined cupid bow lips medium thin, light olive smooth flawless skin with no scars, no facial hair or very light 3-day stubble, broad shoulders narrow waist, visible muscle definition on chest and arms, expensive watch on left wrist, wearing dark fitted shirt or smart casual suit, forward-leaning predatory posture, shoulders back, weight on balls of feet, photorealistic, 8k, cinematic lighting, neutral background, standing pose, full figure visible head to toe, athletic V-taper torso, muscular but not bodybuilder, elegant predator silhouette, commanding presence
+```
+
+## 2. FULL BODY — ПРОФИЛЬ (вид сбоку)
+
+```
+Full body side profile, handsome athletic man 35yo, 180cm, 83kg, dark ash-blond short military cut textured top, sharp angular jaw with visible clench muscles and strong cleft chin in profile, high prominent cheekbone visible from side, straight strong aquiline nose with flared nostrils, defined cupid bow lips in profile, light olive smooth flawless skin, broad shoulders and muscular back visible from side, narrow waist, visible muscle definition on torso and legs, athletic glutes and thighs, wearing dark fitted shirt and trousers, forward-leaning predatory posture, weight on balls of feet, photorealistic, 8k, cinematic lighting, neutral background, full figure visible head to toe, side view showing depth of chest, back thickness, shoulder slope, hip width, leg muscle definition, torso length, neck thickness, head posture forward
+```
+
+## 3. FULL BODY — СЗАДИ (вид сзади)
+
+```
+Full body back view, handsome athletic man 35yo, 180cm, 83kg, dark ash-blond short military cut textured top, broad muscular back with visible latissimus dorsi and trapezius muscles, V-taper torso from back, narrow waist, athletic glutes and muscular thighs, wearing dark fitted shirt or shirtless showing back muscles, arms relaxed at sides or one hand adjusting cuff, expensive watch visible on left wrist, photorealistic, 8k, cinematic lighting, neutral background, full figure visible head to toe, back showing shoulder width, back thickness, muscle definition, spine line, hip shape from behind, neck thickness, head posture, short military haircut neckline
+```
+
+## 4. FULL BODY — 3/4 (три четверти)
+
+```
+Full body three-quarter view, handsome athletic man 35yo, 180cm, 83kg, dark ash-blond short military cut textured top, intense gray almond eyes with predatory calculating gaze and slight left eye squint visible at angle, heavy hooded eyelids, sharp angular jaw with visible clench muscles and strong cleft chin, high prominent cheekbones catching light from angle, slight asymmetrical smirk left side higher, defined cupid bow lips medium thin, light olive smooth flawless skin, broad shoulders turned three-quarter to camera, visible muscle definition on chest and arms, narrow waist, expensive watch on left wrist, wearing dark fitted shirt and trousers, forward-leaning predatory posture, weight shifted to one leg, photorealistic, 8k, cinematic lighting, neutral background, full figure visible head to toe, three-quarter showing both face depth and body width, torso thickness, hip angle, leg stance
+```
+
+## 5. CLOSE-UP ЛИЦА — ФРОНТАЛЬНЫЙ
+
+```
+Close-up portrait frontal, handsome man 35yo, dark ash-blond short military cut textured top, intense gray almond eyes with predatory calculating gaze looking directly at camera, slight left eye squint creating asymmetry, heavy hooded eyelids, sharp angular jaw with visible clench muscles and strong cleft chin, high prominent cheekbones, slight asymmetrical smirk left side higher, defined cupid bow lips medium thin, light olive smooth flawless skin with no scars, no facial hair or very light 3-day stubble, broad short forehead, light olive skin with subtle flush on cheekbones, nostrils slightly flared, photorealistic, 8k, cinematic lighting, shallow depth of field, skin texture visible, pores and fine details, flawless but natural skin, no acne, no scars, calculating cold expression, wolf-like presence
+```
+
+## 6. CLOSE-UP ЛИЦА — ПРОФИЛЬ
+
+```
+Close-up side profile, handsome man 35yo, dark ash-blond short military cut textured top, sharp angular jaw with visible clench muscles and strong cleft chin in profile, high prominent cheekbone, straight strong aquiline nose with slight curve and flared nostrils, defined cupid bow lips in profile, light olive smooth flawless skin, heavy hooded eyelid visible from side, broad short forehead slope, strong brow ridge, ear shape natural, neck thickness and muscle definition visible, photorealistic, 8k, cinematic lighting, shallow depth of field, profile showing nose bridge height and aquiline curve, lip projection, chin strength and cleft, jawline sharpness, forehead slope, brow ridge prominence, head posture forward
+```
+
+## 7. CLOSE-UP ЛИЦА — 3/4
+
+```
+Close-up three-quarter portrait, handsome man 35yo, dark ash-blond short military cut textured top, intense gray almond eyes with predatory calculating gaze looking slightly off-camera, slight left eye squint, heavy hooded eyelids, sharp angular jaw with visible clench muscles and strong cleft chin, high prominent cheekbones catching light from angle, slight asymmetrical smirk left side higher, defined cupid bow lips medium thin, light olive smooth flawless skin with subtle flush on cheekbones, no facial hair or very light 3-day stubble, broad short forehead, nostrils slightly flared, photorealistic, 8k, cinematic lighting, shallow depth of field, one side of face in shadow showing depth, cheekbone prominence, brow ridge, jawline shadow, calculating expression, wolf-like presence
+```
+
+## 8. СИДЯ / ПОЛУПРИГИБ (для понимания объёмов в покое)
+
+```
+Full body seated pose, handsome athletic man 35yo, 180cm, 83kg, dark ash-blond short military cut textured top, intense gray almond eyes with predatory gaze, sharp angular jaw with visible clench muscles, sitting in leather armchair or at desk, dark fitted shirt sleeves rolled up showing muscular forearms and expensive watch, broad shoulders slightly hunched or relaxed, arms resting on armrests or table, hands visible with fingers tapping or clenched slightly, visible muscle definition on chest and arms even when seated, light olive smooth skin, photorealistic, 8k, cinematic lighting, neutral or dark burgundy interior background, full figure visible, seated position showing torso thickness, leg muscle compression, arm resting posture, shoulder width at rest, dominant seated presence, forward-leaning even when sitting
+```
+
+## 9. ДЕТАЛЬ РУК / ПЛЕЧ / ШЕИ (для понимания пропорций)
+
+```
+Detail shot shoulders neck and upper chest, handsome athletic man 35yo, thick muscular neck with visible sternocleidomastoid muscles, broad muscular shoulders with defined deltoids, dark fitted shirt stretched over muscular chest, visible upper chest muscle definition and collarbone, dark ash-blond short military cut textured top neckline, no facial hair or very light 3-day stubble, light olive smooth skin, expensive watch on left wrist, visible veins on hands and forearms, fingers long and elegant but strong, photorealistic, 8k, macro detail, shallow depth of field, understanding of neck thickness, shoulder width, collarbone prominence, chest depth, arm muscle definition, hand size, watch style, wrist thickness, overall masculine elegant proportions
+```
+
+## 10. ДЕТАЛЬ РУК (для понимания размеров)
+
+```
+Close-up of hands and forearms, handsome athletic man 35yo, athletic build, large elegant masculine hands with long fingers, visible veins and tendons, light olive smooth skin, dark ash-blond short hair on forearms minimal, muscular forearms with defined brachioradialis and flexor muscles, expensive watch on left wrist with visible dial, fingers tapping on surface or clenched in fist showing tension, photorealistic, 8k, macro detail, shallow depth of field, understanding of hand size, finger length, palm width, vein prominence, forearm muscle definition, wrist thickness, watch detail, overall elegant masculine hand proportions, predatory hand gestures
+```
+
+---
+
+# ВАРИАЦИИ ОДЕЖДЫ / СИТУАЦИЙ
+
+## Деловой / Костюм (доминантный хищник)
+
+```
+Full body, handsome athletic man 35yo, 180cm, 83kg, dark ash-blond short military cut textured top, intense gray almond eyes predatory calculating, sharp angular jaw with visible clench muscles, high prominent cheekbones, slight asymmetrical smirk, wearing tailored dark suit, white shirt, top button unbuttoned, no tie, expensive watch visible, standing in modern office or penthouse, city lights through window, forward-leaning posture, shoulders back, weight on balls of feet, commanding presence, photorealistic, 8k, cinematic lighting, dark burgundy ambient light, showing full figure in power pose, suit silhouette, broad shoulders, narrow waist, athletic build in tailored clothes, predatory elegance
+```
+
+## Смарт-кэжуал (рубашка, брюки)
+
+```
+Full body, handsome athletic man 35yo, 180cm, 83kg, dark ash-blond short military cut textured top, intense gray almond eyes predatory, sharp angular jaw, wearing dark fitted shirt with top button unbuttoned, dark trousers, sleeves rolled up showing muscular forearms and expensive watch, standing relaxed but alert, hands in pockets or adjusting cuff, street or promenade background, evening light, photorealistic, 8k, showing casual but dominant posture, open collar revealing upper neck and collarbone, forearm muscles, watch detail, broad shoulders, narrow waist, athletic build in smart casual
+```
+
+## Сауна (пот, пар, обнажённый торс)
+
+```
+Full body, handsome athletic man 35yo, 180cm, 83kg, dark ash-blond short damp hair from steam, intense gray almond eyes predatory, sharp angular jaw, sweat on forehead and skin, broad muscular shoulders and chest visible, defined abdominal muscles, light olive smooth skin glistening with sweat, wearing dark swim trunks or towel, standing in sauna or steam room, warm amber lighting, wooden interior, photorealistic, 8k, showing full muscular figure, sweat droplets on skin, muscle definition in warm light, predatory energy even in relaxation, no facial hair or very light stubble, nostrils slightly flared from heat, cheeks slightly flushed
+```
+
+## Дома (тёмные ткани, брутальный интерьер)
+
+```
+Full body, handsome athletic man 35yo, 180cm, 83kg, dark ash-blond short military cut textured top, intense gray almond eyes predatory in dim light, sharp angular jaw, wearing dark fitted t-shirt or bare chest with dark trousers, sitting in leather armchair in dark room with burgundy lighting, expensive watch on wrist, fingers tapping on armrest, forward-leaning posture even when seated, broad shoulders, visible muscle definition, light olive skin, photorealistic, 8k, dim burgundy ambient lighting, dark textiles, brutal interior, showing relaxed but alert predator at rest, torso thickness, arm resting posture, dominant seated presence, home style dark brutal
+```
+
+## Вечерний город (командующее присутствие)
+
+```
+Full body, handsome athletic man 35yo, 180cm, 83kg, dark ash-blond short military cut textured top, intense gray almond eyes predatory, sharp angular jaw, wearing black fitted shirt, dark trousers, expensive watch, standing on rooftop or street at night, city lights bokeh behind, forward-leaning posture, shoulders back, weight on balls of feet, arms crossed or one hand in pocket, commanding presence, photorealistic, 8k, night scene, city lights, showing full silhouette against lights, broad shoulders, narrow waist, athletic build, predatory silhouette, wolf-like presence in urban environment
+```
+
+---
+
+# ANTI-PROMPTS (чего НЕ должно быть)
+
+```
+anime, cartoon, 3d render, distorted anatomy, extra limbs, bad hands, bad fingers, text, watermark, messy hair (his is military neat), weak posture, baby face, excessive facial hair (beard, mustache), overweight, short man, nerdy glasses, friendly smile, warm eyes, approachable energy, soft features, round face, weak jaw, narrow shoulders, no muscle definition, smooth skin without texture (he has flawless but natural skin), scars (he has none), acne, bad skin, wrong eye color, wrong hair color (not blonde, not brown — dark ash-blond), low quality, worst quality, jpeg artifacts
+```
+
+---
+
+# ТЕХНИЧЕСКИЕ ПАРАРАМЕТРЫ (для Stable Diffusion / Midjourney)
+
+## Stable Diffusion (SDXL / PonyXL / Flux)
+
+```
+Steps: 30-40
+Sampler: DPM++ 2M Karras / Euler a
+CFG Scale: 7-8
+Resolution: 832x1216 (portrait) or 1024x1536 (full body)
+Clip skip: 2
+Negative prompt: (anime:1.3), (cartoon:1.3), (3d render:1.2), (bad anatomy:1.4), (extra limbs:1.3), (bad hands:1.3), (distorted face:1.2), (watermark:1.2), (text:1.2), (messy hair:1.2), (weak posture:1.3), (baby face:1.2), (excessive facial hair:1.3), (beard:1.3), (mustache:1.3), (overweight:1.2), (short man:1.2), (nerdy:1.2), (glasses:1.2), (friendly smile:1.2), (warm eyes:1.2), (approachable energy:1.2), (soft features:1.2), (round face:1.2), (weak jaw:1.2), (narrow shoulders:1.2), (no muscle definition:1.3), (scars:1.2), (acne:1.2), (bad skin:1.2), (wrong hair color:1.2), (blonde:1.2), (brown hair:1.2), (low quality:1.3), (worst quality:1.3), (jpeg artifacts:1.2), (wrong proportions:1.3)
+Recommended models: realisticVision, photorealistic, majicmixRealistic, realisticVisionV6, flux1-realistic
+LoRA: add_detail, detail_slider, male muscle enhancement, skin texture enhancement, photorealistic portrait
+```
+
+## Midjourney
+
+```
+--ar 2:3 (portrait) or --ar 3:4 (full body)
+--style raw
+--s 250-500 (for more photorealistic)
+--no anime, cartoon, 3d render, bad anatomy, extra limbs, bad hands, messy hair, weak posture, baby face, excessive facial hair, beard, mustache, overweight, short man, nerdy, glasses, friendly smile, warm eyes, approachable, soft features, round face, weak jaw, narrow shoulders, no muscle definition, scars, acne, bad skin, blonde, brown hair, low quality, wrong proportions
+```
+
+## DALL-E 3 / Ideogram
+
+```
+Style: photorealistic, cinematic lighting, detailed skin texture, professional photography, elegant predator, wolf-like presence
+Avoid: illustrated, anime, 3d rendered, stylized, cartoon, messy hair, weak posture, baby face, excessive facial hair, friendly smile, warm eyes, approachable, soft features, round face, weak jaw, scars, acne, bad skin, wrong hair color
+```
+
+---
+
+# КОНТРОЛЬНЫЙ ЧЕКЛИСТ КОНСИСТЕНТНОСТИ
+
+При генерации серии изображений проверять:
+
+- [ ] Рост: 180 см (средне-высокий, но не гигант)
+- [ ] Вес: 83 кг (атлетичный, мускулистый, не бодибилдер, не тощий)
+- [ ] Телосложение: athletic, широкие плечи, узкая талия, видимый мышечный рельеф
+- [ ] Лицо: овальное с угловатой челюстью, резко очерченной, мужественной
+- [ ] Лоб: широкий, короткий
+- [ ] Подбородок: сильный, с ямочкой (cleft chin) — ОБЯЗАТЕЛЬНО
+- [ ] Глаза: серый, миндалевидные, узкие, тяжёлые нависшие веки, хищный взгляд
+- [ ] Левый глаз: прищуривается при лжи — ОБЯЗАТЕЛЬНО (для характерных ракурсов)
+- [ ] Нос: прямой, сильный, слегка орлиный, ноздри раздуваются при возбуждении
+- [ ] Губы: средние, купидон, тонкие, асимметричная ухмылка (левая выше) — ОБЯЗАТЕЛЬНО
+- [ ] Кожа: светлый оливковый, гладкая, безупречная, без шрамов, без акне
+- [ ] Волосы: тёмно-пепельный блонд, короткий, военный, текстурированный верх
+- [ ] Борода: нет, или только 3-дневная щетина
+- [ ] Щеки: краснеют на U4-U5 (для пиковых сцен)
+- [ ] Часы: дорогие, на левой руке — ОБЯЗАТЕЛЬНО (сигнатурный аксессуар)
+- [ ] Построение: V-taper torso, широкие плечи, узкая талия, видимые мышцы
+- [ ] Руки: большие, элегантные, но сильные, видимые вены, длинные пальцы
+- [ ] Осанка: наклон вперёд, хищная, плечи назад, вес на передней части стоп
+- [ ] Присутствие: хищная элегантность, волчий взгляд, командующая аура

@@ -1,0 +1,197 @@
+{
+  "persona": "Сергей",
+  "purpose": "Визуальные промпты для генерации консистентных изображений с разных ракурсов. Понятны комплекция, размеры, объёмы.",
+  "source": "personas/sergey/core/IDENTITY.json + personas/sergey/visual/VISUAL_ANCHORS.json",
+  "version": "1.0.0"
+}
+
+---
+
+# БАЗОВЫЕ АНТРОПОМЕТРИЧЕСКИЕ ДАННЫЕ
+
+- **Возраст:** 29 лет
+- **Рост:** 183 см
+- **Телосложение:** athletic muscular — атлетичный, мускулистый, широкие плечи, крепкий торс
+- **Пропорции:** Вытянутое (oblong) лицо с сильной челюстью, мужские углы, массивная нижняя часть лица
+- **Кожа:** слегка грубая, видимые поры на носу и щеках, лёгкие следы от акне на челюстной линии, загорелая (sun-tanned)
+- **Особые приметы:** постоянная лёгкая щетина (5 o'clock shadow даже после бритья); маленький шрам над правой бровью (едва заметный); интенсивный пронзительный взгляд — глаза оценивают
+
+---
+
+# ДЕТАЛИ ЛИЦА (для всех ракурсов)
+
+## Глаза
+- **Форма:** узкие, слегка нависшие веки, интенсивные
+- **Цвет:** пронзительный серый со стальным синим подтоном
+- **Расстояние:** чуть ближе среднего
+- **Веки:** тяжёлые верхние веки, естественный нависший вид
+- **Брови:** густые, прямые, тёмные, низко посаженные — создают интенсивное выражение
+
+## Нос
+- Сильный прямой мост, слегка орлиный, мужественный кончик
+
+## Губы
+- Тонкая верхняя губа, более полная нижняя, натуральный бледно-розовый, редко улыбается полностью
+
+## Челюсть
+- Сильная квадратная челюсть, видимые жевательные мышцы (masseter), лёгкая ямочка на подбородке (slight cleft chin)
+
+## Волосы
+- **Цвет:** тёмные, короткие
+- **Стиль:** короткая стрижка, аккуратная, небрежная
+- **Щетина:** постоянная лёгкая (5 o'clock shadow), даже после бритья
+
+---
+
+# ВИЗУАЛЬНЫЕ ПРОМПТЫ ПО РАКУРСАМ
+
+## 1. FULL BODY — ФРОНТАЛЬНЫЙ (вид спереди)
+
+```
+Full body frontal portrait, man 29yo, 183cm tall, athletic muscular build, oblong face with strong jawline and masculine angles, narrow hooded piercing grey eyes with steel blue undertones, thick straight dark eyebrows low set creating intense expression, strong straight nose slightly aquiline masculine tip, thin upper lip fuller lower lip natural pale pink, strong square jaw with visible masseter muscles and slight cleft chin, slightly rough skin with visible pores on nose and cheeks light acne scars on jawline sun-tanned, short dark hair, permanent light stubble 5 o'clock shadow even after shaving, small scar above right eyebrow barely visible, wearing black fitted t-shirt and dark jeans, confident posture arms relaxed at sides or crossed, broad shoulders muscular chest visible through fabric, photorealistic, 8k, cinematic lighting, neutral background, standing pose, full figure visible head to toe, athletic muscular physique, V-taper torso, narrow waist relative to shoulders, muscular arms and legs
+```
+
+## 2. FULL BODY — ПРОФИЛЬ (вид сбоку)
+
+```
+Full body side profile, man 29yo, 183cm tall, athletic muscular build, oblong face profile showing strong jawline and masculine angles, prominent nose bridge with slight aquiline curve in profile, thin upper lip and fuller lower lip visible in profile, strong chin with slight cleft, short dark hair, permanent light stubble visible along jawline, broad shoulders muscular back, athletic posture, narrow waist relative to shoulders, muscular glutes and thighs, arms relaxed or one hand in pocket, wearing black fitted t-shirt and dark jeans, leather jacket optional, photorealistic, 8k, cinematic lighting, neutral background, full figure visible head to toe, side view showing depth of chest, back thickness, shoulder slope, hip width, leg muscle definition
+```
+
+## 3. FULL BODY — СЗАДИ (вид сзади)
+
+```
+Full body back view, man 29yo, 183cm tall, athletic muscular build, short dark hair neat, broad muscular back with visible latissimus dorsi and trapezius muscles, V-taper torso from back, narrow waist, athletic glutes, muscular thighs and calves, wearing black fitted t-shirt showing back muscles or bare back in sauna, arms relaxed at sides or one hand in pocket, photorealistic, 8k, cinematic lighting, neutral background, full figure visible head to toe, back showing shoulder width, back thickness, muscle definition, spine line, hip shape from behind
+```
+
+## 4. FULL BODY — 3/4 (три четверти)
+
+```
+Full body three-quarter view, man 29yo, 183cm tall, athletic muscular build, oblong face with strong jawline and masculine angles visible at angle, narrow hooded piercing grey eyes with steel blue undertones looking slightly off-camera, thick straight dark eyebrows low set, strong straight nose slightly aquiline catching light from angle, thin upper lip fuller lower lip natural pale pink, strong square jaw with visible masseter muscles and slight cleft chin, slightly rough sun-tanned skin, short dark hair, permanent light stubble, broad shoulders turned three-quarter to camera, muscular chest and arms visible, wearing black fitted t-shirt and dark jeans, weight shifted to one leg, confident posture, photorealistic, 8k, cinematic lighting, neutral background, full figure visible head to toe, three-quarter showing both face depth and body width
+```
+
+## 5. CLOSE-UP ЛИЦА — ФРОНТАЛЬНЫЙ
+
+```
+Close-up portrait frontal, man 29yo, oblong face with strong jawline and masculine angles, narrow hooded piercing grey eyes with steel blue undertones looking directly at camera with evaluating gaze, thick straight dark eyebrows low set creating intense expression, strong straight nose slightly aquiline masculine tip, thin upper lip fuller lower lip natural pale pink rarely smiling fully, strong square jaw with visible masseter muscles and slight cleft chin, slightly rough skin with visible pores on nose and cheeks light acne scars on jawline sun-tanned, short dark hair, permanent light stubble 5 o'clock shadow along jawline, small scar above right eyebrow barely visible, intense piercing gaze that seems to evaluate, photorealistic, 8k, cinematic lighting, shallow depth of field, skin texture visible, pores and fine details, natural rugged masculine skin
+```
+
+## 6. CLOSE-UP ЛИЦА — ПРОФИЛЬ
+
+```
+Close-up side profile, man 29yo, oblong face profile showing strong jawline with masculine angles, prominent nose bridge with slight aquiline curve in profile, thin upper lip and fuller lower lip in profile, strong chin with slight cleft, short dark hair with neat neckline, permanent light stubble visible along jawline and neck, thick straight dark eyebrow low set, ear shape natural, slightly rough sun-tanned skin texture, neck thickness and muscle definition visible, photorealistic, 8k, cinematic lighting, shallow depth of field, profile showing nose bridge height, lip projection, chin strength, jawline definition, forehead slope, brow ridge prominence
+```
+
+## 7. CLOSE-UP ЛИЦА — 3/4
+
+```
+Close-up three-quarter portrait, man 29yo, oblong face with strong jawline and masculine angles, narrow hooded piercing grey eyes with steel blue undertones looking slightly off-camera with evaluating gaze, thick straight dark eyebrows low set, strong straight nose slightly aquiline catching light, thin upper lip fuller lower lip natural pale pink, strong square jaw with visible masseter muscles and slight cleft chin, slightly rough sun-tanned skin with visible pores, short dark hair, permanent light stubble, small scar above right eyebrow barely visible from this angle, intense piercing gaze, photorealistic, 8k, cinematic lighting, shallow depth of field, one side of face in shadow showing depth, cheekbone prominence, brow ridge, jawline shadow
+```
+
+## 8. СИДЯ / ПОЛУПРИГИБ (для понимания объёмов в покое)
+
+```
+Full body seated pose, man 29yo, 183cm tall, athletic muscular build, sitting on wooden bench or leather chair, black fitted t-shirt and dark jeans, broad muscular back slightly hunched or relaxed, arms resting on knees or beside body, hands visible with defined veins and muscles, short dark hair, permanent light stubble, narrow hooded piercing grey eyes looking forward or slightly down, oblong face with strong jawline, natural masculine posture showing relaxed athletic build, photorealistic, 8k, cinematic lighting, neutral background, full figure visible, seated position showing torso thickness, leg muscle compression, arm resting posture, shoulder width at rest
+```
+
+## 9. ДЕТАЛЬ РУК / ПЛЕЧ / ШЕИ (для понимания пропорций)
+
+```
+Detail shot shoulders neck and upper chest, man 29yo, athletic muscular build, thick muscular neck with visible trapezius and sternocleidomastoid muscles, broad muscular shoulders with defined deltoids, black fitted t-shirt stretched over muscular chest, visible collarbone and upper chest muscle definition, short dark hair with neat neckline, permanent light stubble along jawline and neck, slightly rough sun-tanned skin, visible veins on hands and forearms, photorealistic, 8k, macro detail, shallow depth of field, understanding of neck thickness, shoulder width, collarbone prominence, chest depth, arm muscle definition, hand size and veins
+```
+
+## 10. ДЕТАЛЬ РУК (для понимания размеров)
+
+```
+Close-up of hands and forearms, man 29yo, athletic muscular build, large masculine hands with visible veins and tendons, slightly rough skin with visible pores, short dark hair on forearms, muscular forearms with defined brachioradialis and flexor muscles, wearing black t-shirt sleeve rolled up, photorealistic, 8k, macro detail, shallow depth of field, understanding of hand size, finger length, palm width, vein prominence, forearm muscle definition, wrist thickness, overall masculine hand proportions
+```
+
+---
+
+# ВАРИАЦИИ ОДЕЖДЫ / СИТУАЦИЙ
+
+## Улица / Повседневный (кожаная куртка, джинсы)
+
+```
+Full body, man 29yo, 183cm tall, athletic muscular build, short dark hair, permanent light stubble, narrow hooded piercing grey eyes, wearing black fitted t-shirt, dark jeans, leather jacket unzipped, walking evening street, urban background, confident posture, hands in pockets or one hand adjusting jacket, photorealistic, 8k, natural lighting, city lights bokeh, showing full figure in motion, jacket movement, body silhouette, broad shoulders, narrow waist, muscular legs in jeans, masculine confident walk
+```
+
+## Сауна (полотенце, пар)
+
+```
+Full body, man 29yo, 183cm tall, athletic muscular build, short dark hair slightly damp, permanent light stubble, narrow hooded piercing grey eyes, sitting or standing in sauna, towel around waist or dark swim trunks, broad muscular back and shoulders visible, defined chest and abdomen muscles, slightly rough sun-tanned skin with visible pores, steam, warm amber light, wooden interior, photorealistic, 8k, showing full muscular figure, relaxed but confident posture, sweat on skin, muscle definition in warm light, natural masculine presence
+```
+
+## Променад (рубашка нараспашку, расслабленный)
+
+```
+Full body, man 29yo, 183cm tall, athletic muscular build, short dark hair, permanent light stubble, narrow hooded piercing grey eyes, wearing dark shirt unbuttoned at top, sleeves rolled up showing muscular forearms and veins, dark jeans, standing relaxed with hands in pockets or arms crossed, park or promenade background, evening light, photorealistic, 8k, showing relaxed masculine posture, open shirt revealing upper chest muscle definition, forearm veins, casual but confident stance, broad shoulders, narrow waist
+```
+
+## «Дверной страж» (стоит в дверях, не уходит, не входит)
+
+```
+Full body, man 29yo, 183cm tall, athletic muscular build, short dark hair, permanent light stubble, narrow hooded piercing grey eyes, standing in doorway with one hand on doorframe, arms crossed or relaxed, wearing black t-shirt and dark jeans, shadow lighting from behind, intense gaze evaluating, photorealistic, 8k, cinematic, showing silhouette and body volume in doorframe, shoulder width, torso depth, masculine posture blocking doorway, commanding presence without aggression
+```
+
+---
+
+# ANTI-PROMPTS (чего НЕ должно быть)
+
+```
+anime, cartoon, 3d render, distorted anatomy, extra limbs, bad hands, bad fingers, text, watermark, clean-shaven face (he has permanent stubble), baby face, weak jaw, round face, soft features, excessive smile, warm friendly eyes, approachable energy, skinny, underweight, overweight, nerdy, glasses, weak posture, narrow shoulders, no muscle definition, smooth skin without pores, perfect skin, plastic skin, doll-like, clean jawline without stubble, wrong eye color, wrong hair color, short man, tall man (over 190cm), low quality, worst quality, jpeg artifacts
+```
+
+---
+
+# ТЕХНИЧЕСКИЕ ПАРАМЕТРЫ (для Stable Diffusion / Midjourney)
+
+## Stable Diffusion (SDXL / PonyXL / Flux)
+
+```
+Steps: 30-40
+Sampler: DPM++ 2M Karras / Euler a
+CFG Scale: 7-8
+Resolution: 832x1216 (portrait) or 1024x1536 (full body)
+Clip skip: 2
+Negative prompt: (anime:1.3), (cartoon:1.3), (3d render:1.2), (bad anatomy:1.4), (extra limbs:1.3), (bad hands:1.3), (distorted face:1.2), (watermark:1.2), (text:1.2), (clean-shaven:1.3), (baby face:1.2), (weak jaw:1.2), (round face:1.2), (soft features:1.2), (excessive smile:1.1), (warm friendly eyes:1.1), (skinny:1.2), (overweight:1.1), (nerdy:1.2), (glasses:1.2), (weak posture:1.2), (narrow shoulders:1.2), (no muscle definition:1.3), (smooth skin:1.2), (plastic skin:1.2), (doll-like:1.2), (perfect skin:1.2), (low quality:1.3), (worst quality:1.3), (jpeg artifacts:1.2), (wrong proportions:1.3)
+Recommended models: realisticVision, photorealistic, majicmixRealistic, realisticVisionV6, flux1-realistic
+LoRA: add_detail, detail_slider, male muscle enhancement, skin texture enhancement
+```
+
+## Midjourney
+
+```
+--ar 2:3 (portrait) or --ar 3:4 (full body)
+--style raw
+--s 250-500 (for more photorealistic)
+--no anime, cartoon, 3d render, bad anatomy, extra limbs, bad hands, clean-shaven, baby face, weak jaw, round face, soft features, excessive smile, warm friendly eyes, skinny, overweight, nerdy, glasses, weak posture, narrow shoulders, no muscle definition, smooth skin, plastic skin, doll-like, perfect skin, low quality, wrong proportions, short man, tall man
+```
+
+## DALL-E 3 / Ideogram
+
+```
+Style: photorealistic, natural lighting, detailed skin texture, professional photography, rugged masculine features
+Avoid: illustrated, anime, 3d rendered, stylized, cartoon, perfect skin, clean-shaven, baby face, soft features, friendly smile, weak posture
+```
+
+---
+
+# КОНТРОЛЬНЫЙ ЧЕКЛИСТ КОНСИСТЕНТНОСТИ
+
+При генерации серии изображений проверять:
+
+- [ ] Рост: 183 см (высокий, но не гигант)
+- [ ] Телосложение: athletic muscular (атлетичный, мускулистый, широкие плечи, крепкий торс)
+- [ ] Лицо: вытянутое (oblong), сильная челюсть, мужские углы
+- [ ] Глаза: узкие, нависшие веки, серый со стальным синим, пронзительный взгляд
+- [ ] Нос: сильный прямой, слегка орлиный
+- [ ] Губы: тонкая верхняя, полная нижняя, бледно-розовый, редко улыбается
+- [ ] Челюсть: квадратная, видимые жевательные мышцы, лёгкая ямочка
+- [ ] Кожа: слегка грубая, поры, следы от акне на челюсти, загорелая
+- [ ] Щетина: постоянная лёгкая (5 o'clock shadow) — ОБЯЗАТЕЛЬНО
+- [ ] Шрам: над правой бровью (едва заметный) — ОБЯЗАТЕЛЬНО
+- [ ] Волосы: тёмные, короткие, аккуратные
+- [ ] Брови: густые, прямые, тёмные, низко посаженные
+- [ ] Построение: V-taper torso, широкие плечи, узкая талия, мускулистые руки и ноги
+- [ ] Руки: большие, видимые вены, сухожилия, мускулистые предплечья
+- [ ] Осанка: уверенная, прямая, но не вычурная, расслабленная готовность
