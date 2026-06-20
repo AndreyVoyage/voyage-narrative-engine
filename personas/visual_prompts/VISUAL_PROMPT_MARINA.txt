@@ -1,0 +1,198 @@
+{
+  "persona": "Марина",
+  "purpose": "Визуальные промпты для генерации консистентных изображений с разных ракурсов. Понятны комплекция, размеры, объёмы.",
+  "source": "personas/marina/core/IDENTITY.json + personas/marina/visual/VISUAL_ANCHORS.json",
+  "version": "1.0.0"
+}
+
+---
+
+# БАЗОВЫЕ АНТРОПОМЕТРИЧЕСКИЕ ДАННЫЕ
+
+- **Возраст:** 25 лет
+- **Рост:** 165 см
+- **Телосложение:** slender delicate — хрупкое, изящное, нежное
+- **Пропорции:** Сердцевидное лицо, заострённый подбородок, мягкие контуры, нет резких углов
+- **Кожа:** очень гладкая, фарфоровая, минимум пор, естественный румянец на щеках и кончике носа
+- **Особые приметы:** натуральные длинные ресницы (без туши); естественный румянец на щеках и кончике носа; маленькая родинка на правой стороне шеи (под ухом)
+
+---
+
+# ДЕТАЛИ ЛИЦА (для всех ракурсов)
+
+## Глаза
+- **Форма:** большие, круглые, слегка опущенные уголки (puppy eyes)
+- **Цвет:** мягкий голубой с серым подтоном, слезятся при эмоциях
+- **Расстояние:** чуть шире среднего, невинное расположение
+- **Веки:** двойные, с видимой складкой, длинные натуральные ресницы
+- **Брови:** тонкие, мягкий изгиб, светло-русые, натуральная форма, редко выщипываются
+
+## Нос
+- Маленький, изящный, слегка вздернутый кончик, узкий мостик
+
+## Губы
+- Средне-полные, мягкий розовый, натуральная форма бантика, слегка приоткрыты когда слушает
+
+## Челюсть
+- Изящная, узкая, заострённый подбородок, нет резких углов
+
+## Волосы
+- **Цвет:** светло-русые натуральные
+- **Стиль:** мягкие, естественные, до плеч или чуть ниже
+- **Фактура:** тонкие, шелковистые, не густые
+
+---
+
+# ВИЗУАЛЬНЫЕ ПРОМПТЫ ПО РАКУРСАМ
+
+## 1. FULL BODY — ФРОНТАЛЬНЫЙ
+
+```
+Full body frontal portrait, young woman 25yo, 165cm tall, slender delicate build, heart-shaped face with pointed chin and soft contours, large round blue eyes with grey undertones slightly downturned giving puppy eyes expression, double eyelids with visible crease and long natural lashes, thin light brown eyebrows soft arch natural shape, small delicate nose with slightly upturned tip, medium full soft pink lips natural bow shape slightly parted, delicate narrow jaw with pointed chin no sharp angles, very smooth porcelain-like skin with minimal pores faint natural blush on cheeks and nose tip, natural long eyelashes no mascara, small mole on right side of neck below ear, light brown natural hair soft and fine shoulder-length, wearing pastel warm sweater in cream or soft pink, gentle understated elegance, arms relaxed at sides, feet slightly together, photorealistic, 8k, cinematic lighting, neutral background, standing pose, full figure visible head to toe, slender delicate physique, narrow shoulders, small waist, delicate hips, graceful feminine silhouette, shy but warm presence
+```
+
+## 2. FULL BODY — ПРОФИЛЬ
+
+```
+Full body side profile, young woman 25yo, 165cm tall, slender delicate build, heart-shaped face profile showing pointed chin and soft contours, small delicate nose with slightly upturned tip in profile, medium full soft pink lips natural bow shape in profile, delicate narrow jaw with pointed chin, very smooth porcelain-like skin, light brown natural hair soft and fine shoulder-length flowing, small mole on right side of neck below ear visible from side, slender neck with gentle curve, narrow shoulders, small delicate bust, natural S-curve of spine, small waist, delicate hips and thighs, wearing pastel warm sweater and soft skirt or fitted pants, photorealistic, 8k, cinematic lighting, neutral background, full figure visible head to toe, side view showing delicate silhouette, shallow chest depth, gentle posture, feminine fragility, small hands and feet
+```
+
+## 3. FULL BODY — СЗАДИ
+
+```
+Full body back view, young woman 25yo, 165cm tall, slender delicate build, light brown natural hair soft and fine shoulder-length flowing down back, narrow delicate shoulders and back, slender waist, small delicate hips, wearing pastel warm sweater showing back contour, arms relaxed at sides or one hand touching hair, very smooth skin on neck and back, small mole on right side of neck below ear visible from back, photorealistic, 8k, cinematic lighting, neutral background, full figure visible head to toe, back showing narrow shoulder width, delicate spine line, small hip shape, fine hair texture, feminine fragility from behind
+```
+
+## 4. FULL BODY — 3/4
+
+```
+Full body three-quarter view, young woman 25yo, 165cm tall, slender delicate build, heart-shaped face with pointed chin and soft contours visible at angle, large round blue eyes with grey undertones slightly downturned looking slightly off-camera, double eyelids with visible crease and long natural lashes, thin light brown eyebrows soft arch, small delicate nose with slightly upturned tip catching light, medium full soft pink lips natural bow shape slightly parted, delicate narrow jaw with pointed chin, very smooth porcelain-like skin with faint natural blush, natural long eyelashes, small mole on right side of neck below ear visible from this angle, light brown natural hair soft and fine shoulder-length, wearing pastel warm sweater, narrow shoulders turned three-quarter, delicate bust, small waist, gentle posture, weight on one leg, photorealistic, 8k, cinematic lighting, neutral background, full figure visible head to toe, three-quarter showing delicate face depth and slender body width
+```
+
+## 5. CLOSE-UP ЛИЦА — ФРОНТАЛЬНЫЙ
+
+```
+Close-up portrait frontal, young woman 25yo, heart-shaped face with pointed chin and soft contours, large round blue eyes with grey undertones slightly downturned giving innocent puppy eyes expression looking directly at camera watery when emotional, double eyelids with visible natural crease and long natural lashes no mascara, thin light brown eyebrows soft arch natural shape, small delicate nose with slightly upturned tip, medium full soft pink lips natural bow shape slightly parted when listening, delicate narrow jaw with pointed chin no sharp angles, very smooth porcelain-like skin with minimal pores faint natural blush on cheeks and nose tip, natural long eyelashes, light brown natural hair soft and fine framing face, shy but warm gentle smile, photorealistic, 8k, cinematic lighting, shallow depth of field, skin texture visible but porcelain-like, no pores visible, youthful skin elasticity, slight baby fat in cheeks, gentle and innocent expression
+```
+
+## 6. CLOSE-UP ЛИЦА — ПРОФИЛЬ
+
+```
+Close-up side profile, young woman 25yo, heart-shaped face profile showing pointed chin and soft contours, small delicate nose with slightly upturned tip and narrow bridge in profile, medium full soft pink lips natural bow shape in profile, delicate narrow jaw with pointed chin, very smooth porcelain-like skin, light brown natural hair soft and fine, natural long eyelashes visible from side, gentle forehead slope, small ear shape delicate, neck slender and graceful, small mole on right side of neck below ear, photorealistic, 8k, cinematic lighting, shallow depth of field, profile showing small nose height, gentle lip projection, delicate chin point, soft jawline, no sharp angles, heart-shaped silhouette in profile
+```
+
+## 7. CLOSE-UP ЛИЦА — 3/4
+
+```
+Close-up three-quarter portrait, young woman 25yo, heart-shaped face with pointed chin and soft contours, large round blue eyes with grey undertones slightly downturned looking slightly off-camera with shy gentle expression, double eyelids with visible natural crease and long natural lashes, thin light brown eyebrows soft arch, small delicate nose with slightly upturned tip catching light, medium full soft pink lips natural bow shape slightly parted, delicate narrow jaw with pointed chin, very smooth porcelain-like skin with faint natural blush on one cheek, natural long eyelashes, small mole on right side of neck below ear visible from this angle, light brown natural hair soft and fine framing face, photorealistic, 8k, cinematic lighting, shallow depth of field, one side of face in soft shadow showing gentle depth, cheekbone softness, delicate brow, innocent expression
+```
+
+## 8. СИДЯ / ПОЛУПРИГИБ
+
+```
+Full body seated pose, young woman 25yo, 165cm tall, slender delicate build, sitting on soft chair or window sill, pastel warm sweater and soft skirt, light brown natural hair soft and fine shoulder-length falling naturally, large round blue eyes looking forward or slightly down with gentle thoughtful expression, heart-shaped face with pointed chin, delicate narrow shoulders, small waist visible even when seated, arms resting on knees or beside body, small delicate hands, feet together or crossed at ankles, very smooth porcelain-like skin, photorealistic, 8k, cinematic lighting, soft window light, neutral background, full figure visible, seated position showing delicate torso length, small leg proportions, graceful posture at rest, gentle and fragile presence
+```
+
+## 9. ДЕТАЛЬ РУК / ПЛЕЧ / ШЕИ
+
+```
+Detail shot shoulders neck and upper chest, young woman 25yo, slender delicate build, slender graceful neck with visible collarbones but not protruding, narrow delicate shoulders with minimal muscle definition, very smooth porcelain-like skin on collarbone area and neck, faint natural blush on upper chest, light brown natural hair soft and fine framing neck, small mole on right side of neck below ear, small delicate hands with fine fingers, natural long eyelashes visible from angle, wearing pastel warm sweater with soft neckline, photorealistic, 8k, macro detail, shallow depth of field, understanding of neck slenderness, shoulder narrowness, collarbone delicacy, hand smallness, overall fragile feminine proportions
+```
+
+## 10. ДЕТАЛЬ ГЛАЗ / РЕСНИЦ
+
+```
+Extreme close-up of eyes and surrounding area, young woman 25yo, large round blue eyes with grey undertones slightly downturned at corners giving puppy eyes effect, double eyelids with visible natural crease, very long natural eyelashes no mascara, thin light brown eyebrows soft arch natural shape, small delicate nose bridge visible between eyes, very smooth porcelain-like skin around eyes, faint natural blush on upper cheeks, slight baby fat under eyes giving youthful innocent look, watery quality when emotional, photorealistic, 8k, macro detail, extreme shallow depth of field, understanding of eye size, eye spacing, lash length, brow delicacy, skin smoothness around eyes, youthful innocence
+```
+
+---
+
+# ВАРИАЦИИ ОДЕЖДЫ / СИТУАЦИЙ
+
+## Сауна (влажные волосы, полотенце, румянец от жара)
+
+```
+Full body, young woman 25yo, 165cm tall, slender delicate build, light brown natural hair up in messy bun damp from steam, wrapped in white towel, large round blue eyes with grey undertones looking slightly away with shyness and gentleness, heart-shaped face with pointed chin, very smooth porcelain-like skin with flushed cheeks from heat, natural long eyelashes, small delicate nose, medium full soft pink lips with gentle smile, small mole on right side of neck below ear visible, standing in sauna with wooden walls, relaxed gentle posture, arms holding towel or relaxed at sides, photorealistic, 8k, warm amber lighting, steam atmosphere, showing delicate figure under towel, narrow shoulders, small waist, gentle feminine silhouette, vulnerable but warm presence
+```
+
+## Улица / Осень (пастельное пальто, нежная улыбка)
+
+```
+Full body, young woman 25yo, 165cm tall, slender delicate build, light brown natural hair soft and fine shoulder-length, wearing pastel coat in cream or soft pink, large round blue eyes with grey undertones looking down with gentle shy smile, heart-shaped face with pointed chin, small delicate nose, medium full soft pink lips, very smooth porcelain-like skin with faint natural blush, natural long eyelashes, walking autumn street with fallen leaves, soft natural lighting, photorealistic, 8k, showing full figure in motion, coat movement, delicate silhouette, narrow shoulders, small waist, graceful feminine walk, gentle and shy presence, understated elegance
+```
+
+## С Кирой (дружба, тепло, интимность)
+
+```
+Full body, two young women standing close together, one dark blonde confident athletic slender (Kira), one soft features gentle slender delicate (Marina), light brown natural hair soft and fine, large round blue eyes with grey undertones, heart-shaped face with pointed chin, wearing pastel warm sweater, gentle shy smile, standing slightly behind or beside Kira, warm light, photorealistic, natural poses, showing contrast between confident and shy, athletic and delicate, dark blonde and light brown, commanding and gentle, feminine friendship intimacy, soft atmosphere
+```
+
+## Дома (окно, мягкий свет, уют)
+
+```
+Full body, young woman 25yo, 165cm tall, slender delicate build, light brown natural hair soft and fine shoulder-length, wearing soft pastel sweater and comfortable pants, sitting by window with soft natural light, large round blue eyes with grey undertones looking outside with gentle thoughtful expression, heart-shaped face with pointed chin, very smooth porcelain-like skin, natural long eyelashes, small delicate nose, medium full soft pink lips slightly parted, arms wrapped around knees or holding cup of tea, photorealistic, 8k, soft window lighting, warm interior, showing delicate figure at rest, narrow shoulders, small waist, graceful posture, gentle and vulnerable presence, intimate atmosphere
+```
+
+---
+
+# ANTI-PROMPTS (чего НЕ должно быть)
+
+```
+anime, cartoon, 3d render, distorted anatomy, extra limbs, bad hands, bad fingers, text, watermark, excessive makeup, heavy makeup, bold makeup, dark makeup, thick eyebrows, plucked eyebrows, fake eyelashes, mascara, eyeliner, eyeshadow, strong features, sharp jaw, square face, angular face, wide shoulders, muscular build, tall height (over 170cm), athletic build, strong body, wide hips, large bust, mature appearance, aged appearance, wrinkles, heavy pores, rough skin, tanned skin, dark skin, bold clothing, dark clothing, aggressive expression, confident dominant expression, low quality, worst quality, jpeg artifacts
+```
+
+---
+
+# ТЕХНИЧЕСКИЕ ПАРАМЕТРЫ (для Stable Diffusion / Midjourney)
+
+## Stable Diffusion (SDXL / PonyXL / Flux)
+
+```
+Steps: 30-40
+Sampler: DPM++ 2M Karras / Euler a
+CFG Scale: 7-8
+Resolution: 832x1216 (portrait) or 1024x1536 (full body)
+Clip skip: 2
+Negative prompt: (anime:1.3), (cartoon:1.3), (3d render:1.2), (bad anatomy:1.4), (extra limbs:1.3), (bad hands:1.3), (distorted face:1.2), (watermark:1.2), (text:1.2), (excessive makeup:1.3), (heavy makeup:1.3), (bold makeup:1.2), (dark makeup:1.2), (thick eyebrows:1.2), (fake eyelashes:1.3), (mascara:1.3), (eyeliner:1.2), (eyeshadow:1.2), (strong features:1.2), (sharp jaw:1.2), (square face:1.2), (angular face:1.2), (wide shoulders:1.2), (muscular build:1.2), (tall:1.1), (athletic build:1.2), (wide hips:1.1), (large bust:1.1), (mature appearance:1.2), (wrinkles:1.2), (rough skin:1.2), (tanned skin:1.2), (bold clothing:1.1), (dark clothing:1.1), (aggressive expression:1.2), (confident dominant:1.2), (low quality:1.3), (worst quality:1.3), (jpeg artifacts:1.2)
+Recommended models: realisticVision, photorealistic, majicmixRealistic, realisticVisionV6, flux1-realistic
+LoRA: add_detail, detail_slider, soft skin enhancement, gentle portrait
+```
+
+## Midjourney
+
+```
+--ar 2:3 (portrait) or --ar 3:4 (full body)
+--style raw
+--s 250-500 (for more photorealistic)
+--no anime, cartoon, 3d render, bad anatomy, extra limbs, bad hands, excessive makeup, heavy makeup, bold makeup, thick eyebrows, fake eyelashes, mascara, strong features, sharp jaw, square face, wide shoulders, muscular build, tall, athletic build, wide hips, large bust, mature appearance, wrinkles, rough skin, tanned skin, bold clothing, aggressive expression, confident dominant, low quality
+```
+
+## DALL-E 3 / Ideogram
+
+```
+Style: photorealistic, soft natural lighting, delicate skin texture, gentle portrait photography, porcelain skin, understated elegance
+Avoid: illustrated, anime, 3d rendered, stylized, cartoon, excessive makeup, strong features, sharp jaw, muscular build, tall, mature appearance, wrinkles, rough skin, tanned skin, bold clothing, aggressive expression
+```
+
+---
+
+# КОНТРОЛЬНЫЙ ЧЕКЛИСТ КОНСИСТЕНТНОСТИ
+
+При генерации серии изображений проверять:
+
+- [ ] Рост: 165 см (невысокая, не низкая)
+- [ ] Телосложение: slender delicate (хрупкое, изящное, нежное, НЕ спортивное, НЕ модельное)
+- [ ] Лицо: сердцевидное (heart-shaped), заострённый подбородок, мягкие контуры, нет резких углов
+- [ ] Глаза: большие, круглые, голубые с серым, слегка опущенные уголки (puppy eyes)
+- [ ] Ресницы: натуральные, длинные, без туши — ОБЯЗАТЕЛЬНО
+- [ ] Нос: маленький, изящный, слегка вздернутый кончик
+- [ ] Губы: средне-полные, мягкий розовый, натуральная форма бантика, слегка приоткрыты
+- [ ] Кожа: фарфоровая, очень гладкая, минимум пор, естественный румянец на щеках и кончике носа — ОБЯЗАТЕЛЬНО
+- [ ] Родинка: на правой стороне шеи, под ухом — ОБЯЗАТЕЛЬНО
+- [ ] Брови: тонкие, светло-русые, мягкий изгиб, натуральные, не выщипанные
+- [ ] Волосы: светло-русые натуральные, мягкие, тонкие, шелковистые
+- [ ] Построение: narrow shoulders, small waist, delicate hips, gentle feminine silhouette
+- [ ] Руки: маленькие, изящные, тонкие пальцы
+- [ ] Осанка: нежная, слегка сгорбленная от застенчивости, но грациозная
+- [ ] Выражение: застенчивое, нежное, тёплое, слегка грустное, puppy eyes
+- [ ] Стиль: pastel warm tones, soft sweaters, gentle fabrics, understated elegance

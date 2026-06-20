@@ -1,0 +1,204 @@
+{
+  "persona": "Ольга",
+  "purpose": "Визуальные промпты для генерации консистентных изображений с разных ракурсов. Понятны комплекция, размеры, объёмы.",
+  "source": "personas/olga/core/IDENTITY.json + personas/olga/visual/VISUAL_ANCHORS.json",
+  "version": "1.0.0"
+}
+
+---
+
+# БАЗОВЫЕ АНТРОПОМЕТРИЧЕСКИЕ ДАННЫЕ
+
+- **Возраст:** 45 лет
+- **Рост:** 187 см
+- **Вес:** 75 кг
+- **Телосложение:** athletic curvy — атлетичное, с формами, широкие бёдра, пышный бюст, спортивные плечи
+- **Пропорции:** Овальное лицо с сильной челюстью, высокие скулы, зрелое, но чёткое, без обвисания
+- **Кожа:** гладкая, минимум пор, лёгкие линии улыбки у глаз и рта — признаки зрелости, но красота, нет морщин на лбу, отличная эластичность для возраста
+- **Особые приметы:** родинка над левой стороной верхней губы; слегка асимметричная улыбка — правый уголок выше когда хищная; линии улыбки у глаз — от лет улыбок и охоты; длинные ухоженные ногти — всегда накрашены, обычно тёмно-красные или нюд; сильные спортивные плечи от волейбола — но уже́ре бёдра
+
+---
+
+# ДЕТАЛИ ЛИЦА (для всех ракурсов)
+
+## Глаза
+- **Форма:** миндалевидные, слегка приподнятые внешние уголки, тяжёлые веки с опытом
+- **Цвет:** тёмно-карий с огненным янтарным подтоном, интенсивный хищный взгляд
+- **Расстояние:** среднее, ширина одного глаза
+- **Веки:** двойные, с видимой естественной складкой, лёгкое нависание от возраста, но привлекательное
+- **Брови:** ухоженный изгиб, средняя густота, тёмно-русые, профессионально оформленные
+
+## Нос
+- Прямой мостик, изящный закруглённый кончик, элегантные зрелые пропорции
+
+## Губы
+- Полные, чётко очерченные, натуральный розово-персиковый тон с лёгким подъёмом уголков, опытная улыбка
+
+## Челюсть
+- Определённая, сильная, но женственная, без обвисания, поддерживается фитнесом
+
+## Волосы
+- **Цвет:** тёмно-русые прямые
+- **Длина:** до плеч
+- **Стиль:** ухоженные, прямые, в спортзале — собраны в хвост
+
+## Ногти
+- Длинные, ухоженные, всегда накрашены — тёмно-красные или нюд
+
+---
+
+# ВИЗУАЛЬНЫЕ ПРОМПТЫ ПО РАКУРСАМ
+
+## 1. FULL BODY — ФРОНТАЛЬНЫЙ
+
+```
+Full body frontal portrait, tall mature woman 45yo, 187cm tall, 75kg, athletic curvy build with wide hips and large bust, strong athletic shoulders from volleyball but narrower than hips, oval face with strong jawline and high cheekbones, mature but defined with no sagging, almond-shaped dark brown eyes with fiery amber undertones intense predatory gaze, double eyelids with visible natural crease slight hood from age but attractive, well-groomed arched dark brown eyebrows medium thickness professionally shaped, straight nose bridge with refined rounded tip elegant mature proportions, full well-defined lips natural pink-peach tone with slight upturn at corners experienced smile, defined strong jaw feminine no jowls maintained through fitness, smooth skin with minimal visible pores faint laugh lines at corners of eyes and mouth signs of maturity but beauty no wrinkles on forehead excellent skin elasticity for age, small beauty mark above left side of upper lip, slightly asymmetrical smile right corner lifts higher when predatory, long well-maintained manicure dark red or nude polished nails, dark brown straight hair shoulder-length, wearing fitted dress accentuating curves or athletic top and shorts in gym, commanding posture arms relaxed or on hips, feet apart confident stance, photorealistic, 8k, cinematic lighting, neutral background, standing pose, full figure visible head to toe, athletic curvy physique with wide hips large bust narrow waist relative to hips, strong shoulders, mature commanding presence, confident tall stature
+```
+
+## 2. FULL BODY — ПРОФИЛЬ
+
+```
+Full body side profile, tall mature woman 45yo, 187cm tall, 75kg, athletic curvy build with wide hips and large bust, oval face profile showing strong jawline and high cheekbones, refined nose with straight bridge and rounded tip in profile, full well-defined lips with slight upturn in profile, defined strong jaw feminine no jowls, smooth mature skin with faint laugh lines, small beauty mark above left upper lip visible from side, dark brown straight hair shoulder-length, long well-maintained manicured nails visible on hand, athletic curvy silhouette showing bust projection, narrow waist, wide hip curve, strong back, toned thighs and calves, wearing fitted dress or athletic wear, confident posture, weight on one leg or walking, photorealistic, 8k, cinematic lighting, neutral background, full figure visible head to toe, side view showing depth of bust, waist narrowness, hip width, back strength, leg muscle tone, tall stature, mature feminine silhouette with curves and athleticism
+```
+
+## 3. FULL BODY — СЗАДИ
+
+```
+Full body back view, tall mature woman 45yo, 187cm tall, 75kg, athletic curvy build, dark brown straight hair shoulder-length flowing down back, strong athletic back with visible muscle tone from volleyball, broad shoulders tapering to narrow waist then wide hips, athletic glutes and toned thighs, long well-maintained manicured nails visible on hands, wearing fitted dress showing back contour or athletic top in gym, arms relaxed at sides or one hand on hip, photorealistic, 8k, cinematic lighting, neutral background, full figure visible head to toe, back showing shoulder width and strength, spine line, waist narrowness, hip width and curve, mature athletic feminine silhouette from behind, commanding tall presence even from back
+```
+
+## 4. FULL BODY — 3/4
+
+```
+Full body three-quarter view, tall mature woman 45yo, 187cm tall, 75kg, athletic curvy build with wide hips and large bust, oval face with strong jawline and high cheekbones visible at angle, almond-shaped dark brown eyes with fiery amber undertones intense predatory gaze looking slightly off-camera, double eyelids with visible natural crease, well-groomed arched dark brown eyebrows, straight nose bridge with refined rounded tip catching light, full well-defined lips natural pink-peach tone with slight upturn, defined strong jaw feminine no jowls, smooth mature skin with faint laugh lines, small beauty mark above left upper lip visible from this angle, slightly asymmetrical smile right corner higher, dark brown straight hair shoulder-length, long well-maintained manicured nails, athletic curvy body turned three-quarter showing bust, narrow waist, wide hip, strong shoulders, wearing fitted dress accentuating curves, weight shifted to one leg, confident commanding posture, photorealistic, 8k, cinematic lighting, neutral background, full figure visible head to toe, three-quarter showing mature face depth and athletic curvy body width, tall commanding presence
+```
+
+## 5. CLOSE-UP ЛИЦА — ФРОНТАЛЬНЫЙ
+
+```
+Close-up portrait frontal, mature woman 45yo, oval face with strong jawline and high cheekbones, mature but defined with no sagging, almond-shaped dark brown eyes with fiery amber undertones intense predatory gaze looking directly at camera, double eyelids with visible natural crease slight hood from age but attractive, well-groomed arched dark brown eyebrows medium thickness professionally shaped, straight nose bridge with refined rounded tip elegant mature proportions, full well-defined lips natural pink-peach tone with slight upturn at corners experienced smile, defined strong jaw feminine no jowls maintained through fitness, smooth skin with minimal visible pores faint laugh lines at corners of eyes and mouth signs of maturity but beauty no wrinkles on forehead excellent skin elasticity for age, small beauty mark above left side of upper lip, slightly asymmetrical smile right corner lifts higher when predatory, dark brown straight hair shoulder-length framing face, photorealistic, 8k, cinematic lighting, shallow depth of field, skin texture visible but smooth and mature, pores minimal, laugh lines as beauty marks, no forehead wrinkles, confident experienced mature expression, commanding gaze, predatory but elegant
+```
+
+## 6. CLOSE-UP ЛИЦА — ПРОФИЛЬ
+
+```
+Close-up side profile, mature woman 45yo, oval face profile showing strong jawline and high cheekbones, refined nose with straight bridge and rounded tip in profile, full well-defined lips with slight upturn in profile, defined strong jaw feminine no jowls, smooth mature skin with faint laugh lines at corners, small beauty mark above left upper lip visible from side, dark brown straight hair shoulder-length, well-groomed eyebrow visible from side, ear shape natural, neck length and thickness showing maturity and strength, photorealistic, 8k, cinematic lighting, shallow depth of field, profile showing nose bridge height and elegance, lip fullness, chin definition and strength, jawline maturity, forehead smoothness, mature beauty in profile, no sagging, maintained through fitness
+```
+
+## 7. CLOSE-UP ЛИЦА — 3/4
+
+```
+Close-up three-quarter portrait, mature woman 45yo, oval face with strong jawline and high cheekbones, almond-shaped dark brown eyes with fiery amber undertones intense predatory gaze looking slightly off-camera, double eyelids with visible natural crease, well-groomed arched dark brown eyebrows, straight nose bridge with refined rounded tip catching light, full well-defined lips natural pink-peach tone with slight upturn, defined strong jaw feminine no jowls, smooth mature skin with faint laugh lines, small beauty mark above left upper lip visible from this angle, slightly asymmetrical smile right corner higher, dark brown straight hair shoulder-length with volume, photorealistic, 8k, cinematic lighting, shallow depth of field, one side of face in shadow showing mature depth, cheekbone prominence, brow arch, jawline definition, laugh lines adding character, experienced elegant expression, predatory intelligence
+```
+
+## 8. СИДЯ / ПОЛУПРИГИБ (трон, высокий стул, власть)
+
+```
+Full body seated pose, tall mature woman 45yo, 187cm tall, 75kg, athletic curvy build with wide hips and large bust, sitting on high chair or throne-like seat, fitted dress accentuating curves, legs crossed showing toned calves and thighs, one arm on armrest or hand on knee, long well-maintained manicured nails dark red visible, dark brown straight hair shoulder-length, almond-shaped dark brown eyes with fiery amber undertones intense predatory gaze looking down or forward, oval face with strong jawline and high cheekbones, commanding seated posture even when relaxed, broad shoulders, narrow waist, wide hips, mature athletic presence, photorealistic, 8k, cinematic lighting, neutral or warm background, full figure visible, seated position showing torso length, hip width, leg muscle tone, arm resting posture, commanding mature presence even seated, dominant energy, mentor authority
+```
+
+## 9. ДЕТАЛЬ РУК / НОГТЕЙ / ПЛЕЧ
+
+```
+Detail shot shoulders neck and upper chest, mature woman 45yo, athletic curvy build, strong athletic shoulders from volleyball but feminine, defined collarbone and upper chest, smooth mature skin with minimal pores, faint laugh lines at neck, long well-maintained manicured nails dark red or nude polished, hands elegant but strong, fingers long, dark brown straight hair shoulder-length framing shoulders, wearing fitted dress with deep neckline or athletic top, photorealistic, 8k, macro detail, shallow depth of field, understanding of shoulder width and strength, collarbone definition, neck length and maturity, hand elegance, nail length and polish, mature feminine upper body proportions, athletic but curvy, experienced beauty
+```
+
+## 10. ДЕТАЛЬ НОГ (высокие каблуки, длина)
+
+```
+Detail shot legs and feet, tall mature woman 45yo, 187cm tall, athletic curvy build, long toned legs, muscular calves from volleyball and fitness, wearing high heels emphasizing height and leg length, smooth skin on legs, feet elegant but strong, ankles defined, photorealistic, 8k, macro detail, shallow depth of field, understanding of leg length (187cm height), muscle tone in calves, ankle definition, foot size proportionate to tall stature, high heel effect on leg line, mature athletic leg proportions, commanding presence from the ground up, elegant strength
+```
+
+---
+
+# ВАРИАЦИИ ОДЕЖДЫ / СИТУАЦИЙ
+
+## Сауна (полотенце, пар, доминирование)
+
+```
+Full body, tall mature woman 45yo, 187cm tall, 75kg, athletic curvy build with wide hips and large bust, dark brown straight hair slightly damp from steam, wrapped in large white towel or wearing minimal swimwear, almond-shaped dark brown eyes with fiery amber undertones intense confident dominant expression, oval face with strong jawline and high cheekbones, smooth mature skin with flushed cheeks from heat, full well-defined lips with confident smile, small beauty mark above left upper lip, long well-maintained manicured nails dark red, standing or sitting in sauna with wooden walls, confident dominant posture, legs apart or crossed, arms relaxed but commanding, steam, warm amber lighting, wooden interior, photorealistic, 8k, showing full athletic curvy figure, mature sensuality, commanding presence, mentor authority, dominant mature energy, toned skin in warm light
+```
+
+## Вечерний выход (платье, каблуки, город)
+
+```
+Full body, tall mature woman 45yo, 187cm tall, 75kg, athletic curvy build with wide hips and large bust, dark brown straight hair shoulder-length, wearing fitted evening dress accentuating curves, high heels emphasizing 187cm height, almond-shaped dark brown eyes with fiery amber undertones intense predatory gaze looking over shoulder with confident smile, oval face with strong jawline and high cheekbones, full well-defined lips, smooth mature skin with faint laugh lines, small beauty mark above left upper lip, long well-maintained manicured nails, city lights bokeh behind, evening street, photorealistic, 8k, showing full tall commanding figure in motion, dress movement, mature sensuality, commanding presence, predatory elegance, urban night atmosphere, experienced huntress
+```
+
+## Тренировка / Спортзал (спортивный топ, шорты, пот)
+
+```
+Full body, tall mature woman 45yo, 187cm tall, 75kg, athletic curvy build with wide hips and large bust, dark brown straight hair in ponytail, wearing black sports bra and athletic shorts, almond-shaped dark brown eyes with fiery amber undertones intense focused expression, oval face with strong jawline, smooth skin with slight sweat on skin, full well-defined lips, strong athletic shoulders and arms visible, toned legs and glutes, narrow waist relative to wide hips, standing in gym or poolside, confident posture, arms relaxed or holding towel, photorealistic, 8k, showing full athletic curvy figure in sportswear, mature athletic strength, volleyball shoulders, toned muscles, commanding presence even in gym, mentor authority, fit mature body
+```
+
+## Доминирование (молодой человек у ног, власть)
+
+```
+Full body, tall mature woman 45yo, 187cm tall, 75kg, athletic curvy build with wide hips and large bust, sitting on high chair or throne, wearing fitted dress or dominant attire, legs crossed, one hand resting on armrest or on head of younger man kneeling at her feet, almond-shaped dark brown eyes with fiery amber undertones intense predatory commanding gaze looking down, oval face with strong jawline and high cheekbones, confident dominant smile, full well-defined lips, smooth mature skin, long well-maintained manicured nails dark red, dark brown straight hair, photorealistic, 8k, cinematic lighting, showing power dynamic, mature dominance, mentor authority, commanding presence, athletic curvy body in position of power, experienced huntress, nurturing but dominant
+```
+
+---
+
+# ANTI-PROMPTS (чего НЕ должно быть)
+
+```
+anime, cartoon, 3d render, distorted anatomy, extra limbs, bad hands, bad fingers, text, watermark, excessive makeup, heavy makeup, wrinkled skin, aged appearance, frail, thin body, skinny, underweight, weak shoulders, narrow hips, small bust, flat body, no curves, youthful appearance, baby face, smooth skin without character (she has laugh lines), no laugh lines, wrong eye color, wrong hair color, short height, low quality, worst quality, jpeg artifacts, submissive expression, shy expression, weak posture, no muscle definition, soft features, round face, weak jaw, no jawline, sagging skin, jowls, under-eye bags, hunched posture, apologetic energy, meek presence
+```
+
+---
+
+# ТЕХНИЧЕСКИЕ ПАРАМЕТРЫ (для Stable Diffusion / Midjourney)
+
+## Stable Diffusion (SDXL / PonyXL / Flux)
+
+```
+Steps: 30-40
+Sampler: DPM++ 2M Karras / Euler a
+CFG Scale: 7-8
+Resolution: 832x1216 (portrait) or 1024x1536 (full body)
+Clip skip: 2
+Negative prompt: (anime:1.3), (cartoon:1.3), (3d render:1.2), (bad anatomy:1.4), (extra limbs:1.3), (bad hands:1.3), (distorted face:1.2), (watermark:1.2), (text:1.2), (excessive makeup:1.2), (heavy makeup:1.2), (wrinkled skin:1.3), (aged appearance:1.3), (frail:1.2), (thin body:1.2), (skinny:1.2), (underweight:1.2), (weak shoulders:1.2), (narrow hips:1.2), (small bust:1.1), (flat body:1.2), (no curves:1.2), (youthful appearance:1.2), (baby face:1.2), (no laugh lines:1.2), (wrong eye color:1.2), (wrong hair color:1.2), (short height:1.2), (low quality:1.3), (worst quality:1.3), (jpeg artifacts:1.2), (submissive expression:1.2), (shy expression:1.2), (weak posture:1.2), (no muscle definition:1.2), (soft features:1.2), (round face:1.2), (weak jaw:1.2), (sagging skin:1.3), (jowls:1.3), (under-eye bags:1.2), (hunched posture:1.2), (apologetic energy:1.2), (meek presence:1.2)
+Recommended models: realisticVision, photorealistic, majicmixRealistic, realisticVisionV6, flux1-realistic
+LoRA: add_detail, detail_slider, mature beauty enhancement, skin texture enhancement, photorealistic portrait
+```
+
+## Midjourney
+
+```
+--ar 2:3 (portrait) or --ar 3:4 (full body)
+--style raw
+--s 250-500 (for more photorealistic)
+--no anime, cartoon, 3d render, bad anatomy, extra limbs, bad hands, excessive makeup, heavy makeup, wrinkled skin, aged appearance, frail, thin body, skinny, underweight, weak shoulders, narrow hips, small bust, flat body, no curves, youthful appearance, baby face, no laugh lines, wrong eye color, wrong hair color, short height, low quality, submissive expression, shy expression, weak posture, no muscle definition, soft features, round face, weak jaw, sagging skin, jowls, under-eye bags, hunched posture, apologetic energy, meek presence
+```
+
+## DALL-E 3 / Ideogram
+
+```
+Style: photorealistic, cinematic lighting, detailed skin texture, professional photography, mature beauty, commanding presence, athletic curvy, experienced elegance
+Avoid: illustrated, anime, 3d rendered, stylized, cartoon, excessive makeup, wrinkled skin, aged appearance, frail, thin body, skinny, youthful appearance, baby face, no laugh lines, short height, low quality, submissive expression, shy expression, weak posture, no muscle definition, soft features, round face, weak jaw, sagging skin, jowls, under-eye bags, hunched posture, apologetic energy, meek presence
+```
+
+---
+
+# КОНТРОЛЬНЫЙ ЧЕКЛИСТ КОНСИСТЕНТНОСТИ
+
+При генерации серии изображений проверять:
+
+- [ ] Рост: 187 см (высокая, выше среднего, командующая)
+- [ ] Вес: 75 кг (атлетичное, с формами, не худышка, не тяжёлое)
+- [ ] Телосложение: athletic curvy (широкие бёдра, пышный бюст, спортивные плечи, узкая талия)
+- [ ] Лицо: овальное, сильная челюсть, высокие скулы, зрелое, но чёткое, без обвисания
+- [ ] Глаза: тёмно-карие с янтарным, миндалевидные, приподнятые уголки, тяжёлые веки, хищный взгляд
+- [ ] Нос: прямой, изящный закруглённый кончик, элегантные пропорции
+- [ ] Губы: полные, чётко очерченные, розово-персиковый, опытная улыбка
+- [ ] Кожа: гладкая, минимум пор, лёгкие линии улыбки у глаз и рта — признаки зрелости, но красота — ОБЯЗАТЕЛЬНО
+- [ ] Родинка: над левой стороной верхней губы — ОБЯЗАТЕЛЬНО
+- [ ] Улыбка: асимметричная, правый уголок выше когда хищная — ОБЯЗАТЕЛЬНО
+- [ ] Ногти: длинные, ухоженные, накрашены (тёмно-красные или нюд) — ОБЯЗАТЕЛЬНО
+- [ ] Волосы: тёмно-русые прямые, до плеч, ухоженные
+- [ ] Брови: ухоженный изгиб, средняя густота, тёмно-русые, профессионально оформленные
+- [ ] Построение: wide hips, large bust, narrow waist, strong shoulders, athletic but curvy
+- [ ] Плечи: сильные, спортивные, от волейбола — но у́же бёдра
+- [ ] Осанка: уверенная, прямая, командующая, плечи назад, высокая
+- [ ] Выражение: хищное, интеллигентное, опытное, командующее, менторское, доминирующее
+- [ ] Присутствие: fills the room, commanding, mature authority, nurturing predator
