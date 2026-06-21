@@ -1,20 +1,20 @@
 {
-  "persona": "Андрей младший",
-  "purpose": "Визуальные промпты для генерации консистентных изображений с разных ракурсов. Понятны комплекция, размеры, объёмы.",
-  "source": "personas/andrey_junior/core/IDENTITY.json + personas/andrey_junior/visual/VISUAL_ANCHORS.json",
-  "version": "2.0.0"
+ "persona": "Андрей младший",
+ "purpose": "Визуальные промпты для генерации консистентных изображений с разных ракурсов. Понятны комплекция, размеры, объёмы. Исправлено: тело — slim slim, не athletic.",
+ "source": "personas/andrey_junior/core/IDENTITY.json + personas/andrey_junior/visual/VISUAL_ANCHORS.json + фото референс 002474b8",
+ "version": "2.1.0"
 }
 
 ---
 
 # БАЗОВЫЕ АНТРОПОМЕТРИЧЕСКИЕ ДАННЫЕ
 
-- **Рост:** 153 см
-- **Вес:** 53 кг
-- **Телосложение:** athletic swimmer-wrestler build — атлетичный пловец/борец, широкие плечи, сильные ноги, видимый пресс, развивающиеся бицепсы
+- **Рост:** 153 см (очень маленький, small proportions, looks small for his height)
+- **Вес:** 53 кг (slim, slim, still filling out, narrow frame, underdeveloped muscles)
+- **Телосложение:** slim underdeveloped build — тонкий подростковый костяк, плечи узкие, руки тонкие, мышцы не развиты, торс прямой, живот плоский/мягкий, не рельефный
 - **Пропорции:** овальное лицо с мягкой челюстью, высокие скулы, юношеская полнота, славянские пропорции
-- **Кожа:** гладкая, минимум пор, occasional teenage blemish, но в целом чистая, светлая, лёгкий румянец при смущении
-- **Особые приметы:** слегка вздернутый курносый нос — фирменная милая черта; светлые брови почти невидимы на светлой коже; маленький шрам на левой брови — от детской борьбы; уши слегка оттопыренные — по-мальчишески, милые; шея мускулистая от плавания — вены видны при напряжении; широкие плечи, но узкие бёдра — развивающийся V-образный силуэт пловца; руки слегка большие для тела — ещё растут в них
+- **Кожа:** гладкая, минимум пор, occasional youthful blemish, но в целом чистая, светлая, лёгкий румянец при смущении
+- **Особые приметы:** слегка вздернутый курносый нос — фирменная милая черта; светлые брови почти невидимы на светлой коже; маленький шрам на левой брови — от детской борьбы; уши слегка оттопыренные — по-мальчишески, милые; шея тонкая, но мускулистая от плавания — вены видны при напряжении; руки слегка большие для тела — ещё растут в них, костяшки заметны; торс прямой, плечи и бёдра почти одинаковой ширины
 
 ---
 
@@ -51,89 +51,89 @@
 ## 1. FULL BODY — ФРОНТАЛЬНЫЙ (вид спереди)
 
 ```
-Full body frontal portrait, young athletic man, 153cm tall, 53kg, athletic swimmer-wrestler build with broad shoulders and narrow hips developing swimmer's V-taper, visible abs, strong legs, developing biceps, oval face with soft jaw and high cheekbones youthful fullness slavic proportions, large round bright blue eyes wide-set innocent doe-like with light flecks clear and trusting, double eyelids with visible natural crease slight hood when shy, light ash blonde eyebrows medium thickness straight soft arch almost invisible against fair skin, slightly upturned snub nose cute button nose refined tip — signature cute feature, full soft natural pink lips slightly parted when nervous Cupid's bow, soft rounded jaw no sharp angles youthful almost feminine in softness but male, smooth skin minimal pores occasional teenage blemish but generally clear fair with slight flush when embarrassed, light ash blonde short slightly messy hair, smooth face no stubble occasional peach fuzz on jawline, small scar on left eyebrow from wrestling childhood, ears slightly protruding endearing boyish, neck muscles defined from swimming visible veins when exerted, hands slightly large for body still growing into them, wearing casual sporty t-shirt and sweatpants, photorealistic, 8k, cinematic lighting, neutral background, standing pose, full figure visible head to toe, compact athletic build, broad shoulders narrow hips, visible abs, strong legs, developing muscles, youthful male beauty, innocent shy expression, sporty casual posture
+Full body frontal portrait, very short slim male, 153cm tall, 53kg, slim underdeveloped build, narrow shoulders only slightly wider than slim hips, straight torso with no V-taper, flat soft stomach with no visible abs, slim arms with barely any muscle definition, slim lean legs, wiry, small frame, small proportions, hands slightly too large for slim body with knobby knuckles and slim fingers, oval face with soft jaw and high cheekbones youthful fullness slavic proportions, large round bright blue eyes wide-set innocent doe-like with light flecks clear and trusting, double eyelids with visible natural crease slight hood when shy, light ash blonde eyebrows medium thickness straight soft arch almost invisible against fair skin, slightly upturned snub nose cute button nose refined tip — signature cute feature, full soft natural pink lips slightly parted when nervous Cupid's bow, soft rounded jaw no sharp angles youthful almost feminine in softness but male, smooth skin minimal pores occasional youthful blemish but generally clear fair with slight flush when embarrassed, light ash blonde short slightly messy hair, smooth face no stubble occasional peach fuzz on jawline, small scar on left eyebrow from wrestling, ears slightly protruding endearing, neck thin but with visible veins when exerted from swimming, wearing loose gray t-shirt and dark slim jeans, gray sneakers, photorealistic, 8k, cinematic lighting, neutral gray-brown studio background, standing pose, full figure visible head to toe, compact short stature, underdeveloped muscles, slim physique, innocent shy expression, slightly slouched shy posture, slim male beauty, small frame
 ```
 
 ## 2. FULL BODY — ПРОФИЛЬ (вид сбоку)
 
 ```
-Full body side profile, young athletic man, 153cm tall, 53kg, athletic swimmer-wrestler build, oval face profile showing soft jaw and high cheekbones, slightly upturned snub nose cute button nose refined tip in profile, full soft natural pink lips Cupid's bow in profile, soft rounded jaw no sharp angles, light ash blonde short slightly messy hair, smooth face no stubble, small scar on left eyebrow visible from side, ears slightly protruding endearing boyish, neck muscles defined from swimming, broad shoulders strong back, visible abs from side, narrow hips, strong legs and calves, wearing casual sporty t-shirt and sweatpants, photorealistic, 8k, cinematic lighting, neutral background, full figure visible head to toe, side view showing shoulder width, chest depth, back strength, abs definition, hip narrowness, leg muscle, compact 153cm stature, V-taper developing from side, youthful athlete proportions
+Full body side profile, very short slim male, 153cm tall, 53kg, slim underdeveloped build, narrow shoulders and slim back, straight torso no V-taper, flat soft stomach, slim arms hanging naturally, slim lean legs, small frame, small proportions, oval face profile showing soft jaw and high cheekbones, slightly upturned snub nose cute button nose refined tip in profile, full soft natural pink lips Cupid's bow in profile, soft rounded jaw no sharp angles, light ash blonde short slightly messy hair, smooth face no stubble, small scar on left eyebrow visible from side, ears slightly protruding endearing, neck thin with visible veins from swimming, wearing loose gray t-shirt and dark slim jeans, gray sneakers, photorealistic, 8k, cinematic lighting, neutral gray-brown studio background, full figure visible head to toe, side view showing narrow shoulder width, slim back, flat chest, straight torso, hip narrowness, slim leg, compact 153cm stature, slim proportions, slim profile
 ```
 
 ## 3. FULL BODY — СЗАДИ (вид сзади)
 
 ```
-Full body back view, young athletic man, 153cm tall, 53kg, athletic swimmer-wrestler build, light ash blonde short slightly messy hair, broad strong back with developing latissimus dorsi and trapezius muscles, V-taper torso from back, narrow waist, athletic glutes and strong thighs, neck muscles defined from swimming, smooth skin on back, wearing casual sporty t-shirt or shirtless showing back muscles and shoulder blades, arms relaxed at sides or one hand behind head, photorealistic, 8k, cinematic lighting, neutral background, full figure visible head to toe, back showing shoulder width and development, spine line, waist narrowness, hip shape, glute definition, leg muscle, compact 153cm athlete from behind, youthful male back, swimmer's back development
+Full body back view, very short slim male, 153cm tall, 53kg, slim underdeveloped build, light ash blonde short slightly messy hair, narrow slim back with shoulder blades slightly visible, straight torso no V-taper, narrow waist, slim flat glutes, slim thighs and calves, neck thin, smooth skin on back, wearing loose gray t-shirt showing slim back and shoulder blades or shirtless showing underdeveloped back, arms relaxed at sides, photorealistic, 8k, cinematic lighting, neutral gray-brown studio background, full figure visible head to toe, back showing narrow shoulder width, slim back, straight spine line, waist narrowness, slim hip shape, underdeveloped back muscles, compact 153cm slim frame from behind, slim back, slim frame
 ```
 
 ## 4. FULL BODY — 3/4 (три четверти)
 
 ```
-Full body three-quarter view, young athletic man, 153cm tall, 53kg, athletic swimmer-wrestler build with broad shoulders and narrow hips developing V-taper, oval face with soft jaw and high cheekbones visible at angle, large round bright blue eyes wide-set innocent doe-like looking slightly off-camera, double eyelids with visible natural crease, light ash blonde eyebrows almost invisible against fair skin, slightly upturned snub nose cute button nose refined tip catching light, full soft natural pink lips Cupid's bow slightly parted, soft rounded jaw no sharp angles, smooth skin with occasional teenage blemish, light ash blonde short slightly messy hair, small scar on left eyebrow visible from this angle, ears slightly protruding, broad shoulders turned three-quarter, visible abs and chest, narrow waist, strong legs, wearing casual sporty t-shirt or sweatpants, weight shifted to one leg, shy but strong posture, photorealistic, 8k, cinematic lighting, neutral background, full figure visible head to toe, three-quarter showing youthful face depth and compact athletic body, 153cm stature, developing swimmer physique
+Full body three-quarter view, very short slim male, 153cm tall, 53kg, slim underdeveloped build, narrow shoulders and slim hips, straight torso no V-taper, flat soft stomach, slim arms, slim lean legs, small frame, small proportions, oval face with soft jaw and high cheekbones visible at angle, large round bright blue eyes wide-set innocent doe-like looking slightly off-camera, double eyelids with visible natural crease, light ash blonde eyebrows almost invisible against fair skin, slightly upturned snub nose cute button nose refined tip catching light, full soft natural pink lips Cupid's bow slightly parted, soft rounded jaw no sharp angles, smooth skin with occasional youthful blemish, light ash blonde short slightly messy hair, small scar on left eyebrow visible from this angle, ears slightly protruding, narrow shoulders turned three-quarter, flat chest, slim waist, wearing loose gray t-shirt and dark slim jeans, gray sneakers, weight shifted to one leg, shy but soft posture, photorealistic, 8k, cinematic lighting, neutral gray-brown studio background, full figure visible head to toe, three-quarter showing youthful face depth and compact slim body, 153cm stature, slim physique
 ```
 
 ## 5. CLOSE-UP ЛИЦА — ФРОНТАЛЬНЫЙ
 
 ```
-Close-up portrait frontal, young athletic man, oval face with soft jaw and high cheekbones youthful fullness slavic proportions, large round bright blue eyes wide-set innocent doe-like with light flecks clear and trusting looking directly at camera, double eyelids with visible natural crease slight hood when shy — eyes half-lowered, light ash blonde eyebrows medium thickness straight soft arch almost invisible against fair skin, slightly upturned snub nose cute button nose refined tip — signature cute feature, full soft natural pink lips slightly parted when nervous Cupid's bow, soft rounded jaw no sharp angles youthful almost feminine in softness but male, smooth skin minimal pores occasional teenage blemish but generally clear fair with slight flush when embarrassed, light ash blonde short slightly messy hair, smooth face no stubble occasional peach fuzz on jawline, small scar on left eyebrow from wrestling childhood, ears slightly protruding endearing boyish, neck muscles defined from swimming visible at base, photorealistic, 8k, cinematic lighting, shallow depth of field, skin texture visible but youthful and smooth, occasional blemish, pores minimal, innocent wide-eyed expression, shy but strong, youthful male beauty, slavic features, bright blue eyes with light flecks
+Close-up portrait frontal, very short slim male, oval face with soft jaw and high cheekbones youthful fullness slavic proportions, large round bright blue eyes wide-set innocent doe-like with light flecks clear and trusting looking directly at camera, double eyelids with visible natural crease slight hood when shy — eyes half-lowered, light ash blonde eyebrows medium thickness straight soft arch almost invisible against fair skin, slightly upturned snub nose cute button nose refined tip — signature cute feature, full soft natural pink lips slightly parted when nervous Cupid's bow, soft rounded jaw no sharp angles youthful almost feminine in softness but male, smooth skin minimal pores occasional youthful blemish but generally clear fair with slight flush when embarrassed, light ash blonde short slightly messy hair, smooth face no stubble occasional peach fuzz on jawline, small scar on left eyebrow from wrestling, ears slightly protruding endearing, neck thin with visible veins from swimming visible at base, photorealistic, 8k, cinematic lighting, shallow depth of field, skin texture visible but youthful and smooth, occasional blemish, pores minimal, innocent wide-eyed expression, shy but soft, slim male beauty, slavic features, bright blue eyes with light flecks
 ```
 
 ## 6. CLOSE-UP ЛИЦА — ПРОФИЛЬ
 
 ```
-Close-up side profile, young athletic man, oval face profile showing soft jaw and high cheekbones, slightly upturned snub nose cute button nose refined tip in profile — signature cute feature, full soft natural pink lips Cupid's bow in profile, soft rounded jaw no sharp angles, light ash blonde short slightly messy hair, smooth face no stubble, small scar on left eyebrow visible from side, ears slightly protruding endearing boyish, neck muscles defined from swimming, neck thickness and muscle definition, gentle forehead slope, youthful profile, photorealistic, 8k, cinematic lighting, shallow depth of field, profile showing snub nose upturn, lip fullness, soft chin, rounded jaw, no sharp angles, youthful slavic profile, compact features, smooth skin, slight flush on cheek visible from side
+Close-up side profile, very short slim male, oval face profile showing soft jaw and high cheekbones, slightly upturned snub nose cute button nose refined tip in profile — signature cute feature, full soft natural pink lips Cupid's bow in profile, soft rounded jaw no sharp angles, light ash blonde short slightly messy hair, smooth face no stubble, small scar on left eyebrow visible from side, ears slightly protruding endearing, neck thin with visible veins from swimming, neck thickness slim, gentle forehead slope, youthful profile, photorealistic, 8k, cinematic lighting, shallow depth of field, profile showing snub nose upturn, lip fullness, soft chin, rounded jaw, no sharp angles, youthful slavic profile, compact features, smooth skin, slight flush on cheek visible from side
 ```
 
 ## 7. CLOSE-UP ЛИЦА — 3/4
 
 ```
-Close-up three-quarter portrait, young athletic man, oval face with soft jaw and high cheekbones youthful fullness, large round bright blue eyes wide-set innocent doe-like with light flecks looking slightly off-camera with shy but strong expression, double eyelids with visible natural crease, light ash blonde eyebrows almost invisible against fair skin, slightly upturned snub nose cute button nose refined tip catching light, full soft natural pink lips Cupid's bow slightly parted, soft rounded jaw no sharp angles, smooth skin with occasional teenage blemish and slight flush on one cheek, light ash blonde short slightly messy hair, small scar on left eyebrow visible from this angle, ears slightly protruding, neck muscles defined from swimming, photorealistic, 8k, cinematic lighting, shallow depth of field, one side of face in soft shadow showing youthful depth, high cheekbone softness, brow lightness, jaw roundness, innocent expression, slavic features, bright blue eyes with light flecks catching light
+Close-up three-quarter portrait, very short slim male, oval face with soft jaw and high cheekbones youthful fullness, large round bright blue eyes wide-set innocent doe-like with light flecks looking slightly off-camera with shy but soft expression, double eyelids with visible natural crease, light ash blonde eyebrows almost invisible against fair skin, slightly upturned snub nose cute button nose refined tip catching light, full soft natural pink lips Cupid's bow slightly parted, soft rounded jaw no sharp angles, smooth skin with occasional youthful blemish and slight flush on one cheek, light ash blonde short slightly messy hair, small scar on left eyebrow visible from this angle, ears slightly protruding, neck thin with visible veins from swimming, photorealistic, 8k, cinematic lighting, shallow depth of field, one side of face in soft shadow showing youthful depth, high cheekbone softness, brow lightness, jaw roundness, innocent expression, slavic features, bright blue eyes with light flecks catching light
 ```
 
 ## 8. СИДЯ / ПОЛУПРИГИБ (для понимания объёмов в покое)
 
 ```
-Full body seated pose, young athletic man, 153cm tall, 53kg, athletic swimmer-wrestler build, sitting on edge of swimming pool or bench, legs in water or hanging, wearing casual sporty t-shirt and shorts, broad shoulders, visible abs when shirt lifts slightly, narrow hips, strong legs and calves, light ash blonde short slightly messy hair damp from pool, large round bright blue eyes wide and innocent looking down or forward with shy expression, oval face with soft jaw and high cheekbones, smooth skin with slight flush when embarrassed, full soft natural pink lips slightly parted, smooth face no stubble, small scar on left eyebrow, ears slightly protruding, arms resting on knees or beside body, hands slightly large for body, photorealistic, 8k, cinematic lighting, pool or gym background, full figure visible, seated position showing compact torso, narrow waist, strong thighs, developing V-taper even when seated, youthful athlete at rest, shy but strong presence, innocent and athletic
+Full body seated pose, very short slim male, 153cm tall, 53kg, slim underdeveloped build, sitting on wooden stool or bench, legs slightly apart or hanging, wearing loose gray t-shirt and dark slim jeans, gray sneakers, narrow shoulders, flat soft stomach when shirt lifts slightly, slim hips, slim legs, light ash blonde short slightly messy hair, large round bright blue eyes wide and innocent looking down or forward with shy expression, oval face with soft jaw and high cheekbones, smooth skin with slight flush when embarrassed, full soft natural pink lips slightly parted, smooth face no stubble, small scar on left eyebrow, ears slightly protruding, arms resting on knees or beside body, hands slightly large for slim body with knobby knuckles, photorealistic, 8k, cinematic lighting, neutral gray-brown studio background, full figure visible, seated position showing compact slim torso, narrow waist, slim thighs, straight torso even when seated, slim frame at rest, shy but soft presence, innocent and soft
 ```
 
 ## 9. ДЕТАЛЬ РУК / ПЛЕЧ / ШЕИ (для понимания пропорций)
 
 ```
-Detail shot shoulders neck and upper chest, young athletic man, athletic swimmer-wrestler build, broad strong shoulders with developing deltoids, defined collarbone and upper chest, visible pectoral muscles beginning to develop, neck muscles defined from swimming with visible veins when exerted, smooth skin with occasional teenage blemish, light ash blonde short hair neckline, smooth face no stubble, small scar on left eyebrow, ears slightly protruding, wearing casual sporty t-shirt or shirtless showing upper body, photorealistic, 8k, macro detail, shallow depth of field, understanding of shoulder width and development, neck thickness and muscle, collarbone definition, chest beginning, upper body compact proportions, youthful athlete upper body, swimmer's neck and shoulders, developing physique, hand size slightly large for body
+Detail shot shoulders neck and upper chest, very short slim male, slim underdeveloped build, narrow shoulders with no developed deltoids, visible collarbone and flat upper chest, no pectoral muscle definition, neck thin with visible veins from swimming when exerted, smooth skin with occasional youthful blemish, light ash blonde short hair neckline, smooth face no stubble, small scar on left eyebrow, ears slightly protruding, wearing loose gray t-shirt or shirtless showing underdeveloped upper body, photorealistic, 8k, macro detail, shallow depth of field, understanding of narrow shoulder width, slim neck, collarbone visible, flat chest, upper body compact proportions, youthful slim upper body, swimmer's thin neck and narrow shoulders, slim physique, hand size slightly large for slim body with knobby knuckles
 ```
 
 ## 10. ДЕТАЛЬ РУК (для понимания размеров — «ещё растут»)
 
 ```
-Close-up of hands and forearms, young athletic man, athletic swimmer-wrestler build, large hands slightly oversized for compact body still growing into them, long fingers, visible veins on hands and forearms from swimming training, smooth skin with occasional teenage blemish, light ash blonde minimal hair on forearms, developing forearm muscles with defined brachioradialis, wearing casual sporty t-shirt sleeve rolled up, photorealistic, 8k, macro detail, shallow depth of field, understanding of hand size slightly too large for 153cm body, finger length, palm width, vein prominence from athletic training, forearm muscle definition, wrist thickness, youthful male hand proportions, still growing, slightly awkward but strong, developing hands
+Close-up of hands and forearms, very short slim male, slim underdeveloped build, large hands slightly oversized for compact body still growing into them, long slim fingers, visible veins on hands and forearms from swimming training, smooth skin with occasional youthful blemish, light ash blonde minimal hair on forearms, slim forearms with barely any muscle definition, wearing loose gray t-shirt sleeve rolled up, photorealistic, 8k, macro detail, shallow depth of field, understanding of hand size slightly too large for 153cm body, finger length, palm width, vein prominence from swimming training, slim wrist, youthful male hand proportions, still growing, knobby knuckles, slim fingers, slim hands
 ```
 
 ---
 
 # ВАРИАЦИИ ОДЕЖДЫ / СИТУАЦИЙ
 
-## Спортивный (бассейн, борцовское трико, гимнасия)
+## Базовый / Студийный (серая футболка, тёмные джинсы, кеды)
 
 ```
-Full body, young athletic man, 153cm tall, 53kg, athletic swimmer-wrestler build, in swimming pool or wrestling gym, light ash blonde short hair wet and slicked back or slightly messy, bright blue wide innocent eyes, wearing competitive swimming trunks or wrestling singlet, broad shoulders, visible abs and defined torso, strong arms and legs, V-taper swimmer physique, water droplets on skin or slight sweat from exertion, smooth face no stubble, confident in water or intense in gym action, swimming motion or wrestling stance, photorealistic, 8k, natural pool or gym lighting, showing full athletic swimmer-wrestler body, strong in his element, aquatic athlete or developing wrestler, action shot, sports intensity
+Full body, very short slim male, 153cm tall, 53kg, slim underdeveloped build, wearing loose gray t-shirt and dark slim jeans, gray sneakers, light ash blonde short slightly messy hair, bright blue wide innocent eyes, oval face with soft jaw and high cheekbones, smooth face no stubble with slight peach fuzz, full soft natural pink lips, small scar on left eyebrow, ears slightly protruding, narrow shoulders, flat soft stomach, slim arms, slim legs, standing in neutral gray-brown studio background, photorealistic, 8k, soft studio lighting, showing full slim compact figure, slim frame, small proportions, innocent shy expression, slightly slouched posture, slim male beauty off-duty
+```
+
+## Спортивный / Бассейн (пловец, вода, но slim)
+
+```
+Full body, very short slim male, 153cm tall, 53kg, slim underdeveloped build, in swimming pool or by poolside, light ash blonde short hair wet and slicked back or slightly messy, bright blue wide innocent eyes, wearing competitive swimming trunks, narrow shoulders, flat soft stomach, slim arms, slim legs, no visible muscle definition, water droplets on skin, smooth face no stubble, confident in water but shy expression when noticed, swimming motion or standing in shallow water, photorealistic, 8k, natural pool lighting, water reflections, showing full slim swimmer body, narrow frame, youth and innocence, aquatic slim, slim swimmer
 ```
 
 ## Сауна (влажные волосы, смущение, уязвимость)
 
 ```
-Full body, young athletic man, 153cm tall, 53kg, athletic swimmer-wrestler build, in sauna, light ash blonde short hair damp from steam, bright blue wide innocent eyes looking away with shyness and vulnerability, smooth face no stubble with flushed cheeks from heat, full soft natural pink lips slightly parted, broad shoulders, visible abs and defined torso, narrow hips, strong legs, wearing towel around waist or minimal swimwear, smooth skin with slight sweat, steam, wooden interior, warm amber lighting, photorealistic, 8k, showing full athletic body, youthful vulnerability, innocent and strong, shy but athletic, developing physique exposed, vulnerability and strength, blushing innocence
+Full body, very short slim male, 153cm tall, 53kg, slim underdeveloped build, in sauna, light ash blonde short hair damp from steam, bright blue wide innocent eyes looking away with shyness and vulnerability, smooth face no stubble with flushed cheeks from heat, full soft natural pink lips slightly parted, narrow shoulders, flat soft stomach, slim hips, slim legs, wearing towel around waist or minimal swimwear, smooth skin with slight sweat, steam, wooden interior, warm amber lighting, photorealistic, 8k, showing full slim body, youthful vulnerability, innocent and soft, shy but slim, slim frame in sauna, underdeveloped physique exposed, blushing innocence, narrow frame
 ```
 
-## Casual (толстовка, спортивные штаны, по-мальчишески)
+## Casual / Променад (толстовка, спортивные штаны, по-мальчишески)
 
 ```
-Full body, young athletic man, 153cm tall, 53kg, athletic swimmer-wrestler build, wearing hoodie and sweatpants, light ash blonde short slightly messy hair, bright blue wide innocent eyes looking down with shy smile, oval face with soft jaw and high cheekbones, smooth face no stubble with slight peach fuzz, full soft natural pink lips, small scar on left eyebrow, ears slightly protruding, broad shoulders visible under hoodie, athletic build evident even in casual clothes, hands in pockets or holding backpack, photorealistic, 8k, natural daylight, street or campus background, showing compact athletic youth in everyday clothes, sporty student, shy but strong, innocent male beauty, youthful athlete off-duty
-```
-
-## Променад / Улица (вечерний свет, расслабленный)
-
-```
-Full body, young athletic man, 153cm tall, 53kg, athletic swimmer-wrestler build, wearing fitted t-shirt and jeans or light jacket, light ash blonde short slightly messy hair, bright blue wide innocent eyes looking around with curiosity and shyness, oval face with soft jaw and high cheekbones, smooth face no stubble with slight flush, full soft natural pink lips, small scar on left eyebrow, ears slightly protruding, broad shoulders visible under clothes, compact athletic build, walking or standing in evening street or park, natural lighting, photorealistic, 8k, showing youthful male beauty in everyday setting, shy but strong presence, innocent and athletic, off-duty athlete
+Full body, very short slim male, 153cm tall, 53kg, slim underdeveloped build, wearing hoodie and sweatpants, light ash blonde short slightly messy hair, bright blue wide innocent eyes looking down with shy smile, oval face with soft jaw and high cheekbones, smooth face no stubble with slight peach fuzz, full soft natural pink lips, small scar on left eyebrow, ears slightly protruding, narrow shoulders visible under hoodie, slim build evident even in casual clothes, hands in pockets or holding backpack, photorealistic, 8k, natural daylight, street or campus background, showing compact slim youth in everyday clothes, sporty student, shy but soft, innocent male beauty, youthful slim off-duty, small frame
 ```
 
 ---
@@ -141,7 +141,7 @@ Full body, young athletic man, 153cm tall, 53kg, athletic swimmer-wrestler build
 # ANTI-PROMPTS (чего НЕ должно быть)
 
 ```
-anime, cartoon, 3d render, distorted anatomy, extra limbs, bad hands, bad fingers, text, watermark, excessive muscles, bodybuilder, aged appearance, facial hair, beard, mustache, tall height (over 170cm), mature appearance, wrinkles, heavy pores, rough skin, strong jaw, sharp jaw, angular face, masculine aggressive features, confident dominant expression, experienced look, old eyes, low quality, worst quality, jpeg artifacts, wrong eye color (not blue), wrong hair color (not light ash blonde), no scar on eyebrow, no protruding ears, peach fuzz missing, stubble or beard, tall and confident, overly muscular, perfect skin without blemish (he has occasional teenage blemish), doll-like face, perfect symmetry, chiseled features, adult male presence, commanding energy, smooth mature skin, defined mature jaw
+anime, cartoon, 3d render, distorted anatomy, extra limbs, bad hands, bad fingers, text, watermark, excessive muscles, bodybuilder, defined abs, six pack, V-taper, broad shoulders, muscular shoulders, thick neck, bulky, mature build, adult proportions, tall stature, over 160cm, heavy build, 70kg, 65kg, athletic build overemphasized, swimmer muscles, wrestler muscles, defined chest, pectoral muscles, deltoids, latissimus, trapezius, brachioradialis, muscular forearms, strong legs, powerful build, strongman, broad back, thick thighs, gym physique, aged appearance, facial hair, beard, mustache, mature appearance, wrinkles, heavy pores, rough skin, strong jaw, sharp jaw, angular face, masculine aggressive features, confident dominant expression, experienced look, old eyes, low quality, worst quality, jpeg artifacts, wrong eye color (not blue), wrong hair color (not light ash blonde), no scar on eyebrow, no protruding ears, peach fuzz missing, stubble or beard, tall and confident, overly muscular, perfect skin without blemish (he has occasional youthful blemish), doll-like face, perfect symmetry, chiseled features, adult male presence, commanding energy, smooth mature skin, defined mature jaw
 ```
 
 ---
@@ -156,7 +156,7 @@ Sampler: DPM++ 2M Karras / Euler a
 CFG Scale: 7-8
 Resolution: 832x1216 (portrait) or 1024x1536 (full body)
 Clip skip: 2
-Negative prompt: (anime:1.3), (cartoon:1.3), (3d render:1.2), (bad anatomy:1.4), (extra limbs:1.3), (bad hands:1.3), (distorted face:1.2), (watermark:1.2), (text:1.2), (excessive muscles:1.3), (bodybuilder:1.3), (aged appearance:1.3), (facial hair:1.3), (beard:1.3), (mustache:1.3), (tall:1.2), (mature appearance:1.3), (wrinkles:1.2), (heavy pores:1.2), (rough skin:1.2), (strong jaw:1.2), (sharp jaw:1.2), (angular face:1.2), (masculine aggressive:1.2), (confident dominant:1.2), (experienced look:1.2), (old eyes:1.2), (wrong eye color:1.2), (wrong hair color:1.2), (no scar:1.2), (no protruding ears:1.1), (perfect skin:1.2), (doll-like:1.2), (perfect symmetry:1.2), (chiseled features:1.2), (adult male:1.2), (commanding energy:1.2), (smooth mature skin:1.2), (defined mature jaw:1.2), (low quality:1.3), (worst quality:1.3), (jpeg artifacts:1.2)
+Negative prompt: (anime:1.3), (cartoon:1.3), (3d render:1.2), (bad anatomy:1.4), (extra limbs:1.3), (bad hands:1.3), (distorted face:1.2), (watermark:1.2), (text:1.2), (excessive muscles:1.3), (bodybuilder:1.3), (defined abs:1.3), (six pack:1.3), (V-taper:1.3), (broad shoulders:1.3), (muscular shoulders:1.3), (thick neck:1.2), (bulky:1.3), (mature build:1.3), (adult proportions:1.3), (tall:1.2), (over 160cm:1.2), (heavy build:1.2), (70kg:1.2), (65kg:1.2), (athletic overemphasized:1.2), (swimmer muscles:1.2), (wrestler muscles:1.2), (defined chest:1.2), (pectoral muscles:1.2), (deltoids:1.2), (latissimus:1.2), (trapezius:1.2), (muscular forearms:1.2), (strong legs:1.2), (powerful build:1.2), (broad back:1.2), (thick thighs:1.2), (gym physique:1.2), (aged appearance:1.3), (facial hair:1.3), (beard:1.3), (mustache:1.3), (mature appearance:1.3), (wrinkles:1.2), (strong jaw:1.2), (sharp jaw:1.2), (angular face:1.2), (masculine aggressive:1.2), (confident dominant:1.2), (old eyes:1.2), (wrong eye color:1.2), (wrong hair color:1.2), (no scar:1.2), (no protruding ears:1.1), (perfect skin:1.2), (doll-like:1.2), (perfect symmetry:1.2), (chiseled features:1.2), (adult male:1.2), (commanding energy:1.2), (smooth mature skin:1.2), (defined mature jaw:1.2), (low quality:1.3), (worst quality:1.3), (jpeg artifacts:1.2)
 Recommended models: realisticVision, photorealistic, majicmixRealistic, realisticVisionV6, flux1-realistic
 LoRA: add_detail, detail_slider, youthful male enhancement, skin texture enhancement, photorealistic portrait
 ```
@@ -167,14 +167,14 @@ LoRA: add_detail, detail_slider, youthful male enhancement, skin texture enhance
 --ar 2:3 (portrait) or --ar 3:4 (full body)
 --style raw
 --s 250-500 (for more photorealistic)
---no anime, cartoon, 3d render, bad anatomy, extra limbs, bad hands, excessive muscles, bodybuilder, aged appearance, facial hair, beard, mustache, tall, mature appearance, wrinkles, strong jaw, sharp jaw, angular face, masculine aggressive, confident dominant, experienced look, old eyes, wrong eye color, wrong hair color, no scar, perfect skin, doll-like, perfect symmetry, chiseled features, adult male, commanding energy, smooth mature skin, defined mature jaw, low quality
+--no anime, cartoon, 3d render, bad anatomy, extra limbs, bad hands, excessive muscles, bodybuilder, defined abs, six pack, V-taper, broad shoulders, muscular shoulders, thick neck, bulky, mature build, adult proportions, tall, heavy build, athletic overemphasized, swimmer muscles, wrestler muscles, defined chest, muscular forearms, strong legs, powerful build, broad back, thick thighs, gym physique, aged appearance, facial hair, beard, mustache, mature appearance, wrinkles, strong jaw, sharp jaw, angular face, masculine aggressive, confident dominant, old eyes, wrong eye color, wrong hair color, no scar, perfect skin, doll-like, perfect symmetry, chiseled features, adult male, commanding energy, smooth mature skin, defined mature jaw, low quality
 ```
 
 ## DALL-E 3 / Ideogram
 
 ```
-Style: photorealistic, natural lighting, detailed skin texture, professional photography, youthful male beauty, innocent expression, athletic but not over-muscled, slavic features
-Avoid: illustrated, anime, 3d rendered, stylized, cartoon, excessive muscles, bodybuilder, aged appearance, facial hair, beard, mustache, tall, mature appearance, wrinkles, strong jaw, sharp jaw, angular face, masculine aggressive, confident dominant, experienced look, old eyes, perfect skin, doll-like, perfect symmetry, chiseled features, adult male, commanding energy, smooth mature skin, defined mature jaw
+Style: photorealistic, natural lighting, detailed skin texture, professional photography, slim male beauty, innocent expression, slim but not over-muscled, slim, slavic features, small frame
+Avoid: illustrated, anime, 3d rendered, stylized, cartoon, excessive muscles, bodybuilder, defined abs, six pack, V-taper, broad shoulders, muscular shoulders, thick neck, bulky, mature build, adult proportions, tall, heavy build, athletic overemphasized, swimmer muscles, wrestler muscles, defined chest, muscular forearms, strong legs, powerful build, broad back, thick thighs, gym physique, aged appearance, facial hair, beard, mustache, mature appearance, wrinkles, strong jaw, sharp jaw, angular face, masculine aggressive, confident dominant, old eyes, perfect skin, doll-like, perfect symmetry, chiseled features, adult male, commanding energy, smooth mature skin, defined mature jaw
 ```
 
 ---
@@ -183,22 +183,27 @@ Avoid: illustrated, anime, 3d rendered, stylized, cartoon, excessive muscles, bo
 
 При генерации серии изображений проверять:
 
-- [ ] Рост: 153 см (компактный, не высокий, не низкий)
-- [ ] Вес: 53 кг (атлетичный, но не тяжёлый, подростковый)
-- [ ] Телосложение: athletic swimmer-wrestler (широкие плечи, узкие бёдра, видимый пресс, развивающиеся бицепсы, V-образный силуэт пловца)
+- [ ] Рост: 153 см (очень маленький, компактный, small proportions)
+- [ ] Вес: 53 кг (slim, slim, underdeveloped muscles, narrow frame)
+- [ ] Телосложение: slim underdeveloped (узкие плечи, прямой торс, плоский мягкий живот, тонкие руки, тонкие ноги, без мышечного рельефа)
+- [ ] Плечи: narrow, не broad, не muscular, не широкие
+- [ ] Торс: straight, flat soft stomach, no V-taper, no abs, no muscle definition
+- [ ] Руки: slim, barely any muscle, forearms slim, veins only when exerted
+- [ ] Ноги: slim, lean, wiry, no muscle definition
+- [ ] Руки: слегка большие для тела — ещё растут, костяшки заметны (knobby knuckles) — ОБЯЗАТЕЛЬНО
 - [ ] Лицо: овальное, мягкая челюсть, высокие скулы, юношеская полнота, славянские пропорции
 - [ ] Глаза: большие, круглые, широко расставленные, ярко-голубые, чистые, со светлыми вкраплениями, невинные (doe-like) — ОБЯЗАТЕЛЬНО
 - [ ] Нос: слегка вздернутый, курносый, милый кнопочный — ОБЯЗАТЕЛЬНО (фирменная черта)
 - [ ] Губы: полные, мягкие, натуральный розовый, купидон, слегка приоткрыты
-- [ ] Кожа: гладкая, минимум пор, occasional teenage blemish, светлая, лёгкий румянец при смущении — ОБЯЗАТЕЛЬНО
+- [ ] Кожа: гладкая, минимум пор, occasional youthful blemish, светлая, лёгкий румянец при смущении — ОБЯЗАТЕЛЬНО
 - [ ] Брови: светло-пепельные, почти невидимы на светлой коже — ОБЯЗАТЕЛЬНО
 - [ ] Шрам: на левой брови, от детской борьбы — ОБЯЗАТЕЛЬНО
 - [ ] Уши: слегка оттопыренные, по-мальчишески, милые — ОБЯЗАТЕЛЬНО
 - [ ] Волосы: светло-пепельные блонд, короткие, слегка растрёпанные
 - [ ] Щетина: нет, гладкое лицо, occasional peach fuzz — ОБЯЗАТЕЛЬНО
-- [ ] Шея: мускулистая от плавания, вены видны при напряжении — ОБЯЗАТЕЛЬНО
-- [ ] Построение: broad shoulders, narrow hips, visible abs, strong legs, developing biceps, V-taper
-- [ ] Руки: слегка большие для тела — ещё растут в них — ОБЯЗАТЕЛЬНО
-- [ ] Осанка: застенчивая, слегка сгорбленная, но спортивная, неуверенная, но сильная
-- [ ] Выражение: невинное, широкие глаза, застенчивое, смущённое, доверчивое, но с внутренней силой
-- [ ] Присутствие: shy but strong, innocent but athletic, youth and vulnerability, youthful male beauty, "олень в фарах" который может стать зверем
+- [ ] Шея: тонкая, но мускулистая от плавания, вены видны при напряжении — ОБЯЗАТЕЛЬНО
+- [ ] Осанка: застенчивая, слегка сгорбленная, неуверенная, но мягкая
+- [ ] Выражение: невинное, широкие глаза, застенчивое, смущённое, доверчивое, но с внутренней мягкой силой
+- [ ] Присутствие: shy but soft, innocent, slim, youth and vulnerability, "олень в фарах" который может стать зверем
+- [ ] Одежда: loose gray t-shirt, dark slim jeans, gray sneakers (как на референсе)
+- [ ] Фон: neutral gray-brown studio background (как на референсе)
