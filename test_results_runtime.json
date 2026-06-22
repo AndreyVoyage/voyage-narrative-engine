@@ -1,7 +1,7 @@
 [
   {
-    "id": "andrey_junior_module_v2.1",
-    "folder": "andrey_junior_module_v2.1",
+    "id": "andrey_junior",
+    "folder": "andrey_junior",
     "load": "PASS",
     "error": null,
     "validation": {
@@ -24,11 +24,19 @@
       "core": [
         "PASS",
         "anatomic_anchor загружен"
+      ],
+      "speech": [
+        "PASS",
+        "13 подуровней речевой матрицы"
+      ],
+      "autonomous": [
+        "PASS",
+        "INITIATIVE: yes, ACTIVITIES: yes, TEMPLATES: yes"
       ]
     },
     "stats": {
       "name": "Андрей",
-      "version": "2.0.0",
+      "version": "2.2.0",
       "levels_count": 14,
       "vscno_count": 14,
       "has_safety": true,
@@ -60,11 +68,19 @@
       "core": [
         "PASS",
         "anatomic_anchor загружен"
+      ],
+      "speech": [
+        "PASS",
+        "13 подуровней речевой матрицы"
+      ],
+      "autonomous": [
+        "PASS",
+        "INITIATIVE: yes, ACTIVITIES: yes, TEMPLATES: yes"
       ]
     },
     "stats": {
       "name": "Андрей",
-      "version": "2.0.0",
+      "version": "2.2.0",
       "levels_count": 14,
       "vscno_count": 14,
       "has_safety": true,
@@ -72,8 +88,8 @@
     }
   },
   {
-    "id": "egor_module_v1",
-    "folder": "egor_module_v1",
+    "id": "egor",
+    "folder": "egor",
     "load": "PASS",
     "error": null,
     "validation": {
@@ -96,11 +112,19 @@
       "core": [
         "PASS",
         "anatomic_anchor загружен"
+      ],
+      "speech": [
+        "FAIL",
+        "8 подуровней речевой матрицы"
+      ],
+      "autonomous": [
+        "WARNING",
+        "INITIATIVE: yes, ACTIVITIES: no, TEMPLATES: no"
       ]
     },
     "stats": {
       "name": "Егор",
-      "version": "2.0.0",
+      "version": "2.2.0",
       "levels_count": 14,
       "vscno_count": 14,
       "has_safety": true,
@@ -132,6 +156,14 @@
       "core": [
         "FAIL",
         "Отсутствует"
+      ],
+      "speech": [
+        "FAIL",
+        "Отсутствует SPEECH_MATRIX.json"
+      ],
+      "autonomous": [
+        "WARNING",
+        "INITIATIVE: no, ACTIVITIES: no, TEMPLATES: no"
       ]
     },
     "stats": {
@@ -168,11 +200,19 @@
       "core": [
         "PASS",
         "anatomic_anchor загружен"
+      ],
+      "speech": [
+        "PASS",
+        "14 подуровней речевой матрицы"
+      ],
+      "autonomous": [
+        "PASS",
+        "INITIATIVE: yes, ACTIVITIES: yes, TEMPLATES: yes"
       ]
     },
     "stats": {
       "name": "Кира",
-      "version": "2.1.0",
+      "version": "2.2.0",
       "levels_count": 14,
       "vscno_count": 14,
       "has_safety": true,
@@ -180,8 +220,8 @@
     }
   },
   {
-    "id": "maksim_module_v2",
-    "folder": "maksim_module_v2",
+    "id": "maksim",
+    "folder": "maksim",
     "load": "PASS",
     "error": null,
     "validation": {
@@ -204,11 +244,19 @@
       "core": [
         "PASS",
         "anatomic_anchor загружен"
+      ],
+      "speech": [
+        "PASS",
+        "13 подуровней речевой матрицы"
+      ],
+      "autonomous": [
+        "PASS",
+        "INITIATIVE: yes, ACTIVITIES: yes, TEMPLATES: yes"
       ]
     },
     "stats": {
       "name": "Максим",
-      "version": "2.0.0",
+      "version": "2.2.0",
       "levels_count": 14,
       "vscno_count": 14,
       "has_safety": true,
@@ -216,8 +264,8 @@
     }
   },
   {
-    "id": "marina_module_v2",
-    "folder": "marina_module_v2",
+    "id": "marina",
+    "folder": "marina",
     "load": "PASS",
     "error": null,
     "validation": {
@@ -240,11 +288,19 @@
       "core": [
         "PASS",
         "anatomic_anchor загружен"
+      ],
+      "speech": [
+        "PASS",
+        "13 подуровней речевой матрицы"
+      ],
+      "autonomous": [
+        "PASS",
+        "INITIATIVE: yes, ACTIVITIES: yes, TEMPLATES: yes"
       ]
     },
     "stats": {
       "name": "Марина",
-      "version": "2.0.0",
+      "version": "2.2.0",
       "levels_count": 14,
       "vscno_count": 14,
       "has_safety": true,
@@ -252,8 +308,8 @@
     }
   },
   {
-    "id": "olga_module_v2",
-    "folder": "olga_module_v2",
+    "id": "olga",
+    "folder": "olga",
     "load": "PASS",
     "error": null,
     "validation": {
@@ -276,11 +332,19 @@
       "core": [
         "PASS",
         "anatomic_anchor загружен"
+      ],
+      "speech": [
+        "FAIL",
+        "8 подуровней речевой матрицы"
+      ],
+      "autonomous": [
+        "PASS",
+        "INITIATIVE: yes, ACTIVITIES: yes, TEMPLATES: yes"
       ]
     },
     "stats": {
       "name": "Ольга",
-      "version": "2.0.0",
+      "version": "2.2.0",
       "levels_count": 14,
       "vscno_count": 14,
       "has_safety": true,
@@ -288,8 +352,8 @@
     }
   },
   {
-    "id": "sergey_module_v4",
-    "folder": "sergey_module_v4",
+    "id": "sergey",
+    "folder": "sergey",
     "load": "PASS",
     "error": null,
     "validation": {
@@ -312,11 +376,19 @@
       "core": [
         "PASS",
         "anatomic_anchor загружен"
+      ],
+      "speech": [
+        "PASS",
+        "13 подуровней речевой матрицы"
+      ],
+      "autonomous": [
+        "PASS",
+        "INITIATIVE: yes, ACTIVITIES: yes, TEMPLATES: yes"
       ]
     },
     "stats": {
       "name": "Сергей",
-      "version": "2.0.0",
+      "version": "2.2.0",
       "levels_count": 14,
       "vscno_count": 14,
       "has_safety": true,
@@ -348,6 +420,14 @@
       "core": [
         "FAIL",
         "Отсутствует"
+      ],
+      "speech": [
+        "FAIL",
+        "Отсутствует SPEECH_MATRIX.json"
+      ],
+      "autonomous": [
+        "WARNING",
+        "INITIATIVE: no, ACTIVITIES: no, TEMPLATES: no"
       ]
     },
     "stats": {

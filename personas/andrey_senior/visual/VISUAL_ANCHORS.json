@@ -1,9 +1,9 @@
 {
   "persona_id": "andrey_senior",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "schema": "2.0.0",
   "description": "Visual anchors for andrey_senior",
-  "prompt_base": "Portrait of athletic man in his late 30s, rounded oval broad face with soft contours and broad forehead, bright blue almond-shaped eyes clear and expressive with average natural spacing, straight nose bridge with subtle width and rounded tip slightly turned down, medium full lips natural pale pink tone with warm smile, soft rounded jawline with light stubble 2-3 days growth, short light blonde hair evenly cropped, natural male pattern with slight recession at temples, thick muscular neck with visible adam's apple, broad muscular shoulders, athletic build, fair smooth skin with fine texture and faint barely visible freckles on cheeks, slight horizontal forehead wrinkles, faint crow's feet at eye corners, medium-sized ears close to head, soft natural dark blonde eyebrows straight to slightly arched with natural spacing above brow ridge",
+  "prompt_base": "Portrait of athletic man in his late 30s, rounded oval broad face with soft contours and broad forehead, bright blue almond-shaped eyes clear and expressive with average natural spacing, straight nose bridge with subtle width and rounded tip slightly turned down, medium full lips natural pale pink tone with warm smile, soft rounded jawline with light stubble 2-3 days growth, short light blonde hair evenly cropped, natural male pattern with slight recession at temples, thick muscular neck with visible adam's apple, broad muscular shoulders, 92-95kg athletic build, defined muscles, not bulky, fair smooth skin with fine texture and faint barely visible freckles on cheeks, slight horizontal forehead wrinkles, faint crow's feet at eye corners, medium-sized ears close to head, soft natural dark blonde eyebrows straight to slightly arched with natural spacing above brow ridge",
   "prompt_variations": {
     "casual": "Man in casual clothes, late 30s, light blonde hair, blue eyes, athletic build, relaxed posture, natural lighting, photorealistic",
     "sauna": "Man in sauna, late 30s, light blonde hair slightly damp, blue eyes, athletic build, confident posture, steam, warm amber lighting, wooden interior, photorealistic",
@@ -24,8 +24,23 @@
     "dense thick hair",
     "wide-set eyes",
     "skinny build",
-    "feminine features"
+    "feminine features",
+    "overweight",
+    "bulky",
+    "excessive bulk",
+    "heavyset",
+    "stocky",
+    "thick waist",
+    "large belly",
+    "120kg",
+    "massive build",
+    "obese",
+    "fat",
+    "oversized muscles",
+    "thick neck",
+    "powerlifter build",
+    "too muscular"
   ],
   "style": "photorealistic",
-  "visual_signature": "Portrait of athletic man in his late 30s, rounded oval broad face with soft contours and broad forehead, bright blue almond-shaped eyes clear and expressive with average natural spacing, straight nose bridge with subtle width and rounded tip slightly turned down, medium full lips natural pale pink tone with warm smile, soft rounded jawline with light stubble 2-3 days growth, short light blonde hair evenly cropped, natural male pattern with slight recession at temples, thick muscular neck with visible adam's apple, broad muscular shoulders, athletic build, fair smooth skin with fine texture and faint barely visible freckles on cheeks, slight horizontal forehead wrinkles, faint crow's feet at eye corners, medium-sized ears close to head, soft natural dark blonde eyebrows straight to slightly arched with natural spacing above brow ridge"
+  "visual_signature": "Portrait of athletic man in his late 30s, rounded oval broad face with soft contours and broad forehead, bright blue almond-shaped eyes clear and expressive with average natural spacing, straight nose bridge with subtle width and rounded tip slightly turned down, medium full lips natural pale pink tone with warm smile, soft rounded jawline with light stubble 2-3 days growth, short light blonde hair evenly cropped, natural male pattern with slight recession at temples, thick muscular neck with visible adam's apple, broad muscular shoulders, 92-95kg athletic build, defined muscles, not bulky, fair smooth skin with fine texture and faint barely visible freckles on cheeks, slight horizontal forehead wrinkles, faint crow's feet at eye corners, medium-sized ears close to head, soft natural dark blonde eyebrows straight to slightly arched with natural spacing above brow ridge"
 }
