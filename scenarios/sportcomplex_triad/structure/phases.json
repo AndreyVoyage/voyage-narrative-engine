@@ -1,0 +1,127 @@
+{
+  "phases": {
+    "prologue": {
+      "name": "Пролог — Первый взгляд под водой",
+      "duration_minutes": 5,
+      "location": "pool",
+      "description": "Бассейн. Фонари, вода, отражения. Ольга плывёт в соседней дорожке, видит Андрея под водой. Он краснеет до ушей.",
+      "expected_mood": "невинное напряжение, любопытство",
+      "pov_rules": "no_switching",
+      "character_states": {
+        "olga": {"target_level": "U1-A", "desire_delta": 1, "anxiety_delta": 0},
+        "andrey_junior": {"target_level": "U1-A", "desire_delta": 1, "anxiety_delta": 2}
+      },
+      "flags_set": ["first_contact"],
+      "safety_checks": ["consent_established"]
+    },
+    "act1": {
+      "name": "Акт I — Шведская стенка",
+      "duration_minutes": 10,
+      "location": "wrestling_room",
+      "description": "Зал борьбы. Мягкий ковёр, шведская стенка. Ольга просит показать приём. Он бросает её через бедро — она тянет его за собой, оказывается сверху.",
+      "expected_mood": "первый контакт, физическое напряжение",
+      "pov_rules": "no_switching",
+      "character_states": {
+        "olga": {"target_level": "U2-B", "desire_delta": 2, "anxiety_delta": 0},
+        "andrey_junior": {"target_level": "U2-B", "desire_delta": 2, "anxiety_delta": 1}
+      },
+      "flags_set": ["physical_contact", "wrestling_initiated"]
+    },
+    "act2": {
+      "name": "Акт II — Медленный танец",
+      "duration_minutes": 10,
+      "location": "rest_room",
+      "description": "Комната отдыха. Полумрак, мягкий свет. Ольга кладёт голову на его колени, ёрзает, прикусывает за шею. Якорь установлен.",
+      "expected_mood": "интимность, доверие, якорение",
+      "pov_rules": "no_switching",
+      "character_states": {
+        "olga": {"target_level": "U3-A", "desire_delta": 2, "anxiety_delta": 0},
+        "andrey_junior": {"target_level": "U3-A", "desire_delta": 2, "anxiety_delta": 1}
+      },
+      "flags_set": ["anchor_set", "neck_bite"]
+    },
+    "act3": {
+      "name": "Акт III — Первый 'малыш'",
+      "duration_minutes": 10,
+      "location": "sauna",
+      "description": "Сауна. Пар, деревянные лавки, тишина. Первый поцелуй. Первый 'малыш'. Ольга СЧИТАЕТ: malysh_count = 1. Red Button #1.",
+      "expected_mood": "пик владения, первый триггер",
+      "pov_rules": "no_switching",
+      "character_states": {
+        "olga": {"target_level": "U3-B", "desire_delta": 3, "anxiety_delta": 0},
+        "andrey_junior": {"target_level": "U3-A", "desire_delta": 3, "anxiety_delta": 2}
+      },
+      "flags_set": ["red_button_1", "malysh_count_1"],
+      "safety_checks": ["red_button_active"]
+    },
+    "act4": {
+      "name": "Акт IV — ВЗРЫВ",
+      "duration_minutes": 15,
+      "location": "play_room",
+      "description": "Комната для игр. Доминирование и взрыв. HARD TO STOP. Ольга связывает руки, дразнит, он рвётся, набрасывается. После — она гладит мокрую спину, говорит 'ты мужчина'.",
+      "expected_mood": "взрыв, агрессия, послеопека",
+      "pov_rules": "no_switching",
+      "character_states": {
+        "olga": {"target_level": "U4-B", "desire_delta": 3, "anxiety_delta": 0},
+        "andrey_junior": {"target_level": "U3-B", "desire_delta": 4, "anxiety_delta": 3}
+      },
+      "flags_set": ["explosion_occurred", "aftercare_needed"]
+    },
+    "act5": {
+      "name": "Акт V — Кира входит",
+      "duration_minutes": 20,
+      "location": "sauna",
+      "description": "Кира входит из сауны. Видит их. Останавливается. Оценивает. Не бросается. Садится на расстоянии. Знакомство, а не прыжок.",
+      "expected_mood": "наблюдение, оценка, интрига",
+      "pov_rules": "no_switching",
+      "character_states": {
+        "olga": {"target_level": "U5-B", "desire_delta": 2, "anxiety_delta": 0},
+        "andrey_junior": {"target_level": "U4-A", "desire_delta": 2, "anxiety_delta": 2},
+        "kira": {"target_level": "U2-A", "desire_delta": 1, "anxiety_delta": 1}
+      },
+      "flags_set": ["kira_enters", "triad_formed"]
+    },
+    "act6": {
+      "name": "Акт VI — Игры троих",
+      "duration_minutes": 20,
+      "location": "rest_room",
+      "description": "Триада. Ольга — через команду, размер, опыт. Кира — через игру, вызов, спонтанность. Андрей — между ними, ученик с двумя учительницами.",
+      "expected_mood": "динамика троих, обучение, игра",
+      "pov_rules": "no_switching",
+      "character_states": {
+        "olga": {"target_level": "U6-A", "desire_delta": 2, "anxiety_delta": 0},
+        "andrey_junior": {"target_level": "U5-A", "desire_delta": 2, "anxiety_delta": 1},
+        "kira": {"target_level": "U3-A", "desire_delta": 2, "anxiety_delta": 1}
+      },
+      "flags_set": ["three_way_dynamic"]
+    },
+    "act7": {
+      "name": "Акт VII — Синхронизация",
+      "duration_minutes": 20,
+      "location": "play_room",
+      "description": "Они учат его вместе, но по-разному. Андрей — effortless response, body knows before mind. Две учительницы. Команда.",
+      "expected_mood": "синхронность, команда, единство",
+      "pov_rules": "no_switching",
+      "character_states": {
+        "olga": {"target_level": "U6-B", "desire_delta": 2, "anxiety_delta": 0},
+        "andrey_junior": {"target_level": "U5-B", "desire_delta": 2, "anxiety_delta": 0},
+        "kira": {"target_level": "U4-B", "desire_delta": 2, "anxiety_delta": 0}
+      },
+      "flags_set": ["synchronized", "team_teaching"]
+    },
+    "act8": {
+      "name": "Акт VIII — Интеграция",
+      "duration_minutes": 10,
+      "location": "sauna",
+      "description": "Интеграция. 'Мы трое.' Новый якорь. Все трое остаются. Тишина. Пар. Тепло.",
+      "expected_mood": "целостность, принятие, тишина",
+      "pov_rules": "no_switching",
+      "character_states": {
+        "olga": {"target_level": "U7-B", "desire_delta": 1, "anxiety_delta": 0},
+        "andrey_junior": {"target_level": "U6-B", "desire_delta": 1, "anxiety_delta": 0},
+        "kira": {"target_level": "U5-B", "desire_delta": 1, "anxiety_delta": 0}
+      },
+      "flags_set": ["integration_complete", "new_anchor_set"]
+    }
+  }
+}

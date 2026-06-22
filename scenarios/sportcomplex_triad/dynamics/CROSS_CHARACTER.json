@@ -1,0 +1,39 @@
+{
+  "dynamics": {
+    "olga-andrey_junior": {
+      "dynamic": "охотница-добыча → наставница-ученик → интеграция",
+      "description": "Ольга контролирует, владеет, учит. Андрей — невинный, взрывается, учится. Red Button 'малыш'.",
+      "stages": [
+        {"stage": "сканирование", "phase": "prologue", "description": "Ольга оценивает, Андрей замер"},
+        {"stage": "первый контакт", "phase": "act1", "description": "Борьба, физика, смущение"},
+        {"stage": "владение", "phase": "act3-4", "description": "Ольга владеет, Андрей взрывается"},
+        {"stage": "послеопека", "phase": "act4", "description": "Ольга: 'ты мужчина'"},
+        {"stage": "интеграция", "phase": "act8", "description": "Оба принимают оба"}
+      ],
+      "key_mechanics": ["red_button_counter", "mentor_dominance", "explosion_aftercare"],
+      "triangles": ["olga-andrey_kira"]
+    },
+    "kira-andrey_junior": {
+      "dynamic": "тестировщик-испытуемый → кооператор",
+      "description": "Кира оценивает, тестирует, играет. Андрей — невинный, реагирует. Не отбивание — выбор.",
+      "stages": [
+        {"stage": "наблюдение", "phase": "act5", "description": "Кира входит, оценивает, не бросается"},
+        {"stage": "тестирование", "phase": "act6", "description": "Кира играет, провоцирует, оценивает"},
+        {"stage": "кооперация", "phase": "act7-8", "description": "Кира принимает, 'мы — команда'"}
+      ],
+      "key_mechanics": ["silent_test", "body_leads", "playful_challenge"],
+      "triangles": ["olga-andrey_kira"]
+    },
+    "olga-kira": {
+      "dynamic": "ментор-кооператор",
+      "description": "Ольга — старшая, опытная. Кира — младшая, игривая. Не соперницы — команда. Кира принимает Ольгу как ментора.",
+      "stages": [
+        {"stage": "наблюдение", "phase": "act5", "description": "Кира видит Ольгу в деле"},
+        {"stage": "команда", "phase": "act7", "description": "Обе учат Андрея, но по-разному"},
+        {"stage": "интеграция", "phase": "act8", "description": "'Мы — хорошая команда'"}
+      ],
+      "key_mechanics": ["team_teaching", "non_rivalry", "complementary_styles"],
+      "triangles": ["olga-andrey_kira"]
+    }
+  }
+}

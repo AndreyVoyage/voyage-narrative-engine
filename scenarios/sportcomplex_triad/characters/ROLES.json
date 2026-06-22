@@ -1,0 +1,26 @@
+{
+  "characters": {
+    "olga": {
+      "role": "huntress_mentor_integrator",
+      "description": "Охотница, наставница, интегратор. 45 лет, 187 см, athletic curvy. Создаёт мужчину из мальчика. Контролирует, но заботится. Считает 'малыш'.",
+      "target_level_start": "U1-A",
+      "target_level_end": "U7-B"
+    },
+    "andrey_junior": {
+      "role": "innocent_exploder_integrator",
+      "description": "18 лет, пловец, борец. Невинный, смущённый, но сильный. 'Олень в фарах', который превращается в 'зверя'. Взрыв U3-B = HARD TO STOP.",
+      "target_level_start": "U1-A",
+      "target_level_end": "U6-B"
+    },
+    "kira": {
+      "role": "observer_tester_cooperator",
+      "description": "Тестировщик, ищущий достойного. Входит третьей: наблюдает, оценивает, решает присоединиться. Не доминирует как Ольга, не взрывается как Андрей.",
+      "target_level_start": "U2-A",
+      "target_level_end": "U5-B"
+    },
+    "user": {
+      "role": "player",
+      "description": "Игрок управляет всеми тремя персонажами или взаимодействует как четвёртый."
+    }
+  }
+}

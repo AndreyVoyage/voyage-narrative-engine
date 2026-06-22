@@ -1,0 +1,13 @@
+{
+  "timeline": [
+    {"phase_id": "prologue", "name": "Пролог", "duration_minutes": 5, "location": "pool", "description": "Первый взгляд под водой", "expected_mood": "невинное напряжение", "flags_set": ["first_contact"]},
+    {"phase_id": "act1", "name": "Акт I", "duration_minutes": 10, "location": "wrestling_room", "description": "Шведская стенка, первый контакт", "expected_mood": "физическое напряжение", "flags_set": ["physical_contact"]},
+    {"phase_id": "act2", "name": "Акт II", "duration_minutes": 10, "location": "rest_room", "description": "Медленный танец, якорь", "expected_mood": "интимность", "flags_set": ["anchor_set"]},
+    {"phase_id": "act3", "name": "Акт III", "duration_minutes": 10, "location": "sauna", "description": "Первый 'малыш', Red Button", "expected_mood": "пик владения", "flags_set": ["red_button_1"]},
+    {"phase_id": "act4", "name": "Акт IV", "duration_minutes": 15, "location": "play_room", "description": "ВЗРЫВ, HARD TO STOP", "expected_mood": "взрыв, послеопека", "flags_set": ["explosion_occurred"]},
+    {"phase_id": "act5", "name": "Акт V", "duration_minutes": 20, "location": "sauna", "description": "Кира входит, оценивает", "expected_mood": "наблюдение, интрига", "flags_set": ["kira_enters"]},
+    {"phase_id": "act6", "name": "Акт VI", "duration_minutes": 20, "location": "rest_room", "description": "Игры троих", "expected_mood": "динамика троих", "flags_set": ["three_way_dynamic"]},
+    {"phase_id": "act7", "name": "Акт VII", "duration_minutes": 20, "location": "play_room", "description": "Синхронизация, команда", "expected_mood": "синхронность", "flags_set": ["synchronized"]},
+    {"phase_id": "act8", "name": "Акт VIII", "duration_minutes": 10, "location": "sauna", "description": "Интеграция, 'Мы трое'", "expected_mood": "целостность", "flags_set": ["integration_complete"]}
+  ]
+}

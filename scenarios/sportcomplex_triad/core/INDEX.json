@@ -1,0 +1,21 @@
+{
+  "id": "sportcomplex_triad",
+  "name": "Спорткомплекс. Триада — Огонь и Лёд",
+  "version": "3.0.0",
+  "synopsis": "Спорткомплекс. Бассейн, зал борьбы, сауна, комната отдыха. Три персонажа: Ольга — охотница-наставница, Андрей — невинный атлет 18 лет, Кира — тестировщик, ищущий достойного. Сцена без третьего лица. Только диалог, действия, мысли.",
+  "participants": ["olga", "andrey_junior", "kira", "user"],
+  "ag_range": "AG1-AG4",
+  "pov_switching": "no",
+  "npc_to_npc": "yes",
+  "compatible_personas": ["olga", "andrey_junior", "kira"],
+  "setting": "sports_complex",
+  "time": "evening",
+  "duration": "~120 min",
+  "red_button": {
+    "trigger_word": "малыш",
+    "max_uses": 3,
+    "cold_explosion_level": "U7-A",
+    "current_count": 0,
+    "counter": "olga"
+  }
+}
