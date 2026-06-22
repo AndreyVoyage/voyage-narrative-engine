@@ -15,3 +15,8 @@ memory/SUMMARY_*.md
 .idea/
 *.swp
 *.bak.*
+
+# Local accidental Framework clones / runtime artifacts
+/DEVNarrativeFramework-voyage-mvp/
+/framework-voyage-mvp/
+/.voyage/tasks.db
