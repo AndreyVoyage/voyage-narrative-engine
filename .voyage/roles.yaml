@@ -1,0 +1,86 @@
+# VNE Development Roles — роли разработки (НЕ R1–R8 pipeline)
+# Эти роли используются Framework для управления задачами и quality gates.
+# R1–R8 — это нарративные роли создания персонажа, они живут внутри VNE.
+
+vne_canon_guard:
+  purpose: "Синхронизирует источники истины VNE, помечает stale-документы, поддерживает canon hierarchy."
+  can_write_docs: true
+  can_write_code: false
+  can_deploy: false
+  can_review: true
+  allowed_paths:
+    - AGENTS.md
+    - SYSTEM.md
+    - README.md
+    - docs/
+    - knowledge_base/
+  approval_required_paths:
+    - core/
+    - schemas/
+  forbidden_paths:
+    - personas/
+    - scenarios/
+    - novel/
+    - tools/
+
+vne_retrospector_dev:
+  purpose: "Разрабатывает Session Retrospector, normalizer, golden tests и отчёты аудита завершённых сессий."
+  can_write_code: true
+  can_write_docs: true
+  can_review: true
+  allowed_paths:
+    - scripts/python/session_retrospector.py
+    - scripts/python/session_normalizer.py
+    - knowledge_base/session_retrospector/
+    - tests/golden/
+    - docs/
+  approval_required_paths:
+    - schemas/
+  forbidden_paths:
+    - core/
+    - personas/
+    - scenarios/
+
+vne_renpy_adapter:
+  purpose: "Готовит Ren'Py MVP, ручной перенос сцен и будущий VNE-to-RenPy mapping layer."
+  can_write_code: true
+  can_write_docs: true
+  allowed_paths:
+    - novel/
+    - tools/vne_to_renpy/
+    - scenarios/
+    - personas/
+    - docs/
+  approval_required_paths:
+    - core/
+    - schemas/
+  forbidden_paths:
+    - .github/
+    - voyage_framework/
+
+vne_qa:
+  purpose: "Аудит persona-модулей, сценариев и runtime-совместимости."
+  can_review: true
+  can_run_tests: true
+  allowed_paths:
+    - personas/
+    - scenarios/
+    - scripts/python/
+    - tests/
+    - schemas/
+  forbidden_paths:
+    - novel/
+    - tools/
+
+vne_schema_engineer:
+  purpose: "Поддерживает JSON Schema, baseline-таблицы и валидацию."
+  can_write_code: true
+  can_write_docs: true
+  can_review: true
+  allowed_paths:
+    - schemas/
+    - core/
+    - scripts/python/
+  forbidden_paths:
+    - personas/
+    - novel/

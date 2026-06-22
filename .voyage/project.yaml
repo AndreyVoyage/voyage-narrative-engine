@@ -1,0 +1,58 @@
+project_id: voyage-narrative-engine
+type: narrative_game_spec
+framework_version: "4.0.0"
+created_at: "2026-06-21"
+
+# Режим интеграции: Framework = dev-OS, VNE = контентное ядро
+integration_mode: external_dev_os
+framework_role: development_orchestrator
+vne_role: narrative_content_core
+
+# Источники истины VNE
+canonical_sources:
+  - AGENTS.md
+  - docs/VOYAGE_MASTER_DOCUMENT_v3.md
+  - docs/VOYAGE_MASTER_PLAN_v1.0.md
+  - core/VSCNO_BASELINE_TABLE.md
+  - core/AD_AVAILABILITY_MATRIX.md
+  - core/INTERNAL_STATE_BASELINE.md
+  - core/MEMORY_BASELINE_TABLE.md
+  - schemas/persona_schema_v3_2_VOYAGE.json
+
+# Quality gates — команды, которые должны проходить перед финализацией задачи
+# Безопасные для step.split() в Framework: без кавычек и пробелов в аргументах
+quality_gates:
+  runtime:
+    - python scripts/python/test_runtime_all.py
+  prompt:
+    - python scripts/python/build_prompt_modular.py sauna_extended standard AG3
+  schema:
+    - python -m json.tool schemas/persona_schema_v3_2_VOYAGE.json
+  retrospective:
+    - python scripts/python/session_retrospector.py --help
+
+# Треки разработки — маппинг ролей на задачи
+development_tracks:
+  canon:
+    description: "Синхронизация источников истины"
+    role: vne_canon_guard
+    phase_prefix: C
+  session_retrospector:
+    description: "Разработка Session Retrospector"
+    role: vne_retrospector_dev
+    phase_prefix: SR
+  renpy_mvp:
+    description: "Ren'Py MVP и экспорт"
+    role: vne_renpy_adapter
+    phase_prefix: RN
+  persona_audit:
+    description: "Аудит persona-модулей"
+    role: vne_qa
+    phase_prefix: PA
+
+# Архитектурные правила интеграции
+rules:
+  framework_must_not_become_vne_runtime: true
+  vne_remains_content_core: true
+  no_core_baseline_changes_without_approval: true
+  no_automatic_persona_rewrite_without_r8_review: true
