@@ -119,11 +119,20 @@ def _get_voyage_env() -> dict[str, str]:
     return env
 
 
+def _get_gate_env() -> dict[str, str]:
+    """Prepare gate subprocess env with UTF-8 Python output defaults."""
+    env = _get_voyage_env()
+    env.setdefault("PYTHONIOENCODING", "utf-8")
+    env.setdefault("PYTHONUTF8", "1")
+    return env
+
+
 def _run_command(
     args: list[str | Path],
     cwd: Path | None = None,
     shell: bool = False,
     echo: bool = True,
+    env: dict[str, str] | None = None,
 ) -> int:
     """Запустить команду и вернуть exit code."""
     cmd = [str(a) for a in args]
@@ -133,7 +142,7 @@ def _run_command(
         cmd,
         check=False,
         cwd=str(cwd) if cwd else None,
-        env=_get_voyage_env(),
+        env=env if env is not None else _get_voyage_env(),
         shell=shell,
     )
     return result.returncode
@@ -654,7 +663,7 @@ def cmd_gates(args: argparse.Namespace) -> int:
 
     for group, cmd, source in commands:
         print(f"   ▶ [{source}] ({group}) $ {' '.join(str(c) for c in cmd)}")
-        result = _run_command(cmd, echo=False)
+        result = _run_command(cmd, echo=False, env=_get_gate_env())
         if result != 0:
             print(f"   ❌ Gate failed: {' '.join(str(c) for c in cmd)}")
             return result
