@@ -29,7 +29,9 @@ quality_gates:
   schema:
     - python -m json.tool schemas/persona_schema_v3_2_VOYAGE.json
   retrospective:
-    - python scripts/python/session_retrospector.py --help
+    - python scripts/python/session_retrospector.py --dry-run
+    - python scripts/python/session_retrospector.py --output reports/retrospective/session_retrospector_gate.json --format json
+    - python -m json.tool reports/retrospective/session_retrospector_gate.json
 
 # Треки разработки — маппинг ролей на задачи
 development_tracks:
