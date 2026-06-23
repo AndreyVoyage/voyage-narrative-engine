@@ -25,7 +25,7 @@ quality_gates:
   runtime:
     - python scripts/python/test_runtime_all.py
   prompt:
-    - python scripts/python/build_prompt_modular.py sauna_extended standard AG3
+    - python scripts/python/build_prompt_modular.py sauna_extended standard AG3 --output reports/prompts/PROMPT_MODULAR.txt
   schema:
     - python -m json.tool schemas/persona_schema_v3_2_VOYAGE.json
   retrospective:

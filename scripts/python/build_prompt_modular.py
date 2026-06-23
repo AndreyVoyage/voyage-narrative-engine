@@ -16,6 +16,7 @@ Examples:
 import json
 import os
 import sys
+import argparse
 from pathlib import Path
 from datetime import datetime
 
@@ -26,7 +27,7 @@ from datetime import datetime
 REPO_DIR = Path(__file__).resolve().parent.parent.parent
 SCENARIOS_DIR = REPO_DIR / "scenarios"
 PERSONAS_DIR = REPO_DIR / "personas"
-OUTPUT_FILE = REPO_DIR / "PROMPT_MODULAR.txt"
+DEFAULT_OUTPUT_FILE = REPO_DIR / "reports" / "prompts" / "PROMPT_MODULAR.txt"
 
 sys.path.insert(0, str(REPO_DIR / "scripts" / "python"))
 from runtime_loader import load_modular_persona
@@ -918,22 +919,39 @@ def build_persona_section_full(persona: dict) -> str:
     return "\n".join(lines)
 
 
+def parse_args(argv: list[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Build a Voyage modular prompt from a scenario and personas."
+    )
+    parser.add_argument("scenario_id", help="Scenario id, e.g. sauna_extended")
+    parser.add_argument("mode", nargs="?", default="standard", help="Build mode")
+    parser.add_argument("ag_level", nargs="?", default="AG3", help="Autonomy governor level")
+    parser.add_argument("--separate", action="store_true", help="Build separate prompt files")
+    parser.add_argument(
+        "--output",
+        default=str(DEFAULT_OUTPUT_FILE.relative_to(REPO_DIR)),
+        help="Single-file output path, relative to repo root unless absolute",
+    )
+    return parser.parse_args(argv)
+
+
+def resolve_output_path(output: str) -> Path:
+    output_path = Path(output)
+    if not output_path.is_absolute():
+        output_path = REPO_DIR / output_path
+    return output_path
+
+
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: python build_prompt_modular.py <scenario_id> [mode] [ag_level] [--separate]")
-        print("Examples:")
-        print("  python build_prompt_modular.py sauna_extended standard AG3")
-        print("  python build_prompt_modular.py sauna_extended standard AG3 --separate")
-        print("  python build_prompt_modular.py sauna_extended compact AG1")
-        sys.exit(1)
-    
-    scenario_id = sys.argv[1]
-    mode = sys.argv[2] if len(sys.argv) > 2 else "standard"
-    ag_level = sys.argv[3] if len(sys.argv) > 3 else "AG3"
-    
+    args = parse_args(sys.argv[1:])
+
+    scenario_id = args.scenario_id
+    mode = args.mode
+    ag_level = args.ag_level
+
     # Check for --separate flag
-    separate_mode = "--separate" in sys.argv
-    
+    separate_mode = args.separate
+
     if separate_mode:
         print(f"Building SEPARATE prompts for: {scenario_id}")
         print(f"Mode: {mode}, AG: {ag_level}")
@@ -962,13 +980,15 @@ def main():
     prompt = build_prompt(scenario_id, mode, ag_level)
     
     # Write output
-    with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+    output_file = resolve_output_path(args.output)
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    with open(output_file, "w", encoding="utf-8") as f:
         f.write(prompt)
     
     size = len(prompt)
     lines = prompt.count("\n")
     
-    print(f"✓ Prompt built: {OUTPUT_FILE}")
+    print(f"✓ Prompt built: {output_file}")
     print(f"  Size: {size} bytes ({size/1024:.1f} KB)")
     print(f"  Lines: {lines}")
     
