@@ -23,6 +23,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -184,6 +185,59 @@ def _load_roles() -> dict[str, Any]:
     return _load_yaml(ROLES_YAML)
 
 
+# ---------------------------------------------------------------------------
+# VNE → Framework role/mode mapping
+# ---------------------------------------------------------------------------
+
+_VNE_ROLE_MAP: dict[str, str] = {
+    "vne_canon_guard": "architect",
+    "vne_retrospector_dev": "developer",
+    "vne_renpy_adapter": "developer",
+    "vne_qa": "qa",
+    "vne_qa_guard": "qa",
+    "vne_schema_engineer": "architect",
+    "vne_narrative_editor": "developer",
+}
+
+_VNE_MODE_MAP: dict[str, str] = {
+    "audit": "solution",
+    "analysis": "discover",
+    "review": "solution",
+    "implementation": "implement",
+    "implement": "implement",
+    "plan": "plan",
+    "design": "design",
+    "discover": "discover",
+    "solution": "solution",
+}
+
+
+def _map_role_to_framework(role: str) -> tuple[str, str | None]:
+    """Преобразовать VNE-роль в Framework-роль.
+
+    Returns:
+        (framework_role, original_vne_role or None)
+    """
+    normalized = role.strip().lower()
+    mapped = _VNE_ROLE_MAP.get(normalized)
+    if mapped is not None and mapped != normalized:
+        return mapped, role
+    return role, None
+
+
+def _map_mode_to_framework(mode: str) -> tuple[str, str | None]:
+    """Преобразовать VNE-режим в Framework-режим.
+
+    Returns:
+        (framework_mode, original_vne_mode or None)
+    """
+    normalized = mode.strip().lower()
+    mapped = _VNE_MODE_MAP.get(normalized)
+    if mapped is not None and mapped != normalized:
+        return mapped, mode
+    return mode, None
+
+
 def _escape_yaml_string(value: str) -> str:
     """Безопасное экранирование строки для ручной записи YAML."""
     escaped = (
@@ -267,6 +321,7 @@ def _generate_task_id() -> str:
 
 def _generate_task_yaml(
     role: str,
+    mode: str,
     task_desc: str,
     track: str | None = None,
     phase: str | None = None,
@@ -282,12 +337,28 @@ def _generate_task_yaml(
         return yaml_path
 
     now = datetime.now(timezone.utc).isoformat()
+    framework_role, vne_role = _map_role_to_framework(role)
+    framework_mode, vne_mode = _map_mode_to_framework(mode)
+
+    metadata: dict[str, Any] = {
+        "track": track or "",
+        "phase": phase or "",
+        "created_at": now,
+        "source": "vne_adapter",
+        "framework_role": framework_role,
+        "framework_mode": framework_mode,
+    }
+    if vne_role is not None:
+        metadata["vne_role"] = vne_role
+    if vne_mode is not None:
+        metadata["vne_mode"] = vne_mode
+
     data: dict[str, Any] = {
         "id": task_id,
         "title": task_desc[:80],
         "description": task_desc,
-        "role": role,
-        "mode": "solution",
+        "role": framework_role,
+        "mode": framework_mode,
         "priority": "medium",
         "status": "pending",
         "acceptance_criteria": [
@@ -300,12 +371,7 @@ def _generate_task_yaml(
             "modify": [],
         },
         "tests": [],
-        "metadata": {
-            "track": track or "",
-            "phase": phase or "",
-            "created_at": now,
-            "source": "vne_adapter",
-        },
+        "metadata": metadata,
     }
     _write_task_yaml(yaml_path, data)
     print(f"📝 Task YAML создан: {yaml_path}")
@@ -372,6 +438,16 @@ def cmd_task(args: argparse.Namespace) -> int:
         print("❌ Не указана роль. Используйте --role или --track с известным track.")
         return 1
 
+    original_role = role
+    framework_role, vne_role = _map_role_to_framework(original_role)
+    if vne_role is not None:
+        print(f"Role: {vne_role} → {framework_role}")
+
+    original_mode = args.mode
+    framework_mode, vne_mode = _map_mode_to_framework(original_mode)
+    if vne_mode is not None:
+        print(f"Mode: {vne_mode} → {framework_mode}")
+
     # Определить шаблон
     template_name = args.template
     if not template_name and track:
@@ -398,11 +474,17 @@ def cmd_task(args: argparse.Namespace) -> int:
 
     # Генерация task.yaml по запросу
     if args.yaml:
-        _generate_task_yaml(role, task_desc, track=track, phase=args.phase)
+        _generate_task_yaml(
+            original_role,
+            original_mode,
+            task_desc,
+            track=track,
+            phase=args.phase,
+        )
 
     voyage_args = [
         "task",
-        role,
+        framework_role,
         "--task",
         task_desc,
         "--project",
@@ -412,7 +494,7 @@ def cmd_task(args: argparse.Namespace) -> int:
     if args.phase:
         voyage_args.extend(["--phase", args.phase])
 
-    print(f"🚀 Track: {track or 'N/A'} | Role: {role}")
+    print(f"🚀 Track: {track or 'N/A'} | Role: {framework_role}")
     print(f"   Task: {task_desc}")
     print()
 
@@ -427,6 +509,11 @@ def cmd_run(args: argparse.Namespace) -> int:
     if not role:
         print("❌ Не указана роль (--role)")
         return 1
+
+    framework_role, vne_role = _map_role_to_framework(role)
+    if vne_role is not None:
+        print(f"Role: {vne_role} → {framework_role}")
+    role = framework_role
 
     task_desc = args.task or "No task specified"
     plan = args.plan or ""
@@ -589,12 +676,60 @@ def cmd_tasks(args: argparse.Namespace) -> int:
         if not args.file:
             print("❌ Для 'tasks create' нужен --file <task.yaml>")
             return 1
-        voyage_args.extend(["--file", args.file])
+        source_path = Path(args.file)
+        try:
+            data = _load_yaml(source_path)
+        except Exception as exc:
+            print(f"❌ Не удалось прочитать {source_path}: {exc}")
+            return 1
+
+        if not isinstance(data, dict):
+            print(f"❌ {source_path} должен содержать YAML mapping верхнего уровня")
+            return 1
+
+        original_role = str(data.get("role", ""))
+        original_mode = str(data.get("mode", "solution"))
+        mapped_role, vne_role = _map_role_to_framework(original_role)
+        mapped_mode, vne_mode = _map_mode_to_framework(original_mode)
+
+        if vne_role is not None or vne_mode is not None:
+            data["role"] = mapped_role
+            data["mode"] = mapped_mode
+            metadata = data.get("metadata")
+            if metadata is None:
+                metadata = {}
+            elif not isinstance(metadata, dict):
+                print(f"❌ metadata в {source_path} должен быть YAML mapping")
+                return 1
+            if vne_role is not None:
+                metadata.setdefault("vne_role", vne_role)
+            if vne_mode is not None:
+                metadata.setdefault("vne_mode", vne_mode)
+            metadata.setdefault("framework_role", mapped_role)
+            metadata.setdefault("framework_mode", mapped_mode)
+            data["metadata"] = metadata
+
+            with tempfile.TemporaryDirectory(prefix="vne-framework-mapped-") as temp_dir:
+                temp_path = Path(temp_dir) / source_path.name
+                _write_task_yaml(temp_path, data)
+
+                if vne_role is not None:
+                    print(f"Role: {vne_role} → {mapped_role}")
+                if vne_mode is not None:
+                    print(f"Mode: {vne_mode} → {mapped_mode}")
+                print(f"📝 Mapped task YAML: {temp_path}")
+                voyage_args.extend(["--file", str(temp_path)])
+                return _invoke_voyage(voyage_args)
+        else:
+            voyage_args.extend(["--file", args.file])
     elif sub == "list":
         if args.status:
             voyage_args.extend(["--status", args.status])
         if args.role:
-            voyage_args.extend(["--role", args.role])
+            framework_role, vne_role = _map_role_to_framework(args.role)
+            if vne_role is not None:
+                print(f"Role filter: {vne_role} → {framework_role}")
+            voyage_args.extend(["--role", framework_role])
         if args.limit:
             voyage_args.extend(["--limit", str(args.limit)])
     elif sub in ("show", "start", "unblock", "complete", "archive"):
@@ -680,6 +815,11 @@ def main() -> int:
     task_parser.add_argument("--role", help="Роль (vne_canon_guard, vne_retrospector_dev, ...)")
     task_parser.add_argument("--task", required=True, help="Описание задачи")
     task_parser.add_argument("--phase", help="Микро-фаза (SR1, C1, RN1)")
+    task_parser.add_argument(
+        "--mode",
+        default="solution",
+        help="Режим task.yaml (например, audit, analysis, solution)",
+    )
     task_parser.add_argument("--template", help="Имя шаблона (TASK_SESSION_RETROSPECTOR_v0.1.md)")
     task_parser.add_argument("--yaml", action="store_true", help="Также сгенерировать task.yaml")
 
