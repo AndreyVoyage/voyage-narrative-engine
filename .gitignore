@@ -25,6 +25,9 @@ memory/SUMMARY_*.md
 # Generated retrospective reports
 /reports/retrospective/
 
+# Generated persona audit reports
+/reports/persona_audit/
+
 # Local accidental Framework clones / runtime artifacts
 /DEVNarrativeFramework-voyage-mvp/
 /framework-voyage-mvp/
