@@ -22,6 +22,9 @@ memory/SUMMARY_*.md
 # Generated prompt build reports
 /reports/prompts/
 
+# Generated retrospective reports
+/reports/retrospective/
+
 # Local accidental Framework clones / runtime artifacts
 /DEVNarrativeFramework-voyage-mvp/
 /framework-voyage-mvp/
