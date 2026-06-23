@@ -16,6 +16,9 @@ memory/SUMMARY_*.md
 *.swp
 *.bak.*
 
+# Generated runtime test reports
+/reports/runtime/
+
 # Local accidental Framework clones / runtime artifacts
 /DEVNarrativeFramework-voyage-mvp/
 /framework-voyage-mvp/
