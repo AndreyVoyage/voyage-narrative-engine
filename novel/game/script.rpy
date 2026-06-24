@@ -1,5 +1,15 @@
 label start:
 
+    menu:
+        "SC_003 — Спортзал ночью: первый контакт":
+            jump sc_003_start
+
+        "SC_004 — Растяжка на красном мате":
+            jump sc_004_start
+
+
+label sc_003_start:
+
     narrator "Поздний вечер. Зал почти пуст — ровный гул вентиляции, запах резины и железа."
     narrator "Кира входит внутрь. Останавливается."
     narrator "Сергей у штанги. Спиной. Не оборачивается."
@@ -16,24 +26,24 @@ label start:
 
     menu:
         "Игнорировать. Пройти к беговой дорожке.":
-            jump branch_1a
+            jump sc_003_branch_1a
         "Посмотреть в зеркало. Поймать его взгляд.":
-            jump branch_1b
+            jump sc_003_branch_1b
         "Подойти. Попросить помочь со штангой.":
-            jump branch_1c
+            jump sc_003_branch_1c
 
 
-label branch_1a:
+label sc_003_branch_1a:
 
     narrator "Кира отворачивается. Идёт к беговой дорожке."
     kira "Это не имеет значения."
     narrator "Она бежит. Но в зеркале — его силуэт. Он не обернулся. Ждёт."
     narrator "Шаги её замедляются. Незаметно. Не для него."
     narrator "Он не оборачивается. Гриф неподвижен."
-    jump scene_end_a
+    jump sc_003_end_a
 
 
-label branch_1b:
+label sc_003_branch_1b:
 
     narrator "Кира смотрит в зеркало. Ловит его взгляд."
     sergey "..."
@@ -43,10 +53,10 @@ label branch_1b:
     narrator "Первый настоящий контакт. Никто не отступает."
     kira "Тогда смотри."
     narrator "Он разворачивается. Медленно. Молча."
-    jump scene_end_b
+    jump sc_003_end_b
 
 
-label branch_1c:
+label sc_003_branch_1c:
 
     narrator "Кира подходит. Дерзость притворная, но убедительная."
     kira "Поможешь? Нужна страховка."
@@ -55,22 +65,81 @@ label branch_1c:
     narrator "Она сильнее, чем кажется. Он уже понял."
     narrator "Он встаёт за ней. Руки у грифа — рядом, не касаясь."
     narrator "Кира берётся. Дышит ровно. Почти."
-    jump scene_end_c
+    jump sc_003_end_c
 
 
-label scene_end_a:
+label sc_003_end_a:
 
     narrator "Она уходит. Он остаётся."
     return
 
 
-label scene_end_b:
+label sc_003_end_b:
 
     narrator "Первый раунд. Ничья."
     return
 
 
-label scene_end_c:
+label sc_003_end_c:
 
     narrator "Контакт. Официальный."
+    return
+
+
+label sc_004_start:
+
+    narrator "Тот же зал. Позже. Красный мат на полу."
+    narrator "Кира вытягивается — медленно, как будто не торопится уходить."
+    narrator "Сергей подходит. Останавливается рядом. Молчит."
+
+    menu:
+        "Замереть. Не оборачиваться.":
+            jump sc_004_branch_1a
+        "Обернуться. Посмотреть ему в глаза.":
+            jump sc_004_branch_1b
+        "Попросить помочь с растяжкой.":
+            jump sc_004_branch_1c
+
+
+label sc_004_branch_1a:
+
+    narrator "Кира не движется. Дышит ровно. Ждёт — не зная чего."
+    narrator "Он стоит над ней. Смотрит. Не торопит."
+    narrator "Тишина — её выбор. Он принимает его."
+    jump sc_004_end_a
+
+
+label sc_004_branch_1b:
+
+    narrator "Кира оборачивается. Смотрит снизу вверх."
+    narrator "Сергей щурится. Не улыбается. Кладёт руку на её поясницу."
+    kira "Не убирай."
+    narrator "Он не убирает."
+    jump sc_004_end_b
+
+
+label sc_004_branch_1c:
+
+    kira "Подержи здесь. Нужна точка опоры."
+    narrator "Сергей кивает. Руки на её бёдрах — точно там, где попросила."
+    sergey "Дыши."
+    narrator "Она дышит. Считает до трёх. Теряет счёт."
+    jump sc_004_end_c
+
+
+label sc_004_end_a:
+
+    narrator "Она не оборачивается. Он остаётся рядом."
+    return
+
+
+label sc_004_end_b:
+
+    narrator "Теперь взгляд уже нельзя списать на зеркало."
+    return
+
+
+label sc_004_end_c:
+
+    narrator "Слова звучат как тренировка. Тишина слышит больше."
     return
