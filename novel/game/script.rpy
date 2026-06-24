@@ -28,7 +28,9 @@ label branch_1a:
     narrator "Кира отворачивается. Идёт к беговой дорожке."
     kira "Это не имеет значения."
     narrator "Она бежит. Но в зеркале — его силуэт. Он не обернулся. Ждёт."
-    jump scene_end
+    narrator "Шаги её замедляются. Незаметно. Не для него."
+    narrator "Он не оборачивается. Гриф неподвижен."
+    jump scene_end_a
 
 
 label branch_1b:
@@ -39,7 +41,9 @@ label branch_1b:
     kira "Замечаешь что-то интересное?"
     sergey "Смотрю."
     narrator "Первый настоящий контакт. Никто не отступает."
-    jump scene_end
+    kira "Тогда смотри."
+    narrator "Он разворачивается. Медленно. Молча."
+    jump scene_end_b
 
 
 label branch_1c:
@@ -49,10 +53,24 @@ label branch_1c:
     narrator "Сергей удивлён. Скрывает. Кивает."
     sergey "Конечно."
     narrator "Она сильнее, чем кажется. Он уже понял."
-    jump scene_end
+    narrator "Он встаёт за ней. Руки у грифа — рядом, не касаясь."
+    narrator "Кира берётся. Дышит ровно. Почти."
+    jump scene_end_c
 
 
-label scene_end:
+label scene_end_a:
 
-    narrator "Зал. Ночь. Напряжение остаётся в воздухе — тихое, как охотник."
+    narrator "Она уходит. Он остаётся."
+    return
+
+
+label scene_end_b:
+
+    narrator "Первый раунд. Ничья."
+    return
+
+
+label scene_end_c:
+
+    narrator "Контакт. Официальный."
     return
