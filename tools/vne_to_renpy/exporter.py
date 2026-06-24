@@ -28,6 +28,28 @@ DISPLAY_NAMES = {
     "maksim": "Максим",
 }
 
+# Locale mapping for location/time field values (English JSON → Russian display).
+LOCALE_MAP = {
+    "gym": "Зал",
+    "night": "Ночь",
+    "home": "Дом",
+    "morning": "Утро",
+    "evening": "Вечер",
+    "day": "День",
+    "afternoon": "Полдень",
+    "pool": "Бассейн",
+    "sauna": "Сауна",
+    "park": "Парк",
+    "street": "Улица",
+    "kitchen": "Кухня",
+    "bedroom": "Спальня",
+}
+
+
+def _locale(value: str) -> str:
+    """Translate an English location/time token to Russian, or title-case if unknown."""
+    return LOCALE_MAP.get(value.lower(), value.capitalize())
+
 # Branch ID suffix → label suffix mapping (1A → 1a).
 def _branch_label(branch_id: str) -> str:
     return "branch_" + branch_id.replace("-", "_").lower()
@@ -91,6 +113,8 @@ def _generate_rpy(data: dict, source_path: str) -> str:
     lines.append("# Do not edit manually.")
     lines.append("")
 
+    # Narrator define (always first)
+    lines.append("define narrator = Character(None)")
     # Character defines
     for char_id, display_name in characters.items():
         lines.append(f'define {char_id} = Character("{display_name}")')
@@ -104,9 +128,9 @@ def _generate_rpy(data: dict, source_path: str) -> str:
     if name:
         lines.append(f'    narrator "{_escape_rpy(name)}"')
     if location and time_of_day:
-        lines.append(f'    narrator "{_escape_rpy(location.capitalize())}. {_escape_rpy(time_of_day.capitalize())}."')
+        lines.append(f'    narrator "{_escape_rpy(_locale(location))}. {_escape_rpy(_locale(time_of_day))}."')
     elif location:
-        lines.append(f'    narrator "{_escape_rpy(location.capitalize())}."')
+        lines.append(f'    narrator "{_escape_rpy(_locale(location))}."')
 
     # Question narrator line from CP
     question = cp.get("question", "")
@@ -187,9 +211,9 @@ def export(scenario_path: Path, output_path: Path) -> None:
     source_label = scenario_path.as_posix()
     content = _generate_rpy(data, source_label)
 
-    # Write UTF-8 without BOM
+    # Write UTF-8 without BOM, LF line endings only.
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(content, encoding="utf-8")
+    output_path.write_text(content, encoding="utf-8", newline="\n")
 
     chars = len(content)
     byt = len(content.encode("utf-8"))
