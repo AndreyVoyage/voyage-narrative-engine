@@ -32,3 +32,11 @@ memory/SUMMARY_*.md
 /DEVNarrativeFramework-voyage-mvp/
 /framework-voyage-mvp/
 /.voyage/tasks.db
+
+# Ren'Py generated runtime/cache/save files
+/novel/game/cache/
+/novel/game/saves/
+/novel/game/*.rpyc
+/novel/log.txt
+/novel/traceback.txt
+/novel/errors.txt
