@@ -36,6 +36,8 @@ quality_gates:
     - python scripts/python/audit_personas.py --dry-run
     - python scripts/python/audit_personas.py --output reports/persona_audit/persona_audit_gate.json --format json
     - python -m json.tool reports/persona_audit/persona_audit_gate.json
+  renpy_exporter:
+    - python scripts/python/check_renpy_exporter.py
 
 # Треки разработки — маппинг ролей на задачи
 development_tracks:
