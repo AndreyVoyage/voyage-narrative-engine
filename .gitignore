@@ -40,3 +40,6 @@ memory/SUMMARY_*.md
 /novel/log.txt
 /novel/traceback.txt
 /novel/errors.txt
+
+# Ren'Py exporter generated previews
+/reports/renpy/
