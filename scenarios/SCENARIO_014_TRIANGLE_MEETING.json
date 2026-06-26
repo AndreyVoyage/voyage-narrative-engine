@@ -1,0 +1,83 @@
+{
+  "id": "SC_014",
+  "name": "Встреча с Сергеем",
+  "version": "1.0",
+  "location": "public_cafe",
+  "time": "evening",
+  "archetype": "none",
+  "kira_level_start": "U5-интрига",
+  "kira_level_end": "U5-выбор",
+  "sergey_level_start": "S5",
+  "sergey_level_end": "S5-встреча",
+  "intensity": 6,
+  "risk": 3,
+  "duration_minutes": 30,
+  "prerequisites": [
+    "home_message_complete"
+  ],
+  "flags_required": [
+    "future_uncertain"
+  ],
+  "flags_set": [
+    "triangle_meeting_1",
+    "sergey_seen_after_message",
+    "kira_faces_sergey",
+    "sergey_explains_message",
+    "choice_not_resolved",
+    "triangle_open"
+  ],
+  "emotional_anchors": [
+    "встреча",
+    "честность",
+    "граница",
+    "выбор ещё не сделан"
+  ],
+  "symbols": [
+    "S014:U5-интрига→U5-выбор:K+S:публичное:вечер:triangle_meeting"
+  ],
+  "choice_points": [
+    {
+      "id": "CP_1",
+      "timing": "first_words_at_table",
+      "question": "Сергей ждёт её за столиком. Что Кира делает первым?",
+      "branches": [
+        {
+          "id": "1A",
+          "action": "Садится напротив. Держит дистанцию. Спрашивает прямо: 'Зачем ты написал?'",
+          "kira_reaction": "'Ты написал: Забери меня. Что это значит, Сергей?'",
+          "sergey_reaction": "'Это значит, что я наконец понял: я не умею просить о помощи нормально.'",
+          "next_level": "U5-выбор",
+          "flags": [
+            "kira_keeps_distance",
+            "sergey_explains_without_pressure"
+          ]
+        },
+        {
+          "id": "1B",
+          "action": "Садится. Не нападает. Говорит первой, что сообщение снова всё открыло.",
+          "kira_reaction": "'Ты написал слишком поздно. И всё равно — я пришла.'",
+          "sergey_reaction": "'Я знаю. И это хуже всего: ты пришла не потому, что я заслужил. А потому, что ты не умеешь бросать людей в тишине.'",
+          "next_level": "U5-выбор",
+          "flags": [
+            "kira_admits_pain",
+            "sergey_acknowledges_delay"
+          ]
+        },
+        {
+          "id": "1C",
+          "action": "Обозначает границу сразу. Не обещает вернуться.",
+          "kira_reaction": "'Я пришла поговорить. Не вернуться.'",
+          "sergey_reaction": "'Тогда я буду говорить так, чтобы ты могла уйти в любой момент.'",
+          "next_level": "U5-выбор",
+          "flags": [
+            "kira_sets_boundary",
+            "sergey_accepts_boundary"
+          ]
+        }
+      ]
+    }
+  ],
+  "visual_scene_id": "VS_014",
+  "content_rating": "PG-13",
+  "safety_notes": "Треугольник открыт, но не разрешён. Сергей присутствует физически. Яков физически отсутствует. Никакого физического контакта, без телесной эскалации. Разговор, честность, без давления."
+}
