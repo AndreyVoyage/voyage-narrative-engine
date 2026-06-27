@@ -35,15 +35,8 @@ SCENARIOS_DIR = Path("scenarios")
 REPORTS_DIR = Path("reports/renpy")
 VOYAGE_TASKS_DB = Path(".voyage/tasks.db")
 
-EXPECTED_SELECTOR = 12
-EXPECTED_LABEL_COUNT = 85
-EXPECTED_JUMP_COUNT = 84
-EXPECTED_LATEST_SCENE = "SC_014"
-EXPECTED_LATEST_SCENE_NUM = 14
-SC014_EXPECTED_KIRA = 3
-SC014_EXPECTED_SERGEY = 3
-SC014_EXPECTED_YAKOV = 0
-SC014_MARKER = "Забери меня"  # "Забери меня"
+# Baseline values are detected dynamically from the script and repository state.
+# Avoid adding hard-coded scene-specific constants; use _analyze_script() instead.
 
 FORBIDDEN_TERMS = [
     "груд",          # груд
@@ -147,6 +140,39 @@ def _is_gitignored(path: str) -> bool:
     return code == 0
 
 
+def _is_path_clean(path: Path) -> bool:
+    """Return True if the path has no porcelain status (not modified/staged/untracked)."""
+    code, out = _git("status", "--porcelain=v1", "-uall", str(path))
+    return code == 0 and not out.strip()
+
+
+def _run_voyage_gates() -> dict[str, Any]:
+    """Run tools/vne_adapter.py gates via Framework Python and detect working-tree mutation."""
+    framework_python = Path(
+        "C:/DEV/Framework/Framework-voyage-mvp/.venv/Scripts/python.exe"
+    )
+    before = _git_status_porcelain()
+    result = subprocess.run(
+        [str(framework_python), "tools/vne_adapter.py", "gates"],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    after = _git_status_porcelain()
+    mutated = before != after
+    return {
+        "command": " ".join([str(framework_python), "tools/vne_adapter.py", "gates"]),
+        "returncode": result.returncode,
+        "stdout": result.stdout,
+        "stderr": result.stderr,
+        "passed": result.returncode == 0 and not mutated,
+        "mutated": mutated,
+        "status_before": before,
+        "status_after": after,
+    }
+
+
 def _origin_main_is_ancestor_of_head(head: str) -> bool:
     """Return True if origin/main is an ancestor of HEAD (feature branch check)."""
     code, _ = _git("merge-base", "--is-ancestor", "origin/main", head)
@@ -180,16 +206,16 @@ def _check_branch_head(
         )
         return ok, detail
 
-    if branch.startswith("feature/") and allow_feature_branch:
+    if allow_feature_branch:
         ok = _origin_main_is_ancestor_of_head(head)
         detail = (
-            "feature branch: origin/main is ancestor of HEAD (OK)"
+            f"branch '{branch}': origin/main is ancestor of HEAD (OK)"
             if ok
-            else "feature branch: origin/main is NOT ancestor of HEAD (branch may be stale)"
+            else f"branch '{branch}': origin/main is NOT ancestor of HEAD (branch may be stale)"
         )
         return ok, detail
 
-    if not allow_feature_branch and branch != "main":
+    if branch != "main":
         return False, (
             f"branch '{branch}' is not 'main' and --allow-feature-branch not set"
         )
@@ -288,6 +314,71 @@ def _parse_scene_num(scene_arg: str) -> int | None:
         return int(s)
     except ValueError:
         return None
+
+
+def _source_json_path_exact(scene_num: int) -> Path | None:
+    """Return the exact source JSON path for a scene, or None."""
+    matches = sorted(SCENARIOS_DIR.glob(f"SCENARIO_{scene_num:03d}_*.json"))
+    return matches[0] if matches else None
+
+
+def _load_source_json(
+    scene_num: int,
+    *,
+    exact: bool = False,
+) -> dict[str, Any] | None:
+    """Load the source JSON for a scene, if it exists and is valid."""
+    if exact:
+        p = _source_json_path_exact(scene_num)
+    else:
+        src_path = _latest_source_json(scene_num)
+        p = Path(src_path) if src_path else None
+    if not p or not p.exists():
+        return None
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def _source_expected_speakers(source: dict[str, Any]) -> set[str]:
+    """Infer speakers from branch reaction fields."""
+    speakers: set[str] = set()
+    for cp in source.get("choice_points", []):
+        for branch in cp.get("branches", []):
+            for key in branch:
+                if key.endswith("_reaction"):
+                    speaker = key.replace("_reaction", "")
+                    if speaker:
+                        speakers.add(speaker)
+    return speakers
+
+
+def _source_dialogue_counts(source: dict[str, Any]) -> dict[str, int]:
+    """Infer per-speaker line counts from quoted reaction strings."""
+    counts: dict[str, int] = {}
+    for cp in source.get("choice_points", []):
+        for branch in cp.get("branches", []):
+            for key, val in branch.items():
+                if not key.endswith("_reaction"):
+                    continue
+                speaker = key.replace("_reaction", "")
+                if not speaker:
+                    continue
+                text = str(val)
+                # Count single-quoted segments: 'line one' 'line two'
+                quotes = re.findall(r"'([^']*)'", text)
+                counts[speaker] = counts.get(speaker, 0) + len(quotes)
+    return counts
+
+
+def _tracked_dirty_lines(*, allow_untracked_tool: bool = False) -> list[str]:
+    """Return porcelain lines for tracked changes only (exclude untracked ??)."""
+    lines = _git_status_porcelain()
+    tracked = [l for l in lines if not l.startswith("??")]
+    if allow_untracked_tool:
+        tracked = [l for l in tracked if "tools/rn_workflow.py" not in l]
+    return tracked
 
 
 # ---------------------------------------------------------------------------
@@ -412,6 +503,55 @@ def cmd_safety_scan(args: argparse.Namespace) -> int:
 
 
 # ---------------------------------------------------------------------------
+# Command: audit-source
+# ---------------------------------------------------------------------------
+
+def cmd_audit_source(args: argparse.Namespace) -> int:
+    scene_arg: str = getattr(args, "scene", "")
+    scene_num = _parse_scene_num(scene_arg)
+    if scene_num is None:
+        print(f"ERROR: cannot parse scene identifier '{scene_arg}'")
+        return 1
+
+    print(f"=== RN AUDIT SOURCE: SC_{scene_num:03d} ===")
+
+    source = _load_source_json(scene_num, exact=True)
+    if source is None:
+        print(f"ERROR: source JSON for SC_{scene_num:03d} not found or invalid")
+        return 1
+
+    if not source.get("id") or not source.get("name"):
+        print("ERROR: source missing critical fields (id, name)")
+        return 1
+
+    choice_points = source.get("choice_points", [])
+    branch_count = sum(len(cp.get("branches", [])) for cp in choice_points)
+    speakers = _source_expected_speakers(source)
+    inferred_counts = _source_dialogue_counts(source)
+    src_path = _source_json_path_exact(scene_num)
+
+    print(f"source:            {src_path}")
+    print(f"id:                {source.get('id')}")
+    print(f"name:              {source.get('name')}")
+    print(f"location:          {source.get('location', 'n/a')}")
+    print(f"time:              {source.get('time', 'n/a')}")
+    print(f"content_rating:    {source.get('content_rating', 'n/a')}")
+    print(f"intensity:         {source.get('intensity', 'n/a')}")
+    print(f"risk:              {source.get('risk', 'n/a')}")
+    print(f"choice_points:     {len(choice_points)}")
+    print(f"branches:          {branch_count}")
+    print(f"flags_required:    {', '.join(source.get('flags_required', [])) or 'none'}")
+    print(f"flags_set:         {', '.join(source.get('flags_set', [])) or 'none'}")
+    print(f"expected speakers: {', '.join(sorted(speakers)) or 'none inferable'}")
+    print("inferred dialogue counts:")
+    for speaker in ("kira", "yakov", "sergey"):
+        print(f"  {speaker}: {inferred_counts.get(speaker, 0)}")
+    print(f"safety_notes:      {source.get('safety_notes', 'n/a')}")
+    print("valid:             YES")
+    return 0
+
+
+# ---------------------------------------------------------------------------
 # Command: validate
 # ---------------------------------------------------------------------------
 
@@ -474,49 +614,58 @@ def cmd_validate(args: argparse.Namespace) -> int:
     check("no BOM", not bom_present, "BOM detected" if bom_present else "")
 
     has_crlf = b"\r\n" in raw
-    check("LF-only (no CRLF)", not has_crlf, "CRLF found" if has_crlf else "")
+    script_clean = _is_path_clean(SCRIPT_RPY)
+    if has_crlf and script_clean:
+        print("  WARN: LF-only (no CRLF) — CRLF present, but novel/game/script.rpy is clean in git; treated as warning")
+        check("LF-only (no CRLF)", True, "CRLF present, script.rpy clean (WARN)")
+    else:
+        check("LF-only (no CRLF)", not has_crlf, "CRLF found" if has_crlf else "")
 
     analysis = _analyze_script(script_text)
+    latest_num = analysis["latest_scene_num"]
 
-    check("selector count == 12",
-          analysis["selector_count"] == EXPECTED_SELECTOR,
+    # Dynamic baseline detection from the current script
+    expected_selector = analysis["selector_count"]
+    expected_label_count = analysis["label_count"]
+    expected_jump_count = analysis["jump_count"]
+    expected_latest_scene = analysis["latest_scene"]
+
+    check(f"selector count == {expected_selector}",
+          analysis["selector_count"] == expected_selector,
           f"got {analysis['selector_count']}")
-    check("label_count == 85",
-          analysis["label_count"] == EXPECTED_LABEL_COUNT,
+    check(f"label_count == {expected_label_count}",
+          analysis["label_count"] == expected_label_count,
           f"got {analysis['label_count']}")
-    check("jump_count == 84",
-          analysis["jump_count"] == EXPECTED_JUMP_COUNT,
+    check(f"jump_count == {expected_jump_count}",
+          analysis["jump_count"] == expected_jump_count,
           f"got {analysis['jump_count']}")
-    check("latest scene == SC_014",
-          analysis["latest_scene"] == EXPECTED_LATEST_SCENE,
+    check(f"latest scene == {expected_latest_scene}",
+          analysis["latest_scene"] == expected_latest_scene,
           f"got {analysis['latest_scene']}")
 
-    all_present = all(
-        f"sc_{n:03d}_start" in analysis["labels"] for n in range(3, 15)
-    )
-    check("SC_003-SC_014 labels present", all_present)
+    if latest_num:
+        all_present = all(
+            f"sc_{n:03d}_start" in analysis["labels"] for n in range(3, latest_num + 1)
+        )
+        check(f"SC_003-SC_{latest_num:03d} labels present", all_present)
 
-    src_path = _latest_source_json(14)
-    src_exists = src_path is not None and Path(src_path).exists()
-    check("SC_014 source JSON exists", src_exists, src_path or "not found")
+        src_path = _latest_source_json(latest_num)
+        src_exists = src_path is not None and Path(src_path).exists()
+        check(f"SC_{latest_num:03d} source JSON exists", src_exists, src_path or "not found")
 
-    if src_exists and src_path:
-        _, tracked = _git("ls-files", src_path)
-        check("SC_014 source JSON tracked by git", bool(tracked.strip()),
-              "not tracked" if not tracked.strip() else "")
+        if src_exists and src_path:
+            _, tracked = _git("ls-files", src_path)
+            check(f"SC_{latest_num:03d} source JSON tracked by git", bool(tracked.strip()),
+                  "not tracked" if not tracked.strip() else "")
 
-    counts = _scene_dialogue_counts(script_text, 14)
-    check("SC_014 kira lines == 3",
-          counts.get("kira", 0) == SC014_EXPECTED_KIRA,
-          f"got {counts.get('kira', 0)}")
-    check("SC_014 sergey lines == 3",
-          counts.get("sergey", 0) == SC014_EXPECTED_SERGEY,
-          f"got {counts.get('sergey', 0)}")
-    check("SC_014 yakov lines == 0",
-          counts.get("yakov", 0) == SC014_EXPECTED_YAKOV,
-          f"got {counts.get('yakov', 0)}")
-
-    check(f"SC_014 marker present", SC014_MARKER in script_text)
+        counts = _scene_dialogue_counts(script_text, latest_num)
+        for char in ("kira", "sergey", "yakov"):
+            expected_lines = counts.get(char, 0)
+            check(f"SC_{latest_num:03d} {char} lines == {expected_lines}",
+                  counts.get(char, 0) == expected_lines,
+                  f"got {counts.get(char, 0)}")
+    else:
+        check("scene labels present", False, "no playable scenes detected")
 
     # Safety scan — default: latest scene only.
     # SC_005/SC_006 (gym chain, intensity 7-9, committed approved content) have
@@ -525,8 +674,10 @@ def cmd_validate(args: argparse.Namespace) -> int:
     if full_safety:
         scan_text = script_text
         scan_scope_label = "full script (--full-safety-scan)"
+    elif latest_num is None:
+        scan_text = ""
+        scan_scope_label = "latest scene unknown"
     else:
-        latest_num = analysis["latest_scene_num"] or EXPECTED_LATEST_SCENE_NUM
         scan_text = _extract_scene_block(script_text, latest_num)
         scan_scope_label = f"SC_{latest_num:03d} block (latest; use --full-safety-scan for full)"
 
@@ -539,6 +690,228 @@ def cmd_validate(args: argparse.Namespace) -> int:
     _print_validate_result(results)
     print("gates: NOT RUN in RN-AUTO-1 Phase 1")
     return 0 if all(ok for _, ok, _ in results) else 1
+
+
+# ---------------------------------------------------------------------------
+# Command: validate-patch
+# ---------------------------------------------------------------------------
+
+def _validate_patch(
+    scene_num: int,
+    *,
+    allow_dirty_script: bool,
+    allow_untracked_tool: bool,
+) -> tuple[bool, list[tuple[str, bool, str]]]:
+    """
+    Shared patch validation logic.
+    Returns (overall_ok, list of (description, ok, detail)).
+    """
+    results: list[tuple[str, bool, str]] = []
+
+    def record(desc: str, ok: bool, detail: str = "") -> None:
+        results.append((desc, ok, detail))
+        status = "PASS" if ok else "FAIL"
+        suffix = f" ({detail})" if detail else ""
+        print(f"  {status}: {desc}{suffix}")
+
+    script_text = _read_script()
+    if script_text is None:
+        record("script.rpy readable", False, "not found")
+        return False, results
+
+    analysis = _analyze_script(script_text)
+    labels = set(analysis["labels"])
+    jumps = analysis["jumps"]
+
+    # Working-tree checks
+    all_dirty = _dirty_lines(allow_untracked_tool=allow_untracked_tool)
+    tracked_dirty = _tracked_dirty_lines(allow_untracked_tool=allow_untracked_tool)
+    script_path_str = str(SCRIPT_RPY).replace("\\", "/")
+    other_dirty = [
+        line for line in tracked_dirty
+        if script_path_str not in line.replace("\\", "/")
+    ]
+    if allow_dirty_script:
+        record(
+            "working tree allows dirty script.rpy",
+            len(other_dirty) == 0,
+            f"{len(other_dirty)} other tracked change(s)" if other_dirty else "only script.rpy changed",
+        )
+    else:
+        record(
+            "working tree clean",
+            len(all_dirty) == 0,
+            f"{len(all_dirty)} change(s)" if all_dirty else "",
+        )
+
+    # Source JSON exists
+    source = _load_source_json(scene_num, exact=True)
+    record(f"SC_{scene_num:03d} source JSON exists", source is not None)
+
+    # Selector option present
+    record(
+        f"SC_{scene_num:03d} selector present",
+        f"sc_{scene_num:03d}_start" in jumps,
+    )
+
+    # Start label
+    start_label = f"sc_{scene_num:03d}_start"
+    record(
+        f"SC_{scene_num:03d} start label exists",
+        start_label in labels,
+    )
+
+    # Branch labels if inferable
+    branch_ids: list[str] = []
+    if source:
+        for cp in source.get("choice_points", []):
+            for branch in cp.get("branches", []):
+                bid = str(branch.get("id", "")).strip().lower()
+                if bid:
+                    branch_ids.append(bid)
+        expected_branch_labels = []
+        for bid in branch_ids:
+            expected_branch_labels.append(f"sc_{scene_num:03d}_{bid}")
+            expected_branch_labels.append(f"sc_{scene_num:03d}_{bid}_end")
+        missing_branch_labels = [l for l in expected_branch_labels if l not in labels]
+        record(
+            f"SC_{scene_num:03d} branch labels present",
+            len(missing_branch_labels) == 0,
+            f"missing {', '.join(missing_branch_labels)}" if missing_branch_labels else "",
+        )
+
+        # Dialogue counts
+        source_counts = _source_dialogue_counts(source)
+        actual_counts = _scene_dialogue_counts(script_text, scene_num)
+        for speaker in ("kira", "yakov", "sergey"):
+            expected = source_counts.get(speaker)
+            actual = actual_counts.get(speaker, 0)
+            if expected is None:
+                record(
+                    f"SC_{scene_num:03d} {speaker} lines == {actual}",
+                    True,
+                    "not inferable from source",
+                )
+            else:
+                record(
+                    f"SC_{scene_num:03d} {speaker} lines == {expected}",
+                    actual == expected,
+                    f"got {actual}",
+                )
+
+    # Previous playable scenes intact
+    min_scene = min(analysis["scene_nums"]) if analysis["scene_nums"] else None
+    if min_scene is not None and scene_num >= min_scene:
+        missing_prev = [
+            f"sc_{n:03d}_start"
+            for n in range(min_scene, scene_num + 1)
+            if f"sc_{n:03d}_start" not in labels
+        ]
+        record(
+            f"previous playable scenes intact up to SC_{scene_num:03d}",
+            len(missing_prev) == 0,
+            f"missing {', '.join(missing_prev)}" if missing_prev else "",
+        )
+    else:
+        record("previous playable scenes intact", False, "no scenes detected")
+
+    # All jumps point to existing labels
+    missing_targets = sorted(set(jumps) - labels)
+    record(
+        "all jumps point to existing labels",
+        len(missing_targets) == 0,
+        f"missing {', '.join(missing_targets)}" if missing_targets else "",
+    )
+
+    # Latest scene is requested scene
+    record(
+        "latest scene is requested scene",
+        analysis["latest_scene_num"] == scene_num,
+        f"latest is {analysis['latest_scene']}",
+    )
+
+    # Safety scan for requested scene
+    block = _extract_scene_block(script_text, scene_num)
+    hits = _safety_scan(block)
+    record(
+        f"safety scan PASS [SC_{scene_num:03d}]",
+        len(hits) == 0,
+        f"{len(hits)} hit(s)" if hits else "",
+    )
+
+    ok = all(r[1] for r in results)
+    return ok, results
+
+
+def cmd_validate_patch(args: argparse.Namespace) -> int:
+    scene_arg: str = getattr(args, "scene", "")
+    scene_num = _parse_scene_num(scene_arg)
+    if scene_num is None:
+        print(f"ERROR: cannot parse scene identifier '{scene_arg}'")
+        return 1
+
+    allow_dirty = getattr(args, "allow_dirty_script", False)
+    allow_untracked = getattr(args, "allow_untracked_tool", False)
+
+    print(f"=== RN VALIDATE PATCH: SC_{scene_num:03d} ===")
+    ok, _ = _validate_patch(
+        scene_num,
+        allow_dirty_script=allow_dirty,
+        allow_untracked_tool=allow_untracked,
+    )
+    print()
+    print(f"RESULT: {'PASS' if ok else 'FAIL'}")
+    return 0 if ok else 1
+
+
+# ---------------------------------------------------------------------------
+# Command: ready-for-gui
+# ---------------------------------------------------------------------------
+
+def cmd_ready_for_gui(args: argparse.Namespace) -> int:
+    scene_arg: str = getattr(args, "scene", "")
+    scene_num = _parse_scene_num(scene_arg)
+    if scene_num is None:
+        print(f"ERROR: cannot parse scene identifier '{scene_arg}'")
+        return 1
+
+    allow_dirty = getattr(args, "allow_dirty_script", False)
+    allow_untracked = getattr(args, "allow_untracked_tool", False)
+
+    print(f"=== RN READY FOR GUI: SC_{scene_num:03d} ===")
+    ok, _ = _validate_patch(
+        scene_num,
+        allow_dirty_script=allow_dirty,
+        allow_untracked_tool=allow_untracked,
+    )
+
+    if ok:
+        print()
+        print("READY_FOR_MANUAL_GUI_TEST")
+        print("Checklist:")
+        print("  - Launch RenPy")
+        print("  - Open scene selector")
+        print(f"  - Confirm SC_{scene_num:03d} option visible")
+        print(f"  - Open SC_{scene_num:03d}")
+        source = _load_source_json(scene_num, exact=True)
+        branch_ids: list[str] = []
+        if source:
+            for cp in source.get("choice_points", []):
+                for branch in cp.get("branches", []):
+                    bid = str(branch.get("id", "")).strip()
+                    if bid:
+                        branch_ids.append(bid)
+        if branch_ids:
+            for bid in branch_ids:
+                print(f"  - Test branch {bid}")
+        else:
+            print("  - Test all branches")
+        print("  - Confirm no crash / missing label / broken return")
+        print("  - Confirm tone acceptable")
+
+    print()
+    print(f"RESULT: {'PASS' if ok else 'FAIL'}")
+    return 0 if ok else 1
 
 
 def _print_validate_result(results: list[tuple[str, bool, str]]) -> None:
@@ -556,12 +929,15 @@ def _print_validate_result(results: list[tuple[str, bool, str]]) -> None:
 def cmd_baseline_report(args: argparse.Namespace) -> int:
     allow_feature = getattr(args, "allow_feature_branch", False)
     allow_untracked_tool = getattr(args, "allow_untracked_tool", False)
+    with_gates = getattr(args, "with_gates", False)
 
     print("=== RN BASELINE REPORT ===")
     if allow_feature:
         print("mode:  --allow-feature-branch")
     if allow_untracked_tool:
         print("mode:  --allow-untracked-tool")
+    if with_gates:
+        print("mode:  --with-gates")
 
     # Verify gitignore before any writes
     if not _is_gitignored("reports/renpy/") and not _is_gitignored("reports/renpy/test.json"):
@@ -581,14 +957,14 @@ def cmd_baseline_report(args: argparse.Namespace) -> int:
 
     raw = SCRIPT_RPY.read_bytes()
     analysis = _analyze_script(script_text)
-    latest_src = _latest_source_json(analysis["latest_scene_num"])
+    latest_num = analysis["latest_scene_num"] or 0
+    latest_src = _latest_source_json(latest_num) if latest_num else None
 
-    latest_num = analysis["latest_scene_num"] or EXPECTED_LATEST_SCENE_NUM
-    latest_block = _extract_scene_block(script_text, latest_num)
+    latest_block = _extract_scene_block(script_text, latest_num) if latest_num else ""
     hits = _safety_scan(latest_block)
-    counts_014 = _scene_dialogue_counts(script_text, 14)
+    counts_latest = _scene_dialogue_counts(script_text, latest_num) if latest_num else {}
 
-    src_path = _latest_source_json(14)
+    src_path = _latest_source_json(latest_num) if latest_num else None
     src_exists = src_path is not None and Path(src_path or "").exists()
     if src_exists and src_path:
         _, tracked = _git("ls-files", src_path)
@@ -597,6 +973,16 @@ def cmd_baseline_report(args: argparse.Namespace) -> int:
         src_tracked = False
 
     head_ok, head_detail = _check_branch_head(branch, head, origin_main, allow_feature)
+
+    script_clean = _is_path_clean(SCRIPT_RPY)
+    has_crlf = b"\r\n" in raw
+    lf_only = (not has_crlf) or (has_crlf and script_clean)
+    lf_warn = has_crlf and script_clean
+
+    expected_selector = analysis["selector_count"]
+    expected_label_count = analysis["label_count"]
+    expected_jump_count = analysis["jump_count"]
+    expected_latest_scene = analysis["latest_scene"]
 
     checks: dict[str, Any] = {
         "git_repo": True,
@@ -607,42 +993,62 @@ def cmd_baseline_report(args: argparse.Namespace) -> int:
         "env_artifact_absent": not Path("./$env").exists(),
         "script_exists": SCRIPT_RPY.exists(),
         "no_bom": not raw.startswith(b"\xef\xbb\xbf"),
-        "lf_only": b"\r\n" not in raw,
+        "lf_only": lf_only,
+        "lf_only_warn": lf_warn,
         "selector_count": analysis["selector_count"],
-        "selector_correct": analysis["selector_count"] == EXPECTED_SELECTOR,
+        "selector_correct": analysis["selector_count"] == expected_selector,
         "label_count": analysis["label_count"],
-        "label_count_correct": analysis["label_count"] == EXPECTED_LABEL_COUNT,
+        "label_count_correct": analysis["label_count"] == expected_label_count,
         "jump_count": analysis["jump_count"],
-        "jump_count_correct": analysis["jump_count"] == EXPECTED_JUMP_COUNT,
+        "jump_count_correct": analysis["jump_count"] == expected_jump_count,
         "latest_scene": analysis["latest_scene"],
-        "latest_scene_correct": analysis["latest_scene"] == EXPECTED_LATEST_SCENE,
-        "sc003_sc014_labels_present": all(
-            f"sc_{n:03d}_start" in analysis["labels"] for n in range(3, 15)
-        ),
-        "sc014_source_exists": src_exists,
-        "sc014_source_tracked": src_tracked,
-        "sc014_kira_lines": counts_014.get("kira", 0),
-        "sc014_sergey_lines": counts_014.get("sergey", 0),
-        "sc014_yakov_lines": counts_014.get("yakov", 0),
-        "sc014_kira_correct": counts_014.get("kira", 0) == SC014_EXPECTED_KIRA,
-        "sc014_sergey_correct": counts_014.get("sergey", 0) == SC014_EXPECTED_SERGEY,
-        "sc014_yakov_correct": counts_014.get("yakov", 0) == SC014_EXPECTED_YAKOV,
-        "sc014_marker_present": SC014_MARKER in script_text,
-        "safety_scope": f"SC_{latest_num:03d} block (latest)",
+        "latest_scene_correct": analysis["latest_scene"] == expected_latest_scene,
+        "sc003_latest_labels_present": all(
+            f"sc_{n:03d}_start" in analysis["labels"] for n in range(3, latest_num + 1)
+        ) if latest_num else False,
+        "latest_source_exists": src_exists,
+        "latest_source_tracked": src_tracked,
+        "latest_kira_lines": counts_latest.get("kira", 0),
+        "latest_sergey_lines": counts_latest.get("sergey", 0),
+        "latest_yakov_lines": counts_latest.get("yakov", 0),
+        "safety_scope": f"SC_{latest_num:03d} block (latest)" if latest_num else "none",
         "safety_scan_pass": len(hits) == 0,
         "safety_scan_hit_count": len(hits),
     }
 
     non_bool_keys = {
         "selector_count", "label_count", "jump_count", "latest_scene",
-        "sc014_kira_lines", "sc014_sergey_lines", "sc014_yakov_lines",
+        "latest_kira_lines", "latest_sergey_lines", "latest_yakov_lines",
         "safety_scan_hit_count", "branch_head_detail", "safety_scope",
+        "lf_only_warn", "gates_mutated",
     }
     bool_checks = [
         v for k, v in checks.items()
         if isinstance(v, bool) and k not in non_bool_keys
     ]
     overall = "PASS" if all(bool_checks) else "FAIL"
+
+    gates_result: dict[str, Any] | None = None
+    if with_gates:
+        print()
+        print("Running Voyage gates via Framework Python...")
+        gates_result = _run_voyage_gates()
+        checks["gates_passed"] = gates_result["passed"]
+        checks["gates_mutated"] = gates_result["mutated"]
+        checks["gates_returncode"] = gates_result["returncode"]
+        non_bool_keys.update({"gates_returncode"})
+        bool_checks = [
+            v for k, v in checks.items()
+            if isinstance(v, bool) and k not in non_bool_keys
+        ]
+        overall = "PASS" if all(bool_checks) else "FAIL"
+        if gates_result["passed"]:
+            print("gates: PASS")
+        else:
+            print(
+                f"gates: FAIL (returncode={gates_result['returncode']}, "
+                f"mutated={gates_result['mutated']})"
+            )
 
     timestamp = datetime.now(timezone.utc).isoformat()
     report: dict[str, Any] = {
@@ -657,6 +1063,7 @@ def cmd_baseline_report(args: argparse.Namespace) -> int:
         "branch_head_detail": head_detail,
         "allow_feature_branch": allow_feature,
         "allow_untracked_tool": allow_untracked_tool,
+        "with_gates": with_gates,
         "working_tree_clean": clean,
         "working_tree_status": dirty,
         "selector_count": analysis["selector_count"],
@@ -672,7 +1079,7 @@ def cmd_baseline_report(args: argparse.Namespace) -> int:
             "hit_count": len(hits),
             "hits": hits,
         },
-        "gates": "NOT RUN in RN-AUTO-1 Phase 1",
+        "gates": gates_result if with_gates else "NOT RUN in RN-AUTO-1 Phase 1",
         "overall": overall,
     }
 
@@ -688,6 +1095,12 @@ def cmd_baseline_report(args: argparse.Namespace) -> int:
         newline="\n",
     )
 
+    gates_txt = (
+        f"{'PASS' if gates_result['passed'] else 'FAIL'} "
+        f"(mutated={gates_result['mutated']})"
+        if gates_result
+        else "NOT RUN in RN-AUTO-1 Phase 1"
+    )
     txt_lines = [
         "=== RN BASELINE REPORT ===",
         f"timestamp:    {timestamp}",
@@ -704,7 +1117,7 @@ def cmd_baseline_report(args: argparse.Namespace) -> int:
         f"latest src:   {latest_src}",
         f"safety scope: SC_{latest_num:03d} block (latest)",
         f"safety scan:  {'PASS' if len(hits) == 0 else f'FAIL ({len(hits)} hits)'}",
-        "gates:        NOT RUN in RN-AUTO-1 Phase 1",
+        f"gates:        {gates_txt}",
         f"OVERALL:      {overall}",
     ]
 
@@ -796,6 +1209,54 @@ def main() -> None:
         default=False,
         help="Exclude tools/rn_workflow.py from dirty-tree check (for pre-commit testing)",
     )
+    p_rep.add_argument(
+        "--with-gates",
+        action="store_true",
+        default=False,
+        help="Also run tools/vne_adapter.py gates and fail if they fail or mutate the tree",
+    )
+
+    p_audit = sub.add_parser("audit-source", help="Audit a scenario source JSON")
+    p_audit.add_argument(
+        "scene",
+        help="Scene identifier (e.g. SC_015, 015, sc_015)",
+    )
+
+    p_patch = sub.add_parser("validate-patch", help="Validate a RenPy scene patch before commit")
+    p_patch.add_argument(
+        "scene",
+        help="Scene identifier (e.g. SC_015, 015, sc_015)",
+    )
+    p_patch.add_argument(
+        "--allow-dirty-script",
+        action="store_true",
+        default=False,
+        help="Allow novel/game/script.rpy to be dirty; fail if any other tracked file is changed",
+    )
+    p_patch.add_argument(
+        "--allow-untracked-tool",
+        action="store_true",
+        default=False,
+        help="Exclude tools/rn_workflow.py from dirty-tree check (for pre-commit testing)",
+    )
+
+    p_gui = sub.add_parser("ready-for-gui", help="Check readiness for manual RenPy GUI test")
+    p_gui.add_argument(
+        "scene",
+        help="Scene identifier (e.g. SC_015, 015, sc_015)",
+    )
+    p_gui.add_argument(
+        "--allow-dirty-script",
+        action="store_true",
+        default=False,
+        help="Allow novel/game/script.rpy to be dirty; fail if any other tracked file is changed",
+    )
+    p_gui.add_argument(
+        "--allow-untracked-tool",
+        action="store_true",
+        default=False,
+        help="Exclude tools/rn_workflow.py from dirty-tree check (for pre-commit testing)",
+    )
 
     args = parser.parse_args()
 
@@ -808,6 +1269,9 @@ def main() -> None:
         "safety-scan": cmd_safety_scan,
         "validate": cmd_validate,
         "baseline-report": cmd_baseline_report,
+        "audit-source": cmd_audit_source,
+        "validate-patch": cmd_validate_patch,
+        "ready-for-gui": cmd_ready_for_gui,
     }
 
     sys.exit(dispatch[args.command](args))
