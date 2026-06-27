@@ -1,0 +1,87 @@
+{
+  "id": "SC_015",
+  "name": "После кафе",
+  "version": "1.0",
+  "location": "home",
+  "time": "night",
+  "archetype": "none",
+  "kira_level_start": "U5-выбор",
+  "kira_level_end": "U5-выбор",
+  "sergey_level_start": "S5-встреча",
+  "sergey_level_end": "S5-встреча",
+  "intensity": 6,
+  "risk": 3,
+  "duration_minutes": 30,
+  "prerequisites": [
+    "triangle_meeting_1"
+  ],
+  "flags_required": [
+    "triangle_open",
+    "choice_not_resolved"
+  ],
+  "flags_set": [
+    "kira_returns_after_cafe",
+    "kira_reports_sergey_words",
+    "yakov_hears_about_meeting",
+    "choice_still_open",
+    "sc_015_complete"
+  ],
+  "emotional_anchors": [
+    "после кафе",
+    "честность без давления",
+    "ревность под контролем",
+    "граница дома",
+    "выбор ещё не сделан"
+  ],
+  "symbols": [
+    "S015:U5-выбор→U5-выбор:K+Я:home:night:after_cafe"
+  ],
+  "choice_points": [
+    {
+      "id": "CP_1",
+      "timing": "return_home_after_cafe",
+      "question": "Кира вернулась после кафе. Яков видит, что разговор с Сергеем не закрыл ничего. Что он делает?",
+      "branches": [
+        {
+          "id": "1A",
+          "action": "Спрашивает прямо, но не требует полного отчёта. Просит столько правды, сколько Кира готова дать честно.",
+          "kira_reaction": "'Он не просил меня вернуться. Он просил, чтобы я наконец услышала, что ему плохо.' 'Не знаю, что я услышала. Но я вернулась сюда, чтобы не прятать это от тебя.'",
+          "yakov_reaction": "'Скажи мне ровно столько, сколько можешь сказать честно. Не больше.' 'А ты? Ты услышала его — или себя рядом с ним?'",
+          "next_level": "U5-выбор",
+          "flags": [
+            "yakov_asks_directly",
+            "kira_tells_truth_calmly",
+            "trust_under_pressure"
+          ]
+        },
+        {
+          "id": "1B",
+          "action": "Почти срывается на резкость, но сам останавливает ревность до того, как она станет давлением.",
+          "kira_reaction": "'Скажи лучше боль. С резким я не смогу остаться честной.' 'Часть пошла. А вся я — пришла домой.'",
+          "yakov_reaction": "'Я хочу сказать что-то резкое. И это будет неправда, просто боль.' 'Я боюсь, что он позвал — и часть тебя уже пошла.'",
+          "next_level": "U5-выбор",
+          "flags": [
+            "yakov_names_jealousy",
+            "yakov_restrains_pressure",
+            "kira_returns_by_choice"
+          ]
+        },
+        {
+          "id": "1C",
+          "action": "Кира сама ставит границу: расскажет, но не как протокол и не всю себя сразу. Яков принимает отсрочку.",
+          "kira_reaction": "'Я расскажу. Но не как протокол. И не сейчас всю себя на стол.' 'Да. Только не превращай свой страх в мой долг.'",
+          "yakov_reaction": "'Ты имеешь право не быть готовой. Я имею право бояться.' 'Не превращу. Но завтра мы всё равно вернёмся к этому разговору.'",
+          "next_level": "U5-выбор",
+          "flags": [
+            "kira_sets_home_boundary",
+            "yakov_accepts_delayed_truth",
+            "next_conversation_promised"
+          ]
+        }
+      ]
+    }
+  ],
+  "visual_scene_id": "VS_015",
+  "content_rating": "PG-13",
+  "safety_notes": "Сергей физически отсутствует и не имеет реплик. Сцена держится на честности, ревности как конфликте и границе Киры. Нет физической эскалации, принуждения, угроз или игнорирования стоп-слов. Выбор не разрешается."
+}
