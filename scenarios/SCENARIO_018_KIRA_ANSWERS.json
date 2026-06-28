@@ -1,0 +1,85 @@
+{
+  "id": "SC_018",
+  "name": "Кира отвечает",
+  "version": "1.0",
+  "location": "home",
+  "time": "day",
+  "archetype": "none",
+  "kira_level_start": "U5-выбор",
+  "kira_level_end": "U5-выбор",
+  "sergey_level_start": "S5-встреча",
+  "sergey_level_end": "S5-встреча",
+  "intensity": 5,
+  "risk": 3,
+  "duration_minutes": 20,
+  "prerequisites": [
+    "sc_017_complete"
+  ],
+  "flags_required": [
+    "sc_017_complete",
+    "transparency_tested"
+  ],
+  "flags_set": [
+    "sc_018_complete",
+    "kira_replies_to_sergey",
+    "reply_sent",
+    "choice_still_open"
+  ],
+  "emotional_anchors": [
+    "ответ без исчезновения",
+    "слова как граница",
+    "присутствие Якова — не давление",
+    "выбор ещё не сделан"
+  ],
+  "symbols": [
+    "S018:U5-выбор→U5-выбор:K+Я:home:day:kira_answers"
+  ],
+  "choice_points": [
+    {
+      "id": "CP_1",
+      "timing": "composing_reply_to_sergey",
+      "question": "Яков рядом. Кира пишет ответ Сергею. Что она говорит ему — и Якову — о том, что написала?",
+      "branches": [
+        {
+          "id": "1A",
+          "action": "Пишет ответ-границу. Говорит Якову, что написала, без пересказа каждого слова.",
+          "kira_reaction": "'Я написала ему, что пока не готова встречаться. Но что я не исчезну.' 'Это моя граница. Не твоя и не его. Моя.'",
+          "yakov_reaction": "'Ты ответила.' 'Я слышу. Это честно. По отношению к нему и к себе.'",
+          "next_level": "U5-выбор",
+          "flags": [
+            "kira_sends_boundary",
+            "reply_is_no_meeting_yet",
+            "yakov_hears_boundary_reply"
+          ]
+        },
+        {
+          "id": "1B",
+          "action": "Пишет вопрос: что Сергей не сказал тогда в кафе. Якову говорит, что спрашивает, а не обещает.",
+          "kira_reaction": "'Я написала: ты объяснил часть. Что ты не сказал?' 'Это не приглашение. Это вопрос. Я хочу понять — прежде чем решать.'",
+          "yakov_reaction": "'Ты спрашиваешь его?' 'Тогда жди. Но не жди одна. Я здесь, пока ждёшь.'",
+          "next_level": "U5-выбор",
+          "flags": [
+            "kira_sends_probe",
+            "asks_what_unsaid",
+            "yakov_stays_while_waiting"
+          ]
+        },
+        {
+          "id": "1C",
+          "action": "Пишет: не сейчас. Объясняет Якову, что её ответ — это тоже ответ.",
+          "kira_reaction": "'Я написала: мне нужно время. Не потому что боюсь. Потому что торопиться — значит отвечать не себе.' 'Я сказала ему честно. И тебе — тоже.'",
+          "yakov_reaction": "'Ты написала — не сейчас?' 'Это тоже ответ. И он настоящий.'",
+          "next_level": "U5-выбор",
+          "flags": [
+            "kira_sends_not_yet",
+            "kira_refuses_urgency_again",
+            "yakov_accepts_delay_as_answer"
+          ]
+        }
+      ]
+    }
+  ],
+  "visual_scene_id": "VS_018",
+  "content_rating": "PG-13",
+  "safety_notes": "Сергей физически отсутствует и не имеет реплик — присутствует только через сообщение. Кира сама формулирует ответ без давления Якова. Яков рядом, но не читает сообщение и не диктует слова. Нет физической эскалации, принуждения, угроз или игнорирования стоп-слов. Выбор не разрешается."
+}
