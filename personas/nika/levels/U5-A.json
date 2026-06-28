@@ -1,0 +1,26 @@
+{
+  "level_id": "U5-A",
+  "vscno": {
+    "ВЛ": 3,
+    "СТ": 1,
+    "НЖ": 2,
+    "ОГ": 4
+  },
+  "internal_state": {
+    "desire": 8,
+    "anxiety": 4,
+    "tension": 5,
+    "frustration": 3,
+    "trust": 4,
+    "arousal": 8,
+    "attachment": 4,
+    "commitment": 2
+  },
+  "behavior": "Власть в интимности. ВЛ=3 (максимум), СТ=1 (контроль через доминирование). ОГ=4. Комментарий власти. AG4.",
+  "speech": "See speech/SPEECH_MATRIX.json for stress modifiers and level-specific patterns.",
+  "visual": "See visual/VISUAL_ANCHORS.json for anchor and visual cues.",
+  "triggers": {
+    "escalation": "See psychology/BASE.json progression triggers and sexology/EROTIC_SCRIPTS.json.",
+    "regression": "See psychology/BASE.json regression triggers."
+  }
+}

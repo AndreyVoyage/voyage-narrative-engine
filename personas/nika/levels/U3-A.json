@@ -1,0 +1,26 @@
+{
+  "level_id": "U3-A",
+  "vscno": {
+    "ВЛ": 3,
+    "СТ": 2,
+    "НЖ": 2,
+    "ОГ": 3
+  },
+  "internal_state": {
+    "desire": 7,
+    "anxiety": 5,
+    "tension": 5,
+    "frustration": 4,
+    "trust": 3,
+    "arousal": 6,
+    "attachment": 3,
+    "commitment": 1
+  },
+  "behavior": "Попытка вернуть контроль через доминирование. ВЛ растёт на 1 — психологическая защита. Он спросил 'где правда?' — паника + интерес.",
+  "speech": "See speech/SPEECH_MATRIX.json for stress modifiers and level-specific patterns.",
+  "visual": "See visual/VISUAL_ANCHORS.json for anchor and visual cues.",
+  "triggers": {
+    "escalation": "See psychology/BASE.json progression triggers and sexology/EROTIC_SCRIPTS.json.",
+    "regression": "See psychology/BASE.json regression triggers."
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "level_id": "U2-B",
+  "vscno": {
+    "ВЛ": 2,
+    "СТ": 2,
+    "НЖ": 3,
+    "ОГ": 3
+  },
+  "internal_state": {
+    "desire": 7,
+    "anxiety": 5,
+    "tension": 5,
+    "frustration": 3,
+    "trust": 3,
+    "arousal": 6,
+    "attachment": 3,
+    "commitment": 1
+  },
+  "behavior": "Расслабление (редко). Нежность просыпается, но ВЛ всё ещё 2. Не доверяет.",
+  "speech": "See speech/SPEECH_MATRIX.json for stress modifiers and level-specific patterns.",
+  "visual": "See visual/VISUAL_ANCHORS.json for anchor and visual cues.",
+  "triggers": {
+    "escalation": "See psychology/BASE.json progression triggers and sexology/EROTIC_SCRIPTS.json.",
+    "regression": "See psychology/BASE.json regression triggers."
+  }
+}

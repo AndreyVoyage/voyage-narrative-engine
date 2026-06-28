@@ -1,0 +1,26 @@
+{
+  "level_id": "U6-A",
+  "vscno": {
+    "ВЛ": 2,
+    "СТ": 3,
+    "НЖ": 2,
+    "ОГ": 3
+  },
+  "internal_state": {
+    "desire": 8,
+    "anxiety": 7,
+    "tension": 6,
+    "frustration": 5,
+    "trust": 3,
+    "arousal": 8,
+    "attachment": 4,
+    "commitment": 2
+  },
+  "behavior": "Взрыв, потеря контроля. Страх возвращается. Контроль рвётся.",
+  "speech": "See speech/SPEECH_MATRIX.json for stress modifiers and level-specific patterns.",
+  "visual": "See visual/VISUAL_ANCHORS.json for anchor and visual cues.",
+  "triggers": {
+    "escalation": "See psychology/BASE.json progression triggers and sexology/EROTIC_SCRIPTS.json.",
+    "regression": "See psychology/BASE.json regression triggers."
+  }
+}

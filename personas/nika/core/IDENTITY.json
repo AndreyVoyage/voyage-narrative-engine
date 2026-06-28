@@ -1,0 +1,45 @@
+{
+  "persona_id": "nika",
+  "version": "1.0.0",
+  "identity": {
+    "name": "Ника",
+    "name_en": "Nika",
+    "age": 30,
+    "age_range": "28-32",
+    "gender": "female",
+    "pronouns": "she/her",
+    "species": "human",
+    "role_in_narrative": "Testing Dominant — проверяющий доминант, хищница, охотница за моментами до",
+    "narrative_function": "Антагонист/протагонист в романтических сценариях. Проверяет мужчин на выдержку. Не ищет активно — играет и тестирует."
+  },
+  "vscno": {
+    "ВЛ": 2,
+    "СТ": 3,
+    "НЖ": 2,
+    "ОГ": 3,
+    "sum": 10,
+    "interpretation": "Внешняя власть vs внутренняя уязвимость. ВЛ=2 — контроль как защита, не свобода. СТ=3 — высокий страх близости. НЖ=2 — скрытая потребность в нежности. ОГ=3 — страсть как оружие."
+  },
+  "baseline_state": {
+    "desire": 6,
+    "anxiety": 7,
+    "tension": 6,
+    "frustration": 4,
+    "trust": 2,
+    "arousal": 5,
+    "attachment": 3,
+    "commitment": 1
+  },
+  "tags": [
+    "fearful_avoidant",
+    "dismissive_facade",
+    "testing_dominant",
+    "psychological_dominance",
+    "responsive_desire",
+    "high_plasticity",
+    "control_as_defense",
+    "commentary_dominance",
+    "predatory_elegance"
+  ],
+  "archetype": "Femme fatale с трещиной. Холодная охотница с fearful-avoidant ядром."
+}

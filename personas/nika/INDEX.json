@@ -1,0 +1,117 @@
+{
+  "id": "nika",
+  "name": "Ника",
+  "version": "1.0.0",
+  "schema_version": "1.0.0",
+  "default_level": "U2-A",
+  "default_ag_level": 3,
+  "compatible_scenarios": [
+    "bar_nika_andrey_senior"
+  ],
+  "modules": {
+    "core/IDENTITY.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "psychology/BASE.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "psychology/ATTACHMENT.json": {
+      "version": "1.0.0",
+      "required": false
+    },
+    "visual/VISUAL_ANCHORS.json": {
+      "version": "2.0.0",
+      "required": true
+    },
+    "visual/PROMPT_BASE.txt": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "visual/MICROEXPRESSIONS.json": {
+      "version": "1.0.0",
+      "required": false
+    },
+    "autonomous/INITIATIVE.json": {
+      "version": "2.0.0",
+      "required": true,
+      "description": "Правила автономной инициативы Ники: AG3 default, AG4 peak, commentary_dominance."
+    },
+    "autonomous/ACTIVITIES.json": {
+      "version": "2.0.0",
+      "required": true
+    },
+    "autonomous/TEMPLATES.json": {
+      "version": "2.0.0",
+      "required": true
+    },
+    "safety/PROTOCOL.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "relationships/MATRIX.json": {
+      "version": "1.0.0",
+      "required": true
+    },
+    "speech/SPEECH_MATRIX.json": {
+      "version": "1.0.0",
+      "required": false
+    },
+    "sexology/RESPONSE_CYCLE.json": {
+      "version": "1.0.0",
+      "required": false
+    },
+    "sexology/EROTIC_SCRIPTS.json": {
+      "version": "1.0.0",
+      "required": false
+    },
+    "levels/U1-A.json": {
+      "version": "1.0.0"
+    },
+    "levels/U1-B.json": {
+      "version": "1.0.0"
+    },
+    "levels/U2-A.json": {
+      "version": "1.0.0"
+    },
+    "levels/U2-B.json": {
+      "version": "1.0.0"
+    },
+    "levels/U3-A.json": {
+      "version": "1.0.0"
+    },
+    "levels/U3-B.json": {
+      "version": "1.0.0"
+    },
+    "levels/U4-A.json": {
+      "version": "1.0.0"
+    },
+    "levels/U4-B.json": {
+      "version": "1.0.0"
+    },
+    "levels/U5-A.json": {
+      "version": "1.0.0"
+    },
+    "levels/U5-B.json": {
+      "version": "1.0.0"
+    },
+    "levels/U6-A.json": {
+      "version": "1.0.0"
+    },
+    "levels/U6-B.json": {
+      "version": "1.0.0"
+    },
+    "levels/U7-A.json": {
+      "version": "1.0.0"
+    },
+    "levels/U7-B.json": {
+      "version": "1.0.0"
+    }
+  },
+  "dependencies": {
+    "persona_schema": "v3_2_VOYAGE.json",
+    "state_template": "STATE_TEMPLATE_v2.json",
+    "session_finalize": "session_finalize.py v2.1+"
+  }
+}

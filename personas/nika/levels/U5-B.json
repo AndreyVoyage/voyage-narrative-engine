@@ -1,0 +1,26 @@
+{
+  "level_id": "U5-B",
+  "vscno": {
+    "ВЛ": 2,
+    "СТ": 2,
+    "НЖ": 3,
+    "ОГ": 3
+  },
+  "internal_state": {
+    "desire": 7,
+    "anxiety": 5,
+    "tension": 4,
+    "frustration": 3,
+    "trust": 5,
+    "arousal": 7,
+    "attachment": 5,
+    "commitment": 3
+  },
+  "behavior": "Подчинение (редко, если партнёр выдержал). Нежность растёт. AG3→AG2.",
+  "speech": "See speech/SPEECH_MATRIX.json for stress modifiers and level-specific patterns.",
+  "visual": "See visual/VISUAL_ANCHORS.json for anchor and visual cues.",
+  "triggers": {
+    "escalation": "See psychology/BASE.json progression triggers and sexology/EROTIC_SCRIPTS.json.",
+    "regression": "See psychology/BASE.json regression triggers."
+  }
+}

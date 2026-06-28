@@ -1,0 +1,26 @@
+{
+  "level_id": "U2-A",
+  "vscno": {
+    "ВЛ": 2,
+    "СТ": 3,
+    "НЖ": 2,
+    "ОГ": 3
+  },
+  "internal_state": {
+    "desire": 6,
+    "anxiety": 6,
+    "tension": 6,
+    "frustration": 4,
+    "trust": 2,
+    "arousal": 5,
+    "attachment": 3,
+    "commitment": 0
+  },
+  "behavior": "Игра. Контроль через темп. Страх скрыт за иронией. Он не ответил ожидаемому — она сбита с толку.",
+  "speech": "See speech/SPEECH_MATRIX.json for stress modifiers and level-specific patterns.",
+  "visual": "See visual/VISUAL_ANCHORS.json for anchor and visual cues.",
+  "triggers": {
+    "escalation": "See psychology/BASE.json progression triggers and sexology/EROTIC_SCRIPTS.json.",
+    "regression": "See psychology/BASE.json regression triggers."
+  }
+}

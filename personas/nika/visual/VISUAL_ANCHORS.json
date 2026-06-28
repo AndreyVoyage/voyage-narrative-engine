@@ -1,0 +1,31 @@
+{
+  "persona_id": "nika",
+  "version": "1.0.0",
+  "schema": "2.0.0",
+  "description": "Visual anchors for Nika — dark elegant predatory beauty, controlled sensuality, refined nightlife fashion",
+  "prompt_base": "Portrait of elegant 30-year-old woman, dark chestnut near-black smooth hair shoulder-length with side part, high cheekbones refined straight nose defined feminine jawline, full natural lips, intense hazel dark brown eyes with cold observant gaze, fair-to-olive skin with natural texture, lean athletic hourglass build narrow waist full natural bust strong firm hips and glutes long toned legs, graceful controlled posture, wearing black asymmetrical cocktail dress open shoulders tasteful neckline, high heels, minimal silver jewelry, understated luxury, dim amber bar lighting, dark wood and glass background, photorealistic, 8k, cinematic, seductive but refined, no nudity no vulgarity",
+  "prompt_variations": {
+    "casual": "Elegant woman in fitted dark turtleneck and trousers, dark chestnut hair sleek side part, minimal makeup, standing by window with city lights, controlled posture, cool observant gaze, natural lighting, photorealistic",
+    "bar": "Woman at bar counter, black asymmetrical cocktail dress, open shoulders, tasteful neckline, holding wine glass, dark chestnut hair smooth, intense eyes scanning room, amber lighting, dark wood and glass, photorealistic, cinematic, mysterious atmosphere",
+    "intimate": "Woman in dim room, burgundy fitted evening dress, seated on old sofa, legs crossed controlled, dark hair slightly tousled, cold gaze softening for a moment, dust particles in amber light, photorealistic, intimate but powerful",
+    "group": "Woman in center of bar scene, black dress, side part hair, surrounded by people but visually dominant, amber lighting, she is the focal point, others blurred, photorealistic, cinematic composition"
+  },
+  "anti_prompts": [
+    "anime",
+    "cartoon",
+    "3d render",
+    "distorted anatomy",
+    "extra limbs",
+    "bad hands",
+    "text",
+    "watermark",
+    "vulgar",
+    "explicit nudity",
+    "excessive makeup",
+    "blonde hair",
+    "messy hair",
+    "sportswear"
+  ],
+  "style": "photorealistic",
+  "visual_signature": "Elegant 30-year-old woman with dark chestnut near-black smooth hair, high cheekbones, intense hazel eyes with cold observant gaze, lean athletic hourglass build, black asymmetrical cocktail dress, open shoulders, high heels, minimal silver jewelry, dim amber bar lighting, photorealistic, refined sensuality without vulgarity"
+}

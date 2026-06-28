@@ -1,0 +1,26 @@
+{
+  "level_id": "U4-B",
+  "vscno": {
+    "ВЛ": 2,
+    "СТ": 2,
+    "НЖ": 3,
+    "ОГ": 3
+  },
+  "internal_state": {
+    "desire": 7,
+    "anxiety": 6,
+    "tension": 5,
+    "frustration": 4,
+    "trust": 4,
+    "arousal": 7,
+    "attachment": 4,
+    "commitment": 2
+  },
+  "behavior": "Принятие. Нежность растёт, но ВЛ остаётся 2 — она не верит, что может позволить себе быть слабой.",
+  "speech": "See speech/SPEECH_MATRIX.json for stress modifiers and level-specific patterns.",
+  "visual": "See visual/VISUAL_ANCHORS.json for anchor and visual cues.",
+  "triggers": {
+    "escalation": "See psychology/BASE.json progression triggers and sexology/EROTIC_SCRIPTS.json.",
+    "regression": "See psychology/BASE.json regression triggers."
+  }
+}

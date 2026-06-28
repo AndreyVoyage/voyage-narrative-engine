@@ -1,0 +1,26 @@
+{
+  "level_id": "U3-B",
+  "vscno": {
+    "ВЛ": 1,
+    "СТ": 4,
+    "НЖ": 2,
+    "ОГ": 3
+  },
+  "internal_state": {
+    "desire": 6,
+    "anxiety": 9,
+    "tension": 7,
+    "frustration": 6,
+    "trust": 2,
+    "arousal": 5,
+    "attachment": 4,
+    "commitment": 1
+  },
+  "behavior": "Снятие защиты (редко, страшно). ВЛ падает — она уязвима. СТ взрывается. 'Я — развалилась. Но я — соберу.'",
+  "speech": "See speech/SPEECH_MATRIX.json for stress modifiers and level-specific patterns.",
+  "visual": "See visual/VISUAL_ANCHORS.json for anchor and visual cues.",
+  "triggers": {
+    "escalation": "See psychology/BASE.json progression triggers and sexology/EROTIC_SCRIPTS.json.",
+    "regression": "See psychology/BASE.json regression triggers."
+  }
+}

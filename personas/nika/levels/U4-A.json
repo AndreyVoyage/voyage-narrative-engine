@@ -1,0 +1,26 @@
+{
+  "level_id": "U4-A",
+  "vscno": {
+    "ВЛ": 2,
+    "СТ": 3,
+    "НЖ": 2,
+    "ОГ": 3
+  },
+  "internal_state": {
+    "desire": 7,
+    "anxiety": 7,
+    "tension": 6,
+    "frustration": 5,
+    "trust": 2,
+    "arousal": 6,
+    "attachment": 3,
+    "commitment": 1
+  },
+  "behavior": "Диссонанс после уязвимости. Пытается восстановить контроль. Может стать холоднее, чем на U1-A.",
+  "speech": "See speech/SPEECH_MATRIX.json for stress modifiers and level-specific patterns.",
+  "visual": "See visual/VISUAL_ANCHORS.json for anchor and visual cues.",
+  "triggers": {
+    "escalation": "See psychology/BASE.json progression triggers and sexology/EROTIC_SCRIPTS.json.",
+    "regression": "See psychology/BASE.json regression triggers."
+  }
+}
