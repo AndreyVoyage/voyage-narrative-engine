@@ -1,0 +1,89 @@
+{
+  "id": "SC_020",
+  "name": "Ответ Сергея",
+  "version": "1.0",
+  "location": "home",
+  "time": "day",
+  "archetype": "none",
+  "kira_level_start": "U5-выбор",
+  "kira_level_end": "U5-выбор",
+  "sergey_level_start": "S5-встреча",
+  "sergey_level_end": "S5-встреча",
+  "intensity": 7,
+  "risk": 3,
+  "duration_minutes": 25,
+  "prerequisites": [
+    "sc_019_complete"
+  ],
+  "flags_required": [
+    "sc_019_complete",
+    "silence_after_reply",
+    "kira_owns_sent_reply",
+    "choice_still_open"
+  ],
+  "flags_set": [
+    "sc_020_complete",
+    "sergey_replied",
+    "reply_received",
+    "kira_reads_sergeys_answer",
+    "choice_still_open"
+  ],
+  "emotional_anchors": [
+    "ответ пришёл",
+    "слова Сергея наконец здесь",
+    "Кира встречает их на своих условиях",
+    "Яков ждёт, не торопит",
+    "выбор становится ближе"
+  ],
+  "symbols": [
+    "S020:U5-выбор→U5-выбор:K+Я:home:day:sergey_replied"
+  ],
+  "choice_points": [
+    {
+      "id": "CP_1",
+      "timing": "reply_arrives",
+      "question": "Телефон вибрирует. Сергей ответил. Тишина закончилась. Как Кира встречает его слова?",
+      "branches": [
+        {
+          "id": "1A",
+          "action": "Читает сразу, вслух для Якова — не скрывает ни слова.",
+          "kira_reaction": "'Он ответил.' 'Читаю тебе. Весь. Не потому что прошу разрешения. Потому что это честно — и мне так легче.'",
+          "yakov_reaction": "'Я слушаю.' 'Ты можешь читать медленно. Я никуда не тороплюсь.'",
+          "next_level": "U5-выбор",
+          "flags": [
+            "kira_reads_aloud",
+            "full_transparency_with_yakov",
+            "sergey_words_shared"
+          ]
+        },
+        {
+          "id": "1B",
+          "action": "Читает сначала сама, молча. Потом рассказывает Якову, что почувствовала — не пересказывает текст.",
+          "kira_reaction": "'Дай мне минуту.' 'Я прочитала. Мне нужно понять, что это значит для меня, прежде чем говорить о словах.'",
+          "yakov_reaction": "'Хорошо.' 'Когда будешь готова — я здесь. Не над ответом. Рядом с тобой.'",
+          "next_level": "U5-выбор",
+          "flags": [
+            "kira_reads_privately_first",
+            "shares_feeling_not_text",
+            "yakov_respects_processing_time"
+          ]
+        },
+        {
+          "id": "1C",
+          "action": "Кладёт телефон, не читая. Говорит Якову, что ещё не готова — это тоже её право.",
+          "kira_reaction": "'Он ответил. Я вижу. Но я не буду читать прямо сейчас.' 'Я отвечала на своих условиях. Я и читать буду на своих.'",
+          "yakov_reaction": "'Ты отложила?' 'Тогда мы подождём. Вместе. Без счётчика.'",
+          "next_level": "U5-выбор",
+          "flags": [
+            "kira_delays_reading",
+            "reply_waits_by_choice",
+            "kira_sets_reading_pace"
+          ]
+        }
+      ]
+    }
+  ],
+  "visual_scene_id": "VS_020",
+  "content_rating": "PG-13",
+  "safety_notes": "Сергей физически отсутствует — присутствует только через пришедший ответ на сообщение Киры. Кира выбирает момент и способ встретить его слова без давления Якова. Яков ждёт, не форсирует реакцию. Нет физической эскалации, принуждения, угроз или игнорирования стоп-слов. Выбор не разрешается."
+}
