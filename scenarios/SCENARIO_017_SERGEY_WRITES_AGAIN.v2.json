@@ -1,0 +1,358 @@
+{
+  "schema_version": "2.0",
+  "id": "SC_017",
+  "name": "Сергей пишет снова",
+  "version": "2.0",
+  "location": "home",
+  "time": "day",
+  "archetype": "none",
+  "intensity": 6,
+  "risk": 3,
+  "duration_minutes": 25,
+  "prerequisites": [
+    "sc_016_complete"
+  ],
+  "flags_required": [
+    "next_step_agreed",
+    "morning_after_cafe"
+  ],
+  "emotional_anchors": [
+    "новое сообщение от Сергея",
+    "тест прозрачности",
+    "граница честности под давлением",
+    "агентность Киры",
+    "выбор остаётся открытым"
+  ],
+  "symbols": [
+    "S017:U5-выбор→U5-выбор:K+Я:home:day:sergey_writes_again"
+  ],
+  "characters": [
+    {
+      "id": "kira",
+      "display_name": "Кира",
+      "role": "protagonist",
+      "present": true,
+      "state_start": "U5-выбор",
+      "state_end": "U5-выбор"
+    },
+    {
+      "id": "yakov",
+      "display_name": "Яков",
+      "role": "partner",
+      "present": true,
+      "state_start": null,
+      "state_end": null
+    },
+    {
+      "id": "sergey",
+      "display_name": "Сергей",
+      "role": "third",
+      "present": false,
+      "state_start": "S5-встреча",
+      "state_end": "S5-встреча"
+    }
+  ],
+  "pov_default": "kira",
+  "entry_beats": [
+    {
+      "beat_id": "e1",
+      "type": "narration",
+      "speaker": null,
+      "pov": "kira",
+      "speech": null,
+      "action": null,
+      "thought": null,
+      "thought_visibility": null,
+      "narration": "Телефон загорается новым сообщением от Сергея. Утренний разговор с Яковым ещё не успел стать привычкой.",
+      "emotion": "U5-выбор",
+      "visual_cue": "VS_017"
+    }
+  ],
+  "choice_points": [
+    {
+      "id": "CP_1",
+      "timing": "new_message_arrives",
+      "pov_default": "kira",
+      "prompt": "Телефон загорается новым сообщением от Сергея. Утренний разговор с Яковым ещё не успел стать привычкой. Что делает Кира?",
+      "branches": [
+        {
+          "id": "1A",
+          "option_text": "Показывает сообщение Якову сразу. Прозрачность прежде реакции.",
+          "beats": [
+            {
+              "beat_id": "1A-b1",
+              "type": "action",
+              "speaker": "kira",
+              "pov": "kira",
+              "speech": null,
+              "action": "Показывает сообщение Якову сразу. Прозрачность прежде реакции.",
+              "thought": null,
+              "thought_visibility": null,
+              "narration": null,
+              "emotion": "U5-выбор",
+              "visual_cue": null
+            },
+            {
+              "beat_id": "1A-b2",
+              "type": "dialogue",
+              "speaker": "kira",
+              "pov": "kira",
+              "speech": "Он написал.",
+              "action": null,
+              "thought": null,
+              "thought_visibility": null,
+              "narration": null,
+              "emotion": null,
+              "visual_cue": null
+            },
+            {
+              "beat_id": "1A-b3",
+              "type": "dialogue",
+              "speaker": "kira",
+              "pov": "kira",
+              "speech": "Я показываю тебе это до ответа. Не потому что прошу разрешения. Потому что не хочу тайны.",
+              "action": null,
+              "thought": null,
+              "thought_visibility": null,
+              "narration": null,
+              "emotion": null,
+              "visual_cue": null
+            },
+            {
+              "beat_id": "1A-b4",
+              "type": "dialogue",
+              "speaker": "yakov",
+              "pov": "kira",
+              "speech": "Ты показываешь мне это до ответа?",
+              "action": null,
+              "thought": null,
+              "thought_visibility": null,
+              "narration": null,
+              "emotion": null,
+              "visual_cue": null
+            },
+            {
+              "beat_id": "1A-b5",
+              "type": "dialogue",
+              "speaker": "yakov",
+              "pov": "kira",
+              "speech": "Тогда я рядом. Но отвечать будешь ты. Я не буду читать за тебя и не буду решать вместо тебя.",
+              "action": null,
+              "thought": null,
+              "thought_visibility": null,
+              "narration": null,
+              "emotion": null,
+              "visual_cue": null
+            }
+          ],
+          "effects": {
+            "flags_set": [
+              "kira_shows_message_immediately",
+              "yakov_stays_beside_not_over",
+              "transparency_strengthened",
+              "sc_017_1a"
+            ],
+            "flags_cleared": [],
+            "level_changes": {
+              "kira": "U5-выбор"
+            },
+            "relationship_changes": {}
+          },
+          "next": {
+            "on_complete": "scene_end",
+            "next_scene": null,
+            "completion_flag": "sc_017_complete"
+          }
+        },
+        {
+          "id": "1B",
+          "option_text": "Сначала читает сама. Просит одну минуту, прежде чем делиться.",
+          "beats": [
+            {
+              "beat_id": "1B-b1",
+              "type": "action",
+              "speaker": "kira",
+              "pov": "kira",
+              "speech": null,
+              "action": "Сначала читает сама. Просит одну минуту, прежде чем делиться.",
+              "thought": null,
+              "thought_visibility": null,
+              "narration": null,
+              "emotion": "U5-выбор",
+              "visual_cue": null
+            },
+            {
+              "beat_id": "1B-b2",
+              "type": "dialogue",
+              "speaker": "kira",
+              "pov": "kira",
+              "speech": "Я прочитаю сначала сама. Одну минуту.",
+              "action": null,
+              "thought": null,
+              "thought_visibility": null,
+              "narration": null,
+              "emotion": null,
+              "visual_cue": null
+            },
+            {
+              "beat_id": "1B-b3",
+              "type": "dialogue",
+              "speaker": "kira",
+              "pov": "kira",
+              "speech": "Мне нужно понять, что я чувствую, прежде чем объяснять это тебе.",
+              "action": null,
+              "thought": null,
+              "thought_visibility": null,
+              "narration": null,
+              "emotion": null,
+              "visual_cue": null
+            },
+            {
+              "beat_id": "1B-b4",
+              "type": "dialogue",
+              "speaker": "yakov",
+              "pov": "kira",
+              "speech": "Я хочу спросить, почему не сразу. Но я подожду.",
+              "action": null,
+              "thought": null,
+              "thought_visibility": null,
+              "narration": null,
+              "emotion": null,
+              "visual_cue": null
+            },
+            {
+              "beat_id": "1B-b5",
+              "type": "dialogue",
+              "speaker": "yakov",
+              "pov": "kira",
+              "speech": "Только не исчезай в этом одна.",
+              "action": null,
+              "thought": null,
+              "thought_visibility": null,
+              "narration": null,
+              "emotion": null,
+              "visual_cue": null
+            }
+          ],
+          "effects": {
+            "flags_set": [
+              "kira_reads_first",
+              "yakov_waits_without_pressure",
+              "boundary_under_stress",
+              "sc_017_1b"
+            ],
+            "flags_cleared": [],
+            "level_changes": {
+              "kira": "U5-выбор"
+            },
+            "relationship_changes": {}
+          },
+          "next": {
+            "on_complete": "scene_end",
+            "next_scene": null,
+            "completion_flag": "sc_017_complete"
+          }
+        },
+        {
+          "id": "1C",
+          "option_text": "Не отвечает пока. Отказывается быть сразу втянутой в чужую срочность.",
+          "beats": [
+            {
+              "beat_id": "1C-b1",
+              "type": "action",
+              "speaker": "kira",
+              "pov": "kira",
+              "speech": null,
+              "action": "Не отвечает пока. Отказывается быть сразу втянутой в чужую срочность.",
+              "thought": null,
+              "thought_visibility": null,
+              "narration": null,
+              "emotion": "U5-выбор",
+              "visual_cue": null
+            },
+            {
+              "beat_id": "1C-b2",
+              "type": "dialogue",
+              "speaker": "kira",
+              "pov": "kira",
+              "speech": "Я не буду отвечать сейчас.",
+              "action": null,
+              "thought": null,
+              "thought_visibility": null,
+              "narration": null,
+              "emotion": null,
+              "visual_cue": null
+            },
+            {
+              "beat_id": "1C-b3",
+              "type": "dialogue",
+              "speaker": "kira",
+              "pov": "kira",
+              "speech": "Не потому что боюсь. Потому что не хочу, чтобы его боль снова стала моим расписанием.",
+              "action": null,
+              "thought": null,
+              "thought_visibility": null,
+              "narration": null,
+              "emotion": null,
+              "visual_cue": null
+            },
+            {
+              "beat_id": "1C-b4",
+              "type": "dialogue",
+              "speaker": "yakov",
+              "pov": "kira",
+              "speech": "Тогда пусть сообщение подождёт. А мы — нет.",
+              "action": null,
+              "thought": null,
+              "thought_visibility": null,
+              "narration": null,
+              "emotion": null,
+              "visual_cue": null
+            },
+            {
+              "beat_id": "1C-b5",
+              "type": "dialogue",
+              "speaker": "yakov",
+              "pov": "kira",
+              "speech": "Ты имеешь право выбирать свой темп.",
+              "action": null,
+              "thought": null,
+              "thought_visibility": null,
+              "narration": null,
+              "emotion": null,
+              "visual_cue": null
+            }
+          ],
+          "effects": {
+            "flags_set": [
+              "kira_delays_answer",
+              "sergey_message_waits",
+              "kira_refuses_urgency",
+              "sc_017_1c"
+            ],
+            "flags_cleared": [],
+            "level_changes": {
+              "kira": "U5-выбор"
+            },
+            "relationship_changes": {}
+          },
+          "next": {
+            "on_complete": "scene_end",
+            "next_scene": null,
+            "completion_flag": "sc_017_complete"
+          }
+        }
+      ]
+    }
+  ],
+  "visual": {
+    "scene_id": "VS_017",
+    "stills": []
+  },
+  "safety": {
+    "content_rating": "PG-13",
+    "stop_words_enabled": true,
+    "present_constraints": "Сергей физически отсутствует и не имеет реплик.",
+    "notes": "Сцена проверяет правило прозрачности после SC_016: Кира решает, как обращаться с новым сообщением. Яков остаётся рядом, но не контролирует ответ. Нет физической эскалации, принуждения, угроз или игнорирования стоп-слов. Выбор не разрешается."
+  }
+}
