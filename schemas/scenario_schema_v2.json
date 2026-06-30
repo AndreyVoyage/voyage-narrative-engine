@@ -46,9 +46,7 @@
         "action",
         "thought",
         "thought_visibility",
-        "narration",
-        "emotion",
-        "visual_cue"
+        "narration"
       ],
       "additionalProperties": false,
       "properties": {
