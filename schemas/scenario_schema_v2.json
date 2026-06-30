@@ -1,0 +1,380 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Voyage Scenario Schema V2",
+  "description": "Formal structural contract for Voyage Narrative Engine scenario source files. Semantic invariants are enforced by tools/narrative_schema_v2.py.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "id",
+    "name",
+    "version",
+    "location",
+    "time",
+    "intensity",
+    "risk",
+    "prerequisites",
+    "flags_required",
+    "characters",
+    "pov_default",
+    "entry_beats",
+    "choice_points",
+    "visual",
+    "safety"
+  ],
+  "additionalProperties": true,
+  "definitions": {
+    "nullableString": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "stringArray": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "beat": {
+      "type": "object",
+      "required": [
+        "beat_id",
+        "type",
+        "speaker",
+        "pov",
+        "speech",
+        "action",
+        "thought",
+        "thought_visibility",
+        "narration",
+        "emotion",
+        "visual_cue"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "beat_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "narration",
+            "dialogue",
+            "action",
+            "thought"
+          ]
+        },
+        "speaker": {
+          "$ref": "#/definitions/nullableString"
+        },
+        "pov": {
+          "$ref": "#/definitions/nullableString"
+        },
+        "speech": {
+          "$ref": "#/definitions/nullableString"
+        },
+        "action": {
+          "$ref": "#/definitions/nullableString"
+        },
+        "thought": {
+          "$ref": "#/definitions/nullableString"
+        },
+        "thought_visibility": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "hidden",
+            "revealed",
+            "always",
+            null
+          ]
+        },
+        "narration": {
+          "$ref": "#/definitions/nullableString"
+        },
+        "emotion": {
+          "$ref": "#/definitions/nullableString"
+        },
+        "visual_cue": {
+          "$ref": "#/definitions/nullableString"
+        }
+      }
+    },
+    "effects": {
+      "type": "object",
+      "required": [
+        "flags_set",
+        "flags_cleared",
+        "level_changes",
+        "relationship_changes"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "flags_set": {
+          "$ref": "#/definitions/stringArray"
+        },
+        "flags_cleared": {
+          "$ref": "#/definitions/stringArray"
+        },
+        "level_changes": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "relationship_changes": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "next": {
+      "type": "object",
+      "required": [
+        "on_complete",
+        "next_scene",
+        "completion_flag"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "on_complete": {
+          "type": "string",
+          "minLength": 1
+        },
+        "next_scene": {
+          "$ref": "#/definitions/nullableString"
+        },
+        "completion_flag": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "branch": {
+      "type": "object",
+      "required": [
+        "id",
+        "option_text",
+        "beats",
+        "effects",
+        "next"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "option_text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "beats": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/beat"
+          }
+        },
+        "effects": {
+          "$ref": "#/definitions/effects"
+        },
+        "next": {
+          "$ref": "#/definitions/next"
+        }
+      }
+    }
+  },
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": [
+        "2.0"
+      ]
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^SC_[0-9]{3}$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "location": {
+      "type": "string",
+      "minLength": 1
+    },
+    "time": {
+      "type": "string",
+      "minLength": 1
+    },
+    "archetype": {
+      "type": "string"
+    },
+    "intensity": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10
+    },
+    "risk": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10
+    },
+    "duration_minutes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "prerequisites": {
+      "$ref": "#/definitions/stringArray"
+    },
+    "flags_required": {
+      "$ref": "#/definitions/stringArray"
+    },
+    "emotional_anchors": {
+      "$ref": "#/definitions/stringArray"
+    },
+    "symbols": {
+      "$ref": "#/definitions/stringArray"
+    },
+    "characters": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "display_name",
+          "role",
+          "present",
+          "state_start",
+          "state_end"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "display_name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "role": {
+            "type": "string",
+            "minLength": 1
+          },
+          "present": {
+            "type": "boolean"
+          },
+          "state_start": {
+            "$ref": "#/definitions/nullableString"
+          },
+          "state_end": {
+            "$ref": "#/definitions/nullableString"
+          }
+        }
+      }
+    },
+    "pov_default": {
+      "type": "string",
+      "minLength": 1
+    },
+    "entry_beats": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/beat"
+      }
+    },
+    "choice_points": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "timing",
+          "pov_default",
+          "prompt",
+          "branches"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "timing": {
+            "type": "string",
+            "minLength": 1
+          },
+          "pov_default": {
+            "type": "string",
+            "minLength": 1
+          },
+          "prompt": {
+            "type": "string",
+            "minLength": 1
+          },
+          "branches": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/definitions/branch"
+            }
+          }
+        }
+      }
+    },
+    "visual": {
+      "type": "object",
+      "required": [
+        "scene_id",
+        "stills"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "scene_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "stills": {
+          "type": "array"
+        }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "required": [
+        "content_rating",
+        "stop_words_enabled",
+        "present_constraints",
+        "notes"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "content_rating": {
+          "type": "string",
+          "minLength": 1
+        },
+        "stop_words_enabled": {
+          "type": "boolean"
+        },
+        "present_constraints": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
