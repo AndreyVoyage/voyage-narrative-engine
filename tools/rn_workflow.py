@@ -8,6 +8,9 @@ Usage:
     python tools/rn_workflow.py safety-scan
     python tools/rn_workflow.py safety-scan --scope full
     python tools/rn_workflow.py safety-scan --scope scene --scene SC_014
+    python tools/rn_workflow.py schema-check-v2
+    python tools/rn_workflow.py validate-v2 SC_017
+    python tools/rn_workflow.py flag-lint-v2
     python tools/rn_workflow.py validate
     python tools/rn_workflow.py validate --allow-feature-branch
     python tools/rn_workflow.py validate --allow-feature-branch --allow-untracked-tool
@@ -34,6 +37,8 @@ SCRIPT_RPY = Path("novel/game/script.rpy")
 SCENARIOS_DIR = Path("scenarios")
 REPORTS_DIR = Path("reports/renpy")
 VOYAGE_TASKS_DB = Path(".voyage/tasks.db")
+SCHEMA_V2_DEFAULT = Path("schemas/scenario_schema_v2.json")
+NARRATIVE_SCHEMA_V2_TOOL = Path("tools/narrative_schema_v2.py")
 
 # Baseline values are detected dynamically from the script and repository state.
 # Avoid adding hard-coded scene-specific constants; use _analyze_script() instead.
@@ -314,6 +319,36 @@ def _parse_scene_num(scene_arg: str) -> int | None:
         return int(s)
     except ValueError:
         return None
+
+
+def _resolve_v2_scene_path(scene_arg: str) -> Path | None:
+    """Resolve SC_017/017/path forms to an existing Scenario V2 JSON file."""
+    direct = Path(scene_arg)
+    if direct.suffix == ".json":
+        return direct if direct.exists() else None
+
+    scene_num = _parse_scene_num(scene_arg)
+    if scene_num is None:
+        return None
+
+    matches = sorted(SCENARIOS_DIR.glob(f"SCENARIO_{scene_num:03d}_*.v2.json"))
+    return matches[0] if matches else None
+
+
+def _run_schema_v2_tool(args: list[str]) -> int:
+    """Run the standalone Schema V2 validator with this Python executable."""
+    result = subprocess.run(
+        [sys.executable, str(NARRATIVE_SCHEMA_V2_TOOL), *args],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    if result.stdout:
+        print(result.stdout, end="" if result.stdout.endswith("\n") else "\n")
+    if result.stderr:
+        print(result.stderr, end="" if result.stderr.endswith("\n") else "\n")
+    return result.returncode
 
 
 def _source_json_path_exact(scene_num: int) -> Path | None:
@@ -923,6 +958,37 @@ def _print_validate_result(results: list[tuple[str, bool, str]]) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Command: Schema V2 wrappers
+# ---------------------------------------------------------------------------
+
+def cmd_schema_check_v2(args: argparse.Namespace) -> int:
+    schema_file = Path(args.schema_file)
+    print("=== RN SCHEMA CHECK V2 ===")
+    print(f"schema: {schema_file}")
+    return _run_schema_v2_tool(["schema-check", str(schema_file)])
+
+
+def cmd_validate_v2(args: argparse.Namespace) -> int:
+    scene_path = _resolve_v2_scene_path(args.scene)
+    scene_num = _parse_scene_num(args.scene)
+    title = f"SC_{scene_num:03d}" if scene_num is not None else args.scene
+
+    print(f"=== RN VALIDATE V2: {title} ===")
+    if scene_path is None:
+        print(f"FAIL: could not resolve V2 scene file from {args.scene!r}")
+        return 1
+    print(f"scene: {scene_path}")
+    return _run_schema_v2_tool(["validate", str(scene_path)])
+
+
+def cmd_flag_lint_v2(args: argparse.Namespace) -> int:
+    scenario_dir = Path(args.scenario_dir)
+    print("=== RN FLAG LINT V2 ===")
+    print(f"directory: {scenario_dir}")
+    return _run_schema_v2_tool(["flag-lint", str(scenario_dir)])
+
+
+# ---------------------------------------------------------------------------
 # Command: baseline-report
 # ---------------------------------------------------------------------------
 
@@ -1163,6 +1229,28 @@ def main() -> None:
 
     sub.add_parser("status", help="Show current playable baseline status")
 
+    p_schema_v2 = sub.add_parser("schema-check-v2", help="Run Scenario Schema V2 schema-check")
+    p_schema_v2.add_argument(
+        "schema_file",
+        nargs="?",
+        default=str(SCHEMA_V2_DEFAULT),
+        help="Schema file path (default: schemas/scenario_schema_v2.json)",
+    )
+
+    p_validate_v2 = sub.add_parser("validate-v2", help="Validate a Scenario Schema V2 source")
+    p_validate_v2.add_argument(
+        "scene",
+        help="Scene identifier or .v2.json path (e.g. SC_017 or scenarios/SCENARIO_017_*.v2.json)",
+    )
+
+    p_flag_lint_v2 = sub.add_parser("flag-lint-v2", help="Run Scenario Schema V2 flag graph lint")
+    p_flag_lint_v2.add_argument(
+        "scenario_dir",
+        nargs="?",
+        default=str(SCENARIOS_DIR),
+        help="Scenario directory (default: scenarios)",
+    )
+
     p_scan = sub.add_parser("safety-scan", help="Scan script.rpy for forbidden terms")
     p_scan.add_argument(
         "--scope",
@@ -1266,6 +1354,9 @@ def main() -> None:
 
     dispatch = {
         "status": cmd_status,
+        "schema-check-v2": cmd_schema_check_v2,
+        "validate-v2": cmd_validate_v2,
+        "flag-lint-v2": cmd_flag_lint_v2,
         "safety-scan": cmd_safety_scan,
         "validate": cmd_validate,
         "baseline-report": cmd_baseline_report,
