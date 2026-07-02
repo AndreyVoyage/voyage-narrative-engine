@@ -214,6 +214,11 @@ Pre-game questionnaire, Mind-reading, full Director, in-RenPy LLM, settings UI, 
 - Character configurability by player
 ```
 
+**Проработанные будущие идеи** зафиксированы в `NARRATIVE_FUTURE_TRACKS_v1.md`:
+- **Character Aside** (non-canonical private chat + persistent aside memory) → N6;
+- **Voice / Audio Layer** (canon voice assets + aside dynamic voice, `VoiceProvider`) → поздний Audio track / N6;
+- **Story Setup** (pre-game route personalization) → отложено; направление истории идёт через in-scene branching.
+
 ---
 
 ## 9. Commit / workflow notes
