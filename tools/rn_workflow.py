@@ -11,6 +11,10 @@ Usage:
     python tools/rn_workflow.py schema-check-v2
     python tools/rn_workflow.py validate-v2 SC_017
     python tools/rn_workflow.py flag-lint-v2
+    python tools/rn_workflow.py story-inspect SC_017
+    python tools/rn_workflow.py story-play SC_017 --branch 1A
+    python tools/rn_workflow.py story-available --state <state.json>
+    python tools/rn_workflow.py story-state-after SC_017 --branch 1A --state <state.json>
     python tools/rn_workflow.py validate
     python tools/rn_workflow.py validate --allow-feature-branch
     python tools/rn_workflow.py validate --allow-feature-branch --allow-untracked-tool
@@ -39,6 +43,7 @@ REPORTS_DIR = Path("reports/renpy")
 VOYAGE_TASKS_DB = Path(".voyage/tasks.db")
 SCHEMA_V2_DEFAULT = Path("schemas/scenario_schema_v2.json")
 NARRATIVE_SCHEMA_V2_TOOL = Path("tools/narrative_schema_v2.py")
+STORY_RUNTIME_V2_TOOL = Path("tools/story_runtime_v2.py")
 
 # Baseline values are detected dynamically from the script and repository state.
 # Avoid adding hard-coded scene-specific constants; use _analyze_script() instead.
@@ -339,6 +344,22 @@ def _run_schema_v2_tool(args: list[str]) -> int:
     """Run the standalone Schema V2 validator with this Python executable."""
     result = subprocess.run(
         [sys.executable, str(NARRATIVE_SCHEMA_V2_TOOL), *args],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    if result.stdout:
+        print(result.stdout, end="" if result.stdout.endswith("\n") else "\n")
+    if result.stderr:
+        print(result.stderr, end="" if result.stderr.endswith("\n") else "\n")
+    return result.returncode
+
+
+def _run_story_runtime_tool(args: list[str]) -> int:
+    """Run the standalone Story Runtime V2 tool with this Python executable."""
+    result = subprocess.run(
+        [sys.executable, str(STORY_RUNTIME_V2_TOOL), *args],
         capture_output=True,
         text=True,
         encoding="utf-8",
@@ -989,6 +1010,33 @@ def cmd_flag_lint_v2(args: argparse.Namespace) -> int:
 
 
 # ---------------------------------------------------------------------------
+# Command: Story Runtime V2 wrappers
+# ---------------------------------------------------------------------------
+
+def cmd_story_inspect(args: argparse.Namespace) -> int:
+    print(f"=== RN STORY INSPECT: {args.scene} ===")
+    return _run_story_runtime_tool(["inspect", args.scene])
+
+
+def cmd_story_play(args: argparse.Namespace) -> int:
+    print(f"=== RN STORY PLAY: {args.scene} branch {args.branch} ===")
+    return _run_story_runtime_tool(["play", args.scene, "--branch", args.branch])
+
+
+def cmd_story_available(args: argparse.Namespace) -> int:
+    print("=== RN STORY AVAILABLE ===")
+    print(f"state: {args.state}")
+    return _run_story_runtime_tool(["available", "--state", args.state])
+
+
+def cmd_story_state_after(args: argparse.Namespace) -> int:
+    print(f"=== RN STORY STATE-AFTER: {args.scene} branch {args.branch} ===")
+    return _run_story_runtime_tool(
+        ["state-after", args.scene, "--branch", args.branch, "--state", args.state]
+    )
+
+
+# ---------------------------------------------------------------------------
 # Command: baseline-report
 # ---------------------------------------------------------------------------
 
@@ -1251,6 +1299,34 @@ def main() -> None:
         help="Scenario directory (default: scenarios)",
     )
 
+    p_story_inspect = sub.add_parser("story-inspect", help="Inspect a V2 scene via Story Runtime V2")
+    p_story_inspect.add_argument(
+        "scene",
+        help="Scene identifier or .v2.json path (e.g. SC_017 or scenarios/SCENARIO_017_*.v2.json)",
+    )
+
+    p_story_play = sub.add_parser("story-play", help="Play a branch of a V2 scene via Story Runtime V2")
+    p_story_play.add_argument(
+        "scene",
+        help="Scene identifier or .v2.json path (e.g. SC_017)",
+    )
+    p_story_play.add_argument("--branch", required=True, help="Branch id (e.g. 1A)")
+
+    p_story_available = sub.add_parser(
+        "story-available", help="Check V2 scene availability for a state file via Story Runtime V2"
+    )
+    p_story_available.add_argument("--state", required=True, help="Path to a player state JSON file")
+
+    p_story_state_after = sub.add_parser(
+        "story-state-after", help="Apply a V2 scene branch's effects to a state file via Story Runtime V2"
+    )
+    p_story_state_after.add_argument(
+        "scene",
+        help="Scene identifier or .v2.json path (e.g. SC_017)",
+    )
+    p_story_state_after.add_argument("--branch", required=True, help="Branch id (e.g. 1A)")
+    p_story_state_after.add_argument("--state", required=True, help="Path to a player state JSON file")
+
     p_scan = sub.add_parser("safety-scan", help="Scan script.rpy for forbidden terms")
     p_scan.add_argument(
         "--scope",
@@ -1357,6 +1433,10 @@ def main() -> None:
         "schema-check-v2": cmd_schema_check_v2,
         "validate-v2": cmd_validate_v2,
         "flag-lint-v2": cmd_flag_lint_v2,
+        "story-inspect": cmd_story_inspect,
+        "story-play": cmd_story_play,
+        "story-available": cmd_story_available,
+        "story-state-after": cmd_story_state_after,
         "safety-scan": cmd_safety_scan,
         "validate": cmd_validate,
         "baseline-report": cmd_baseline_report,
