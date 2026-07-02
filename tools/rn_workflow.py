@@ -47,6 +47,7 @@ SCHEMA_V2_DEFAULT = Path("schemas/scenario_schema_v2.json")
 NARRATIVE_SCHEMA_V2_TOOL = Path("tools/narrative_schema_v2.py")
 STORY_RUNTIME_V2_TOOL = Path("tools/story_runtime_v2.py")
 RENPY_V2_EXPORTER_TOOL = Path("tools/renpy_v2_exporter.py")
+PLAYER_EXPERIENCE_V2_TOOL = Path("tools/player_experience_v2.py")
 
 # Baseline values are detected dynamically from the script and repository state.
 # Avoid adding hard-coded scene-specific constants; use _analyze_script() instead.
@@ -379,6 +380,22 @@ def _run_renpy_v2_exporter_tool(args: list[str]) -> int:
     """Run the standalone RenPy V2 exporter tool with this Python executable."""
     result = subprocess.run(
         [sys.executable, str(RENPY_V2_EXPORTER_TOOL), *args],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    if result.stdout:
+        print(result.stdout, end="" if result.stdout.endswith("\n") else "\n")
+    if result.stderr:
+        print(result.stderr, end="" if result.stderr.endswith("\n") else "\n")
+    return result.returncode
+
+
+def _run_player_experience_v2_tool(args: list[str]) -> int:
+    """Run the standalone Player Experience V2 tool with this Python executable."""
+    result = subprocess.run(
+        [sys.executable, str(PLAYER_EXPERIENCE_V2_TOOL), *args],
         capture_output=True,
         text=True,
         encoding="utf-8",
@@ -1074,6 +1091,16 @@ def cmd_renpy_export_v2(args: argparse.Namespace) -> int:
 
 
 # ---------------------------------------------------------------------------
+# Command: Player Experience V2 wrapper
+# ---------------------------------------------------------------------------
+
+def cmd_px_render_v2(args: argparse.Namespace) -> int:
+    return _run_player_experience_v2_tool(
+        ["render", args.scene, "--branch", args.branch, "--mode", args.mode]
+    )
+
+
+# ---------------------------------------------------------------------------
 # Command: baseline-report
 # ---------------------------------------------------------------------------
 
@@ -1386,6 +1413,21 @@ def main() -> None:
         help="Output .rpy path passed to the RenPy V2 exporter",
     )
 
+    p_px_render_v2 = sub.add_parser(
+        "px-render-v2",
+        help="Render a V2 scene branch in a player experience mode",
+    )
+    p_px_render_v2.add_argument(
+        "scene",
+        help="Scene identifier or .v2.json path (e.g. SC_017 or scenarios/SCENARIO_017_*.v2.json)",
+    )
+    p_px_render_v2.add_argument("--branch", required=True, help="Branch id (e.g. 1A)")
+    p_px_render_v2.add_argument(
+        "--mode",
+        required=True,
+        help="Player experience mode: classic, psychological, or developer",
+    )
+
     p_scan = sub.add_parser("safety-scan", help="Scan script.rpy for forbidden terms")
     p_scan.add_argument(
         "--scope",
@@ -1498,6 +1540,7 @@ def main() -> None:
         "story-state-after": cmd_story_state_after,
         "renpy-preview-v2": cmd_renpy_preview_v2,
         "renpy-export-v2": cmd_renpy_export_v2,
+        "px-render-v2": cmd_px_render_v2,
         "safety-scan": cmd_safety_scan,
         "validate": cmd_validate,
         "baseline-report": cmd_baseline_report,
