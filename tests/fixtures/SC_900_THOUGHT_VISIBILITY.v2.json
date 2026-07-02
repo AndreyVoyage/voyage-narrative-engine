@@ -1,0 +1,144 @@
+{
+  "schema_version": "2.0",
+  "id": "SC_900",
+  "name": "Thought Visibility Fixture",
+  "version": "1.0",
+  "location": "test",
+  "time": "day",
+  "archetype": "none",
+  "intensity": 0,
+  "risk": 0,
+  "duration_minutes": 1,
+  "prerequisites": [],
+  "flags_required": [],
+  "emotional_anchors": ["thought visibility test"],
+  "symbols": ["TEST:thought_visibility"],
+  "characters": [
+    {
+      "id": "kira",
+      "display_name": "Кира",
+      "role": "protagonist",
+      "present": true,
+      "state_start": "U1-A",
+      "state_end": "U1-A"
+    }
+  ],
+  "pov_default": "kira",
+  "entry_beats": [
+    {
+      "beat_id": "e1",
+      "type": "narration",
+      "speaker": null,
+      "pov": "kira",
+      "speech": null,
+      "action": null,
+      "thought": null,
+      "thought_visibility": null,
+      "narration": "Test entry narration for thought visibility fixture.",
+      "emotion": null,
+      "visual_cue": null
+    }
+  ],
+  "choice_points": [
+    {
+      "id": "CP_1",
+      "timing": "test_prompt",
+      "pov_default": "kira",
+      "prompt": "Test choice point prompt for thought visibility modes.",
+      "branches": [
+        {
+          "id": "T1",
+          "option_text": "Test-only branch T1 for thought visibility fixture.",
+          "beats": [
+            {
+              "beat_id": "T1-b1",
+              "type": "action",
+              "speaker": "kira",
+              "pov": "kira",
+              "speech": null,
+              "action": "Test action beat.",
+              "thought": null,
+              "thought_visibility": null,
+              "narration": null,
+              "emotion": null,
+              "visual_cue": null
+            },
+            {
+              "beat_id": "T1-b2",
+              "type": "dialogue",
+              "speaker": "kira",
+              "pov": "kira",
+              "speech": "Test dialogue beat.",
+              "action": null,
+              "thought": null,
+              "thought_visibility": null,
+              "narration": null,
+              "emotion": null,
+              "visual_cue": null
+            },
+            {
+              "beat_id": "T1-t1",
+              "type": "thought",
+              "speaker": "kira",
+              "pov": "kira",
+              "speech": null,
+              "action": null,
+              "thought": "HIDDEN_THOUGHT_MARKER",
+              "thought_visibility": "hidden",
+              "narration": null,
+              "emotion": null,
+              "visual_cue": null
+            },
+            {
+              "beat_id": "T1-t2",
+              "type": "thought",
+              "speaker": "kira",
+              "pov": "kira",
+              "speech": null,
+              "action": null,
+              "thought": "VISIBLE_REVEALED_THOUGHT_MARKER",
+              "thought_visibility": "revealed",
+              "narration": null,
+              "emotion": null,
+              "visual_cue": null
+            },
+            {
+              "beat_id": "T1-t3",
+              "type": "thought",
+              "speaker": "kira",
+              "pov": "kira",
+              "speech": null,
+              "action": null,
+              "thought": "VISIBLE_ALWAYS_THOUGHT_MARKER",
+              "thought_visibility": "always",
+              "narration": null,
+              "emotion": null,
+              "visual_cue": null
+            }
+          ],
+          "effects": {
+            "flags_set": ["sc_900_thought_visibility_fixture_complete"],
+            "flags_cleared": [],
+            "level_changes": {},
+            "relationship_changes": {}
+          },
+          "next": {
+            "on_complete": "scene_end",
+            "next_scene": null,
+            "completion_flag": "sc_900_thought_visibility_fixture_complete"
+          }
+        }
+      ]
+    }
+  ],
+  "visual": {
+    "scene_id": "VS_TEST",
+    "stills": []
+  },
+  "safety": {
+    "content_rating": "G",
+    "stop_words_enabled": true,
+    "present_constraints": "Test fixture; no canonical characters present.",
+    "notes": "Non-canonical test fixture for Player Experience thought visibility modes. Not part of the story canon."
+  }
+}
