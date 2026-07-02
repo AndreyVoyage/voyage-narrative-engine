@@ -15,6 +15,8 @@ Usage:
     python tools/rn_workflow.py story-play SC_017 --branch 1A
     python tools/rn_workflow.py story-available --state <state.json>
     python tools/rn_workflow.py story-state-after SC_017 --branch 1A --state <state.json>
+    python tools/rn_workflow.py renpy-preview-v2 SC_017
+    python tools/rn_workflow.py renpy-export-v2 SC_017 --output <preview.rpy>
     python tools/rn_workflow.py validate
     python tools/rn_workflow.py validate --allow-feature-branch
     python tools/rn_workflow.py validate --allow-feature-branch --allow-untracked-tool
@@ -44,6 +46,7 @@ VOYAGE_TASKS_DB = Path(".voyage/tasks.db")
 SCHEMA_V2_DEFAULT = Path("schemas/scenario_schema_v2.json")
 NARRATIVE_SCHEMA_V2_TOOL = Path("tools/narrative_schema_v2.py")
 STORY_RUNTIME_V2_TOOL = Path("tools/story_runtime_v2.py")
+RENPY_V2_EXPORTER_TOOL = Path("tools/renpy_v2_exporter.py")
 
 # Baseline values are detected dynamically from the script and repository state.
 # Avoid adding hard-coded scene-specific constants; use _analyze_script() instead.
@@ -360,6 +363,22 @@ def _run_story_runtime_tool(args: list[str]) -> int:
     """Run the standalone Story Runtime V2 tool with this Python executable."""
     result = subprocess.run(
         [sys.executable, str(STORY_RUNTIME_V2_TOOL), *args],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    if result.stdout:
+        print(result.stdout, end="" if result.stdout.endswith("\n") else "\n")
+    if result.stderr:
+        print(result.stderr, end="" if result.stderr.endswith("\n") else "\n")
+    return result.returncode
+
+
+def _run_renpy_v2_exporter_tool(args: list[str]) -> int:
+    """Run the standalone RenPy V2 exporter tool with this Python executable."""
+    result = subprocess.run(
+        [sys.executable, str(RENPY_V2_EXPORTER_TOOL), *args],
         capture_output=True,
         text=True,
         encoding="utf-8",
@@ -1037,6 +1056,24 @@ def cmd_story_state_after(args: argparse.Namespace) -> int:
 
 
 # ---------------------------------------------------------------------------
+# Command: RenPy V2 exporter wrappers
+# ---------------------------------------------------------------------------
+
+def cmd_renpy_preview_v2(args: argparse.Namespace) -> int:
+    print(f"=== RN RENPY PREVIEW V2: {args.scene} ===")
+    return _run_renpy_v2_exporter_tool(["preview", args.scene])
+
+
+def cmd_renpy_export_v2(args: argparse.Namespace) -> int:
+    print(f"=== RN RENPY EXPORT V2: {args.scene} ===")
+    exporter_args = ["export", args.scene]
+    if args.output:
+        print(f"output: {args.output}")
+        exporter_args.extend(["--output", args.output])
+    return _run_renpy_v2_exporter_tool(exporter_args)
+
+
+# ---------------------------------------------------------------------------
 # Command: baseline-report
 # ---------------------------------------------------------------------------
 
@@ -1327,6 +1364,28 @@ def main() -> None:
     p_story_state_after.add_argument("--branch", required=True, help="Branch id (e.g. 1A)")
     p_story_state_after.add_argument("--state", required=True, help="Path to a player state JSON file")
 
+    p_renpy_preview_v2 = sub.add_parser(
+        "renpy-preview-v2",
+        help="Preview a V2 scene through the RenPy V2 exporter",
+    )
+    p_renpy_preview_v2.add_argument(
+        "scene",
+        help="Scene identifier or .v2.json path (e.g. SC_017)",
+    )
+
+    p_renpy_export_v2 = sub.add_parser(
+        "renpy-export-v2",
+        help="Export a V2 scene through the RenPy V2 exporter",
+    )
+    p_renpy_export_v2.add_argument(
+        "scene",
+        help="Scene identifier or .v2.json path (e.g. SC_017)",
+    )
+    p_renpy_export_v2.add_argument(
+        "--output",
+        help="Output .rpy path passed to the RenPy V2 exporter",
+    )
+
     p_scan = sub.add_parser("safety-scan", help="Scan script.rpy for forbidden terms")
     p_scan.add_argument(
         "--scope",
@@ -1437,6 +1496,8 @@ def main() -> None:
         "story-play": cmd_story_play,
         "story-available": cmd_story_available,
         "story-state-after": cmd_story_state_after,
+        "renpy-preview-v2": cmd_renpy_preview_v2,
+        "renpy-export-v2": cmd_renpy_export_v2,
         "safety-scan": cmd_safety_scan,
         "validate": cmd_validate,
         "baseline-report": cmd_baseline_report,
