@@ -49,6 +49,7 @@ STORY_RUNTIME_V2_TOOL = Path("tools/story_runtime_v2.py")
 RENPY_V2_EXPORTER_TOOL = Path("tools/renpy_v2_exporter.py")
 PLAYER_EXPERIENCE_V2_TOOL = Path("tools/player_experience_v2.py")
 RENPY_V2_PLAYABLE_EXPORTER_TOOL = Path("tools/renpy_v2_playable_exporter.py")
+RENPY_STATIC_VALIDATOR_TOOL = Path("tools/renpy_static_validator.py")
 
 # Baseline values are detected dynamically from the script and repository state.
 # Avoid adding hard-coded scene-specific constants; use _analyze_script() instead.
@@ -413,6 +414,22 @@ def _run_renpy_v2_playable_exporter_tool(args: list[str]) -> int:
     """Run the standalone RenPy V2 playable exporter tool with this Python executable."""
     result = subprocess.run(
         [sys.executable, str(RENPY_V2_PLAYABLE_EXPORTER_TOOL), *args],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    if result.stdout:
+        print(result.stdout, end="" if result.stdout.endswith("\n") else "\n")
+    if result.stderr:
+        print(result.stderr, end="" if result.stderr.endswith("\n") else "\n")
+    return result.returncode
+
+
+def _run_renpy_static_validator_tool(args: list[str]) -> int:
+    """Run the standalone RenPy static validator tool with this Python executable."""
+    result = subprocess.run(
+        [sys.executable, str(RENPY_STATIC_VALIDATOR_TOOL), *args],
         capture_output=True,
         text=True,
         encoding="utf-8",
@@ -1127,6 +1144,21 @@ def cmd_renpy_playable_v2(args: argparse.Namespace) -> int:
 
 
 # ---------------------------------------------------------------------------
+# Command: RenPy V2 static validator wrapper
+# ---------------------------------------------------------------------------
+
+def cmd_validate_renpy_v2_generated(args: argparse.Namespace) -> int:
+    validator_args = ["validate-v2-generated"]
+    if args.skip_sdk_lint:
+        validator_args.append("--skip-sdk-lint")
+    if args.require_sdk_lint:
+        validator_args.append("--require-sdk-lint")
+    if args.sdk_path:
+        validator_args.extend(["--sdk-path", args.sdk_path])
+    return _run_renpy_static_validator_tool(validator_args)
+
+
+# ---------------------------------------------------------------------------
 # Command: baseline-report
 # ---------------------------------------------------------------------------
 
@@ -1468,6 +1500,28 @@ def main() -> None:
         help="Output .rpy path (N5A: novel/game/scenes_v2_generated.rpy)",
     )
 
+    p_validate_renpy_v2_generated = sub.add_parser(
+        "validate-renpy-v2-generated",
+        help="Validate the generated V2 RenPy scene (structural + optional SDK lint on temp copy)",
+    )
+    p_validate_renpy_v2_generated.add_argument(
+        "--skip-sdk-lint",
+        action="store_true",
+        default=False,
+        help="Skip RenPy SDK lint and run structural checks only",
+    )
+    p_validate_renpy_v2_generated.add_argument(
+        "--require-sdk-lint",
+        action="store_true",
+        default=False,
+        help="Fail if RenPy SDK lint cannot be run",
+    )
+    p_validate_renpy_v2_generated.add_argument(
+        "--sdk-path",
+        default=None,
+        help="Path to RenPy SDK (default: C:/DEV/Narrative/renpy-8.5.3-sdk)",
+    )
+
     p_scan = sub.add_parser("safety-scan", help="Scan script.rpy for forbidden terms")
     p_scan.add_argument(
         "--scope",
@@ -1582,6 +1636,7 @@ def main() -> None:
         "renpy-export-v2": cmd_renpy_export_v2,
         "px-render-v2": cmd_px_render_v2,
         "renpy-playable-v2": cmd_renpy_playable_v2,
+        "validate-renpy-v2-generated": cmd_validate_renpy_v2_generated,
         "safety-scan": cmd_safety_scan,
         "validate": cmd_validate,
         "baseline-report": cmd_baseline_report,
