@@ -28,16 +28,23 @@
 ## 2. Current baseline / что есть сейчас
 
 ```text
-HEAD == origin/main == 5571bd2505715b8f19b092ad1762b8d32449c360
+HEAD == origin/main == 853409bd40296848aa8cf8cd4613663a78a17ca8
 SC_003–SC_018: playable через ручной novel/game/script.rpy (113 labels)
 SC_019–SC_027: source-only JSON (в игре не отображаются)
 Live JSON-runtime: НЕТ (RenPy не грузит JSON как сцены)
-Scenario JSON schema: НЕТ (в schemas/ только persona-схема)
-Exporter: tools/vne_to_renpy/exporter.py — skeletal preview → reports/renpy/ (gitignored)
-Validation: tools/rn_workflow.py, tools/vne_adapter.py — частично
-Flags: декларативные, не исполняются
-Persona/LLM-система: есть как отдельная система (personas/, R1–R8)
-Narrative docs: 5 документов созданы, ждут commit (N0)
+Scenario JSON schema v2: ДА (schemas/scenario_schema_v2.json + tools/narrative_schema_v2.py)
+N5A — JSON→playable RenPy bridge proof: COMPLETE
+  - tools/renpy_v2_playable_exporter.py
+  - novel/game/scenes_v2_generated.rpy из SC_017 V2 JSON
+  - labels sc_017_v2_*; script.rpy не тронут
+N5B — static RenPy generated-scene validation: COMPLETE
+  - tools/renpy_static_validator.py + validate-renpy-v2-generated
+  - SDK lint только на temp copy; repo cache/log не создаются
+N5A artifact status: build-safe, но orphan/unreachable от обычного game start
+N5 (Dev / in-place edit): НЕ реализован
+N6 (Director / LLM / Character Aside / Voice): НЕ реализован; планирование в NARRATIVE_FUTURE_TRACKS_v1.md
+Persona/LLM-система: есть как отдельная система (personas/, R1–R8), не интегрирована в narrative runtime
+Narrative docs: зафиксированы (N0); N4D future tracks перенесён в docs/narrative/
 ```
 
 ---
@@ -144,6 +151,29 @@ Narrative docs: 5 документов созданы, ждут commit (N0)
 
 ---
 
+### N5A — JSON→playable RenPy bridge proof
+
+- **Goal.** Доказать, что V2-JSON можно детерминированно превратить в играбельный RenPy без ручного дублирования.
+- **Status.** COMPLETE.
+- **Outputs.** `tools/renpy_v2_playable_exporter.py`, `novel/game/scenes_v2_generated.rpy` (из `scenarios/SCENARIO_017_SERGEY_WRITES_AGAIN.v2.json`).
+- **Facts.** Generated labels `sc_017_v2_*`; `script.rpy` не тронут; эффекты исполняемые (`v2_flags`, `v2_completed_scenes`, `v2_levels`, `v2_relationships`).
+- **Limitation.** Сгенерированная сцена — **orphan/unreachable** от обычного старта игры; selector всё ещё ведёт на ручной `sc_017_start`.
+- **Definition of Done.** `renpy-playable-v2` генерирует `scenes_v2_generated.rpy`, который проходит SDK lint на temp copy.
+- **Risks.** Перепутать proof artifact с reachable gameplay.
+- **Blocked-by.** N1, N3.
+- **Unlocks.** N5B.
+
+### N5B — Static RenPy generated-scene validation
+
+- **Goal.** Убедиться, что orphan generated `.rpy` не ломает RenPy build, не трогая ручные файлы.
+- **Status.** COMPLETE.
+- **Outputs.** `tools/renpy_static_validator.py`, workflow command `validate-renpy-v2-generated`.
+- **Facts.** Структурная проверка + SDK lint на temp copy; repo cache/log/.rpyc не создаются; `script.rpy`, `definitions.rpy`, `options.rpy` и `scenes_v2_generated.rpy` не модифицируются при проверке.
+- **Definition of Done.** Валидатор PASS на `novel/game/scenes_v2_generated.rpy`; рабочее дерево остаётся clean.
+- **Risks.** SDK lint мутирует repo, если запускать напрямую на `novel/`.
+- **Blocked-by.** N5A.
+- **Unlocks.** безопасное планирование reachable launcher / live JSON path.
+
 ### N5 — Dev / in-place edit mode
 
 - **Goal.** Редактирование реплик/мыслей/действий прямо в игре с write-back в JSON.
@@ -155,8 +185,9 @@ Narrative docs: 5 документов созданы, ждут commit (N0)
 - **Outputs.** Dev in-place edit mode.
 - **Definition of Done.** Правка мысли/реплики/действия в игре пишется в JSON, проходит валидацию, hot-reload продолжает с того же `beat_id`; структура не затрагивается; старые сейвы валидны.
 - **Risks.** Случайная структурная правка через быстрый путь; запись мимо источника; рассинхрон позиции при reload (решается resume по `beat_id`, не по индексу).
-- **Blocked-by.** N2 (live runtime + write-back), N4 (UI-основа).
+- **Blocked-by.** N2 (live runtime + write-back), N4 (UI-основа), reachable/live JSON path.
 - **Unlocks.** N6 (удобный авторинг для Director-результатов).
+- **Note.** N5A/N5B — необходимый bridge, но не замена reachable/live JSON runtime.
 
 ---
 
@@ -196,6 +227,8 @@ MVP =
 + Classic VN + basic Psychological + read-only inspector  [N4]
 + at least SC_017 fully JSON-driven playable
 ```
+
+**Note on "SC_017 fully JSON-driven playable":** currently satisfied as a generated playable RenPy artifact from SC_017 V2 JSON (N5A) that passes static build validation (N5B). The artifact is **not yet reachable** from normal game start; live JSON loading and player-facing reachability are separate future steps.
 
 Pre-game questionnaire, Mind-reading, full Director, in-RenPy LLM, settings UI, browser editor, full in-place editor — **не входят** в MVP.
 
@@ -239,11 +272,13 @@ Pre-game questionnaire, Mind-reading, full Director, in-RenPy LLM, settings UI, 
 ## Сводка зависимостей
 
 ```text
-N0 ─▶ N1 ─▶ N2 ─▶ N3 ─▶ N4 ─▶ N5 ─▶ N6
+N0 ─▶ N1 ─▶ N2 ─▶ N3 ─▶ N4 ─▶ N5A ─▶ N5B ─▶ N5-Dev ─▶ N6
               │           ▲
               └──────────-┘  (N4 требует N2; лучше после N3)
-Dev edit (N5) НЕВОЗМОЖЕН раньше live JSON-runtime (N2).
-Director (N6) требует схему (N1) + runtime (N2) + удобный write-back (N5).
+N5A/N5B — bridge track: JSON→playable proof + build-safety validation.
+N5-Dev (in-place edit) НЕВОЗМОЖЕН раньше reachable/live JSON path.
+Director (N6) требует схему (N1) + runtime (N2) + удобный write-back (N5-Dev).
+Character Aside / Voice Layer — N6 / future tracks (см. NARRATIVE_FUTURE_TRACKS_v1.md).
 ```
 
 > Коммит этого документа — через стандартный Narrative workflow (Claude Code).
