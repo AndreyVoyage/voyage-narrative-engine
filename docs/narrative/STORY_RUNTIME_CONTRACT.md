@@ -61,6 +61,18 @@
 - **Source/generated separation:** JSON — источник, `.rpy` — производный артефакт.
 - **Failure behavior:** невалидный JSON не должен ломать release-путь generate-ahead.
 
+### 1.2. Live/Dev JSON Contract (N5G)
+
+Контракт для будущего dev-only live JSON runtime зафиксирован в `docs/narrative/N5G_LIVE_DEV_JSON_CONTRACT.md`.
+
+Runtime-контракт различает три слоя:
+
+1. **Python tooling runtime** (`tools/story_runtime_v2.py`) — offline/runtime preview, state-after, availability checks.
+2. **Generated RenPy artifact runtime** (`novel/game/scenes_v2_generated.rpy`) — текущий MVP/release playable путь.
+3. **Future live/dev JSON runtime** — RenPy/Python loader, который читает JSON напрямую; должен следовать N5G.
+
+Текущий RenPy release path **не читает JSON в runtime**. Будущий live/dev путь остаётся dev-only и не заменяет generate-ahead `.rpy` до отдельного решения.
+
 ---
 
 ## 2. Исполнение beats
