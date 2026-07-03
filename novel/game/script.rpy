@@ -49,6 +49,9 @@ label start:
         "SC_018 — Кира отвечает":
             jump sc_018_start
 
+        "SC_017 — V2 JSON-generated proof (dev/test)":
+            jump sc_017_v2_start
+
 
 label sc_003_start:
 
