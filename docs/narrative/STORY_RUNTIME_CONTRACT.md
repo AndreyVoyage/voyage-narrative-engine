@@ -32,6 +32,35 @@
 
 **Текущее состояние (факт).** Live JSON-чтения нет: SC_003–018 захардкожены в `script.rpy`, SC_019–027 не подключены. Этот контракт описывает целевое поведение; переход — в roadmap.
 
+### 1.1. Hybrid JSON path (N5F decision)
+
+Принят **гибридный путь** JSON → runtime:
+
+1. **Generate-ahead `.rpy` (MVP/release playable path).**
+   - `tools/renpy_v2_playable_exporter.py` превращает V2-JSON в статический `novel/game/scenes_v2_generated.rpy`.
+   - Этот артефакт — **производный** (derived), не источник правды.
+   - Он детерминирован, проходит static RenPy validation (`validate-renpy-v2-generated`) и достижим через dev/test launcher (N5D).
+   - Ручные правки в сгенерированном `.rpy` не сохраняются при регенерации.
+
+2. **Live/dev JSON runtime (future foundation).**
+   - Будущий RenPy/Python loader читает V2-JSON напрямую во время игры.
+   - Нужен для Dev-edit, hot-reload и pause/resume по `beat_id`.
+   - **Не реализован** на момент N5F; требует отдельного scoped контракта до начала Dev-edit.
+
+3. **Source of truth invariant.**
+   - В обоих путях источником правды остаётся `scenarios/SCENARIO_*.v2.json`.
+   - Runtime-контракт един для generate-ahead и live-пути; RenPy его исполняет, но не определяет.
+
+**Минимальный scoped live/dev JSON контракт** (должен быть спроектирован перед N5-Dev):
+- **Read path:** откуда loader берёт JSON.
+- **Validation boundary:** когда и как проходит schema validation.
+- **State model:** как `player_state` Python runtime отображается на RenPy state.
+- **beat_id mapping:** как beat адресуется для UI и resume.
+- **Write-back boundary:** какие поля можно редактировать (только текстовые: `speech`/`action`/`thought`/`narration`/`emotion`).
+- **Hot-reload boundary:** что перезагружается без рестарта и как восстанавливается позиция.
+- **Source/generated separation:** JSON — источник, `.rpy` — производный артефакт.
+- **Failure behavior:** невалидный JSON не должен ломать release-путь generate-ahead.
+
 ---
 
 ## 2. Исполнение beats
@@ -165,7 +194,7 @@ Beats (`entry_beats`, затем `branches[].beats`) исполняются **п
 
 **Контракт безопасности dev-правок:** правка текста никогда не меняет флаги/ветки/состояние. Поэтому она не ломает continuity и не инвалидирует сейвы (§8).
 
-**Текущее состояние (факт).** Ни live-reload JSON, ни write-back пока нет (SC_003–018 — статичный `.rpy`). Фича реализуема как надстройка после live JSON-runtime.
+**Текущее состояние (факт).** Ни live-reload JSON, ни write-back пока нет (SC_003–018 — статичный `.rpy`). Фича реализуема как надстройка после live JSON-runtime. N5F фиксирует Hybrid JSON path: generate-ahead `.rpy` остаётся MVP/release путём, live JSON runtime — будущей dev/edit основой.
 
 ---
 

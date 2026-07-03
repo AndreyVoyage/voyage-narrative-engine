@@ -114,6 +114,25 @@ exporter.py                    ──▶  reports/renpy/*.rpy (skeletal preview,
 
 **Current state.** Exporter существует и работает на skeletal-уровне (`SC_003–013` preview, smoke-check `check_renpy_exporter.py` 11/11 PASS). Это **зерно** будущего пути «JSON → playable». Он эмитит narrator-превью, не production-сцены.
 
+### 3.1 Hybrid JSON path (N5F decision)
+
+Принят гибридный путь от JSON к RenPy:
+
+1. **Generate-ahead `.rpy` — канонический MVP/release playable путь.**
+   - `tools/renpy_v2_playable_exporter.py` генерирует `novel/game/scenes_v2_generated.rpy` из V2-JSON.
+   - Генерация детерминирована; артефакт проходит static RenPy validation.
+   - Сгенерированный `.rpy` — **derived artifact**, не источник правды; ручные правки в нём теряются при регенерации.
+   - N5A–N5D доказали вертикальный срез для SC_017; этот путь сохраняется.
+
+2. **Live/dev JSON loader — отложенная dev/edit инфраструктура.**
+   - Будущий RenPy/Python loader будет читать JSON прямо в runtime для Dev-edit, hot-reload и pause/resume.
+   - **Не реализован** на момент N5F; требуется scoped контракт до начала Dev-edit (см. `STORY_RUNTIME_CONTRACT.md` §1.1).
+   - Не заменяет generate-ahead путь в релизе до готовности.
+
+3. **Инвариант source of truth.**
+   - В обоих путях канонический источник — `scenarios/SCENARIO_*.v2.json`.
+   - Renderer детерминирован и не добавляет смысла, которого нет в источнике.
+
 **Target.** Расширить exporter из skeletal-preview в production-generator под `SCENARIO_SCHEMA_V2`: beats → реплики/действия/мысли/POV, choices → RenPy `menu`, flags → вызовы runtime-контракта.
 
 ---
@@ -129,7 +148,7 @@ exporter.py                    ──▶  reports/renpy/*.rpy (skeletal preview,
 
 **Boundaries.** RenPy = **renderer/target и playable runtime**, но **не источник правды** (§1) и **не определяет** контракт исполнения (§2). Ручной `script.rpy` — временный прототип переходного периода.
 
-**Current state.** `SC_003–SC_018` playable (113 labels) через **ручной** `script.rpy`. `SC_019–SC_027` не отображаются. Choices исполняемы только в hand-authored сценах. Файлы playable-диапазона не менять без отдельного RN-задания.
+**Current state.** `SC_003–SC_018` playable (113 labels) через **ручной** `script.rpy`. `SC_019–SC_027` не отображаются. Choices исполняемы только в hand-authored сценах. N5D добавил dev/test entry для сгенерированного SC_017 V2 (`scenes_v2_generated.rpy`); он не заменяет hand-authored SC_017. Файлы playable-диапазона не менять без отдельного RN-задания.
 
 **Target.** RenPy перестаёт быть «ручным дублёром JSON» и становится генерируемым/подготавливаемым из источника (§3). В будущем — точка интеграции LLM-диалогов (§5) внутри игры.
 
