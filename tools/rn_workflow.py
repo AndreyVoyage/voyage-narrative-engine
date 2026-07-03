@@ -50,6 +50,7 @@ RENPY_V2_EXPORTER_TOOL = Path("tools/renpy_v2_exporter.py")
 PLAYER_EXPERIENCE_V2_TOOL = Path("tools/player_experience_v2.py")
 RENPY_V2_PLAYABLE_EXPORTER_TOOL = Path("tools/renpy_v2_playable_exporter.py")
 RENPY_STATIC_VALIDATOR_TOOL = Path("tools/renpy_static_validator.py")
+LIVE_DEV_LOADER_TOOL = Path("tools/live_dev_json_loader.py")
 
 # Baseline values are detected dynamically from the script and repository state.
 # Avoid adding hard-coded scene-specific constants; use _analyze_script() instead.
@@ -430,6 +431,22 @@ def _run_renpy_static_validator_tool(args: list[str]) -> int:
     """Run the standalone RenPy static validator tool with this Python executable."""
     result = subprocess.run(
         [sys.executable, str(RENPY_STATIC_VALIDATOR_TOOL), *args],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    if result.stdout:
+        print(result.stdout, end="" if result.stdout.endswith("\n") else "\n")
+    if result.stderr:
+        print(result.stderr, end="" if result.stderr.endswith("\n") else "\n")
+    return result.returncode
+
+
+def _run_live_dev_loader_tool(args: list[str]) -> int:
+    """Run the standalone mock live/dev JSON loader tool with this Python executable."""
+    result = subprocess.run(
+        [sys.executable, str(LIVE_DEV_LOADER_TOOL), *args],
         capture_output=True,
         text=True,
         encoding="utf-8",
@@ -1159,6 +1176,24 @@ def cmd_validate_renpy_v2_generated(args: argparse.Namespace) -> int:
 
 
 # ---------------------------------------------------------------------------
+# Command: Live/Dev JSON loader wrappers (N5H)
+# ---------------------------------------------------------------------------
+
+def cmd_live_dev_inspect(args: argparse.Namespace) -> int:
+    print(f"=== RN LIVE DEV INSPECT: {args.scene} ===")
+    return _run_live_dev_loader_tool(["inspect", args.scene])
+
+
+def cmd_live_dev_reload_check(args: argparse.Namespace) -> int:
+    print("=== RN LIVE DEV RELOAD CHECK ===")
+    print(f"base:      {args.base}")
+    print(f"candidate: {args.candidate}")
+    return _run_live_dev_loader_tool(
+        ["reload-check", "--base", args.base, "--candidate", args.candidate]
+    )
+
+
+# ---------------------------------------------------------------------------
 # Command: baseline-report
 # ---------------------------------------------------------------------------
 
@@ -1500,6 +1535,28 @@ def main() -> None:
         help="Output .rpy path (N5A: novel/game/scenes_v2_generated.rpy)",
     )
 
+    p_live_dev_inspect = sub.add_parser(
+        "live-dev-inspect",
+        help="Inspect a V2 scene via the mock live/dev JSON loader",
+    )
+    p_live_dev_inspect.add_argument(
+        "scene",
+        help="Scene identifier or .v2.json path (e.g. SC_017 or scenarios/SCENARIO_017_*.v2.json)",
+    )
+    p_live_dev_inspect.set_defaults(func=cmd_live_dev_inspect)
+
+    p_live_dev_reload_check = sub.add_parser(
+        "live-dev-reload-check",
+        help="Compare two V2 JSON files and classify reload safety",
+    )
+    p_live_dev_reload_check.add_argument(
+        "--base", required=True, help="Base .v2.json scene file"
+    )
+    p_live_dev_reload_check.add_argument(
+        "--candidate", required=True, help="Candidate .v2.json scene file"
+    )
+    p_live_dev_reload_check.set_defaults(func=cmd_live_dev_reload_check)
+
     p_validate_renpy_v2_generated = sub.add_parser(
         "validate-renpy-v2-generated",
         help="Validate the generated V2 RenPy scene (structural + optional SDK lint on temp copy)",
@@ -1637,6 +1694,8 @@ def main() -> None:
         "px-render-v2": cmd_px_render_v2,
         "renpy-playable-v2": cmd_renpy_playable_v2,
         "validate-renpy-v2-generated": cmd_validate_renpy_v2_generated,
+        "live-dev-inspect": cmd_live_dev_inspect,
+        "live-dev-reload-check": cmd_live_dev_reload_check,
         "safety-scan": cmd_safety_scan,
         "validate": cmd_validate,
         "baseline-report": cmd_baseline_report,
