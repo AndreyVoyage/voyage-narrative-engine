@@ -65,13 +65,14 @@
 
 Контракт для будущего dev-only live JSON runtime зафиксирован в `docs/narrative/N5G_LIVE_DEV_JSON_CONTRACT.md`.
 
-Runtime-контракт различает три слоя:
+Runtime-контракт различает четыре слоя:
 
 1. **Python tooling runtime** (`tools/story_runtime_v2.py`) — offline/runtime preview, state-after, availability checks.
 2. **Generated RenPy artifact runtime** (`novel/game/scenes_v2_generated.rpy`) — текущий MVP/release playable путь.
-3. **Future live/dev JSON runtime** — RenPy/Python loader, который читает JSON напрямую; должен следовать N5G.
+3. **External mock/dev loader tooling** (`tools/live_dev_json_loader.py`, N5H) — read-only dev-only инструмент: inspection, address map, state mapping summary, reload-safety classification. Не является runtime внутри RenPy, не пишет в JSON, не делает hot-reload.
+4. **Future live/dev JSON runtime** — RenPy/Python loader, который читает JSON напрямую во время игры; должен следовать N5G.
 
-Текущий RenPy release path **не читает JSON в runtime**. Будущий live/dev путь остаётся dev-only и не заменяет generate-ahead `.rpy` до отдельного решения.
+Текущий RenPy release path **не читает JSON в runtime**. N5H добавляет внешнее read-only tooling, но не заменяет generate-ahead `.rpy` и не реализует live JSON runtime. Будущий live/dev путь остаётся dev-only и не заменяет generate-ahead `.rpy` до отдельного решения.
 
 ---
 
@@ -206,7 +207,7 @@ Beats (`entry_beats`, затем `branches[].beats`) исполняются **п
 
 **Контракт безопасности dev-правок:** правка текста никогда не меняет флаги/ветки/состояние. Поэтому она не ломает continuity и не инвалидирует сейвы (§8).
 
-**Текущее состояние (факт).** Ни live-reload JSON, ни write-back пока нет (SC_003–018 — статичный `.rpy`). Фича реализуема как надстройка после live JSON-runtime. N5F фиксирует Hybrid JSON path: generate-ahead `.rpy` остаётся MVP/release путём, live JSON runtime — будущей dev/edit основой.
+**Текущее состояние (факт).** Ни live-reload JSON внутри RenPy, ни write-back, ни полноценный Dev-edit пока нет (SC_003–018 — статичный `.rpy`). N5H добавляет внешний read-only mock/dev loader (`tools/live_dev_json_loader.py`), который строит address map и классифицирует reload safety, но не перезагружает сцену и не пишет в JSON. Фича полноценного in-place edit реализуема как надстройка после live JSON-runtime. N5F фиксирует Hybrid JSON path: generate-ahead `.rpy` остаётся MVP/release путём, live JSON runtime — будущей dev/edit основой.
 
 ---
 

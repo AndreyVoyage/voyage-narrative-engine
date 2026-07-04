@@ -1,9 +1,10 @@
 # N5G — Live/Dev JSON Contract
 
-> **Status:** CONTRACT ONLY — planning document.
-> **Implementation:** NOT IMPLEMENTED.
+> **Status:** CONTRACT + read-only mock tooling (N5H) implemented.
+> **Implementation:** PARTIAL — `tools/live_dev_json_loader.py` implements read-path inspection, validation reuse, address mapping, state mapping summary, and reload-safety classification. The full live/dev runtime (RenPy loader, write-back, hot-reload, Dev-edit) is NOT IMPLEMENTED.
 > **Date:** 2026-06-27
 > **Baseline:** `4f13f3b80e4d4be458b049be4fd15bed502636e9`
+> **N5I sync:** mock/dev loader status added.
 > **Related docs:** `N5F_HYBRID_JSON_PATH_DECISION.md`, `NARRATIVE_ROADMAP.md`, `STORY_RUNTIME_CONTRACT.md`, `NARRATIVE_ARCHITECTURE.md`
 
 ## Context
@@ -26,9 +27,12 @@ SC_017.v2.json
   -> novel/game/scenes_v2_generated.rpy
   -> reachable dev/test launcher
   -> static RenPy validation
+  -> mock/dev loader inspect/reload-check (N5H)
 ```
 
-Neither live JSON loading nor Dev-edit is implemented.
+N5H added external read-only mock/dev loader tooling (`tools/live_dev_json_loader.py`, `tests/test_live_dev_json_loader.py`, `rn_workflow.py live-dev-inspect`, `rn_workflow.py live-dev-reload-check`).
+
+Neither RenPy live JSON loading, write-back, hot-reload, nor Dev-edit is implemented.
 
 ## Scope
 
@@ -168,6 +172,7 @@ Unsafe reload requires:
 
 ## Consequences
 
-- Dev-edit remains blocked until this contract is implemented in code.
-- The next possible phase after N5G may be a mock/dev loader preflight, not full Dev-edit.
+- N5H completed the external read-only mock/dev loader tooling. It implements parts of this contract at the Python-tooling level and is **not** a RenPy runtime loader.
+- Dev-edit remains blocked until the full live/dev runtime foundation (live JSON read inside RenPy or equivalent runtime, write-back, hot-reload) is implemented.
+- The next possible phase after N5H is further planning/implementation of the full live/dev JSON runtime, not immediate Dev-edit.
 - The generate-ahead release path remains stable and validated.
