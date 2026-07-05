@@ -28,7 +28,7 @@
 ## 2. Current baseline / что есть сейчас
 
 ```text
-HEAD == origin/main == 29f9bdd3811ab016274efcec20334811dc94e8d0
+HEAD == origin/main == 10eaed300cf8f932086ce3013b4a399228d0d418
 SC_003–SC_018: playable через ручной novel/game/script.rpy (113 labels)
 SC_019–SC_027: source-only JSON (в игре не отображаются)
 Live JSON-runtime: НЕТ (RenPy не грузит JSON как сцены)
@@ -58,6 +58,14 @@ N5H — Mock Live/Dev JSON Loader: COMPLETE as external read-only tooling
   - reload safety: SAFE_TEXT_ONLY / UNSAFE_STRUCTURAL
   - does NOT implement RenPy live JSON loader, write-back, hot-reload, or Dev-edit
   - release generate-ahead .rpy path unaffected
+N5J — Generated `.rpy` Freshness Validator: COMPLETE
+  - tools/renpy_static_validator.py
+  - tests/test_renpy_static_validator.py
+  - validate-renpy-v2-generated now checks generated `.rpy` header source path + SHA256 against current V2 JSON SHA256
+  - mismatch / missing source path / missing SHA256 / missing source file fail cleanly with no traceback
+  - existing structural checks and SDK lint behavior are preserved
+  - validator does NOT regenerate `.rpy`
+  - committed `novel/game/scenes_v2_generated.rpy` and `scenarios/SCENARIO_017_SERGEY_WRITES_AGAIN.v2.json` were not modified by N5J
 N5A artifact status: build-safe; reachable from normal start via dev/test opt-in launcher
   (does NOT replace hand-authored SC_017 path)
 N5 (Dev / in-place edit): НЕ реализован
@@ -254,6 +262,26 @@ Narrative docs: зафиксированы (N0); N4D future tracks перене�
 - **Risks.** Перепутать mock/dev loader с полноценным RenPy live loader; начать Dev-edit до готовой runtime-основы.
 - **Blocked-by.** N5G.
 - **Unlocks.** Безопасное планирование full live/dev JSON runtime / Dev-edit.
+
+### N5J — Generated `.rpy` Freshness Validator
+
+- **Goal.** Ensure the committed generated `.rpy` is not stale relative to its source V2 JSON.
+- **Status.** COMPLETE.
+- **Outputs.** Freshness validation integrated into `tools/renpy_static_validator.py`; tests in `tests/test_renpy_static_validator.py`; enforced by `validate-renpy-v2-generated`.
+- **Facts.**
+  - The validator parses `# source:` and `# source SHA256:` lines from the generated `.rpy` header.
+  - The source path is resolved relative to the repo root; absolute paths that escape the repo are rejected.
+  - The validator computes the current SHA256 of the source V2 JSON and compares it with the header hash.
+  - Matching hash passes; mismatch is reported as a stale artifact.
+  - Missing source path, missing SHA256, and missing source file all fail cleanly with a validation error and no traceback.
+  - Existing structural checks, label-collision checks, content-snippet checks, executable-effect checks, and SDK lint behavior are preserved.
+  - The validator does NOT regenerate `.rpy`; it only reports freshness status.
+  - `novel/game/scenes_v2_generated.rpy` and `scenarios/SCENARIO_017_SERGEY_WRITES_AGAIN.v2.json` were not modified by N5J.
+- **Limitation.** Regenerate-and-diff automation is NOT implemented. Default-variable cross-file collision checker is NOT implemented. RenPy live JSON loader, Dev-edit, write-back, and hot-reload remain NOT implemented.
+- **Definition of Done.** `validate-renpy-v2-generated` fails if the generated `.rpy` is stale or its freshness header is missing/invalid; all existing validation gates still PASS.
+- **Risks.** Treating a stale generated `.rpy` as up-to-date; manually patching generated `.rpy` instead of regenerating from JSON.
+- **Blocked-by.** N5B.
+- **Unlocks.** Safer generated-artifact workflow; future regenerate-and-diff automation planning.
 
 ### N5 — Dev / in-place edit mode
 

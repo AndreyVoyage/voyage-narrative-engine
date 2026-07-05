@@ -17,9 +17,9 @@
 
 - V0R3 trial reviewed the generated SC_017 RenPy path in Mode A/offline.
 - Trial result: PASS.
-- Role improvements from trial:
-  - generated artifact freshness checks;
-  - cross-file default variable collision checks;
+- Role improvements identified in V0R3:
+  - generated artifact freshness checks (implemented by N5J as an automated gate in `tools/renpy_static_validator.py` and tested by `tests/test_renpy_static_validator.py`);
+  - cross-file default variable collision checks (still NOT implemented);
   - dev/test launcher isolation PASS/FAIL criteria;
   - SDK lint mandatory vs optional policy;
   - sample generated-scene review output.
@@ -243,9 +243,10 @@ Use this checklist when reviewing Ren'Py output or planning Ren'Py changes.
 ## Generated `.rpy` checklist
 
 - [ ] Generated file has a clear header stating it is auto-generated and non-canonical.
-- [ ] Source path / hash is recorded if available.
-- [ ] Generated artifact freshness — compare header source path/hash against current V2 JSON when possible; if the hash exists, check whether it matches the current source; report risk if freshness cannot be verified.
-- [ ] Regenerate-and-diff — as a guarded validation step when the task permits, regenerate the `.rpy` from JSON and diff against the committed file to detect staleness.
+- [ ] Source path / SHA256 hash are recorded in the header.
+- [ ] Generated artifact freshness — `validate-renpy-v2-generated` now enforces this automatically (N5J): it parses the header source path and SHA256, resolves the path from repo root, computes the current V2 JSON SHA256, and fails cleanly if the header hash is missing, the source is missing, or the hash does not match.
+- [ ] Regenerate-and-diff — NOT automated; remains a guarded manual validation step when the task permits.
+- [ ] Default-variable cross-file collision checks — NOT implemented.
 - [ ] Stale artifact risk — a generated `.rpy` may pass static label checks but still be stale relative to JSON; treat stale generated files as workflow risks, not source-of-truth changes; do not manually patch generated `.rpy` as the canonical fix.
 - [ ] Output is deterministic.
 - [ ] No collision with hand-authored labels (e.g., `sc_017_start` vs `sc_017_v2_start`).
