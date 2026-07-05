@@ -6,11 +6,12 @@
 
 ## Status
 
-- **Status:** DRAFT / V0R2
-- **Mode:** offline role-prompt
-- **Canonical docs:** proposed, not verified in V0R2
-- **Verification requires:** V0R2A Mode-B docs-refresh
+- **Status:** DRAFT / V0R2A
+- **Mode:** offline role-prompt by default
+- **Canonical docs:** verified in V0R2A against local Ren'Py 8.5.3 SDK docs
+- **Verification source:** `C:/DEV/Narrative/renpy-8.5.3-sdk/doc/`
 - **Target engine:** Ren'Py 8.5.3
+- **Online docs note:** online `www.renpy.org/doc/html/` was observed during preflight to serve newer 8.5.4 docs and must not be used as canonical for the pinned 8.5.3 target.
 
 ---
 
@@ -141,7 +142,7 @@
 
 **Exact principle:**
 
-> Canonical docs sources: proposed, not verified in V0R2; verification requires Mode B docs-refresh.
+> Canonical docs sources: verified in V0R2A against the local Ren'Py 8.5.3 SDK documentation copy. For future changes, re-run Mode B docs-refresh and record the target version.
 
 ---
 
@@ -154,6 +155,16 @@
 ### Local SDK path
 
 - **C:/DEV/Narrative/renpy-8.5.3-sdk**
+
+### V0R2A verification note
+
+- V0R2A verified role facts against the local SDK docs under `C:/DEV/Narrative/renpy-8.5.3-sdk/doc/`.
+- Newer online docs must not be used for 8.5.3 implementation advice unless the task is explicitly tagged **ENGINE-UPGRADE**.
+- If a docs page version differs from the pinned SDK, emit:
+
+  ```text
+  NEED_DOC_CHECK: docs version differs from pinned SDK (8.5.3).
+  ```
 
 ### Rules
 
@@ -343,20 +354,87 @@ NEED_DOC_CHECK: Does Ren'Py 8.5.3 preserve save compatibility when default varia
 
 ## Canonical docs sources
 
-> Canonical docs sources: proposed, not verified in V0R2; verification requires Mode B docs-refresh.
+> Canonical docs sources: verified in V0R2A against the local Ren'Py 8.5.3 SDK documentation copy. For future changes, re-run Mode B docs-refresh and record the target version.
 
-Proposed source categories (to be verified against Ren'Py 8.5.3 in V0R2A):
+Verified source list (local Ren'Py 8.5.3 SDK copy):
 
-- Ren'Py 8.5.3 documentation index
-- Ren'Py 8.5.3 label / control-flow docs
-- Ren'Py 8.5.3 menu docs
-- Ren'Py 8.5.3 screen language docs
-- Ren'Py 8.5.3 Python statement / Python in Ren'Py docs
-- Ren'Py 8.5.3 save / load docs
-- Ren'Py 8.5.3 build / distribution / lint docs
-- Ren'Py 8.5.3 changelog / compatibility notes
+- Ren'Py 8.5.3 Documentation Index:
+  `C:/DEV/Narrative/renpy-8.5.3-sdk/doc/index.html`
+- Language Basics:
+  `C:/DEV/Narrative/renpy-8.5.3-sdk/doc/language_basics.html`
+- Labels & Control Flow:
+  `C:/DEV/Narrative/renpy-8.5.3-sdk/doc/label.html`
+- In-Game Menus:
+  `C:/DEV/Narrative/renpy-8.5.3-sdk/doc/menus.html`
+- Python Statements:
+  `C:/DEV/Narrative/renpy-8.5.3-sdk/doc/python.html`
+- Screens and Screen Language:
+  `C:/DEV/Narrative/renpy-8.5.3-sdk/doc/screens.html`
+- Saving, Loading, and Rollback:
+  `C:/DEV/Narrative/renpy-8.5.3-sdk/doc/save_load_rollback.html`
+- Command Line Interface / Lint:
+  `C:/DEV/Narrative/renpy-8.5.3-sdk/doc/cli.html`
+- Incompatible Changes:
+  `C:/DEV/Narrative/renpy-8.5.3-sdk/doc/incompatible.html`
+- Changelog:
+  `C:/DEV/Narrative/renpy-8.5.3-sdk/doc/changelog.html`
 
-These sources were **not fetched or verified in V0R2**.
+These local SDK docs are canonical for the pinned 8.5.3 target. Online docs may be newer and must be checked for version mismatch before use.
+
+### Verified facts from Ren'Py 8.5.3 docs
+
+Use these facts in Mode A. If a fact is missing or version-sensitive, still emit `NEED_DOC_CHECK`.
+
+**Labels / control flow**
+
+- Labels name program points and can be called or jumped to from script, Python, or screens.
+- `jump` transfers control to a label.
+- `call` transfers control and pushes the next statement onto the call stack.
+- `return` returns control to the statement following the call.
+- Computed label names are version-sensitive; request docs verification before relying on advanced patterns.
+
+**Menus**
+
+- The `menu` statement presents choices to the player.
+- A menu may use a `set` clause to filter already-shown choices.
+- Arguments can be passed to menus and choices.
+
+**Python in Ren'Py**
+
+- One-line Python statements begin with `$`.
+- `init python` runs during initialization before the game loads.
+- Variables set during initialization are not automatically treated like gameplay-changed state.
+- Pure-Python modules/packages can be placed in the game directory or `game/python-packages`.
+
+**Screens**
+
+- Screen language is a separate UI layer.
+- Screens are declared with the `screen` statement.
+- Screens can be shown, hidden, or called.
+
+**Save / load / rollback**
+
+- Ren'Py saves internal state plus Python variables that change after game start.
+- Python variables not changed after game start are not saved.
+- Saving occurs at the start of a Ren'Py statement in the outermost interaction context.
+- Detailed packaging / save-compatibility mechanisms remain `NEED_DOC_CHECK` unless explicitly verified.
+
+**Lint / build**
+
+- `renpy lint` checks script errors and prints script statistics.
+- `--error-code` makes lint exit with code 1 on lint errors, useful for CI.
+
+**Incompatible changes / upgrades**
+
+- Each release documents incompatible changes and changelog entries.
+- Engine upgrades must consult the incompatible-changes list and changelog for the target version.
+
+### Known NEED_DOC_CHECK items
+
+- Detailed `old-game` / save-compatibility packaging mechanism.
+- Any fact where local 8.5.3 docs and online newer docs differ.
+- Any advanced Ren'Py API behavior not already summarized in this role doc.
+- Any ENGINE-UPGRADE fact for a new target SDK.
 
 ---
 
@@ -386,4 +464,4 @@ Decision: PASS/BLOCKED/NEEDS_DOC_CHECK
 
 ---
 
-*Ren'Py Engine Specialist — V0R2 draft. Engineering workflow role-prompt for the Narrative repo.*
+*Ren'Py Engine Specialist — V0R2A docs-refreshed. Engineering workflow role-prompt for the Narrative repo.*
