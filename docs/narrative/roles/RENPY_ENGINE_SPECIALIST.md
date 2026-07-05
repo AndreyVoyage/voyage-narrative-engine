@@ -13,6 +13,18 @@
 - **Target engine:** Ren'Py 8.5.3
 - **Online docs note:** online `www.renpy.org/doc/html/` was observed during preflight to serve newer 8.5.4 docs and must not be used as canonical for the pinned 8.5.3 target.
 
+### V0R3 trial note
+
+- V0R3 trial reviewed the generated SC_017 RenPy path in Mode A/offline.
+- Trial result: PASS.
+- Role improvements from trial:
+  - generated artifact freshness checks;
+  - cross-file default variable collision checks;
+  - dev/test launcher isolation PASS/FAIL criteria;
+  - SDK lint mandatory vs optional policy;
+  - sample generated-scene review output.
+- No code or runtime changes were made by V0R3.
+
 ---
 
 ## Role identity
@@ -232,12 +244,36 @@ Use this checklist when reviewing Ren'Py output or planning Ren'Py changes.
 
 - [ ] Generated file has a clear header stating it is auto-generated and non-canonical.
 - [ ] Source path / hash is recorded if available.
+- [ ] Generated artifact freshness — compare header source path/hash against current V2 JSON when possible; if the hash exists, check whether it matches the current source; report risk if freshness cannot be verified.
+- [ ] Regenerate-and-diff — as a guarded validation step when the task permits, regenerate the `.rpy` from JSON and diff against the committed file to detect staleness.
+- [ ] Stale artifact risk — a generated `.rpy` may pass static label checks but still be stale relative to JSON; treat stale generated files as workflow risks, not source-of-truth changes; do not manually patch generated `.rpy` as the canonical fix.
 - [ ] Output is deterministic.
 - [ ] No collision with hand-authored labels (e.g., `sc_017_start` vs `sc_017_v2_start`).
 - [ ] Hand-authored `script.rpy` is not modified unless explicitly tasked.
 - [ ] Effects (`v2_flags`, `v2_completed_scenes`, `v2_levels`, `v2_relationships`) are represented safely.
 - [ ] Completion flags / state updates are reviewed.
 - [ ] No manual edits inside the generated file are treated as source.
+
+---
+
+## Dev/test launcher isolation criteria
+
+Use these PASS/FAIL criteria when reviewing a generated V2 scene that is reachable from `label start:`.
+
+PASS if:
+- the dev/test generated path is opt-in (e.g., a clearly labeled menu item);
+- the hand-authored player-facing path remains available;
+- generated labels use an isolated namespace such as `_v2`;
+- there are no label collisions between generated and hand-authored files;
+- the release path is not silently replaced;
+- docs clearly state whether the generated path is proof/dev/test or player-facing.
+
+FAIL if:
+- the generated path replaces the player-facing path without an explicit task;
+- hand-authored labels are removed or overwritten;
+- generated labels collide with existing labels;
+- the release path depends on live/dev JSON without an approved implementation;
+- docs claim release promotion without validation.
 
 ---
 
@@ -254,6 +290,22 @@ Use this checklist when reviewing Ren'Py output or planning Ren'Py changes.
   - future `v2_history`
 - [ ] Review save compatibility risk when source JSON or generated `.rpy` changes.
 - [ ] Require Mode B for version-specific save/load claims.
+
+---
+
+## Default variable cross-file collision checklist
+
+- [ ] List `default` declarations in generated `.rpy`.
+- [ ] Compare against hand-authored `.rpy` files when task scope includes them.
+- [ ] Check for duplicate or conflicting `v2_*` store variables.
+- [ ] Confirm project-owned state names:
+  - `v2_flags`
+  - `v2_completed_scenes`
+  - `v2_levels`
+  - `v2_relationships`
+  - future `v2_settings`
+  - future `v2_history`
+- [ ] If a collision checker is not present in tooling, report the collision check as manual / recommended validation.
 
 ---
 
@@ -320,7 +372,23 @@ py tools/rn_workflow.py live-dev-inspect SC_017
 py -m unittest discover -s tests -p "test_live_dev_json_loader.py"
 ```
 
-### SDK lint (use only when SDK exists and task explicitly needs SDK lint)
+### SDK lint policy
+
+SDK lint is recommended / standard for RenPy-facing changes when the local pinned SDK exists.
+
+Mandatory for:
+- changes to generated `.rpy`;
+- changes to `script.rpy`;
+- changes to RenPy exporter output structure;
+- changes to labels / menus / jumps / returns;
+- changes intended for the release path.
+
+Optional / read-only advisory for:
+- pure docs-only role updates;
+- read-only audits;
+- non-RenPy Python tooling that does not affect `.rpy`.
+
+Run with explicit SDK path:
 
 ```bash
 py tools/rn_workflow.py validate-renpy-v2-generated --require-sdk-lint --sdk-path "C:/DEV/Narrative/renpy-8.5.3-sdk"
@@ -462,6 +530,28 @@ Stop conditions:
 Decision: PASS/BLOCKED/NEEDS_DOC_CHECK
 ```
 
+### Sample generated V2 scene review output
+
+Compact example for a generated V2 scene review:
+
+```text
+=== RENPY ENGINE SPECIALIST REVIEW ===
+Mode: A/OFFLINE
+Target engine: Ren'Py 8.5.3
+Target: generated V2 scene
+Decision: PASS / NEEDS_DOC_CHECK / BLOCKED
+
+Findings:
+- labels/menus/flow:
+- generated `.rpy` freshness:
+- source boundary:
+- state/save/load:
+- dev/test launcher isolation:
+- live/dev loader boundary:
+- validation:
+NEED_DOC_CHECK:
+```
+
 ---
 
-*Ren'Py Engine Specialist — V0R2A docs-refreshed. Engineering workflow role-prompt for the Narrative repo.*
+*Ren'Py Engine Specialist — V0R4 role-improved. Engineering workflow role-prompt for the Narrative repo.*
