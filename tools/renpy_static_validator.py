@@ -179,6 +179,95 @@ def check_required_content(result: ValidatorResult) -> None:
             result.add_error(f"missing required content snippet: {snippet!r}")
 
 
+def parse_generated_header(path: Path) -> tuple[str | None, str | None]:
+    """Parse source path and SHA256 from generated .rpy header comments."""
+    source_path: str | None = None
+    source_sha: str | None = None
+    try:
+        text = path.read_text(encoding="utf-8")
+    except Exception:
+        return (None, None)
+    for line in text.splitlines()[:50]:
+        stripped = line.strip()
+        if not stripped.startswith("#"):
+            continue
+        sha_match = re.match(
+            r"^#\s*(?:[Ss]ource\s+)?[Ss][Hh][Aa]256\s*:\s*([0-9a-fA-F]+)$",
+            stripped,
+        )
+        if sha_match and source_sha is None:
+            source_sha = sha_match.group(1).lower()
+            continue
+        src_match = re.match(r"^#\s*[Ss]ource\s*:\s*(.+)$", stripped)
+        if src_match and source_path is None:
+            value = src_match.group(1).strip()
+            lower = value.lower()
+            if lower.startswith("scene id") or lower.startswith("sha256"):
+                continue
+            # Skip if value looks like a 64-char hex string without separators.
+            if len(value) == 64 and all(c in "0123456789abcdef" for c in lower):
+                continue
+            source_path = value
+    return (source_path, source_sha)
+
+
+def resolve_source_path(source_header: str, repo_root_path: Path) -> Path:
+    """Resolve a header source path relative to repo root or absolute."""
+    raw = source_header.strip()
+    if not raw:
+        raise ValueError("empty source path")
+    candidate = Path(raw)
+    if candidate.is_absolute():
+        return candidate.resolve()
+    return (repo_root_path / candidate).resolve()
+
+
+def check_generated_source_freshness(
+    result: ValidatorResult,
+    generated_path: Path | None = None,
+    repo_root_path: Path | None = None,
+) -> None:
+    """Verify that the generated .rpy source SHA256 matches the current source JSON."""
+    generated = generated_path or generated_rpy_path()
+    root = repo_root_path or repo_root()
+    if not generated.exists():
+        return
+
+    source_header, sha_header = parse_generated_header(generated)
+    if source_header is None:
+        result.add_error("generated file header missing source path")
+        return
+    if sha_header is None:
+        result.add_error("generated file header missing source SHA256")
+        return
+
+    try:
+        source_path = resolve_source_path(source_header, root)
+    except Exception as exc:
+        result.add_error(f"could not resolve source path {source_header!r}: {exc}")
+        return
+
+    if not source_path.exists():
+        result.add_error(f"generated file source not found: {source_path}")
+        return
+
+    # Guard against relative paths that escape the repo root.
+    if not source_path.is_absolute():
+        try:
+            if not source_path.is_relative_to(root.resolve()):
+                result.add_error(f"source path escapes repo root: {source_path}")
+                return
+        except Exception:
+            pass
+
+    current_sha = file_sha256(source_path).lower()
+    if current_sha != sha_header:
+        result.add_error(
+            f"generated file is stale: source SHA256 mismatch "
+            f"(header={sha_header}, current={current_sha})"
+        )
+
+
 def check_executable_effects(result: ValidatorResult) -> None:
     path = generated_rpy_path()
     if not path.exists():
@@ -222,6 +311,7 @@ def run_structural_validation() -> ValidatorResult:
     check_required_generated_labels(result)
     check_forbidden_generated_labels(result)
     check_required_content(result)
+    check_generated_source_freshness(result)
     check_executable_effects(result)
     check_no_label_collisions(result)
     check_key_handauthored_labels(result)
