@@ -11,7 +11,14 @@
 
 **Главная задача:** персонажи и сценарии создаются через каскадный pipeline ролей R1–R8, хранятся в модульной структуре `personas/[id]/`, а при сборке runtime-сценария собираются в монофайл (JSON или COMPACT Markdown), который загружается в чат LLM для ведения игры.
 
+**Управление разработкой:** VNE является managed project под Voyage Framework — external dev-OS для задач, quality gates и аудита. Framework не является story runtime и не смешивается с VNE persona pipeline.
+
 **Тип репозитория:** спецификационный. Основные артефакты — Markdown-спецификации, JSON-модули, промпты ролей и модули персонажей. Исполняемый код — только вспомогательные Python- и Bash-утилиты для сборки, валидации и постобработки сессий.
+
+**Три слоя (не смешивать в одной задаче):**
+1. **VNE Content / Persona / Narrative Runtime** — `personas/`, `scenarios/`, `roles/` (R1–R8), `core/`. Runtime: пользователь копирует собранный промпт в LLM-чат.
+2. **Voyage Framework Dev-OS** — `.voyage/` (config scaffold), `tools/vne_adapter.py` (pass-through shim). External dev-OS, не story runtime.
+3. **N5 RenPy / JSON Technical Track** — `novel/`, `docs/narrative/`, `tools/vne_to_renpy/`. Active shadow track, не formalized в `.voyage/project.yaml`.
 
 **Рабочий язык:** русский для всего narrative-контента, механик, комментариев и внутриигрового текста. Идентификаторы кода и имён файлов — на английском или транслите.
 
@@ -20,19 +27,65 @@
 ## Что этот проект НЕ является
 
 - ❌ Не веб-сервис — нет HTTP API, Docker, Kubernetes.
+
 - ❌ Не игра с рендерером — визуалы генерируются отдельными image-generation промптами.
 - ❌ Не полностью автоматизированный runtime — пользователь копирует собранный монофайл в чат с LLM.
 - ❌ Не Python/Node/Rust/Go приложение в корне — в корне нет `pyproject.toml`, `package.json`, `Cargo.toml`.
-- ❌ Не `framework-voyage-v2` и не generic AI-OS — в репозитории есть встроенные подпроекты `framework-voyage-mvp/` и `DEVNarrativeFramework-voyage-mvp/`, но это отдельный dev-OS фреймворк, а не runtime VNE.
+- ❌ Не generic AI-OS — VNE использует Voyage Framework как external dev-OS для управления задачами и quality gates, но Framework не является частью repo и не является story runtime.
 
 ---
 
+## Integration Boundary: три слоя VNE
+
+VNE repo содержит три orthogonal слоя. Агент должен знать, в каком слое он работает, и не смешивать их.
+
+### Слой 1: VNE Content / Persona / Narrative Runtime
+- Персонажи (`personas/`), сценарии (`scenarios/`), роли (`roles/` R1–R8), core baseline (`core/`).
+- Runtime: пользователь копирует собранный промпт в LLM-чат (Kimi mobile, 200K tokens).
+- Главный инструмент: `build_prompt_modular.py`.
+- Не требует Framework для работы.
+
+### Слой 2: Voyage Framework Dev-OS
+- External dev-OS для управления задачами, quality gates, аудитом.
+- `.voyage/` — tracked config scaffold (`project.yaml`, `roles.yaml`, `task_templates`).
+- `tools/vne_adapter.py` — optional pass-through shim (fallback на прямые Python-скрипты).
+- Chronicler/events не инициализированы в этом clone.
+- Framework ≠ story runtime. Framework не генерирует narrative.
+
+### Слой 3: N5 RenPy / JSON Technical Track
+- Ren'Py проект в `novel/`, JSON contract в `docs/narrative/`.
+- Shadow track: активен фактически, но не formalized в `.voyage/project.yaml`.
+- Отдельный pipeline от persona/runtime.
+
+### Role Namespaces (не смешивать)
+| Namespace | Роли | Где описаны | Назначение |
+|-----------|------|-------------|------------|
+| Narrative R1–R8 | Interviewer, Psychologist, Sexologist... | `roles/ROLE_*` | Создание персонажей |
+| Support | Session Finalizer, State Manager, Visual Extractor... | `roles/ROLE_*` | Вспомогательные narrative-роли |
+| Dev-OS | `vne_canon_guard`, `vne_qa`, `vne_renpy_adapter`... | `.voyage/roles.yaml` | Управление задачами разработки |
+| Engineering | Ren'Py Engine Specialist | `docs/narrative/roles/` | N5 implementation expertise |
+
+**Важно:** `roles/` содержит **18+ файлов**, не только R1–R8. Перед созданием новой роли агент обязан проверить существующие role-файлы. AGENTS.md-запрет «не плодить роли» относится к narrative pipeline, а не к dev/workflow-ролям.
+Полный role registry — отдельная задача Q1, не P0B.
+
+### Cross-layer rules
+1. Не запускать `voyage init` без явного approval.
+2. Не коммитить `.voyage/*.db`, `.voyage/*.jsonl`, `.voyage/audit*`.
+3. Не смешивать persona/runtime task с N5 RenPy task.
+4. Не добавлять `pyproject.toml` в корень VNE.
+5. Не formalize N5 в `.voyage/project.yaml` без отдельного approval / отдельной задачи.
+
+---
 ## Источники правды (по приоритету)
 
 1. `AGENTS.md` (этот файл).
 2. `.voyage/project.yaml` — project config, canonical sources, quality gates.
+2a. `FRAMEWORK_VNE_INTEGRATION.md` — boundary между VNE и Voyage Framework.
 3. `docs/VOYAGE_MASTER_PLAN_v1.0.md` — стратегия развития, дорожная карта, приоритеты.
 4. `docs/VOYAGE_MASTER_DOCUMENT_v3.md` — архитектурная vision.
+4a. `docs/narrative/NARRATIVE_ROADMAP.md` — N5 RenPy/JSON track roadmap.
+4b. `docs/narrative/N5F_HYBRID_JSON_PATH_DECISION.md` — JSON contract decision.
+4c. `docs/narrative/NARRATIVE_FUTURE_TRACKS_v1.md` — future tracks: Character Aside, Voice Layer, N6 planning.
 5. `core/` — baseline-таблицы:
    - `core/VSCNO_BASELINE_TABLE.md`
    - `core/AD_AVAILABILITY_MATRIX.md`
@@ -43,6 +96,11 @@
 8. `docs/03_ASSEMBLY_GUIDE_v2.1.md`
 9. `docs/07_PERSONA_MODULAR_ARCHITECTURE.md`
 10. `schemas/persona_schema_v3_2_VOYAGE.json`
+
+**LEGACY (не использовать как источник правды):**
+- `SPEC_PART_1_2.md` — заменён на `docs/01_MODULAR_ARCHITECTURE_v2.2.md` + `docs/VOYAGE_MASTER_DOCUMENT_v3.md`.
+- `SPEC_PART_3.md` — заменён на `docs/VOYAGE_MASTER_DOCUMENT_v3.md` + `docs/03_ASSEMBLY_GUIDE_v2.1.md`.
+- `PRELOAD_VNE_v3.2.1.md` — устарел; текущий runtime использует `build_prompt_modular.py`.
 
 **Не доверяй `README.md` и `README_MODULAR.md` как источнику архитектуры** — они могут быть устаревшими.
 
@@ -56,11 +114,19 @@ voyage-narrative-engine/
 ├── README.md                         # быстрый старт для людей (может быть устаревшим)
 ├── README_MODULAR.md                 # модульная архитектура (может быть устаревшим)
 ├── BUILD_COMMANDS.md                 # команды сборки промптов
-├── .voyage/                          # project config + dev roles
+├── .voyage/                          # project config + dev roles (tracked scaffold, not active DB)
 │   ├── project.yaml                  # canonical sources, quality gates, tracks
-│   └── roles.yaml
+│   ├── roles.yaml
+│   └── task_templates/
 ├── core/                             # baseline-таблицы (VSCNO, AD, internal_state, memory)
 ├── docs/                             # архитектурные спецификации и гайды
+│   └── narrative/                    # N5/N6 narrative architecture, JSON contract, roadmap
+│       ├── NARRATIVE_ROADMAP.md
+│       ├── NARRATIVE_FUTURE_TRACKS_v1.md
+│       ├── N5F_HYBRID_JSON_PATH_DECISION.md
+│       ├── N5G_LIVE_DEV_JSON_CONTRACT.md
+│       ├── roles/RENPY_ENGINE_SPECIALIST.md
+│       └── ...
 ├── personas/                         # персонажи: монолитные JSON + модульные директории
 ├── scenarios/                        # сценарии: монолитные JSON/MD + модульные директории
 ├── state/                            # стартовые state-шаблоны
@@ -76,16 +142,17 @@ voyage-narrative-engine/
 │   ├── build_prompt.sh               # legacy generic builder
 │   └── update_state.sh               # legacy state updater
 ├── tools/                            # exporters, adapters
-│   └── vne_adapter.py                # адаптер к Framework CLI
+│   ├── vne_adapter.py                # адаптер к Framework CLI (optional pass-through shim)
+│   └── vne_to_renpy/                 # RenPy exporter (N5 track)
 ├── runtime_tools/                    # runtime prompts и инструменты
+├── novel/                            # N5 RenPy MVP проект (active technical track)
+│   └── game/                         # .rpy файлы, options.rpy, script.rpy
+├── visual_prompts/                   # Image generation prompts для персонажей
 ├── archive/                          # legacy: монолиты, старые версии
-├── archive_dist/                     # архивные копии скриптов сборки
-├── framework-voyage-mvp/             # отдельный Python dev-OS подпроект
-├── DEVNarrativeFramework-voyage-mvp/ # дубликат/субтри framework-voyage-mvp
 ├── build_prompt_modular.sh           # текущий shell-враппер для сборки
 ├── build_prompt_v2_legacy.sh         # legacy сборщик монолитов
 ├── build_prompt.sh                   # symlink на legacy
-├── session_finalize.py               # финализатор сессий
+├── session_finalize.py               # [LEGACY] финализатор сессий (монолиты only)
 ├── integration_test.py               # интеграционные тесты
 └── ...                               # прочие legacy-скрипты и артефакты
 ```
@@ -108,7 +175,7 @@ voyage-narrative-engine/
 | Валидация | Python 3 | Проверка модулей, сценариев, интеграционные тесты |
 | VCS | Git | Версионирование immutable core, mutable personas и state |
 
-**В корне VNE нет пакетных конфигов** (`pyproject.toml`, `package.json`, `Cargo.toml`). Они есть только во встроенных подпроектах `framework-voyage-mvp/` и `DEVNarrativeFramework-voyage-mvp/`.
+**В корне VNE нет пакетных конфигов** (`pyproject.toml`, `package.json`, `Cargo.toml`). Voyage Framework устанавливается как external dev-OS (отдельный clone).
 
 ---
 
@@ -151,7 +218,7 @@ py scripts/python/test_runtime_all.py
 py scenarios/sauna_extended/scenario_validator.py sauna_extended
 ```
 
-### Финализировать сессию
+### [LEGACY] Финализировать сессию (только для монолитных JSON)
 
 ```bash
 # Пробный прогон
@@ -160,6 +227,8 @@ py session_finalize.py --log sessions/raw/session.log --scenario sauna_quartet -
 # Сохранить артефакты
 py session_finalize.py --log sessions/raw/session.log --scenario sauna_quartet
 ```
+
+> **Важно:** `session_finalize.py` ожидает плоскую структуру из монолитных JSON. Для модульных персон используй `build_prompt_modular.py`.
 
 **Выход:** `sessions/state/`, `sessions/memory/`, `sessions/stories/`, `sessions/visuals/`.
 
@@ -187,8 +256,7 @@ py -m json.tool schemas/persona_schema_v3_2_VOYAGE.json > nul && echo OK
 - **Монолитные JSON:** `KIRA_MODULE_v15.json`, `SERGEY_MODULE_v4.json`, `MARINA_MODULE_v2.json`, `MAKSIM_MODULE_v2.json`, `ANDREY_SENIOR_MODULE_v1.2.json`, `ANDREY_JUNIOR_MODULE_v2.1.json`, `EGOR_MODULE_v1.json`, `OLGA_MODULE_v2_FIXED.json`, `USER_MODULE.json`, `FEMALE_USER_MODULE.json`.
 - **Модульные директории:** `kira/`, `marina/`, `sergey/`, `maksim/`, `andrey_senior/`, `andrey_junior/`, `egor/`, `olga/`, `user/`, `female_user/`.
 
-Каждая модульная персона содержит `INDEX.json` (манифест) и стандартные поддиректории:
-`core/`, `psychology/`, `levels/`, `speech/`, `autonomous/`, `dynamics/`, `memory/`, `relationships/`, `environment/`, `safety/`, `visual/`, `sexology/`, `meta/`.
+Каждая модульная персона содержит `INDEX.json` (манифест) и **минимум 12 поддиректорий**. Эталон полной структуры — `personas/kira/` (16+ поддиректорий). Не все персонажи имеют полный набор; optional-модули (`speech/`, `dynamics/`, `memory/`) gracefully пропускаются `runtime_loader.py`.
 
 ### `scenarios/`
 
@@ -224,6 +292,7 @@ Baseline-таблицы, от которых зависят все модули:
 - `build_prompt_modular.py` — основной сборщик промптов.
 - `runtime_loader.py` — загрузчик модульных персон.
 - `test_runtime_all.py` — тест загрузки всех модульных персон.
+- `session_retrospector.py` — offline regex-based session analysis (retrospective).
 - `refactor_universal.py` — миграция монолита → модули.
 - `fix_missing_data.py` — починка потерянных ключей.
 - `analyze_sizes.py` — сравнение размеров.
@@ -234,7 +303,8 @@ Baseline-таблицы, от которых зависят все модули:
 
 ### `tools/`
 
-- `vne_adapter.py` — адаптер для интеграции с Framework CLI.
+- `vne_adapter.py` — адаптер для интеграции с Framework CLI (optional pass-through shim).
+- `vne_to_renpy/` — RenPy exporter (N5 track).
 
 ---
 
@@ -253,6 +323,8 @@ Baseline-таблицы, от которых зависят все модули:
 
 Дополнительные роли: `COMP`, `V`, `SE`, `NE`, `SM`, `PA`, `TD`, `GCA`, `IE`, `MIA` — используются только в существующих файлах, новые роли не создавать.
 
+**Dev-роли (Voyage Framework layer):** `vne_canon_guard`, `vne_retrospector_dev`, `vne_renpy_adapter`, `vne_qa`, `vne_schema_engineer` — описаны в `.voyage/roles.yaml`. Они управляют задачами разработки и **НЕ равны** narrative-ролям R1–R8. Не путать namespace.
+
 ---
 
 ## Конвенции
@@ -263,8 +335,8 @@ Baseline-таблицы, от которых зависят все модули:
 - Примеры правильных имён:
   - `ROLE_6_MODULAR_ARCHITECT_v2.3.md` ✅
   - `07_PERSONA_MODULAR_ARCHITECTURE.md` ✅
-  - `ROLE_6_MODULAR_ARCHITECT v2.3.md` ❌
-  - `07_PERSONA_MODULAR_ARCHITECTURE .md` ❌
+- Примеры deprecated / orphaned:
+  - `ROLE_6_PERSONA_ARCHITECT_v2.2_PROMPT.md` ❌ (deprecated, используй v2.3)
 
 ### VSCNO шкала
 
@@ -301,7 +373,8 @@ py scripts/python/build_prompt_modular.py sauna_extended standard AG3
 # Schema — валидация JSON Schema
 py -m json.tool schemas/persona_schema_v3_2_VOYAGE.json
 
-# Retrospective — session_retrospector (ещё не реализован)
+# Retrospective — offline session analysis
+py scripts/python/session_retrospector.py --help
 ```
 
 ### Рекомендуемый pre-commit чеклист
@@ -341,7 +414,7 @@ py -m json.tool schemas/persona_schema_v3_2_VOYAGE.json
 
 ## Запреты (строго)
 
-1. **Не создавать новые роли** — используй только существующие R1–R8, COMP, V, SE, NE, SM, PA, TD, GCA, IE, MIA.
+1. **Не создавать новые роли** — используй только существующие R1–R8, COMP, V, SE, NE, SM, PA, TD, GCA, IE, MIA. Перед созданием новой роли проверь `roles/` — там 18+ файлов.
 2. **Не придумывать новые механики** — все формулы, форматы, блоки — только из существующих спецификаций.
 3. **Не менять архитектуру** — если видишь противоречие, зафиксируй как `[CONFLICT]` и предложи уточнить, не исправляй сам.
 4. **Не добавлять пакетные конфиги** (`pyproject.toml`, `package.json`, `Cargo.toml`, `setup.py`) в корень VNE без явного разрешения — это спецификационный репозиторий.
@@ -357,7 +430,8 @@ py -m json.tool schemas/persona_schema_v3_2_VOYAGE.json
 - **`session_finalize.py` и модульные персонажи:** финализатор ожидает плоскую структуру VSCNO из монолитов; при попытке загрузить модульную персону возможен `TypeError`. Перед использованием с модульными персонами требуется адаптация.
 - **Legacy-скрипты:** `build_prompt.sh`, `build_prompt_v2_legacy.sh`, `install_voyage_update.sh`, `kira-update-hair.sh`, `update_state.sh`, `scripts/build_prompt.sh` ссылаются на устаревшие пути и монолиты. Перед использованием проверять существование файлов.
 - **`README.md` / `README_MODULAR.md`** содержат устаревшие ссылки и статусы персонажей.
-- **Встроенные framework-подпроекты** (`framework-voyage-mvp/`, `DEVNarrativeFramework-voyage-mvp/`) имеют собственные `AGENTS.md` и `pyproject.toml`; они не являются частью runtime VNE.
+- **External Framework dependency:** Voyage Framework устанавливается отдельно (не в repo). `vne_adapter.py` — pass-through shim для CLI; без Framework gates fallback на прямые Python-скрипты. `.voyage/` — tracked config scaffold, not active orchestration DB in this clone (chronicler/events not initialized).
+- **N5 shadow track:** N5 RenPy/JSON track активен в `docs/narrative/` и `novel/`, но не formalized в `.voyage/project.yaml` tracks. Это создаёт риск, что агенты не видят N5 при чтении только `.voyage/project.yaml`.
 
 ---
 
@@ -376,11 +450,12 @@ py scripts/python/build_prompt_modular.py sauna_extended standard AG3 --separate
 # 4. Использовать сгенерированные PROMPT_*.txt в LLM-чате
 #    Сначала PROMPT_SCENARIO.txt, затем персонажи по триггерам.
 
-# 5. После сессии — финализировать
+# 5. [LEGACY] Финализатор сессии (только для монолитных JSON)
 py session_finalize.py --log sessions/raw/session.log --scenario sauna_quartet
+# Для модульных персон используй build_prompt_modular.py
 ```
 
 ---
 
-*Последнее обновление: 2026-06-22*
-> Обновлено: актуальная структура репозитория, реальные команды сборки и тестирования, разграничение монолитной и модульной систем, quality gates из `.voyage/project.yaml`, известные проблемы.
+*Последнее обновление: 2026-07-05*
+> Обновлено: Integration Boundary Layer (три слоя VNE), Framework dev-OS clarification, N5 shadow track, role namespaces (R1–R8 vs dev-roles vs engineering roles), legacy cleanup (PRELOAD, SPEC_PART, framework-voyage-mvp references), session_finalize.py marked [LEGACY], session_retrospector.py confirmed existing, corrected file naming convention.
