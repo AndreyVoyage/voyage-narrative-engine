@@ -1,0 +1,199 @@
+{
+  "id": "SCENARIO_SPORTCOMPLEX_OLGA_ANDREY_JUNIOR_v1.1",
+  "name": "Спорткомплекс: Ольга и Андрей Младший (полная лестница)",
+  "version": "1.1.0",
+  "participants": ["user", "olga", "andrey_junior"],
+  "location": {
+    "name": "sport_complex",
+    "type": "indoor",
+    "rooms": ["spectator_lounge", "olympic_pool", "showers", "locker_room", "wrestling_hall", "coaches_office"],
+    "temperature_range": "28-30°C (pool), 22-24°C (halls), 40-60°C (showers)",
+    "lighting": "bright white (pool), warm fluorescent (halls), soft practical (showers)",
+    "atmosphere": "clean, institutional, but with private corners"
+  },
+  "time": {
+    "season": "autumn",
+    "time_of_day": "evening",
+    "duration_minutes": 180,
+    "narrative_time": "Wednesday evening, almost empty complex"
+  },
+  "timeline": [
+    {
+      "phase_id": "P1_LOUNGE",
+      "name": "Ложе для зрителей",
+      "duration_minutes": 15,
+      "location": "spectator_lounge",
+      "description": "Ольга наблюдает. Андрей в воде. Начало охоты. У1-А для обоих.",
+      "expected_mood": "predatory_observation",
+      "olga_state": { "target_level": "U1-A", "desire_delta": 0, "anxiety_delta": -1 },
+      "andrey_junior_state": { "target_level": "U1-A", "desire_delta": 0, "anxiety_delta": 2 },
+      "triggers": [
+        { "type": "gaze", "target": "olga", "duration_sec": 5, "effect": "olga.vscno.ОГ +1, andrey_junior.anxiety +1" },
+        { "type": "swim_performance", "target": "andrey_junior", "effect": "competitive_showoff trigger" }
+      ],
+      "flags_set": ["sportcomplex_started", "olga_observing", "andrey_swimming"],
+      "safety_checks": [],
+      "pov_rules": "user_centered"
+    },
+    {
+      "phase_id": "P2_POOL_EDGE",
+      "name": "У бассейна",
+      "duration_minutes": 20,
+      "location": "olympic_pool",
+      "description": "Андрей выходит из воды. Ольга ближе. Флирт через неловкость. У1-Б → У2-А.",
+      "expected_mood": "awkward_flirtation",
+      "olga_state": { "target_level": "U1-B", "desire_delta": 1, "anxiety_delta": -1 },
+      "andrey_junior_state": { "target_level": "U1-B", "desire_delta": 1, "anxiety_delta": 1 },
+      "triggers": [
+        { "type": "wet_body_exposure", "target": "andrey_junior", "effect": "olga.arousal +1" },
+        { "type": "olga_approach", "target": "olga", "effect": "graceful_approach" },
+        { "type": "competitive_showoff", "target": "andrey_junior", "effect": "andrey_junior.speech_competitive +1" }
+      ],
+      "flags_set": ["pool_edge_encounter", "andrey_red", "olga_social_probe"],
+      "safety_checks": [],
+      "pov_rules": "user_centered + olga_mirror"
+    },
+    {
+      "phase_id": "P3_SHOWERS",
+      "name": "Душ",
+      "duration_minutes": 15,
+      "location": "showers",
+      "description": "Ольга заходит без стука. Тело говорит раньше слов. У2-Б → У3-А.",
+      "expected_mood": "physical_tension",
+      "olga_state": { "target_level": "U2-B", "desire_delta": 2, "anxiety_delta": -1 },
+      "andrey_junior_state": { "target_level": "U2-B", "desire_delta": 2, "anxiety_delta": 2 },
+      "triggers": [
+        { "type": "olga_enters_unannounced", "target": "olga", "effect": "physical_first initiative" },
+        { "type": "andrey_freeze", "target": "andrey_junior", "effect": "overwhelmed_freeze" },
+        { "type": "olga_silence_test", "target": "olga", "effect": "silence_test" }
+      ],
+      "flags_set": ["shower_encounter", "andrey_frozen", "olga_physical_first"],
+      "safety_checks": ["U2-B_consent_check"],
+      "pov_rules": "user_centered — Olga AG = 2"
+    },
+    {
+      "phase_id": "P4_LOCKER_WRESTLING",
+      "name": "Раздевалка и зал борьбы (полная лестница)",
+      "duration_minutes": 60,
+      "location": "locker_room + wrestling_hall",
+      "description": "Полная лестница: У3-Б → У4-А → У4-Б → У5-А → У5-Б. Ольга — учительница, он — ученик. Тень, перелом, власть, потеря контроля.",
+      "expected_mood": "dominant_teaching",
+      "olga_state": { "target_level": "U5-B", "desire_delta": 3, "anxiety_delta": -1 },
+      "andrey_junior_state": { "target_level": "U5-B", "desire_delta": 2, "anxiety_delta": 3 },
+      "micro_phases": [
+        {
+          "sub_id": "P4a",
+          "level": "U3-B",
+          "name": "Раздевалка — принятие",
+          "description": "Ольга помогает вытереться. Она принимает, но контролирует. Андрей — между робостью и доверием.",
+          "olga_dialogue": "Хорошо. Приятно. Спасибо. Это... мило.",
+          "andrey_dialogue": "Я... я никогда не говорил такое. Но с тобой... можно?",
+          "triggers": ["light_patronage", "first_touch_extended"]
+        },
+        {
+          "sub_id": "P4b",
+          "level": "U4-A",
+          "name": "Зал борьбы — проверка границ",
+          "description": "Ольга командует. Андрей — ученик. Но тело не слушается. Проверка границ.",
+          "olga_dialogue": "Смотри сюда. Не туда. Сюда. Вот так. Уже лучше. Молодец.",
+          "andrey_dialogue": "Я не знаю, как. Но я хочу. Учишь? Ты учишь. Я учусь. Для тебя. Только.",
+          "triggers": ["command", "training_begin", "boundary_test"]
+        },
+        {
+          "sub_id": "P4c",
+          "level": "U4-B",
+          "name": "Зал борьбы — перелом",
+          "description": "Ольга открывается. Андрей — уязвимость. Перелом. Драма. Тень просыпается.",
+          "olga_dialogue": "Я не контролирую это. И не хочу. Ты — мой. И я — твоя. Не учительница. Просто — я.",
+          "andrey_dialogue": "Я... я мог бы. Нет. Не могу. Ты — моя? Навсегда? Правда?",
+          "triggers": ["vulnerability", "shadow_awakening_check", "breakthrough"]
+        },
+        {
+          "sub_id": "P4d",
+          "level": "U5-A",
+          "name": "Зал борьбы — доминирование",
+          "description": "Ольга — власть. Андрей — сдаётся. Но не полностью. Он учится.",
+          "olga_dialogue": "Ты — мой. Не спорь. Ты не споришь. Умный мальчик. Так. Ещё. Тихо.",
+          "andrey_dialogue": "Я не умею. Но я хочу. Учишь? Ты учишь. Я учусь. Для тебя. Только.",
+          "triggers": ["command", "dominance", "training_peak"]
+        },
+        {
+          "sub_id": "P4e",
+          "level": "U5-B",
+          "name": "Зал борьбы — потеря контроля",
+          "description": "Ольга — инстинкт. Андрей — тело решает. Потеря контроля. Но она всё ещё ведёт.",
+          "olga_dialogue": "Ты — мой. Сейчас. Здесь. Не спорь. Я не могу остановиться. Не мешай.",
+          "andrey_dialogue": "Я не остановлюсь. Не могу. Ты — моя. И я — твой. Всё. Больше ничего не нужно.",
+          "triggers": ["instinct", "loss_of_control", "body_decides"]
+        }
+      ],
+      "flags_set": ["locker_towels", "wrestling_hall_full_ladder", "andrey_shadow_check"],
+      "safety_checks": ["U5-B_consent_check", "shadow_reversal_safety"],
+      "pov_rules": "olga_driven — Olga AG = 3. User may support, resist, or observe."
+    },
+    {
+      "phase_id": "P5_AFTER",
+      "name": "После: интеграция или уход (полная лестница)",
+      "duration_minutes": 60,
+      "location": "coaches_office + shower",
+      "description": "Полная лестница: У6-А → У6-Б → У7-А → У7-Б. Тень, принятие, быт, интеграция.",
+      "expected_mood": "aftermath_choice",
+      "olga_state": { "target_level": "U7-B", "desire_delta": 1, "anxiety_delta": 2 },
+      "andrey_junior_state": { "target_level": "U7-B", "desire_delta": 2, "anxiety_delta": -1 },
+      "micro_phases": [
+        {
+          "sub_id": "P5a",
+          "level": "U6-A",
+          "name": "Тень просыпается",
+          "description": "Андрей — не мальчик, не мужчина. Что-то другое. Желание перевернуть игру.",
+          "olga_dialogue": "Ты — мой. Смотри на меня. Не в пол. На меня. Ты красный. Это мило. Ты — мой.",
+          "andrey_dialogue": "Я... я мог бы. Нет. Не могу. Ты — моя? Навсегда? Правда?",
+          "triggers": ["shadow_reversal", "impulse_vs_fear", "body_decides"]
+        },
+        {
+          "sub_id": "P5b",
+          "level": "U6-B",
+          "name": "Принятие",
+          "description": "Андрей — её. Это не стыдно. Это не слабость. Это просто — есть.",
+          "olga_dialogue": "Ты — мой. И я — твоя. Не навсегда. Но — сейчас. Честно.",
+          "andrey_dialogue": "Я — твой. Это... это много для меня. Но я — твой. Не знаю, как быть другим. Не пробовал. Не хочу.",
+          "triggers": ["acceptance", "integration", "no_theater"]
+        },
+        {
+          "sub_id": "P5c",
+          "level": "U7-A",
+          "name": "Быт",
+          "description": "Нет страсти. Нет тени. Есть — он. Есть — она. Есть — мы. Ольга начинает скучать.",
+          "olga_dialogue": "Отдохни. Ты устал. (смотрит в телефон) Я рядом. Но мне нужно... подумать.",
+          "andrey_dialogue": "Ты кушала? Я приготовил. Не умею, но приготовил. Я — твой. Просто. Как завтрак. Как — есть.",
+          "triggers": ["discard_panic_check", "everyday", "boredom_rises"]
+        },
+        {
+          "sub_id": "P5d",
+          "level": "U7-B",
+          "name": "Интеграция",
+          "description": "Ольга — охотница. Он — её. Принятие природы. Честность.",
+          "olga_dialogue": "Я — такая. Ты — такой. Мы — такие. Ты останешься? Зная, что я — охотница?",
+          "andrey_dialogue": "Я — твой. Не мальчиком. Просто — собой. Ты — моя? Навсегда? Хорошо. Я останусь.",
+          "triggers": ["integrated_huntress", "honesty", "future_choice"]
+        }
+      ],
+      "flags_set": ["aftermath_reached", "user_choice_made", "sportcomplex_completed"],
+      "safety_checks": ["U7-B_consent_check", "discard_trauma_check"],
+      "pov_rules": "user_choice_driven — Olga AG may drop to 0 (discard) or rise to 3 (integrated)."
+    }
+  ],
+  "safety_protocol": {
+    "hard_limits": ["насилие", "принуждение", "публичное унижение без согласия"],
+    "soft_limits": ["грубые слова на ранних фазах (P1-P2)", "физическое доминирование до P4"],
+    "emergency_stop": "СТОП — немедленный сброс: Olga U7-A, Andrey U1-A, user safety priority",
+    "safety_check_moments": ["P3 (U2-B consent)", "P4 (U5-B consent, shadow reversal)", "P5 (U7-B discard trauma)"]
+  },
+  "narrative_constraints": {
+    "format": "ФМДР",
+    "volume_per_turn": "medium",
+    "ag_max": 3,
+    "pov_switching": "allowed_after_P2",
+    "npc_to_npc": "allowed_after_P3 — Olga may command Andrey without user initiation"
+  }
+}
