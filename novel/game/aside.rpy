@@ -169,36 +169,34 @@ init python:
             "mock" if store.vne_aside_config_provider == "local" else "local"
         )
 
-    # Opt-in dev overlay: visible only when RenPy developer mode is enabled.
-    if config.developer:
-        config.overlay_screens.append("aside_dev_overlay")
+    # Overlay visible always (RenPy sets config.developer AFTER init python).
+    config.overlay_screens.append("aside_dev_overlay")
 
 
-# Dev overlay button. Appears only in developer mode (gated above).
+# Dev overlay button. Visible always.
 screen aside_dev_overlay():
     zorder 200
 
-    if config.developer:
-        frame:
-            xalign 0.95
-            yalign 0.05
-            padding (8, 8)
-            background Solid("#20202a")
+    frame:
+        xalign 0.95
+        yalign 0.05
+        padding (8, 8)
+        background Solid("#20202a")
 
-            vbox:
-                spacing 4
+        vbox:
+            spacing 4
 
-                text "N6f dev":
-                    size 14
-                    color "#888888"
+            text "N6f dev":
+                size 14
+                color "#888888"
 
-                textbutton "Aside":
-                    action Jump("aside_dev_entry")
-                    text_size 14
-                    padding (10, 4)
-                    background Solid("#3a4658")
-                    hover_background Solid("#52657f")
-                    text_color "#ffffff"
+            textbutton "Aside":
+                action Jump("aside_dev_entry")
+                text_size 14
+                padding (10, 4)
+                background Solid("#3a4658")
+                hover_background Solid("#52657f")
+                text_color "#ffffff"
 
 
 # Character Aside chat screen. Called repeatedly by aside_chat_loop.
@@ -332,5 +330,16 @@ label aside_chat_loop(character_id, save_slot):
             if turn["fallback"]:
                 $ aside_chat_history.append("⚠ " + turn["warning"])
             $ aside_input_text = ""
+
+    return
+
+
+# Quick entry point for console/direct access.
+label aside_quick:
+    $ aside_save_slot = "dev_slot"
+    $ aside_chat_history = []
+    $ aside_input_text = ""
+
+    call aside_chat_loop("kira", aside_save_slot)
 
     return
