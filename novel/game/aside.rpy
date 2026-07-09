@@ -268,10 +268,14 @@ screen aside_chat_log(character_id="kira", save_slot="dev_slot"):
                 xfill True
 
                 input:
+                    id "aside_input"
                     value VariableInputValue("aside_input_text")
                     length 240
                     xfill True
+                    yminimum 40
                     color "#f4f4f8"
+                    background Solid("#2a2a2a")
+                    padding (8, 8)
 
                 textbutton "Send":
                     action Return("send")
