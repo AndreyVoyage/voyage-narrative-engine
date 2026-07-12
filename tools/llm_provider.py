@@ -116,16 +116,22 @@ def _complete_local(
 ) -> str:
     options = params or {}
     base_url = str(options.get("base_url") or DEFAULT_LOCAL_BASE_URL).rstrip("/")
+    timeout_s = options.get("timeout_s", 30.0)
     payload: dict[str, Any] = {
         "model": model or DEFAULT_LOCAL_MODEL,
         "messages": messages,
         "stream": False,
     }
     for key, value in options.items():
-        if key != "base_url":
+        if key not in ("base_url", "timeout_s"):
             payload[key] = value
 
-    data = _post_json(f"{base_url}/api/chat", payload, headers={})
+    data = _post_json(
+        f"{base_url}/api/chat",
+        payload,
+        headers={},
+        timeout_s=timeout_s,
+    )
     message = data.get("message")
     if isinstance(message, dict) and isinstance(message.get("content"), str):
         return message["content"]
@@ -164,7 +170,13 @@ def _complete_cloud(
     raise LLMProviderError("cloud provider returned no message content")
 
 
-def _post_json(url: str, payload: dict[str, Any], *, headers: dict[str, str]) -> dict[str, Any]:
+def _post_json(
+    url: str,
+    payload: dict[str, Any],
+    *,
+    headers: dict[str, str],
+    timeout_s: float = 30.0,
+) -> dict[str, Any]:
     body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
     request = urllib.request.Request(
         url,
@@ -177,7 +189,22 @@ def _post_json(url: str, payload: dict[str, Any], *, headers: dict[str, str]) ->
         },
     )
     try:
-        with urllib.request.urlopen(request, timeout=30) as response:
+        timeout_value = float(timeout_s)
+    except (TypeError, ValueError):
+        raise LLMProviderError(
+            f"Invalid HTTP timeout value: {timeout_s!r}"
+        )
+
+    if timeout_value <= 0:
+        raise LLMProviderError(
+            f"HTTP timeout must be greater than zero: {timeout_value!r}"
+        )
+
+    try:
+        with urllib.request.urlopen(
+            request,
+            timeout=timeout_value,
+        ) as response:
             raw = response.read().decode("utf-8")
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")
