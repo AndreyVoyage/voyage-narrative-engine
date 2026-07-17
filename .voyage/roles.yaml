@@ -84,3 +84,44 @@ vne_schema_engineer:
   forbidden_paths:
     - personas/
     - novel/
+
+vne_persona_gateway_dev:
+  purpose: "Develops the physically read-only Persona Gateway domain core and separately authorized adapters."
+  can_write_code: true
+  can_write_docs: true
+  can_review: false
+  allowed_paths:
+    - services/persona_gateway/
+    - tests/persona_gateway/
+    - docs/persona_gateway/
+  forbidden_paths:
+    - novel/
+    - scenarios/
+    - .voyage/
+    - roles/
+    - generated/
+    - .github/
+    - voyage_framework/
+
+vne_persona_gateway_qa:
+  purpose: "Independent read-only security, canon, and implementation audit for Persona Gateway."
+  can_review: true
+  can_run_tests: true
+  allowed_paths:
+    - services/persona_gateway/
+    - tests/persona_gateway/
+    - docs/persona_gateway/
+    - personas/
+    - core/
+    - schemas/
+    - tools/aside_memory_store.py
+    - tools/aside_context_builder.py
+    - scripts/python/build_prompt_modular.py
+    - docs/narrative/N7_PERSONA_DATA_GATEWAY_PREFLIGHT_v1.md
+    - docs/narrative/N6_CHARACTER_ASIDE_CONTRACT.md
+  forbidden_paths:
+    - novel/
+    - scenarios/
+    - .voyage/
+    - roles/
+    - generated/

@@ -57,6 +57,10 @@ development_tracks:
     description: "Аудит persona-модулей"
     role: vne_qa
     phase_prefix: PA
+  persona_gateway:
+    description: "Persona Data Gateway — physically read-only domain core and separately authorized adapters"
+    role: vne_persona_gateway_dev
+    phase_prefix: N7
 
 # Архитектурные правила интеграции
 rules:

@@ -206,6 +206,8 @@ _VNE_ROLE_MAP: dict[str, str] = {
     "vne_qa_guard": "qa",
     "vne_schema_engineer": "architect",
     "vne_narrative_editor": "developer",
+    "vne_persona_gateway_dev": "developer",
+    "vne_persona_gateway_qa": "qa",
 }
 
 _VNE_MODE_MAP: dict[str, str] = {
