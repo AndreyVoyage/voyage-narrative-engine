@@ -7,14 +7,11 @@ Real-repository multi-character compatibility tests for PersonaCatalog
 Per the P1b multi-character compatibility read-only preflight
 (``N7_P1B_MULTI_CHARACTER_COMPATIBILITY_READONLY_PREFLIGHT_2026-07-18.md``),
 10 of the 11 persona roots under ``personas/`` that carry a valid
-``INDEX.json`` are fully compatible with the current manifest/extension
-contract: ``andrey_junior``, ``andrey_senior``, ``egor``, ``female_user``,
-``kira``, ``maksim``, ``marina``, ``olga``, ``sergey``, ``user``.
-``nika`` is excluded from this rollout because its manifest allowlists
-``visual/PROMPT_BASE.txt`` -- a real, on-disk ``.txt`` module id, which
-violates the current ``.json``-only extension policy. This file proves
-that exclusion is real (an injected ``nika`` root fails construction) --
-it does not repair, skip, or normalize ``nika`` in any way.
+``INDEX.json`` were initially compatible with the current manifest/extension
+contract.  ``nika`` was previously excluded because its manifest allowlisted
+``visual/PROMPT_BASE.txt`` -- but after the minimal manifest correction
+(N7-NIKA-MANIFEST-COMPATIBILITY-CORRECTION-DRAFT-2026-07-18), all 11
+persona roots now integrate successfully.
 
 These tests read the real repository under ``personas/`` (read-only) but
 never scan it: every character mapping below is an explicit, hardcoded
@@ -36,7 +33,6 @@ import pytest
 from services.persona_gateway.errors import (
     ManifestNotFoundError,
     PersonaModuleNotFoundError,
-    UnsupportedExtensionError,
 )
 from services.persona_gateway.persona_catalog import PersonaCatalog
 
@@ -183,21 +179,32 @@ def test_no_repository_file_changes(repo_root):
 
 
 # ---------------------------------------------------------------------
-# Nika negative test -- must actually fail, not be worked around
+# Nika positive tests -- after manifest correction
 # ---------------------------------------------------------------------
 
-def test_nika_injected_alone_fails_unsupported_extension(repo_root):
+def test_nika_injected_alone_succeeds(repo_root):
+    """After manifest correction, Nika alone constructs successfully."""
     nika_root = repo_root / "personas" / "nika"
-    assert (nika_root / "visual" / "PROMPT_BASE.txt").is_file()
-    with pytest.raises(UnsupportedExtensionError):
-        PersonaCatalog({"nika": nika_root})
+    catalog = PersonaCatalog({"nika": nika_root})
+    refs = catalog.list_characters()
+    assert len(refs) == 1
+    assert refs[0].id == "nika"
+    assert refs[0].name == "Ника"
 
 
-def test_nika_injected_alongside_compatible_characters_aborts_whole_catalog(repo_root):
+def test_eleven_characters_including_nika_construct_together(repo_root):
+    """After manifest correction, 10 compatible characters plus Nika
+    form an eleven-character catalog with deterministic ordering."""
     entries = _compatible_entries(repo_root)
     entries["nika"] = repo_root / "personas" / "nika"
-    with pytest.raises(UnsupportedExtensionError):
-        PersonaCatalog(entries)
+    catalog = PersonaCatalog(entries)
+    ids = [ref.id for ref in catalog.list_characters()]
+    expected_eleven = (
+        "andrey_junior", "andrey_senior", "egor", "female_user",
+        "kira", "maksim", "marina", "nika", "olga", "sergey", "user",
+    )
+    assert ids == list(expected_eleven)
+    assert len(ids) == 11
 
 
 # ---------------------------------------------------------------------

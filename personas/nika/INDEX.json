@@ -25,10 +25,6 @@
       "version": "2.0.0",
       "required": true
     },
-    "visual/PROMPT_BASE.txt": {
-      "version": "1.0.0",
-      "required": true
-    },
     "visual/MICROEXPRESSIONS.json": {
       "version": "1.0.0",
       "required": false
