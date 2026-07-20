@@ -1,3 +1,9 @@
+> **SUPERSEDED.** Настоящий preflight-документ выполнил свою верификационную роль.
+> N7 P1 (P1a-S1 + P1b Option A + Nika correction) завершён и закрыт.
+> Актуальный канонический статус N7 зафиксирован в документе закрытия:
+> `docs/narrative/N7_CANONICAL_STATUS_CLOSEOUT_v1.md` от 2026-07-20.
+> Весь контент ниже сохранён без изменений как историческая запись preflight-анализа.
+
 # N7 — PERSONA DATA GATEWAY — ARCHITECTURE PREFLIGHT (P0)
 
 > **MODE: READ-ONLY / DOCUMENTATION ONLY.** Этот документ ничего не реализует и не меняет код.

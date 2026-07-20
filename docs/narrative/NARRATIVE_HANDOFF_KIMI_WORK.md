@@ -1,3 +1,13 @@
+> **SUPERSEDED.** Рекомендация N6f из данного handoff-пакета более не является
+> актуальной директивой следующей задачи. N7 P1 (Persona Data Gateway) завершён
+> и закрыт; N6 Character Aside интегрирован в origin/main.
+> **Этот файл НЕ является текущей директивой следующей задачи.**
+> Актуальный статус см. в документах:
+> — `docs/narrative/N7_CANONICAL_STATUS_CLOSEOUT_v1.md` (канонический closeout N7)
+> — `docs/narrative/NARRATIVE_ROADMAP.md` (текущий roadmap)
+> Дата: 2026-07-20.
+> Весь контент ниже сохранён без изменений как историческая запись handoff-пакета.
+
 # NARRATIVE HANDOFF — Kimi Work Operating Pack
 
 > **Назначение.** Пакет для передачи разработки в **Kimi Work**: (A) story-plan оставшихся фаз,

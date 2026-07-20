@@ -86,6 +86,7 @@ VNE repo содержит три orthogonal слоя. Агент должен з
 4a. `docs/narrative/NARRATIVE_ROADMAP.md` — N5 RenPy/JSON track roadmap.
 4b. `docs/narrative/N5F_HYBRID_JSON_PATH_DECISION.md` — JSON contract decision.
 4c. `docs/narrative/NARRATIVE_FUTURE_TRACKS_v1.md` — future tracks: Character Aside, Voice Layer, N6 planning.
+4d. `docs/narrative/N7_CANONICAL_STATUS_CLOSEOUT_v1.md` — N7 canonical closeout: P1a-S1, P1b, Nika correction complete; P2/P3/N8 not authorized.
 5. `core/` — baseline-таблицы:
    - `core/VSCNO_BASELINE_TABLE.md`
    - `core/AD_AVAILABILITY_MATRIX.md`
@@ -144,6 +145,7 @@ voyage-narrative-engine/
 ├── tools/                            # exporters, adapters
 │   ├── vne_adapter.py                # адаптер к Framework CLI (optional pass-through shim)
 │   └── vne_to_renpy/                 # RenPy exporter (N5 track)
+├── services/                         # domain services (N7 Persona Data Gateway, P1a-S1+P1b integrated)
 ├── runtime_tools/                    # runtime prompts и инструменты
 ├── novel/                            # N5 RenPy MVP проект (active technical track)
 │   └── game/                         # .rpy файлы, options.rpy, script.rpy

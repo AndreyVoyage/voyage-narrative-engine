@@ -393,5 +393,27 @@ Director (N6) требует схему (N1) + runtime (N2) + удобный wri
 Character Aside / Voice Layer — N6 / future tracks (см. NARRATIVE_FUTURE_TRACKS_v1.md).
 ```
 
+---
+
+## 10. N7 текущий статус (canonical closeout, 2026-07-20)
+
+**N7 P1 (Persona Data Gateway): CLOSED.**
+
+- **P1a-S1** — read-only domain core (только Kira, с тестами): **AUTHORIZED AND COMPLETE.**
+- **P1b Option A** — multi-character expansion (все модульные персонажи): **AUTHORIZED AND COMPLETE.**
+- **Nika manifest compatibility correction:** **AUTHORIZED AND COMPLETE.**
+- **Persona Gateway verification:** 138 тестов PASS.
+
+**N6 Character Aside:** CLOSED AND INTEGRATED в origin/main.
+
+**Не авторизовано:**
+- P2 (MCP adapter) — PLANNED, NOT AUTHORIZED.
+- P3 (RenPy adapter) — NOT STARTED, NOT AUTHORIZED.
+- N8 (Persona Voice Model) — FUTURE, NOT AUTHORIZED.
+
+> Полный канонический closeout: `docs/narrative/N7_CANONICAL_STATUS_CLOSEOUT_v1.md`.
+> Реализация P2, P3, N8 требует отдельной авторизации владельца.
+
+
 > Коммит этого документа — через стандартный Narrative workflow (Claude Code).
 > Это завершает набор N0-документов: DECISIONS, ARCHITECTURE, SCHEMA_V2, RUNTIME_CONTRACT, PLAYER_EXPERIENCE, ROADMAP.
