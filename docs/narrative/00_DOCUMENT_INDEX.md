@@ -63,6 +63,7 @@
 | [`PAC_CHARACTER_EVOLUTION_PARALLEL_DEVELOPMENT_MAP_v1.md`](PAC_CHARACTER_EVOLUTION_PARALLEL_DEVELOPMENT_MAP_v1.md) | ACTIVE (v1) | Карта параллельной разработки треков A–G, зависимости, forbidden coupling. |
 | [`PAC_CHARACTER_EVOLUTION_KNOWLEDGE_CAPTURE_v1.md`](PAC_CHARACTER_EVOLUTION_KNOWLEDGE_CAPTURE_v1.md) | ACTIVE (v1) | Сохранение идей, обоснований и заменённых подходов (K-001–K-017 + S-001–S-008). |
 | [`NARRATIVE_AUTONOMOUS_ENSEMBLE_CONCEPT_v1.md`](NARRATIVE_AUTONOMOUS_ENSEMBLE_CONCEPT_v1.md) | FUTURE (концепт) | Автономный ансамбль: персонажи действуют/общаются сами, автор наблюдает. Non-canon by default. |
+| [`AI_ROLES_AND_KNOWLEDGE_ROUTING_CONCEPT_v1.md`](AI_ROLES_AND_KNOWLEDGE_ROUTING_CONCEPT_v1.md) | PROPOSED (v1) | Role Registry, Role Evolution, per-role Knowledge Profile, будущий Knowledge Router и context assembly. Read-side = Gateway; builders = reusable primitives. Один consolidated preflight. Impl NOT AUTHORIZED (D-RKR-1–D-RKR-15 pending). |
 
 > **N8 — Persona Voice Model:** FUTURE, NOT AUTHORIZED. Заблокирован данными; см. `NARRATIVE_ROADMAP.md` и N9 (PAC производит корпус).
 > **Character Evolution Sandbox:** PROPOSED. Документация и модель состояния — разрешены. Имплементация — BLOCKED (D-CES-1 – D-CES-10 pending).
