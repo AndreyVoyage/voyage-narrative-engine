@@ -4,8 +4,8 @@
 > Фиксирует цель, архитектуру (переиспользование готового), flywheel, правила защиты канона,
 > поправки к исходному концепту и фазовый план — до написания кода.
 >
-> **Статус:** P0 PREFLIGHT v1.1 — OWNER DECISIONS RATIFIED. IMPLEMENTATION (v0) READY FOR DELEGATED PROMPT.
-> **Дата:** 2026-07-22 (v1.1 — ратифицированы owner-решения + JSONL-схема + 3-уровневое одобрение + acceptance-критерии v0)
+> **Статус:** P0 PREFLIGHT v1.2 — OWNER DECISIONS RATIFIED. IMPLEMENTATION (v0) READY FOR DELEGATED PROMPT.
+> **Дата:** 2026-07-22 (v1.2 — добавлен минимальный eval-контур в v0 + DPO/N8 forward-link; опора на `docs/research/VNE_TECH_SURVEY_2026-07`)
 > **Опора:** `NARRATIVE_DECISIONS_v1.md` §1–§2, `N7_CANONICAL_STATUS_CLOSEOUT_v1.md`,
 > `N6_CHARACTER_ASIDE_CONTRACT.md`.
 > **Связанные документы (пакет N9 + Character Evolution):**
@@ -221,6 +221,9 @@ APPROVE_DATASET  — разрешить запись training-примера в 
 - v0-упрощение: в файл пишутся **только** примеры с `APPROVE_DATASET`, поэтому `quality_status` в v0
   фактически = `approved`; `rejected`/`quarantined` в v0 не хранятся (или в отдельный sidecar-лог позже).
 - Для v0 НЕ нужны: embeddings, token-рейтинги, SQLite id, сложная аналитика.
+- **Forward-link N8 (research §6.5):** пара `model_output_raw` (rejected) / `approved_output` (chosen) —
+  это готовая **DPO-пара**. PAC копит не только SFT-датасет, но и alignment-датасет. База N8 по
+  обзору — **Qwen2.5-7B / Qwen3-8B** (мультиязычность для русского). Порог авторизации N8: ≥150–300 approved + holdout.
 
 ---
 
@@ -235,6 +238,18 @@ APPROVE_DATASET  — разрешить запись training-примера в 
 0 записей в canon / personas / scenarios со стороны PAC;
 training_dataset.jsonl повторно читается и валидируется без ошибок.
 ```
+
+**Минимальный eval-контур в v0 (research: §9 инсайт I8 — eval это часть PAC v0, а не «потом»).**
+Без измерения нельзя отличить улучшение от дрейфа; `%валидного ФМДР` — необходимое, но недостаточное.
+v0 добавляет дёшево и на stdlib:
+```
+- фиксированный набор 30–50 проб (ситуация+уровень), версионируется вместе с профилем;
+- при генерации по пробам сохраняются варианты + выбор автора (та же JSONL-запись);
+- разовая человеческая калибровка: автор вслепую размечает выборку «в характере / нет»;
+- скоринг — min-per-turn (один сорванный ответ важнее среднего балла), не среднее;
+- НЕ обучать судью и НЕ вводить LLM-as-judge в v0 — только фиксированные пробы + ручная разметка.
+```
+Полный дифференциальный протокол (парный судья, NLI, дрейф-кривая) — это D-CES-6 (Sandbox), не PAC v0.
 
 ---
 
