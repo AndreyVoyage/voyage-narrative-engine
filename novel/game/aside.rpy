@@ -38,6 +38,16 @@ init python:
 
     _aside_trace_lock = threading.Lock()
 
+    # Persistent, explicitly-shared Adjustment for the history viewport.
+    # One object bound to both viewport and vbar via yadjustment= and
+    # YScrollValue; guarantees the same Python object every render, not
+    # merely "an adjustment with the same range/value".
+    _vne_aside_history_yadj = ui.adjustment(range=1, value=0)
+
+    def _vne_aside_scroll_history_to_bottom():
+        """Pin the history viewport to its bottom edge (main-thread only)."""
+        _vne_aside_history_yadj.value = 10 ** 9
+
     def _vne_aside_trace_path_main_thread():
         """Resolve the trace file path from Ren'Py config.
 
@@ -344,6 +354,7 @@ init python:
         store.aside_chat_history = []
         store.aside_input_text = ""
         store.aside_llm_pending = False
+        _vne_aside_history_yadj.value = 0
 
     def _vne_cycle_provider():
         """Cycle provider setting between local and mock."""
@@ -397,6 +408,7 @@ init python:
         store.aside_llm_pending = False
         history = history + [character_id.capitalize() + ": " + reply]
         store.aside_chat_history = history
+        _vne_aside_scroll_history_to_bottom()
         _vne_aside_trace("final_history_write", msg=msg, reply_preview=reply[:160])
         renpy.restart_interaction()
 
@@ -420,6 +432,7 @@ init python:
             store.aside_chat_history = store.aside_chat_history + [
                 character_id.capitalize() + ": [LLM BUSY] Previous request is still running."
             ]
+            _vne_aside_scroll_history_to_bottom()
             renpy.restart_interaction()
             return
 
@@ -438,6 +451,7 @@ init python:
                 + str(exc)
             ]
             _vne_aside_trace("worker_payload_error", error=str(exc))
+            _vne_aside_scroll_history_to_bottom()
             renpy.restart_interaction()
             return
 
@@ -445,29 +459,17 @@ init python:
         store.aside_chat_history = store.aside_chat_history + [
             character_id.capitalize() + ": [[thinking...]]"
         ]
+        _vne_aside_scroll_history_to_bottom()
         _vne_aside_trace("worker_dispatch", msg=msg)
         renpy.invoke_in_thread(_vne_aside_worker, worker_snapshot)
         renpy.restart_interaction()
 
     def _vne_aside_send_current_message(character_id, save_slot):
-        """Read the live screen input value at action execution time."""
+        """Read the live store-backed message text at action execution time."""
         import store
         _vne_aside_trace("ui_submit", character_id=character_id)
 
-        try:
-            msg = renpy.get_screen_variable(
-                "message_text",
-                screen="aside_chat_log",
-            )
-        except Exception as exc:
-            store.aside_chat_history = store.aside_chat_history + [
-                character_id.capitalize()
-                + ": [UI ERROR] Cannot read Message field: "
-                + str(exc)
-            ]
-            renpy.restart_interaction()
-            return
-
+        msg = getattr(store, "aside_input_text", "")
         msg = (msg or "").strip()
         _vne_aside_trace("message_capture", msg=msg)
 
@@ -475,18 +477,7 @@ init python:
             renpy.restart_interaction()
             return
 
-        try:
-            renpy.set_screen_variable(
-                "message_text",
-                "",
-                screen="aside_chat_log",
-            )
-        except Exception as exc:
-            store.aside_chat_history = store.aside_chat_history + [
-                character_id.capitalize()
-                + ": [UI WARNING] Cannot clear Message field: "
-                + str(exc)
-            ]
+        store.aside_input_text = ""
 
         _vne_aside_send_message(character_id, save_slot, msg)
         renpy.restart_interaction()
@@ -571,6 +562,15 @@ screen aside_dev_overlay():
                 hover_background Solid("#52657f")
                 text_color "#ffffff"
 
+            if config.developer:
+                textbutton "Diagnostics":
+                    action Function(_vne_diag_open, "aside_dev_overlay")
+                    text_size 14
+                    padding (10, 4)
+                    background Solid("#3a4658")
+                    hover_background Solid("#52657f")
+                    text_color "#ffffff"
+
 
 # Character Aside chat screen. Called repeatedly by aside_chat_loop.
 screen aside_chat_log(character_id="kira", save_slot="dev_slot"):
@@ -578,79 +578,111 @@ screen aside_chat_log(character_id="kira", save_slot="dev_slot"):
     zorder 100
     default message_text = ""
 
+    # ── Enter sends message; Shift+Enter inserts newline ──
+    key "K_RETURN" action If(
+        aside_input_text.strip() != "" and not aside_llm_pending,
+        Function(_vne_aside_send_current_message, character_id, save_slot),
+        NullAction()
+    ) capture True
+
+
     frame:
         xfill True
         yfill True
         padding (20, 20)
         background Solid("#171821")
 
-        fixed:
+        vbox:
             xfill True
             yfill True
+            spacing 10
 
+            # --- 1. Fixed header ---
             text "Character Aside — [character_id] ([vne_aside_config_provider])":
-                xpos 0
-                ypos 0
                 size 26
                 color "#f4f4f8"
 
+            # --- 2. Chat history (scrollable viewport) ---
+            # One persistent Adjustment object (_vne_aside_history_yadj)
+            # is explicitly bound to both the viewport (via yadjustment=)
+            # and the scrollbar (via YScrollValue). Snap-to-bottom calls
+            # at every history-mutation site keep new entries visible.
             frame:
-                xpos 0
-                ypos 60
                 xfill True
-                ysize 360
+                ysize 250
                 background Solid("#171821")
                 padding (0, 0)
 
-                $ _aside_visible_history = list(aside_chat_history[-10:])
-
-                vbox:
+                hbox:
                     xfill True
-                    spacing 6
+                    yfill True
+                    spacing 0
 
-                    for line in _aside_visible_history:
-                        text line:
-                            substitute False
-                            color "#d8d8e8"
-                            xmaximum 740
+                    viewport:
+                        id "aside_history_viewport"
+                        xfill True
+                        yfill True
+                        yadjustment _vne_aside_history_yadj
+                        scrollbars None
+                        draggable True
+                        mousewheel True
+                        pagekeys True
 
+                        vbox:
+                            xfill True
+                            spacing 6
+
+                            for line in aside_chat_history:
+                                text line:
+                                    substitute False
+                                    color "#d8d8e8"
+                                    xmaximum 700
+
+                    vbar:
+                        value YScrollValue("aside_history_viewport")
+                        xsize 18
+                        yfill True
+                        unscrollable "hide"
+                        base_bar Frame(Solid("#3a3a45"), 3, 3, 3, 3)
+                        thumb Frame(Solid("#7a7a8a"), 3, 3, 3, 3)
+
+            # --- 3. Fixed multiline composer (RN-AUTO-02) ---
             frame:
-                xpos 0
-                ypos 425
-                xsize 760
-                ysize 78
+                xfill True
+                ysize 180
                 padding (8, 7)
                 background Solid("#202127")
 
                 hbox:
                     spacing 10
                     xfill True
+                    yfill True
 
                     text "Message:":
                         xsize 100
-                        yalign 0.5
+                        yalign 0.0
                         color "#aaaaaa"
                         size 18
 
                     frame:
-                        xsize 630
-                        ysize 62
+                        xfill True
+                        yfill True
                         padding (8, 6)
                         background Solid("#2a2a2a")
 
                         input:
                             id "aside_message_input"
-                            focus "aside_message_input"
-                            value ScreenVariableInputValue(
-                                "message_text",
+                            value VariableInputValue(
+                                "aside_input_text",
                                 default=True,
                                 returnable=False
                             )
-                            length 240
-                            xmaximum 600
-                            ymaximum 48
-                            pixel_width 600
+                            length 4000
+                            xfill True
+                            yminimum 145
+                            color "#f4f4f8"
                             multiline True
+                            copypaste True
                             default_focus 100
                             action Function(
                                 _vne_aside_send_current_message,
@@ -658,11 +690,10 @@ screen aside_chat_log(character_id="kira", save_slot="dev_slot"):
                                 save_slot
                             )
 
+            # --- 4. Fixed action row ---
             frame:
-                xpos 0
-                ypos 511
-                xsize 760
-                ysize 49
+                xfill True
+
                 padding (8, 5)
                 background Solid("#202127")
 
@@ -688,7 +719,7 @@ screen aside_chat_log(character_id="kira", save_slot="dev_slot"):
                             character_id,
                             save_slot
                         )
-                        sensitive message_text.strip() != "" and not aside_llm_pending
+                        sensitive aside_input_text.strip() != "" and not aside_llm_pending
                         padding (14, 6)
                         background Solid("#3a4658")
                         hover_background Solid("#52657f")
@@ -716,6 +747,7 @@ label aside_dev_entry:
     $ aside_chat_history = []
     $ aside_input_text = ""
     $ aside_llm_pending = False
+    $ _vne_aside_history_yadj.value = 0
 
     call aside_chat_loop("kira", aside_save_slot)
 
@@ -742,6 +774,7 @@ label aside_quick:
     $ aside_chat_history = []
     $ aside_input_text = ""
     $ aside_llm_pending = False
+    $ _vne_aside_history_yadj.value = 0
 
     call aside_chat_loop("kira", aside_save_slot)
 
