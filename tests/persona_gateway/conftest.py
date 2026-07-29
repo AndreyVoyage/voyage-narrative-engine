@@ -19,12 +19,62 @@ from typing import Any, Callable, Dict, Optional
 
 import pytest
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+
+def _candidate_lexical_roots() -> tuple[Path, ...]:
+    """Candidate repository roots, nearest-first, from two independent
+    lexical starting points. Deliberately avoids path canonicalization
+    (which follows Windows Git worktree junctions/reparse points back to
+    whichever worktree shares the underlying object database instead of
+    staying inside the worktree pytest was actually invoked from)."""
+    starts = (
+        Path.cwd(),
+        Path(__file__).absolute().parent,
+    )
+
+    candidates: list[Path] = []
+
+    for start in starts:
+        for candidate in (start, *start.parents):
+            if candidate not in candidates:
+                candidates.append(candidate)
+
+    return tuple(candidates)
+
+
+def _find_active_worktree_root() -> Path:
+    """Locate the active Persona Gateway test worktree lexically. A valid
+    candidate must contain this conftest, the Nika compatibility test
+    module, and the real (read-only) Nika visual anchors file -- proving
+    it is a genuine checked-out worktree, never a redirected one."""
+    for candidate in _candidate_lexical_roots():
+        conftest_marker = candidate / "tests" / "persona_gateway" / "conftest.py"
+        nika_test_marker = (
+            candidate / "tests" / "persona_gateway" / "test_nika_compatibility.py"
+        )
+        visual_marker = (
+            candidate / "personas" / "nika" / "visual" / "VISUAL_ANCHORS.json"
+        )
+
+        if (
+            conftest_marker.is_file()
+            and nika_test_marker.is_file()
+            and visual_marker.is_file()
+        ):
+            return candidate
+
+    raise RuntimeError(
+        "Unable to locate the active Persona Gateway test worktree from "
+        "lexical paths. Tests must be run from inside the intended "
+        "repository worktree."
+    )
+
+
+REPO_ROOT = _find_active_worktree_root()
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def repo_root() -> Path:
     return REPO_ROOT
 
