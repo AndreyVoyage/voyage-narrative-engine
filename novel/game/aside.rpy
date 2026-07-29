@@ -1,9 +1,9 @@
-# aside.rpy — N6 Character Aside screen (local Ollama LLM + mock fallback, isolated memory)
+# aside.rpy — N6 Character Aside screen (local Ollama LLM + cloud DeepSeek + mock, isolated memory)
 #
 # Invariants:
 # - Reads v2_flags / v2_completed_scenes / v2_levels / v2_relationships ONLY.
 # - Never assigns to v2_* or calls mutating methods on them.
-# - Uses local Ollama provider by default; falls back to mock if Ollama is unreachable.
+# - Uses explicit provider cycle: local → cloud → mock → local. No automatic fallback.
 # - Writes aside memory only under RenPy save directory, never into canon.
 # - Provider settings are saved under "vne_aside_config_" namespace, isolated from canon.
 # - Not wired into the SC_003–SC_018 playable selector.
@@ -312,8 +312,21 @@ init python:
                     "timeout_s": 120,
                 },
             )
+        elif provider == "cloud":
+            # DeepSeek cloud via the existing OpenAI-compatible provider.
+            # API key from OPENAI_API_KEY env var; no key in repo or trace.
+            reply = llm_provider.complete(
+                messages,
+                provider="cloud",
+                model="deepseek-v4-flash",
+                params={
+                    "base_url": "https://api.deepseek.com",
+                    "timeout_s": 120,
+                    "thinking": {"type": "disabled"},
+                },
+            )
         else:
-            # Mock or any other explicit non-local choice.
+            # Mock or any other explicit non-local/non-cloud choice.
             reply = llm_provider.complete(messages, provider="mock")
 
         # Persist turn to isolated aside memory.
@@ -357,11 +370,15 @@ init python:
         _vne_aside_history_yadj.value = 0
 
     def _vne_cycle_provider():
-        """Cycle provider setting between local and mock."""
+        """Cycle provider setting: local → cloud → mock → local."""
         import store
-        store.vne_aside_config_provider = (
-            "mock" if store.vne_aside_config_provider == "local" else "local"
-        )
+        order = ["local", "cloud", "mock"]
+        current = store.vne_aside_config_provider
+        try:
+            idx = order.index(current)
+        except ValueError:
+            idx = -1
+        store.vne_aside_config_provider = order[(idx + 1) % len(order)]
 
     def _vne_aside_input_changed(value):
         """Explicitly sync the message input value into the store variable.
