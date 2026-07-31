@@ -7,6 +7,8 @@
 # - Writes aside memory only under RenPy save directory, never into canon.
 # - Provider settings are saved under "vne_aside_config_" namespace, isolated from canon.
 # - Not wired into the SC_003–SC_018 playable selector.
+#
+# Slice 1 (aside-v2): profile_id + world + provenance + window-only Reset.
 
 # Dev/test tracking variables for the current scene/beat. These are local UI
 # state, not canon; v2_* remains the single source of canonical truth.
@@ -14,6 +16,12 @@ default vne_current_scene_id = "SC_017"
 default vne_current_beat_id = "sc_017_v2_1a"
 default vne_current_progress_index = 17
 default vne_current_content_rating = "PG-13"
+
+# ── Aside v2 memory identity (Slice 1) ────────────────────────────────────
+# Isolated memory keys (saved with RenPy save, not canon).
+default vne_aside_config_profile_id = "dev_slot"
+default vne_aside_config_world = "aside"
+default vne_aside_config_provenance = "ASIDE_WORLD"
 
 # Isolated Aside provider configuration (saved with RenPy save, not canon).
 default vne_aside_config_provider = "local"
@@ -27,6 +35,9 @@ default aside_chat_history = []
 
 # Pending flag for async LLM calls; prevents duplicate submits and shows status.
 default aside_llm_pending = False
+
+# Full wipe confirmation flag (Slice 1: D-ASD-17).
+default aside_wipe_confirmed = False
 
 init python:
     import datetime
@@ -214,7 +225,10 @@ init python:
         snapshot = {
             "character_id": str(character_id),
             "player_message": str(player_message),
-            "save_slot": str(save_slot),
+            "save_slot": str(save_slot),  # retained for trace/logging
+            "profile_id": str(getattr(store, "vne_aside_config_profile_id", "dev_slot")),
+            "world": str(getattr(store, "vne_aside_config_world", "aside")),
+            "provenance": str(getattr(store, "vne_aside_config_provenance", "ASIDE_WORLD")),
             "provider": str(store.vne_aside_config_provider),
             "base_url": str(store.vne_aside_config_base_url),
             "model": str(store.vne_aside_config_model),
@@ -273,7 +287,10 @@ init python:
 
         character_id = snapshot["character_id"]
         player_message = snapshot["player_message"]
-        save_slot = snapshot["save_slot"]
+        save_slot = snapshot.get("save_slot", "dev_slot")
+        profile_id = snapshot.get("profile_id", "dev_slot")
+        world = snapshot.get("world", "aside")
+        provenance = snapshot.get("provenance", "ASIDE_WORLD")
         canon = snapshot["canon"]
         root = Path(snapshot["memory_root"])
         progress = canon["progress_index"]
@@ -281,11 +298,12 @@ init python:
         base_url = snapshot["base_url"]
         model = snapshot["model"]
 
-        # Load isolated aside memory (past-only, progress-gated).
-        memory = aside_memory_store.load_memory(
+        # Load isolated aside memory (past-only, progress-gated) using v2 API.
+        memory = aside_memory_store.load_memory_v2(
             root=root,
-            slot=save_slot,
-            character=character_id,
+            profile_id=profile_id,
+            character_id=character_id,
+            world=world,
             progress=progress,
         )
 
@@ -329,28 +347,48 @@ init python:
             # Mock or any other explicit non-local/non-cloud choice.
             reply = llm_provider.complete(messages, provider="mock")
 
-        # Persist turn to isolated aside memory.
+        # Persist turn to isolated aside memory using v2 API with
+        # structured mixed provenance (Slice 1 R2).
         session = {
             "scene_id": canon["scene_id"],
             "beat_id": canon["beat_id"],
             "progress_index": progress,
             "summary": "Player: " + player_message,
+            "player": {
+                "text": player_message,
+                "provenance": aside_memory_store.PROVENANCE_USER_CLAIM,
+            },
+            "reply": {
+                "text": reply,
+                "provenance": aside_memory_store.PROVENANCE_ASIDE_WORLD,
+            },
             "transcript": [
                 {"role": "user", "content": player_message},
                 {"role": "assistant", "content": reply},
             ],
         }
-        aside_memory_store.append_session(
+        if isinstance(canon, dict) and canon.get("scene_id"):
+            session["canon_snapshot"] = {
+                "data": canon,
+                "provenance": aside_memory_store.PROVENANCE_CANON_WORLD,
+            }
+        aside_memory_store.append_session_v2(
             root=root,
-            slot=save_slot,
-            character=character_id,
+            profile_id=profile_id,
+            character_id=character_id,
+            world=world,
             session=session,
         )
 
         return {"reply": reply, "fallback": fallback, "warning": warning}
 
-    def _vne_reset_aside_memory(character_id, save_slot):
-        """Reset isolated aside memory for this character/slot and clear chat."""
+    # ── Slice 1: Reset / Wipe v2 ──────────────────────────────────────────
+
+    def _vne_reset_aside_window(character_id, profile_id, world):
+        """Clear only the current chat window; preserve long-term memory.
+
+        Slice 1 (D-ASD-17): replaces the old full-rmtree Reset.
+        """
         import store
 
         if _VNE_TOOLS_DIR not in sys.path:
@@ -359,15 +397,63 @@ init python:
         import aside_memory_store
 
         root = _vne_aside_memory_root()
-        aside_memory_store.reset_memory(
+        aside_memory_store.reset_window_v2(
             root=root,
-            slot=save_slot,
-            character=character_id,
+            profile_id=profile_id,
+            character_id=character_id,
+            world=world,
         )
         store.aside_chat_history = []
         store.aside_input_text = ""
         store.aside_llm_pending = False
         _vne_aside_history_yadj.value = 0
+
+    def _vne_wipe_aside_memory_full(character_id, profile_id, world):
+        """Permanently delete ALL aside memory after explicit confirmation.
+
+        Slice 1 (D-ASD-17): full wipe requires confirmed=True.
+        """
+        import store
+
+        if not store.aside_wipe_confirmed:
+            # First call: request confirmation.
+            store.aside_chat_history = store.aside_chat_history + [
+                "[SYSTEM] Full wipe requires confirmation. Press 'Wipe All' again to confirm."
+            ]
+            store.aside_wipe_confirmed = True
+            _vne_aside_scroll_history_to_bottom()
+            renpy.restart_interaction()
+            return
+
+        if _VNE_TOOLS_DIR not in sys.path:
+            sys.path.insert(0, _VNE_TOOLS_DIR)
+
+        import aside_memory_store
+
+        root = _vne_aside_memory_root()
+        aside_memory_store.wipe_memory_v2(
+            root=root,
+            profile_id=profile_id,
+            character_id=character_id,
+            world=world,
+            confirmed=True,
+        )
+        store.aside_chat_history = []
+        store.aside_input_text = ""
+        store.aside_llm_pending = False
+        store.aside_wipe_confirmed = False
+        _vne_aside_history_yadj.value = 0
+
+    # ── Legacy compatibility wrapper (kept for existing callers) ──────────
+
+    def _vne_reset_aside_memory(character_id, save_slot):
+        """Legacy reset — delegates to v2 window-only Reset with defaults."""
+        import store
+        _vne_reset_aside_window(
+            character_id,
+            str(getattr(store, "vne_aside_config_profile_id", "dev_slot")),
+            str(getattr(store, "vne_aside_config_world", "aside")),
+        )
 
     def _vne_cycle_provider():
         """Cycle provider setting: local → cloud → mock → local."""
@@ -748,6 +834,32 @@ screen aside_chat_log(character_id="kira", save_slot="dev_slot"):
                         background Solid("#5a3a3a")
                         hover_background Solid("#7f5252")
                         text_color "#ffffff"
+
+                    if not aside_wipe_confirmed:
+                        textbutton "Wipe All":
+                            action Function(_vne_wipe_aside_memory_full, character_id, vne_aside_config_profile_id, vne_aside_config_world)
+                            padding (14, 6)
+                            background Solid("#8a2a2a")
+                            hover_background Solid("#aa4444")
+                            text_color "#ffffff"
+
+                    if aside_wipe_confirmed:
+                        textbutton "Confirm Wipe":
+                            action Function(_vne_wipe_aside_memory_full, character_id, vne_aside_config_profile_id, vne_aside_config_world)
+                            padding (14, 6)
+                            background Solid("#aa0000")
+                            hover_background Solid("#cc2222")
+                            text_color "#ffffff"
+
+                        textbutton "Cancel":
+                            action [
+                                SetVariable("aside_wipe_confirmed", False),
+                                Function(_vne_aside_scroll_history_to_bottom),
+                            ]
+                            padding (14, 6)
+                            background Solid("#3a3a3a")
+                            hover_background Solid("#5a5a5a")
+                            text_color "#ffffff"
 
                     textbutton "Close":
                         action Return("__close__")
