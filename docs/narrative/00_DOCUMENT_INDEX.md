@@ -54,6 +54,7 @@
 | Документ | Статус | Зачем |
 |---|---|---|
 | [`N6_CHARACTER_ASIDE_CONTRACT.md`](N6_CHARACTER_ASIDE_CONTRACT.md) | CLOSED (в main `afa7a13`) | Character Aside: приватный LLM-чат с персонажем, изолированная память, канон read-only. |
+| [`N6B_ASIDE_V2_PARALLEL_MEMORY_PREFLIGHT_v1.md`](N6B_ASIDE_V2_PARALLEL_MEMORY_PREFLIGHT_v1.md) | PREFLIGHT / SLICE 1 РЕАЛИЗОВАН, НЕ СЛИТ | Aside v2: параллельная память, отдельные отношения с игроком, эмоц. инерция, rollback spoiler-guard, роль-модель C. Реестр D-ASD-01…20 + D-ASD-G — все OWNER_DECIDED (открытых нет). Stage 0–8 зафиксирован. Slice 1 (Memory Identity & Safety Foundation) реализован на feature-ветке (commit `86bb5f7`), merge в main не выполнен. Slice 2 не авторизован. Impl NOT AUTHORIZED. |
 | [`N7_PERSONA_DATA_GATEWAY_PREFLIGHT_v1.md`](N7_PERSONA_DATA_GATEWAY_PREFLIGHT_v1.md) | SUPERSEDED | Preflight-архитектура Gateway (историческая запись). |
 | [`N7_CANONICAL_STATUS_CLOSEOUT_v1.md`](N7_CANONICAL_STATUS_CLOSEOUT_v1.md) | CANONICAL / CLOSED | Актуальный статус N7 Persona Data Gateway (P1a/P1b/Nika, 138 тестов). |
 | [`N9_PERSONA_AUTHORING_COMPANION_PREFLIGHT_v1.md`](N9_PERSONA_AUTHORING_COMPANION_PREFLIGHT_v1.md) | ACTIVE (v0) | PAC: нейросеть-соавтор для сценариев + накопление датасета (feeds N8). |

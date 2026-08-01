@@ -285,6 +285,25 @@
 
 ---
 
+## 6b. Внешние треки — pointer records
+
+> Указатели на решения, которые ведутся в собственном source-of-truth и **не дублируются** здесь.
+
+### Aside v2 — Parallel Memory & Transition
+
+| Поле | Значение |
+|------|----------|
+| **Track** | Aside v2 — Parallel Memory & Transition |
+| **Статус** | OWNER_DECIDED / documented in N6B |
+| **Source of truth** | `docs/narrative/N6B_ASIDE_V2_PARALLEL_MEMORY_PREFLIGHT_v1.md` |
+| **Нумерация** | Ведётся в N6B: `D-ASD-01…20 + D-ASD-G` — **OWNER_DECIDED**. Открытых пунктов нет. |
+| **Правило** | Решения D-ASD **не копируются и не перенумеровываются** в этот register. Здесь — только указатель. Не создавать вторую конкурирующую систему D-ASD IDs. |
+| **База кода** | MVP scene-context доказан рантаймом, заморожен на ветке `vne-rn-aside-runtime-context` @ `9b00ede`. |
+| **Slice 1** | Авторизован и реализован: Memory Identity & Safety Foundation. Commit `86bb5f7bf2351cfb43272d2d09f8fab9e1e30b17` на feature-ветке. Merge в `main` ещё не выполнен. Runtime integration в Slice 1 не входит. |
+| **Slice 2** | **Не авторизован.** Требуется отдельная авторизация владельца после доказанного Slice 1. |
+
+---
+
 ## 7. Сводка
 
 | Группа | Всего | OWNER_RATIFIED | OWNER_DECISION_PENDING | DEFERRED | BLOCKED | SUPERSEDED | REJECTED |
