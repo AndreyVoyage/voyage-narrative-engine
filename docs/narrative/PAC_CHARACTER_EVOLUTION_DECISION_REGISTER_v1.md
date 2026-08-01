@@ -299,8 +299,8 @@
 | **Нумерация** | Ведётся в N6B: `D-ASD-01…20 + D-ASD-G` — **OWNER_DECIDED**. Открытых пунктов нет. |
 | **Правило** | Решения D-ASD **не копируются и не перенумеровываются** в этот register. Здесь — только указатель. Не создавать вторую конкурирующую систему D-ASD IDs. |
 | **База кода** | MVP scene-context доказан рантаймом, заморожен на ветке `vne-rn-aside-runtime-context` @ `9b00ede`. |
-| **Slice 1** | Авторизован и реализован: Memory Identity & Safety Foundation. Commit `86bb5f7bf2351cfb43272d2d09f8fab9e1e30b17` на feature-ветке. Merge в `main` ещё не выполнен. Runtime integration в Slice 1 не входит. |
-| **Slice 2** | **Не авторизован.** Требуется отдельная авторизация владельца после доказанного Slice 1. |
+| **Slice 1** | Авторизован, реализован и интегрирован в `origin/main`: Memory Identity & Safety Foundation. Code commit `86bb5f7bf2351cfb43272d2d09f8fab9e1e30b17`, docs-chain интеграция `0895b37d161e82f0a1664c8d70902e599cf13316` (fast-forward, без merge commit, без force push). Targeted 33/33 PASS, full suite 246/246 PASS. Corrected live verdict A1 (persistence, isolation, provenance, Reset, scoped Wipe подтверждены; semantic recall real LLM — non-blocking limitation). Runtime integration в Slice 1 не входит. |
+| **Slice 2** | **Не авторизован.** Требуется отдельная авторизация владельца. |
 
 ---
 

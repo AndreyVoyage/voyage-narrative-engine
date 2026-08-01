@@ -15,13 +15,22 @@
 
 > **Implementation status update — 2026-08-01:** Slice 1
 > (`MEMORY IDENTITY & SAFETY FOUNDATION`) был отдельно авторизован владельцем,
-> реализован и независимо проверен в commit
-> `86bb5f7bf2351cfb43272d2d09f8fab9e1e30b17`.
-> На момент этого документа merge в `main` ещё не выполнен.
+> реализован в code commit
+> `86bb5f7bf2351cfb43272d2d09f8fab9e1e30b17`,
+> интегрирован в `origin/main` через docs-chain commit
+> `0895b37d161e82f0a1664c8d70902e599cf13316`
+> (fast-forward, без merge commit, без force push).
+> Targeted tests 33/33 PASS; full suite 246/246 PASS.
+> Corrected live verdict A1: persistence, identity/world isolation, provenance,
+> Reset и scoped Wipe подтверждены; semantic recall реальной LLM не подтверждён
+> (mock provider, non-blocking limitation).
 > Slice 2 и все последующие этапы НЕ авторизованы.
+> Runtime branch `9b00ede` остаётся отдельным integration gate.
 > Общий статус `DOCUMENTATION PREFLIGHT / IMPLEMENTATION NOT AUTHORIZED`
 > продолжает относиться к неавторизованным последующим slices и не отменяет
 > отдельную авторизацию Slice 1.
+> Исторический preflight и план Stage 0–8 сохраняются без изменений.
+> D-ASD решения не переоткрываются.
 
 ---
 
