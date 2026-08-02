@@ -11,9 +11,22 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
+
+# Bootstrap: ensure the repo root is on sys.path so that
+# `py .\\tools\\pac_cli.py` and `py -m tools.pac_cli` both work.
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+# Ensure stdout uses UTF-8 on Windows so Cyrillic help text renders.
+try:
+    sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
+except (AttributeError, OSError):
+    pass
 
 from services.persona_authoring import (
     GatewayAdapter,
@@ -31,6 +44,24 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="pac",
         description="N9 Persona Authoring Companion v0",
+        epilog=(
+            "Environment:\n"
+            "  PERSONA_ROOTS       JSON mapping character_id -> persona_dir.\n"
+            "                      Required for real persona loading.\n"
+            "                      Example: '{\"kira\":\"personas/kira\"}'\n"
+            "  OPENAI_API_KEY      Required for --provider cloud.\n"
+            "\n"
+            "Providers:\n"
+            "  mock                Offline, deterministic. No credentials.\n"
+            "  local               Ollama-compatible, default http://localhost:11434.\n"
+            "                      Requires explicit --model.\n"
+            "  cloud               OpenAI-compatible, default https://api.openai.com.\n"
+            "                      Requires --model and OPENAI_API_KEY.\n"
+            "\n"
+            "Output: All files are written under local_runs/pac/ (gitignored).\n"
+            "Canon: personas/, scenarios/, knowledge_base/ are read-only.\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     sub = parser.add_subparsers(dest="command", required=True)
 

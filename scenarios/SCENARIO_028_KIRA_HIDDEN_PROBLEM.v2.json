@@ -1,0 +1,230 @@
+{
+  "schema_version": "2.0",
+  "id": "SC_028",
+  "name": "Кира — скрытая проблема",
+  "version": "1.0",
+  "location": "home",
+  "time": "evening",
+  "archetype": "none",
+  "intensity": 4,
+  "risk": 2,
+  "duration_minutes": 12,
+  "prerequisites": [],
+  "flags_required": [],
+  "emotional_anchors": [
+    "невысказанное напряжение Киры",
+    "скрытая проблема Андрея",
+    "граница честности",
+    "чувствительность Киры к недосказанности"
+  ],
+  "symbols": [
+    "SC_028:kira:U3-A:hidden_problem:v1"
+  ],
+  "characters": [
+    {
+      "id": "kira",
+      "display_name": "Кира",
+      "role": "protagonist",
+      "present": true,
+      "state_start": "U3-A",
+      "state_end": "U3-A"
+    },
+    {
+      "id": "andrey",
+      "display_name": "Андрей",
+      "role": "partner",
+      "present": true,
+      "state_start": null,
+      "state_end": null
+    }
+  ],
+  "pov_default": "kira",
+  "entry_beats": [],
+  "choice_points": [
+    {
+      "id": "CP_1",
+      "timing": "kira_senses_hidden_problem",
+      "pov_default": "kira",
+      "prompt": "Кира чувствует, что Андрей что-то недоговаривает. Как она поступит?",
+      "branches": [
+        {
+          "id": "1A",
+          "option_text": "Кира говорит прямо: она не будет давить, но его молчание касается и её.",
+          "beats": [
+            {
+              "beat_id": "1A-b1",
+              "type": "thought",
+              "speaker": "kira",
+              "pov": "kira",
+              "speech": null,
+              "action": null,
+              "thought": "Он что-то недоговаривает. Я чувствую это слишком ясно. Но если спрошу сейчас, он просто закроется.",
+              "thought_visibility": "hidden",
+              "narration": null,
+              "emotion": "U3-A",
+              "visual_cue": null
+            },
+            {
+              "beat_id": "1A-b2",
+              "type": "action",
+              "speaker": "kira",
+              "pov": "kira",
+              "speech": null,
+              "action": "Кира медленно снимает пальто. Пальцы на секунду задерживаются на вешалке. Она касается шеи, быстро убирает руку и только тогда поворачивается к Андрею.",
+              "thought": null,
+              "thought_visibility": null,
+              "narration": null,
+              "emotion": "U3-A",
+              "visual_cue": null
+            },
+            {
+              "beat_id": "1A-b3",
+              "type": "dialogue",
+              "speaker": "kira",
+              "pov": "kira",
+              "speech": "Я не молчу. Просто не хочу сейчас спрашивать. Если тебе есть что сказать — скажешь сам.",
+              "action": null,
+              "thought": null,
+              "thought_visibility": null,
+              "narration": null,
+              "emotion": null,
+              "visual_cue": null
+            },
+            {
+              "beat_id": "1A-b4",
+              "type": "dialogue",
+              "speaker": "andrey",
+              "pov": "kira",
+              "speech": "Я не хотел тебя втягивать, пока сам не разберусь. Это не про тебя.",
+              "action": null,
+              "thought": null,
+              "thought_visibility": null,
+              "narration": null,
+              "emotion": null,
+              "visual_cue": null
+            },
+            {
+              "beat_id": "1A-b5",
+              "type": "thought",
+              "speaker": "kira",
+              "pov": "kira",
+              "speech": null,
+              "action": null,
+              "thought": "«Не про меня». Значит, я здесь ни при чём. А то, что я сижу и жду — это так, мебель. Он решает, что мне знать, а что нет. Как удобно.",
+              "thought_visibility": "hidden",
+              "narration": null,
+              "emotion": "U3-A",
+              "visual_cue": null
+            },
+            {
+              "beat_id": "1A-b6",
+              "type": "action",
+              "speaker": "kira",
+              "pov": "kira",
+              "speech": null,
+              "action": "Кира медленно выпрямляется и убирает руку со стола на колени, сцепляя пальцы в замок — не от злости, а чтобы не потянуться к нему.",
+              "thought": null,
+              "thought_visibility": null,
+              "narration": null,
+              "emotion": "U3-A",
+              "visual_cue": null
+            },
+            {
+              "beat_id": "1A-b7",
+              "type": "dialogue",
+              "speaker": "kira",
+              "pov": "kira",
+              "speech": "Не про меня. Понятно.",
+              "action": null,
+              "thought": null,
+              "thought_visibility": null,
+              "narration": null,
+              "emotion": null,
+              "visual_cue": null
+            },
+            {
+              "beat_id": "1A-b8",
+              "type": "dialogue",
+              "speaker": "andrey",
+              "pov": "kira",
+              "speech": "Кира, я не хотел сказать, что ты для меня посторонняя. Я просто боялся, что, если расскажу сейчас, ты начнёшь решать эту проблему вместе со мной. А я пока даже не понимаю, что именно произошло.",
+              "action": null,
+              "thought": null,
+              "thought_visibility": null,
+              "narration": null,
+              "emotion": null,
+              "visual_cue": null
+            },
+            {
+              "beat_id": "1A-b9",
+              "type": "thought",
+              "speaker": "kira",
+              "pov": "kira",
+              "speech": null,
+              "action": null,
+              "thought": "Он не отталкивает меня. Он правда боится, что я сразу полезу помогать. Но когда он молчит, я всё равно чувствую, что что-то не так.",
+              "thought_visibility": "hidden",
+              "narration": null,
+              "emotion": "U3-A",
+              "visual_cue": null
+            },
+            {
+              "beat_id": "1A-b10",
+              "type": "action",
+              "speaker": "kira",
+              "pov": "kira",
+              "speech": null,
+              "action": "Кира опускает плечи, медленно выдыхает и садится чуть ближе, но не касается Андрея.",
+              "thought": null,
+              "thought_visibility": null,
+              "narration": null,
+              "emotion": "U3-A",
+              "visual_cue": null
+            },
+            {
+              "beat_id": "1A-b11",
+              "type": "dialogue",
+              "speaker": "kira",
+              "pov": "kira",
+              "speech": "Я не прошу тебя всё рассказать сейчас. Но когда ты молчишь, это всё равно касается меня. Просто помни об этом.",
+              "action": null,
+              "thought": null,
+              "thought_visibility": null,
+              "narration": null,
+              "emotion": null,
+              "visual_cue": null
+            }
+          ],
+          "effects": {
+            "flags_set": [
+              "sc_028_complete",
+              "kira_u3a_hidden_problem_addressed"
+            ],
+            "flags_cleared": [],
+            "level_changes": {
+              "kira": "U3-A"
+            },
+            "relationship_changes": {
+              "kira_andrey": "+emotional_honesty_open"
+            }
+          },
+          "next": {
+            "on_complete": "scene_end",
+            "next_scene": null,
+            "completion_flag": "sc_028_complete"
+          }
+        }
+      ]
+    }
+  ],
+  "visual": {
+    "scene_id": "VS_028",
+    "stills": []
+  },
+  "safety": {
+    "content_rating": "PG-13",
+    "stop_words_enabled": true,
+    "present_constraints": "Андрей присутствует. Сцена — эмоциональный разговор без физической эскалации.",
+    "notes": "PAC approved scene for Kira U3-A. Source: PAC human-curated trial, model deepseek-v4-pro, level U3-A. Approval: APPROVE_SCENE (owner). Dataset approval: NO. Нет физической эскалации, принуждения, угроз или игнорирования стоп-слов. Канон персонажа не изменён. Provenance: PAC trial run IDs 20260802T085256Z-9ed8660c, 20260802T101630Z-479f1412, 20260802T101955Z-8e03afc3."
+  }
+}
