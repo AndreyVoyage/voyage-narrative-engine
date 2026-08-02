@@ -297,3 +297,96 @@ Aside v2 memory и Character Evolution Sandbox — оба неканонные �
 - `N6_CHARACTER_ASIDE_CONTRACT.md` (CLOSED) **не переписывать** — v2 живёт отдельным документом.
 - До push/merge MVP-ветки независимо остаются: полный suite, probes `cp_*`/`pe_*` под `config.developer`
   (не удалять), integration/merge preflight + аудит `renpy_v2_playable_exporter.py`.
+
+---
+
+## 12. Owner Ratification — Slice 2 / Stage 3 SQLite+FTS5 (2026-08-02)
+
+> **Статус:** OWNER_RATIFIED — **IMPLEMENTATION NOT AUTHORIZED.**
+> Дата ратификации: 2026-08-02.
+> Владелец ратифицировал ровно два решения: D-ASD-S2-MIGRATION и D-ASD-S2-DB-SCOPE.
+> Реализация Slice 2, code changes, branch реализации, commit, push и merge **не авторизованы**.
+> Для начала реализации требуется отдельная будущая bounded authorization.
+
+### 12.1 D-ASD-S2-MIGRATION — Migration Strategy
+
+| Поле | Значение |
+|------|----------|
+| **Статус** | OWNER_RATIFIED |
+| **Дата** | 2026-08-02 |
+| **Решение** | MODE_A_ONE_TIME_IDEMPOTENT_IMPORT_JSON_RETAINED_READ_ONLY |
+| **Смысл** | Однократный идемпотентный импорт существующих JSON-данных в SQLite. После успешного импорта исходные JSON-файлы сохраняются без изменений. JSON остаётся холодным read-only источником rollback и восстановления. Dual-write запрещён. Dual-read после переключения на SQLite запрещён. После успешной migration и parity-проверки единственным production read-path становится SQLite. |
+
+**Обязательные guardrails:**
+
+1. **Идемпотентность.** Импорт обязан иметь стабильный ключ. Минимальная уникальная граница: `(profile_id, character_id, world_id, session_id)`. `session_id` должен быть стабильным и детерминированным — для существующей модели использовать подтверждённую идентичность сессии, основанную на `scene + beat + progress`. Повторный импорт должен использовать `UNIQUE` constraint и/или безопасный `UPSERT`, не создавая дубликаты. Если в legacy-записи невозможно детерминированно восстановить `session_id`, implementation обязан fail closed или применить заранее описанный детерминированный fallback. Нельзя молча генерировать новый случайный `session_id` при каждом импорте.
+
+2. **Legacy-to-provenance mapping.** Переиспользовать правила Slice 1 R2: `player → USER_CLAIM`; `reply → ASIDE_WORLD`; `snapshot → CANON_WORLD` только при фактическом наличии snapshot. Точные enum-наименования: `USER_CLAIM`, `ASIDE_WORLD`, `CANON_WORLD`. Не создавать второй mapping.
+
+3. **Compat defaults.** Для legacy-записей без новых scope-полей применяются существующие Slice 1 R2 compatibility defaults: `profile_id = dev_slot`; `world_id = aside`. `character_id` должен разрешаться существующим совместимым способом, не теряться и не становиться глобальным.
+
+4. **Parity gate.** До переключения production read-path на SQLite необходимо доказать паритет импорта. Минимальная проверка: количество импортируемых sessions; количество message parts; количество provenance-bearing parts; стабильные hashes или эквивалентная детерминированная сверка; scope-by-scope comparison JSON ↔ SQLite. Частичный импорт обязан завершаться явной ошибкой. Нельзя тихо перейти на SQLite при неполном импорте.
+
+5. **Единственный источник чтения.** После успешной migration и parity gate: SQLite является единственным production read-path; JSON остаётся только холодным rollback evidence; dual-read запрещён; dual-write запрещён; автоматическое объединение результатов JSON и DB запрещено.
+
+### 12.2 D-ASD-S2-DB-SCOPE — Database Scope & Isolation
+
+| Поле | Значение |
+|------|----------|
+| **Статус** | OWNER_RATIFIED |
+| **Дата** | 2026-08-02 |
+| **Решение** | SINGLE_DB_PER_SAVEDIR_WITH_COMPOSITE_SCOPE |
+| **Смысл** | Одна SQLite DB на фактический Ren'Py savedir. Жёсткая граница каждой записи и каждого запроса: `(profile_id, character_id, world_id)`. Scope-поля являются отдельными реальными SQLite-колонками — нельзя хранить их только внутри JSON blob. Отсутствие SQLite JSON1 не влияет на фильтрацию, индексы и ограничения. Любой load, search, migration, Reset, Wipe и FTS retrieval обязан сохранять эту границу. |
+
+**Обязательные guardrails:**
+
+1. **World partition и provenance — разные оси.** Нельзя смешивать `world_id` (физическая/логическая партиция памяти) и `provenance` (происхождение конкретной записи). Пример: `world_id = aside`; `provenance = USER_CLAIM / ASIDE_WORLD / CANON_WORLD`. Это отдельные колонки. Запрещено выводить provenance из world_id или world_id из provenance.
+
+2. **Scope-поля — реальные колонки.** Как минимум следующие поля должны быть отдельными колонками: `profile_id`, `character_id`, `world_id`, `provenance`, `session_id`, timestamps и стабильные identifiers, необходимые для migration. Нельзя полагаться на JSON1 для основной изоляции.
+
+3. **FTS5 isolation.** FTS5 MATCH сам по себе не является scope boundary. Запрещён unscoped запрос вида `SELECT ... FROM memory_fts WHERE memory_fts MATCH ?`. Правильная архитектурная граница: FTS5 возвращает rowid/document identifier; результат обязательно JOIN-ится обратно к базовой таблице; scope-фильтр применяется по базовым колонкам `profile_id = ? AND character_id = ? AND world_id = ?`; provenance filter применяется отдельно при необходимости; LIMIT и ordering применяются только после scope enforcement; ни один публичный retrieval API не принимает отсутствующий scope; default global search запрещён. Любой FTS result без подтверждённого JOIN к scoped base table должен считаться архитектурной ошибкой и security/isolation failure.
+
+    Архитектурная граница scoped FTS (псевдо-SQL):
+
+    ```sql
+    -- Псевдо-SQL: архитектурная граница scoped FTS retrieval
+    -- FTS5 возвращает rowid → JOIN к base_table → scope фильтр обязателен
+    SELECT bt.* FROM base_table bt
+    JOIN memory_fts fts ON bt.rowid = fts.rowid
+    WHERE memory_fts MATCH ?
+      AND bt.profile_id = ?
+      AND bt.character_id = ?
+      AND bt.world_id = ?
+    ORDER BY bt.created_at DESC
+    LIMIT ?;
+    ```
+
+4. **Scoped Wipe и FTS cleanup.** Confirm Wipe обязан в одной транзакции удалить: строки базовых таблиц текущего scope; связанные message parts; summaries; migration metadata текущего scope, если применимо; соответствующие FTS5 index rows. External-content FTS5 нельзя считать самоочищающимся без доказательства. Допустимы: корректные SQLite triggers либо явное ручное удаление/index rebuild в той же транзакционной операции. После Wipe обязательна проверка: scoped base rows = 0; scoped FTS MATCH не возвращает удалённый текст; другие profile/character/world scopes сохранены; rollback транзакции не оставляет частично удалённый индекс.
+
+    Архитектурная граница транзакционного Wipe (псевдо-SQL):
+
+    ```sql
+    -- Псевдо-SQL: архитектурная граница Wipe
+    BEGIN IMMEDIATE;
+      DELETE FROM base_table WHERE profile_id = ? AND character_id = ? AND world_id = ?;
+      DELETE FROM message_parts WHERE scope_id IN (SELECT id FROM base_table WHERE ...);
+      DELETE FROM memory_fts WHERE rowid IN (SELECT rowid FROM base_table WHERE ...);
+    COMMIT;
+    -- Post-Wipe verification:
+    --   SELECT COUNT(*) FROM base_table WHERE ... = 0;
+    --   SELECT ... FROM memory_fts WHERE memory_fts MATCH ? AND rowid IN (scoped rows) → empty;
+    --   SELECT COUNT(*) FROM base_table WHERE other_scope → preserved.
+    ```
+
+5. **Backup.** Перед migration или операцией восстановления: выполнить WAL checkpoint; закрыть или согласованно синхронизировать активные connections; создать согласованную копию DB; не копировать только основной DB-файл при наличии непроверенного WAL; backup path не должен находиться внутри Git repository.
+
+6. **DB location.** SQLite DB должна находиться внутри фактического Ren'Py savedir/memory root. Запрещено создавать runtime DB: в корне репозитория; в `tools/`; в `tests/`; в `novel/game/`; в Git-tracked directories.
+
+### 12.3 Границы ratification block
+
+- **JSON1:** Не требуется для scope-фильтрации, индексов и ограничений. Preflight подтвердил: JSON1 отсутствует в сборке, но не блокирует Slice 2. Все scope-поля — реальные колонки.
+- **Implementation:** NOT AUTHORIZED. Требуется отдельная bounded authorization.
+- **Runtime branch `9b00ede`:** исключена из Slice 2. Остаётся замороженной, отдельный integration gate.
+- **Future stages (Slice 3–7):** исключены. Не обсуждаются в этом ratification block.
+- **D-ASD-01…20 и D-ASD-G:** не переоткрываются. Решения Slice 2 дополняют существующий пакет.
+- **Preflight report:** `LOCAL_STORAGE/ASIDE_V2_SLICE2_SQLITE_FTS5_READONLY_PREFLIGHT_2026-08-01.md`. SQLite 3.50.4 + FTS5 доступны; кириллический MATCH работает; WAL работает; JSON1 отсутствует но не требуется; 33/33 targeted + 246/246 full suite PASS.

@@ -3,7 +3,7 @@
 > **Назначение.** Карта всех канонических документов проекта: где что лежит, статус, зачем.
 > Начинать чтение отсюда. Пути даны относительно корня репозитория.
 >
-> **Обновлено:** 2026-07-22
+> **Обновлено:** 2026-08-02
 > **Правило:** при добавлении/устаревании документа — обновить этот индекс.
 
 Легенда статусов: **ACTIVE** (действующий) · **CANONICAL** (источник правды) ·
@@ -54,13 +54,13 @@
 | Документ | Статус | Зачем |
 |---|---|---|
 | [`N6_CHARACTER_ASIDE_CONTRACT.md`](N6_CHARACTER_ASIDE_CONTRACT.md) | CLOSED (в main `afa7a13`) | Character Aside: приватный LLM-чат с персонажем, изолированная память, канон read-only. |
-| [`N6B_ASIDE_V2_PARALLEL_MEMORY_PREFLIGHT_v1.md`](N6B_ASIDE_V2_PARALLEL_MEMORY_PREFLIGHT_v1.md) | PREFLIGHT / SLICE 1 ИНТЕГРИРОВАН И LIVE-ПОДТВЕРЖДЁН | Aside v2: параллельная память, отдельные отношения с игроком, эмоц. инерция, rollback spoiler-guard, роль-модель C. Реестр D-ASD-01…20 + D-ASD-G — все OWNER_DECIDED (открытых нет). Stage 0–8 зафиксирован. Slice 1 (Memory Identity & Safety Foundation) интегрирован в `origin/main` (code `86bb5f7`, docs-chain `0895b37d`; fast-forward). Tests 33/33 + 246/246 PASS. Corrected live verdict A1: storage/UI gates PASS; semantic recall real LLM — non-blocking limitation. Slice 2 не авторизован. Runtime integration отдельно. Impl NOT AUTHORIZED для последующих slices. |
+| [`N6B_ASIDE_V2_PARALLEL_MEMORY_PREFLIGHT_v1.md`](N6B_ASIDE_V2_PARALLEL_MEMORY_PREFLIGHT_v1.md) | PREFLIGHT / SLICE 1 ИНТЕГРИРОВАН / SLICE 2 PREFLIGHT ЗАВЕРШЁН | Aside v2: параллельная память, отдельные отношения с игроком, эмоц. инерция, rollback spoiler-guard, роль-модель C. Реестр D-ASD-01…20 + D-ASD-G — все OWNER_DECIDED. Slice 1 (Memory Identity & Safety Foundation) интегрирован в `origin/main`, tests 33/33 + 246/246 PASS. Slice 2 / Stage 3 SQLite+FTS5: read-only preflight завершён (2026-08-01), два owner decisions ратифицированы (2026-08-02): D-ASD-S2-MIGRATION и D-ASD-S2-DB-SCOPE (OWNER_RATIFIED). Bounded implementation scope ещё НЕ авторизован. Runtime branch `9b00ede` и future stages (Slice 3–7) исключены. |
 | [`N7_PERSONA_DATA_GATEWAY_PREFLIGHT_v1.md`](N7_PERSONA_DATA_GATEWAY_PREFLIGHT_v1.md) | SUPERSEDED | Preflight-архитектура Gateway (историческая запись). |
 | [`N7_CANONICAL_STATUS_CLOSEOUT_v1.md`](N7_CANONICAL_STATUS_CLOSEOUT_v1.md) | CANONICAL / CLOSED | Актуальный статус N7 Persona Data Gateway (P1a/P1b/Nika, 138 тестов). |
 | [`N9_PERSONA_AUTHORING_COMPANION_PREFLIGHT_v1.md`](N9_PERSONA_AUTHORING_COMPANION_PREFLIGHT_v1.md) | ACTIVE (v0) | PAC: нейросеть-соавтор для сценариев + накопление датасета (feeds N8). |
 | [`PAC_TRAINING_DATASET_SCHEMA_v1.md`](PAC_TRAINING_DATASET_SCHEMA_v1.md) | CANONICAL (v1) | PAC: формальная схема `pac-training-example-v1` для training_dataset.jsonl. D-N9-4. |
 | [`CHARACTER_EVOLUTION_SANDBOX_CONCEPT_v1.md`](CHARACTER_EVOLUTION_SANDBOX_CONCEPT_v1.md) | PROPOSED (v1) | Character Evolution Sandbox: неканоническая ветвящаяся среда для экспериментов с эволюцией персонажа. |
-| [`PAC_CHARACTER_EVOLUTION_DECISION_REGISTER_v1.md`](PAC_CHARACTER_EVOLUTION_DECISION_REGISTER_v1.md) | ACTIVE (v1) | Регистр решений: D-N9 (5 ратифицировано) + D-CES (10 pending) + DEFERRED/BLOCKED/SUPERSEDED. |
+| [`PAC_CHARACTER_EVOLUTION_DECISION_REGISTER_v1.md`](PAC_CHARACTER_EVOLUTION_DECISION_REGISTER_v1.md) | ACTIVE (v1) | Регистр решений: D-N9 (5 ратифицировано) + D-ASD-S2 (2 ратифицировано) + D-CES (10 pending) + DEFERRED/BLOCKED/SUPERSEDED. |
 | [`PAC_CHARACTER_EVOLUTION_PARALLEL_DEVELOPMENT_MAP_v1.md`](PAC_CHARACTER_EVOLUTION_PARALLEL_DEVELOPMENT_MAP_v1.md) | ACTIVE (v1) | Карта параллельной разработки треков A–G, зависимости, forbidden coupling. |
 | [`PAC_CHARACTER_EVOLUTION_KNOWLEDGE_CAPTURE_v1.md`](PAC_CHARACTER_EVOLUTION_KNOWLEDGE_CAPTURE_v1.md) | ACTIVE (v1) | Сохранение идей, обоснований и заменённых подходов (K-001–K-017 + S-001–S-008). |
 | [`NARRATIVE_AUTONOMOUS_ENSEMBLE_CONCEPT_v1.md`](NARRATIVE_AUTONOMOUS_ENSEMBLE_CONCEPT_v1.md) | FUTURE (концепт) | Автономный ансамбль: персонажи действуют/общаются сами, автор наблюдает. Non-canon by default. |

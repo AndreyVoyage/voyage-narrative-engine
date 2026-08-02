@@ -75,6 +75,37 @@
 
 ---
 
+## 2b. Ратифицированные решения Aside v2 (Slice 2 — SQLite+FTS5)
+
+> **Ратифицированы:** 2026-08-02. Source of truth: `N6B_ASIDE_V2_PARALLEL_MEMORY_PREFLIGHT_v1.md` §12.
+> **Implementation authorization:** NO — требуется отдельная bounded authorization.
+
+### D-ASD-S2-MIGRATION — Migration Strategy
+
+| Поле | Значение |
+|------|----------|
+| **Статус** | OWNER_RATIFIED |
+| **Дата** | 2026-08-02 |
+| **Source of truth** | `N6B_ASIDE_V2_PARALLEL_MEMORY_PREFLIGHT_v1.md` §12.1 |
+| **Решение** | MODE_A_ONE_TIME_IDEMPOTENT_IMPORT_JSON_RETAINED_READ_ONLY |
+| **Rationale** | Однократный идемпотентный импорт JSON → SQLite; JSON сохраняется как холодный rollback; dual-write/dual-read запрещены; после parity gate SQLite — единственный production read-path. |
+| **Guardrails** | Стабильный ключ `(profile_id, character_id, world_id, session_id)`; идемпотентный UPSERT; legacy-to-provenance mapping (Slice 1 R2); compat defaults `profile_id=dev_slot`, `world_id=aside`; parity gate до переключения; частичный импорт = явная ошибка. |
+| **Implementation** | NOT AUTHORIZED. |
+
+### D-ASD-S2-DB-SCOPE — Database Scope & Isolation
+
+| Поле | Значение |
+|------|----------|
+| **Статус** | OWNER_RATIFIED |
+| **Дата** | 2026-08-02 |
+| **Source of truth** | `N6B_ASIDE_V2_PARALLEL_MEMORY_PREFLIGHT_v1.md` §12.2 |
+| **Решение** | SINGLE_DB_PER_SAVEDIR_WITH_COMPOSITE_SCOPE |
+| **Rationale** | Одна SQLite DB на savedir; жёсткая граница `(profile_id, character_id, world_id)` через реальные колонки; JSON1 не требуется; FTS5 только через scoped JOIN; транзакционный Wipe с FTS cleanup. |
+| **Guardrails** | Scope-поля — реальные колонки (не JSON blob); world_id ≠ provenance; FTS5 MATCH без JOIN запрещён; unscoped query запрещён; Wipe в одной транзакции с FTS cleanup; post-Wipe leak check; WAL checkpoint перед backup; DB вне repository. |
+| **Implementation** | NOT AUTHORIZED. |
+
+---
+
 ## 3. Открытые решения — Character Evolution Sandbox (D-CES)
 
 ### D-CES-1 — GRANULARITY OF EVOLUTION
@@ -300,7 +331,7 @@
 | **Правило** | Решения D-ASD **не копируются и не перенумеровываются** в этот register. Здесь — только указатель. Не создавать вторую конкурирующую систему D-ASD IDs. |
 | **База кода** | MVP scene-context доказан рантаймом, заморожен на ветке `vne-rn-aside-runtime-context` @ `9b00ede`. |
 | **Slice 1** | Авторизован, реализован и интегрирован в `origin/main`: Memory Identity & Safety Foundation. Code commit `86bb5f7bf2351cfb43272d2d09f8fab9e1e30b17`, docs-chain интеграция `0895b37d161e82f0a1664c8d70902e599cf13316` (fast-forward, без merge commit, без force push). Targeted 33/33 PASS, full suite 246/246 PASS. Corrected live verdict A1 (persistence, isolation, provenance, Reset, scoped Wipe подтверждены; semantic recall real LLM — non-blocking limitation). Runtime integration в Slice 1 не входит. |
-| **Slice 2** | **Не авторизован.** Требуется отдельная авторизация владельца. |
+| **Slice 2 / Stage 3 SQLite+FTS5** | Read-only preflight завершён 2026-08-01 (SQLite 3.50.4 + FTS5 доступны; кириллический MATCH работает; WAL работает; JSON1 не требуется; 33/33 + 246/246 PASS). Два решения ратифицированы 2026-08-02: D-ASD-S2-MIGRATION и D-ASD-S2-DB-SCOPE (OWNER_RATIFIED, см. §2b). Implementation NOT AUTHORIZED — требуется отдельная bounded authorization. Details: N6B §12. |
 
 ---
 
@@ -309,6 +340,7 @@
 | Группа | Всего | OWNER_RATIFIED | OWNER_DECISION_PENDING | DEFERRED | BLOCKED | SUPERSEDED | REJECTED |
 |--------|-------|----------------|------------------------|----------|---------|------------|----------|
 | D-N9 | 5 | 5 | 0 | 0 | 0 | 0 | 0 |
+| D-ASD-S2 | 2 | 2 | 0 | 0 | 0 | 0 | 0 |
 | D-CES | 10 | 0 | 10 | 0 | 0 | 0 | 0 |
 | D-DEF | 3 | 0 | 0 | 3 | 0 | 0 | 0 |
 | D-BLK | 2 | 0 | 0 | 0 | 2 | 0 | 0 |
