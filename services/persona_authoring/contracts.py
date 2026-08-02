@@ -286,22 +286,61 @@ class PacTrainingExample:
 #
 # Each layer is optional independently.  The canonical separator is " → ".
 # We allow leading/trailing whitespace around separators and layers.
+#
+# Two formats are accepted:
+#   A. Inline: (Мысли: text) *Действия: text* «Речь: text»
+#   B. Header:  МЫСЛЬ:\ntext\n\nДЕЙСТВИЕ:\n*text*\n\nРЕЧЬ:\n«text»
+#
+# Variants allowed for each label:
+#   Thought:  МЫСЛЬ / МЫСЛИ / THOUGHT / THOUGHTS  (case-insensitive)
+#   Action:   ДЕЙСТВИЕ / ДЕЙСТВИЯ / ACTION / ACTIONS
+#   Speech:   РЕЧЬ / SPEECH
 
-_FMDR_THOUGHTS_RE = re.compile(
-    r"\(\s*Мысли\s*:\s*(.*?)\s*\)",
+_THOUGHT_LABEL = r"(?:МЫСЛ[ИЬ]|THOUGHTS?|мысли|мысль|thoughts?)"
+_ACTION_LABEL = r"(?:ДЕЙСТВИ[ЕЯ]|ACTIONS?|действи[ея]|actions?)"
+_SPEECH_LABEL = r"(?:РЕЧЬ|SPEECH|речь|speech)"
+
+# Format A: inline parenthesized thoughts
+_FMDR_THOUGHTS_INLINE_RE = re.compile(
+    r"\(\s*" + _THOUGHT_LABEL + r"\s*:\s*(.*?)\s*\)",
     re.DOTALL | re.IGNORECASE,
 )
-_FMDR_ACTIONS_RE = re.compile(
-    r"\*\s*(Действия\s*:\s*)?(.*?)\s*\*",
+
+# Format B: header-style МЫСЛЬ:\n... (content runs until next header or marker)
+_FMDR_THOUGHTS_HEADER_RE = re.compile(
+    r"(?:^|\n)\s*" + _THOUGHT_LABEL + r"\s*:\s*\n(.*?)(?=\n\s*(?:" + _ACTION_LABEL + r"|" + _SPEECH_LABEL + r")\s*:\s*\n|\n\s*\*|\n\s*«|\Z)",
     re.DOTALL | re.IGNORECASE,
 )
+
+# Format B: header-style ДЕЙСТВИЕ:\n*...* or *text*
+_FMDR_ACTIONS_HEADER_RE = re.compile(
+    r"(?:^|\n)\s*" + _ACTION_LABEL + r"\s*:\s*\n\s*\*\s*(.*?)\s*\*",
+    re.DOTALL | re.IGNORECASE,
+)
+
+# Legacy inline actions: *Действия: ...* or just *...*
+_FMDR_ACTIONS_INLINE_RE = re.compile(
+    r"\*\s*(?:" + _ACTION_LABEL + r"\s*:\s*)?(.*?)\s*\*",
+    re.DOTALL | re.IGNORECASE,
+)
+
+# Inline speech: «Речь: ...» or just «...»
 _FMDR_SPEECH_RE = re.compile(
-    r"«\s*(Речь\s*:\s*)?(.*?)\s*»",
+    r"«\s*(?:" + _SPEECH_LABEL + r"\s*:\s*)?(.*?)\s*»",
+    re.DOTALL | re.IGNORECASE,
+)
+
+# Header speech: РЕЧЬ:\n«...» 
+_FMDR_SPEECH_HEADER_RE = re.compile(
+    r"(?:^|\n)\s*" + _SPEECH_LABEL + r"\s*:\s*\n\s*«\s*(.*?)\s*»",
     re.DOTALL | re.IGNORECASE,
 )
 
 # A minimal structural check: the text must contain at least one canonical layer.
-_FMDR_MINIMAL_RE = re.compile(r"[\(（\*«]|\bМысли\b|\bДействия\b|\bРечь\b")
+_FMDR_MINIMAL_RE = re.compile(
+    r"[\(（\*«]|\b(?:МЫСЛ[ИЬ]|ДЕЙСТВИ[ЕЯ]|РЕЧЬ|THOUGHTS?|ACTIONS?|SPEECH)\b",
+    re.IGNORECASE,
+)
 
 
 def validate_fmdr(text: str) -> Tuple[bool, Optional[str], Optional[str], Optional[str], Optional[str]]:
@@ -328,16 +367,32 @@ def validate_fmdr(text: str) -> Tuple[bool, Optional[str], Optional[str], Option
             None,
             None,
             None,
-            "no ФМДР layer markers found: expected (Мысли:...), *Действия:...*, or «Речь:...»",
+            "no ФМДР layer markers found: expected Мысль/Мысли/Thought:..., Действие/Action:..., or Речь/Speech:...",
         )
 
-    thoughts_match = _FMDR_THOUGHTS_RE.search(stripped)
-    actions_match = _FMDR_ACTIONS_RE.search(stripped)
-    speech_match = _FMDR_SPEECH_RE.search(stripped)
+    # Try header-style thoughts first (МЫСЛЬ:\ntext...), then inline ((Мысли: text))
+    thoughts_match = _FMDR_THOUGHTS_HEADER_RE.search(stripped)
+    if thoughts_match:
+        thoughts = thoughts_match.group(1).strip()
+    else:
+        thoughts_match = _FMDR_THOUGHTS_INLINE_RE.search(stripped)
+        thoughts = thoughts_match.group(1).strip() if thoughts_match else None
 
-    thoughts = thoughts_match.group(1).strip() if thoughts_match else None
-    actions = actions_match.group(2).strip() if actions_match else None
-    speech = speech_match.group(2).strip() if speech_match else None
+    # Try header-style actions first (ДЕЙСТВИЕ:\n*text*), then inline
+    actions_match = _FMDR_ACTIONS_HEADER_RE.search(stripped)
+    if actions_match:
+        actions = actions_match.group(1).strip()
+    else:
+        actions_match = _FMDR_ACTIONS_INLINE_RE.search(stripped)
+        actions = actions_match.group(1).strip() if actions_match else None
+
+    # Try header-style speech first (РЕЧЬ:\n«text»), then inline
+    speech_match = _FMDR_SPEECH_HEADER_RE.search(stripped)
+    if speech_match:
+        speech = speech_match.group(1).strip()
+    else:
+        speech_match = _FMDR_SPEECH_RE.search(stripped)
+        speech = speech_match.group(1).strip() if speech_match else None
 
     if thoughts is None and actions is None and speech is None:
         return (
@@ -346,6 +401,16 @@ def validate_fmdr(text: str) -> Tuple[bool, Optional[str], Optional[str], Option
             None,
             None,
             "no valid ФМДР layer parsed: check delimiters and labels",
+        )
+
+    # When both action and speech are present, thought is mandatory.
+    if actions is not None and speech is not None and (thoughts is None or thoughts.strip() == ""):
+        return (
+            False,
+            None,
+            None,
+            None,
+            "ФМДР thought block is missing or empty: all three layers required when action and speech are present",
         )
 
     # All parsed layers found -- valid.
