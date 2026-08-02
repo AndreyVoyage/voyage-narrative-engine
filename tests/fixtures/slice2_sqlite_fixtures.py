@@ -86,15 +86,36 @@ def make_legacy_session(
 
 
 def populate_json_store(root: Path, profile_id, character_id, world, sessions):
-    """Write sessions to the JSON filesystem store for migration testing."""
-    for session in sessions:
-        json_store.append_session_v2(
-            root=root,
-            profile_id=profile_id,
-            character_id=character_id,
-            world=world,
-            session=session,
-        )
+    """Write sessions directly to the legacy JSON filesystem path.
+
+    This fixture creates cold JSON evidence in the exact format that
+    the migration module (aside_memory_migration) expects. It does NOT
+    call production append_session_v2 — production now writes exclusively
+    to SQLite and this fixture must remain decoupled from production
+    write paths.
+    """
+    json_dir = (
+        Path(root).expanduser().resolve()
+        / "private_chats"
+        / str(profile_id)
+        / str(character_id)
+        / str(world)
+        / "sessions"
+    )
+    json_dir.mkdir(parents=True, exist_ok=True)
+
+    for idx, session in enumerate(sessions, start=1):
+        # Build filename using the legacy naming convention:
+        # {scene_id}_{beat_id}_{nnn:03d}.json
+        scene = str(session.get("scene_id", "SC_017"))
+        beat = str(session.get("beat_id", "beat_01"))
+        fname = f"{scene}_{beat}_{idx:03d}.json"
+
+        # Serialize session dict directly — preserves the exact structure
+        # that make_structured_session and make_legacy_session produce,
+        # matching the migration module's expected fields.
+        payload = json.dumps(session, ensure_ascii=False, indent=2, sort_keys=True)
+        (json_dir / fname).write_text(payload + "\n", encoding="utf-8")
 
 
 # ── SQLite store setup ─────────────────────────────────────────────────────────

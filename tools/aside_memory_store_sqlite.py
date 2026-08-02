@@ -607,27 +607,67 @@ def summarize_memory(
             "sessions_meta": [],
         }
 
-    # Fetch sessions_meta
+    # Fetch sessions_meta with player/reply/canon_snapshot (W-07 preserve existing contract)
     cur = con.execute(
         """
-        SELECT session_id, scene_id, beat_id, progress_index,
-               session_summary, provenance, created_at
-        FROM sessions
-        WHERE profile_id=? AND character_id=? AND world_id=?
-        ORDER BY progress_index
+        SELECT s.session_id, s.scene_id, s.beat_id, s.progress_index,
+               s.session_summary, s.provenance, s.created_at
+        FROM sessions s
+        WHERE s.profile_id=? AND s.character_id=? AND s.world_id=?
+        ORDER BY s.progress_index
         """,
         (profile_id, character_id, world_id),
     )
     meta_list = []
     for srow in cur.fetchall():
         sid, sc, bt, pi, ssum, prov, cat = srow
-        meta_list.append({
+
+        # Reconstruct player/reply from message_parts
+        cur2 = con.execute(
+            """
+            SELECT role, content, provenance FROM message_parts
+            WHERE session_id=?
+            ORDER BY part_order
+            """,
+            (sid,),
+        )
+        player_dict = None
+        reply_dict = None
+        for prow in cur2.fetchall():
+            role, content, part_prov = prow
+            if role == "user" and player_dict is None:
+                player_dict = {"text": content, "provenance": part_prov}
+            elif role == "assistant" and reply_dict is None:
+                reply_dict = {"text": content, "provenance": part_prov}
+
+        # Fetch canon snapshot
+        cur3 = con.execute(
+            "SELECT snapshot_data FROM canonical_snapshots WHERE session_id=? LIMIT 1",
+            (sid,),
+        )
+        cs_row = cur3.fetchone()
+        canon_snapshot = None
+        if cs_row is not None:
+            try:
+                cs_data = json.loads(cs_row[0])
+                canon_snapshot = {"data": cs_data, "provenance": PROVENANCE_CANON_WORLD}
+            except json.JSONDecodeError:
+                canon_snapshot = {"data": cs_row[0], "provenance": PROVENANCE_CANON_WORLD}
+
+        meta_entry = {
             "scene_id": sc,
             "beat_id": bt,
             "progress_index": pi,
             "session_id": f"{sc}_{bt}_{pi}",
             "summary": ssum,
-        })
+        }
+        if player_dict is not None:
+            meta_entry["player"] = player_dict
+        if reply_dict is not None:
+            meta_entry["reply"] = reply_dict
+        if canon_snapshot is not None:
+            meta_entry["canon_snapshot"] = canon_snapshot
+        meta_list.append(meta_entry)
 
     return {
         "profile_id": profile_id,

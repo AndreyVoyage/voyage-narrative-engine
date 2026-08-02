@@ -1110,7 +1110,7 @@ def test_no_repo_local_db_artifact(tmp_path):
 
 
 def test_dual_read_absent(tmp_path):
-    """After migration, SQLite API is used independently of JSON store."""
+    """After migration, dual-read is absent: production load returns SQLite-only result."""
     root = tmp_path / "aside_root"
     populate_json_store(
         root, "p1", "kira", "aside",
@@ -1133,12 +1133,18 @@ def test_dual_read_absent(tmp_path):
     )
     assert len(mem["sessions_meta"]) == 2
 
-    # JSON still only has the original
-    json_mem = json_store.load_memory_v2(
+    # Production load returns SQLite-authoritative state (2 sessions)
+    production_mem = json_store.load_memory_v2(
         root=root, profile_id="p1", character_id="kira", world="aside", progress=999
     )
-    assert len(json_mem["sessions_meta"]) == 1
-    assert "JSON data" in str(json_mem["sessions_meta"][0].get("player"))
+    assert len(production_mem["sessions_meta"]) == 2
+
+    # Legacy JSON file on disk still contains only 1 session (cold evidence untouched)
+    json_session_dir = root / "private_chats" / "p1" / "kira" / "aside" / "sessions"
+    session_files = sorted(json_session_dir.glob("*.json"))
+    assert len(session_files) == 1
+    raw_json = json.loads(session_files[0].read_text(encoding="utf-8"))
+    assert raw_json["progress_index"] == 1
 
 
 def test_dual_write_absent(tmp_path):
