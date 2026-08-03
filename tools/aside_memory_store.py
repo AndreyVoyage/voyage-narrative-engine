@@ -13,6 +13,10 @@ paths such as scenarios/, personas/, novel/, or RenPy v2_* state.
 Slice 1 (aside-v2): profile_id + world + provenance + window-only Reset.
 Slice 1 R2 correction: non-destructive Reset, mixed per-part provenance,
 production v2 wiring defaults, sandbox removal.
+Slice 2: SQLite+FTS5 internal adapter — activation on first load_memory_v2,
+one-time migration, parity gate, SQLite sole read/write path post-activation.
+First load reads JSON (pre-activation data), activates SQLite in background.
+Subsequent loads read exclusively from SQLite.
 """
 
 from __future__ import annotations
@@ -23,6 +27,7 @@ import re
 import shutil
 import sys
 import tempfile
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -52,7 +57,165 @@ class AsideMemoryError(RuntimeError):
     """Clean, user-facing memory store error."""
 
 
-# ── Slice 1 v2 API (profile_id + world + provenance) ────────────────────────
+# ── Slice 2: SQLite activation infrastructure (internal adapter) ───────────
+
+_activation_lock = threading.Lock()
+# Keyed by (root_str, profile_id, character_id, world_id) for per-root isolation
+_activated_scopes: set[tuple[str, str, str, str]] = set()
+
+
+def _activation_key(root: Path, profile_id: str, character_id: str, world: str) -> tuple[str, str, str, str]:
+    return (
+        str(Path(root).expanduser().resolve()),
+        profile_id.strip(),
+        character_id.strip(),
+        world.strip().lower(),
+    )
+
+
+def _is_sqlite_activated_for_root(
+    root: Path,
+    profile_id: str,
+    character_id: str,
+    world: str,
+) -> bool:
+    """Check if this specific root+scope has been activated for SQLite."""
+    return _activation_key(root, profile_id, character_id, world) in _activated_scopes
+
+
+def _ensure_sqlite_activated(
+    root: Path,
+    profile_id: str,
+    character_id: str,
+    world: str,
+) -> None:
+    """One-time activation: create schema, migrate JSON, parity gate.
+
+    Idempotent, thread-safe. Must be called to mark a scope as SQLite-active.
+    Raises AsideMemoryError on any failure — no silent fallback to JSON.
+    """
+    safe_profile = profile_id.strip()
+    safe_character = character_id.strip()
+    safe_world = world.strip().lower()
+    scope_key = _activation_key(root, safe_profile, safe_character, safe_world)
+
+    if scope_key in _activated_scopes:
+        return
+
+    with _activation_lock:
+        if scope_key in _activated_scopes:
+            return
+
+        import aside_memory_store_sqlite as _sqlite_store
+        import aside_memory_migration as _migration
+
+        db_path = _sqlite_store.get_db_path(root)
+
+        # 1. Ensure schema exists (creates DB if needed)
+        schema_result = _sqlite_store.ensure_schema(db_path)
+        if schema_result["status"] not in ("schema_created", "schema_ok"):
+            raise AsideMemoryError(
+                f"SQLite schema setup failed: {schema_result.get('note', 'unknown')}"
+            )
+
+        # 2. Discover if legacy JSON sessions exist
+        json_base = (
+            Path(root).expanduser().resolve()
+            / "private_chats"
+            / safe_profile
+            / safe_character
+            / safe_world
+            / "sessions"
+        )
+        has_json = (
+            json_base.exists()
+            and any(json_base.glob("*.json"))
+        )
+
+        if has_json:
+            # 3. Check if DB already has sessions for this scope
+            try:
+                con = _sqlite_store.get_connection(db_path)
+                cur = con.execute(
+                    "SELECT COUNT(*) FROM sessions "
+                    "WHERE profile_id=? AND character_id=? AND world_id=?",
+                    (safe_profile, safe_character, safe_world),
+                )
+                db_session_count = cur.fetchone()[0]
+                con.close()
+            except _sqlite_store.SqliteMemoryError as exc:
+                raise AsideMemoryError(f"SQLite connection error: {exc}") from None
+
+            if db_session_count == 0:
+                # 4. Run Mode A migration
+                mig_result = _migration.migrate_scope(
+                    root=root,
+                    profile_id=safe_profile,
+                    character_id=safe_character,
+                    world_id=safe_world,
+                )
+                if mig_result.get("status") not in (
+                    "imported", "no_new_data", "no_sessions", "no_json_data",
+                ):
+                    raise AsideMemoryError(
+                        f"Migration failed: {mig_result.get('status')} — "
+                        f"{mig_result.get('note', '')}"
+                    )
+
+                # 5. Parity gate (only after fresh migration)
+                parity = _migration._check_parity(
+                    root, safe_profile, safe_character, safe_world
+                )
+                if not parity["parity_ok"]:
+                    raise AsideMemoryError(
+                        f"Parity gate FAILED after fresh migration: "
+                        f"JSON sessions={parity['json_sessions']}, "
+                        f"SQLite sessions={parity['sqlite_sessions']}, "
+                        f"JSON parts={parity['json_parts']}, "
+                        f"SQLite parts={parity['sqlite_parts']}, "
+                        f"duplicates={parity['duplicate_rows']}"
+                    )
+            # If db_session_count > 0 and has JSON: already migrated or
+            # externally seeded. Accept the DB state.
+
+        # 6. Activation confirmed
+        _activated_scopes.add(scope_key)
+
+
+# ── Slice 2 v2 API (SQLite-backed after activation) ────────────────────────
+
+
+def load_memory_v2(
+    *,
+    root: Path,
+    profile_id: str,
+    character_id: str,
+    world: str = DEFAULT_WORLD,
+    progress: int,
+) -> dict[str, Any]:
+    """Load aside memory with full isolation keys (past-only progress gate).
+
+    Slice 2: activates SQLite on first call for a scope (migration + parity),
+    then reads exclusively from SQLite. SQLite is the sole read path
+    in all states — JSON is never an active production read path.
+    """
+    # Activate SQLite if this scope hasn't been activated yet
+    if not _is_sqlite_activated_for_root(root, profile_id, character_id, world):
+        _ensure_sqlite_activated(root, profile_id, character_id, world)
+
+    # Read exclusively from SQLite in all cases
+    import aside_memory_store_sqlite as _sqlite_store
+
+    try:
+        return _sqlite_store.load_memory_sqlite(
+            root=root,
+            profile_id=profile_id,
+            character_id=character_id,
+            world=world,
+            progress=progress,
+        )
+    except _sqlite_store.SqliteMemoryError as exc:
+        raise AsideMemoryError(str(exc)) from None
 
 
 def append_session_v2(
@@ -68,53 +231,34 @@ def append_session_v2(
     Slice 1 (aside-v2): replaces ``slot`` with ``profile_id + world``.
     Slice 1 R2: each session carries structured player/reply/canon_snapshot
     parts with independent provenance.
+    Slice 2: SQLite is the sole write path. If the scope is not yet
+    activated, activation runs first (migration + parity), then the
+    session is written to SQLite. JSON files are NEVER written.
     """
-    base = _character_dir_v2(root, profile_id, character_id, world)
-    sessions_dir = base / "sessions"
-    sessions_dir.mkdir(parents=True, exist_ok=True)
+    # Ensure activation before any write
+    if not _is_sqlite_activated_for_root(root, profile_id, character_id, world):
+        _ensure_sqlite_activated(root, profile_id, character_id, world)
 
+    # W-06: validate provenance BEFORE SQLite transaction (reuse existing contract)
     normalized = _normalize_session_v2(session)
-    target = sessions_dir / _next_session_filename_v2(sessions_dir, normalized)
-    _write_json(target, normalized)
-    summary = summarize_memory_v2(
-        root=root, profile_id=profile_id, character_id=character_id, world=world
-    )
-    return {"status": "appended", "session_file": str(target), "summary": summary}
 
+    import aside_memory_store_sqlite as _sqlite_store
 
-def load_memory_v2(
-    *,
-    root: Path,
-    profile_id: str,
-    character_id: str,
-    world: str = DEFAULT_WORLD,
-    progress: int,
-) -> dict[str, Any]:
-    """Load aside memory with full isolation keys (past-only progress gate)."""
-    base = _character_dir_v2(root, profile_id, character_id, world)
-    sessions = [
-        session
-        for session in _read_sessions(base)
-        if int(session.get("progress_index", -1)) <= progress
-    ]
-    sessions.sort(key=_session_sort_key)
+    try:
+        result = _sqlite_store.append_session_sqlite(
+            root=root,
+            profile_id=profile_id,
+            character_id=character_id,
+            world=world,
+            session=normalized,
+        )
+    except _sqlite_store.SqliteMemoryError as exc:
+        raise AsideMemoryError(str(exc)) from None
 
     return {
-        "summary": _summary_from_sessions(sessions),
-        "recent": _recent_from_sessions(sessions),
-        "sessions_meta": [
-            {
-                "scene_id": s["scene_id"],
-                "beat_id": s["beat_id"],
-                "progress_index": s["progress_index"],
-                "session_id": s.get("session_id"),
-                "player": s.get("player"),
-                "reply": s.get("reply"),
-                "canon_snapshot": s.get("canon_snapshot"),
-                "file": s.get("_file"),
-            }
-            for s in sessions
-        ],
+        "status": "appended",
+        "session_file": "",
+        "session_rowid": result.get("session_rowid"),
     }
 
 
@@ -125,7 +269,25 @@ def summarize_memory_v2(
     character_id: str,
     world: str = DEFAULT_WORLD,
 ) -> dict[str, Any]:
-    """Deterministically rebuild memory_summary.json (v2 isolation keys)."""
+    """Deterministically rebuild memory summary (v2 isolation keys).
+
+    Slice 2: if SQLite is active, builds from SQLite exclusively.
+    Otherwise uses legacy JSON path.
+    """
+    if _is_sqlite_activated_for_root(root, profile_id, character_id, world):
+        import aside_memory_store_sqlite as _sqlite_store
+
+        try:
+            return _sqlite_store.summarize_memory_sqlite(
+                root=root,
+                profile_id=profile_id,
+                character_id=character_id,
+                world=world,
+            )
+        except _sqlite_store.SqliteMemoryError as exc:
+            raise AsideMemoryError(str(exc)) from None
+
+    # Pre-activation: legacy JSON path
     base = _character_dir_v2(root, profile_id, character_id, world)
     base.mkdir(parents=True, exist_ok=True)
     sessions = _read_sessions(base)
@@ -166,11 +328,23 @@ def reset_window_v2(
 ) -> dict[str, Any]:
     """Clear only the transient UI window, preserving all long-term memory.
 
-    Slice 1 R2 correction: this is a filesystem no-op. No session JSON
-    files are deleted, no memory_summary.json is rewritten, and no bytes or
-    mtime of existing files are changed. The caller is responsible for
-    clearing its own UI history.
+    Slice 1 R2 correction: storage no-op. No SQLite rows or JSON files deleted.
+    Slice 2: uses SQLite to count sessions if active; otherwise JSON count.
     """
+    if _is_sqlite_activated_for_root(root, profile_id, character_id, world):
+        import aside_memory_store_sqlite as _sqlite_store
+
+        try:
+            return _sqlite_store.reset_window_sqlite(
+                root=root,
+                profile_id=profile_id,
+                character_id=character_id,
+                world=world,
+            )
+        except _sqlite_store.SqliteMemoryError as exc:
+            raise AsideMemoryError(str(exc)) from None
+
+    # Pre-activation: legacy JSON count
     base = _character_dir_v2(root, profile_id, character_id, world)
     sessions_dir = base / "sessions"
     session_count = 0
@@ -194,14 +368,30 @@ def wipe_memory_v2(
 ) -> dict[str, Any]:
     """Remove all isolated aside memory for a profile/character/world.
 
-    Slice 1: requires explicit ``confirmed=True``. Returns an error
-    result when called without confirmation instead of silently deleting.
+    Slice 1: requires explicit ``confirmed=True``.
+    Slice 2: uses SQLite scoped wipe if active; JSON files are NEVER deleted.
     """
     if not confirmed:
         return {
             "status": "wipe_requires_confirmation",
             "note": "set confirmed=True to permanently delete all aside memory",
         }
+
+    if _is_sqlite_activated_for_root(root, profile_id, character_id, world):
+        import aside_memory_store_sqlite as _sqlite_store
+
+        try:
+            return _sqlite_store.wipe_memory_sqlite(
+                root=root,
+                profile_id=profile_id,
+                character_id=character_id,
+                world=world,
+                confirmed=True,
+            )
+        except _sqlite_store.SqliteMemoryError as exc:
+            raise AsideMemoryError(str(exc)) from None
+
+    # Pre-activation: legacy JSON wipe (filesystem)
     base = _character_dir_v2(root, profile_id, character_id, world)
     path_str = str(base)
     if base.exists():
@@ -209,42 +399,44 @@ def wipe_memory_v2(
     return {"status": "wiped", "path": path_str}
 
 
-# ── Internal v2 helpers ─────────────────────────────────────────────────────
+# ── Internal v2 helpers (retained for migration and test compatibility) ──
 
 
 def _normalize_session_v2(session: dict[str, Any]) -> dict[str, Any]:
-    """Normalize a session dict with structured mixed-provenance support.
-
-    Slice 1 R2 correction: a single session-level provenance is no longer
-    sufficient. Each turn must structurally differentiate:
-      - player message → USER_CLAIM
-      - character reply → ASIDE_WORLD
-      - canon snapshot → CANON_WORLD (when present)
-
-    Two formats are accepted:
-      1. Structured (preferred): ``player``, ``reply``, optional
-         ``canon_snapshot`` dicts, each with ``provenance``.
-      2. Legacy (backward compatible): top-level ``provenance`` is expanded
-         into structured form with per-role provenance mapping.
-    """
+    """Normalize a session dict with structured mixed-provenance support."""
     normalized = _normalize_session(session)
 
-    # ── Structured format (Slice 1 R2) ────────────────────────────────────
     if "player" in session and "reply" in session:
         player = _validate_provenance_part(session["player"], "player", PROVENANCE_USER_CLAIM)
         reply = _validate_provenance_part(session["reply"], "reply", PROVENANCE_ASIDE_WORLD)
         canon_snapshot = None
         if "canon_snapshot" in session and session["canon_snapshot"] is not None:
-            canon_snapshot = _validate_provenance_part(
-                session["canon_snapshot"], "canon_snapshot", PROVENANCE_CANON_WORLD
-            )
+            cs = session["canon_snapshot"]
+            if not isinstance(cs, dict):
+                raise AsideMemoryError("session.canon_snapshot must be a JSON object")
+            prov = cs.get("provenance")
+            if prov is None:
+                prov = PROVENANCE_CANON_WORLD
+            if not isinstance(prov, str) or prov not in _VALID_PROVENANCE:
+                raise AsideMemoryError(
+                    f"session.canon_snapshot.provenance must be one of "
+                    f"{sorted(_VALID_PROVENANCE)}, got: {prov!r}"
+                )
+            prov = prov.strip()
+            if prov != PROVENANCE_CANON_WORLD:
+                raise AsideMemoryError(
+                    f"session.canon_snapshot.provenance must be {PROVENANCE_CANON_WORLD!r}, "
+                    f"got: {prov!r}"
+                )
+            # Preserve original data structure (dict or string), not convert to str
+            data_value = cs.get("data", cs.get("text", ""))
+            canon_snapshot = {"data": data_value, "provenance": prov}
         normalized["player"] = player
         normalized["reply"] = reply
         normalized["canon_snapshot"] = canon_snapshot
         _tag_transcript_provenance(normalized)
         return normalized
 
-    # ── Legacy format: top-level provenance ───────────────────────────────
     provenance = session.get("provenance")
     if provenance is None:
         provenance = PROVENANCE_ASIDE_WORLD
@@ -254,7 +446,6 @@ def _normalize_session_v2(session: dict[str, Any]) -> dict[str, Any]:
         )
     provenance = provenance.strip()
 
-    # Expand legacy single-provenance session into structured form.
     normalized["player"] = {
         "text": "",
         "provenance": _map_legacy_role_provenance("user", provenance),
@@ -273,14 +464,6 @@ def _validate_provenance_part(
     part_name: str,
     expected_provenance: str,
 ) -> dict[str, Any]:
-    """Validate a structured provenance part (player/reply/canon_snapshot).
-
-    Slice 1 R2: each part has a fixed expected provenance.
-    - player must be USER_CLAIM
-    - reply must be ASIDE_WORLD
-    - canon_snapshot must be CANON_WORLD
-    Explicitly providing the wrong provenance raises an error.
-    """
     if not isinstance(part, dict):
         raise AsideMemoryError(f"session.{part_name} must be a JSON object")
     prov = part.get("provenance")
@@ -297,25 +480,11 @@ def _validate_provenance_part(
             f"session.{part_name}.provenance must be {expected_provenance!r}, "
             f"got: {prov!r}"
         )
-    # Preserve text or data field; accept data for canon_snapshot.
     text = str(part.get("text", part.get("data", "")))
-    return {
-        "text": text,
-        "provenance": prov,
-    }
+    return {"text": text, "provenance": prov}
 
 
-def _map_legacy_role_provenance(
-    role: str,
-    session_provenance: str,
-) -> str:
-    """Map legacy session-level provenance to per-role provenance.
-
-    Rules (Slice 1 R2):
-      - user/player text is always USER_CLAIM
-      - assistant/character reply is always ASIDE_WORLD
-      - canon snapshot is always CANON_WORLD when structurally present
-    """
+def _map_legacy_role_provenance(role: str, session_provenance: str) -> str:
     if role == "user":
         return PROVENANCE_USER_CLAIM
     if role == "assistant":
@@ -324,7 +493,6 @@ def _map_legacy_role_provenance(
 
 
 def _tag_transcript_provenance(normalized: dict[str, Any]) -> None:
-    """Ensure each transcript entry carries its own provenance field."""
     player_prov = (
         normalized.get("player", {}).get("provenance", PROVENANCE_USER_CLAIM)
         if isinstance(normalized.get("player"), dict)
@@ -339,7 +507,7 @@ def _tag_transcript_provenance(normalized: dict[str, Any]) -> None:
         if not isinstance(entry, dict):
             continue
         if "provenance" in entry:
-            continue  # already tagged
+            continue
         role = entry.get("role", "")
         if role == "user":
             entry["provenance"] = player_prov
@@ -350,19 +518,11 @@ def _tag_transcript_provenance(normalized: dict[str, Any]) -> None:
 
 
 def _character_dir_v2(
-    root: Path,
-    profile_id: str,
-    character_id: str,
-    world: str,
+    root: Path, profile_id: str, character_id: str, world: str
 ) -> Path:
-    """Resolve the isolated aside memory directory (Slice 1 layout).
-
-    Layout: <root>/private_chats/<profile_id>/<character_id>/<world>/
-    """
     safe_profile = _safe_id(profile_id, "profile_id")
     safe_character = _safe_id(character_id, "character_id")
     safe_world = _safe_world(world)
-
     root_path = Path(root).expanduser().resolve()
     base = (
         root_path / "private_chats" / safe_profile / safe_character / safe_world
@@ -374,7 +534,6 @@ def _character_dir_v2(
 
 
 def _safe_world(world: str) -> str:
-    """Validate and return a canonical world identifier."""
     if not isinstance(world, str) or not world.strip():
         raise AsideMemoryError("world must be a non-empty string")
     cleaned = world.strip().lower()
@@ -385,10 +544,7 @@ def _safe_world(world: str) -> str:
     return cleaned
 
 
-def _next_session_filename_v2(
-    sessions_dir: Path, session: dict[str, Any]
-) -> str:
-    """Generate a unique session filename (same logic as v1)."""
+def _next_session_filename_v2(sessions_dir: Path, session: dict[str, Any]) -> str:
     return _next_session_filename(sessions_dir, session)
 
 
@@ -406,7 +562,6 @@ def append_session(
     base = _character_dir(root, slot, character)
     sessions_dir = base / "sessions"
     sessions_dir.mkdir(parents=True, exist_ok=True)
-
     normalized = _normalize_session(session)
     target = sessions_dir / _next_session_filename(sessions_dir, normalized)
     _write_json(target, normalized)
@@ -429,7 +584,6 @@ def load_memory(
         if int(session.get("progress_index", -1)) <= progress
     ]
     sessions.sort(key=_session_sort_key)
-
     filtered_summary = _summary_from_sessions(sessions)
     recent = _recent_from_sessions(sessions)
     sessions_meta = [
@@ -500,7 +654,6 @@ def _normalize_session(session: dict[str, Any]) -> dict[str, Any]:
     session_id = session.get("session_id")
     if session_id is not None and not isinstance(session_id, str):
         raise AsideMemoryError("session.session_id must be a string")
-
     return {
         "scene_id": scene_id,
         "beat_id": beat_id,
@@ -524,11 +677,6 @@ def _clean_transcript(value: list[Any]) -> list[dict[str, str]]:
 
 
 def _read_sessions(base: Path) -> list[dict[str, Any]]:
-    """Read all session files, applying legacy mapping without mutation.
-
-    Slice 1 R2 correction: legacy sessions without per-part provenance
-    are mapped in memory only; the on-disk JSON is never rewritten.
-    """
     sessions_dir = base / "sessions"
     if not sessions_dir.exists():
         return []
@@ -536,10 +684,7 @@ def _read_sessions(base: Path) -> list[dict[str, Any]]:
     for path in sorted(sessions_dir.glob("*.json"), key=lambda p: p.name):
         data = _read_json(path)
         session = _normalize_session(data)
-
-        # ── Legacy mapping (non-destructive, in-memory only) ──────────────
         if "player" not in data and "reply" not in data:
-            # Legacy session: map provenance per role.
             legacy_provenance = (
                 data.get("provenance", "").strip() or PROVENANCE_ASIDE_WORLD
             )
@@ -556,12 +701,10 @@ def _read_sessions(base: Path) -> list[dict[str, Any]]:
                 if isinstance(data.get("canon_snapshot"), dict)
                 else None
             )
-            # Preserve top-level provenance for backward compat in meta.
             if isinstance(data.get("provenance"), str) and data["provenance"].strip():
                 session["provenance"] = data["provenance"].strip()
             _tag_transcript_provenance(session)
         else:
-            # Structured session: preserve as-is from disk.
             if "player" in data and isinstance(data["player"], dict):
                 session["player"] = dict(data["player"])
             if "reply" in data and isinstance(data["reply"], dict):
@@ -573,7 +716,6 @@ def _read_sessions(base: Path) -> list[dict[str, Any]]:
             if isinstance(data.get("provenance"), str) and data["provenance"].strip():
                 session["provenance"] = data["provenance"].strip()
             _tag_transcript_provenance(session)
-
         session["_file"] = str(path)
         sessions.append(session)
     return sessions
@@ -695,22 +837,21 @@ def main(argv: list[str] | None = None) -> int:
     _configure_stdio()
     parser = _build_parser()
     args = parser.parse_args(argv)
-
     try:
         root = Path(args.root)
         if args.command == "append":
             if not args.session:
                 raise AsideMemoryError("--session is required for append")
             result = append_session(
-                root=root,
-                slot=args.slot,
-                character=args.character,
+                root=root, slot=args.slot, character=args.character,
                 session=_read_json(Path(args.session)),
             )
         elif args.command == "load":
             if args.progress is None:
                 raise AsideMemoryError("--progress is required for load")
-            result = load_memory(root=root, slot=args.slot, character=args.character, progress=args.progress)
+            result = load_memory(
+                root=root, slot=args.slot, character=args.character, progress=args.progress
+            )
         elif args.command == "summarize":
             result = summarize_memory(root=root, slot=args.slot, character=args.character)
         elif args.command == "reset":

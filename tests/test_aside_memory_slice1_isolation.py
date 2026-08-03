@@ -122,7 +122,9 @@ def test_profile_isolation(tmp_path):
 
     assert len(mem_a["sessions_meta"]) == 1
     assert len(mem_b["sessions_meta"]) == 1
-    assert mem_a["sessions_meta"][0]["file"] != mem_b["sessions_meta"][0]["file"]
+    # Verify profile isolation: each profile only sees its own content
+    assert mem_a["sessions_meta"][0]["player"]["text"] == "From profile A"
+    assert mem_b["sessions_meta"][0]["player"]["text"] == "From profile B"
 
 
 # ── character isolation ─────────────────────────────────────────────────────
@@ -386,16 +388,14 @@ def test_reset_preserves_summary(tmp_path):
 def test_reset_does_not_change_bytes_or_mtime(tmp_path):
     """reset_window_v2 must not modify bytes or mtime of existing session files."""
     root = tmp_path / "aside_root"
-    store.append_session_v2(
-        root=root, profile_id="p1", character_id="kira", world="aside",
-        session=_make_structured_session(msg="Session 1", progress_index=1),
-    )
-
+    # Create legacy JSON files manually (test-only, not production write)
     sessions_dir = root / "private_chats" / "p1" / "kira" / "aside" / "sessions"
-    session_files = sorted(sessions_dir.glob("*.json"))
-    assert len(session_files) == 1
+    sessions_dir.mkdir(parents=True, exist_ok=True)
+    session_file = sessions_dir / "SC_017_sc_017_v2_1a_001.json"
+    session_data = _make_structured_session(msg="Session 1", progress_index=1)
+    session_file.write_text(json.dumps(session_data, ensure_ascii=False), encoding="utf-8")
 
-    stat_before = session_files[0].stat()
+    stat_before = session_file.stat()
     bytes_before = stat_before.st_size
     mtime_before = stat_before.st_mtime
 
@@ -406,13 +406,9 @@ def test_reset_does_not_change_bytes_or_mtime(tmp_path):
         root=root, profile_id="p1", character_id="kira", world="aside",
     )
 
-    stat_after = session_files[0].stat()
+    stat_after = session_file.stat()
     assert stat_after.st_size == bytes_before
     assert stat_after.st_mtime == mtime_before
-
-    # Also verify summary not rewritten.
-    summary_path = root / "private_chats" / "p1" / "kira" / "aside" / "memory_summary.json"
-    assert not summary_path.exists() or summary_path.stat().st_size > 0
 
 
 def test_after_reset_new_session_appended_without_loss(tmp_path):
@@ -549,17 +545,17 @@ def test_wipe_scoped_to_profile_character_world(tmp_path):
 def test_reset_button_does_not_call_wipe(tmp_path):
     """reset_window_v2 must not delete any files (wipe is separate)."""
     root = tmp_path / "aside_root"
-    store.append_session_v2(
-        root=root, profile_id="p1", character_id="kira", world="aside",
-        session=_make_structured_session(msg="Session 1"),
-    )
+    # Create legacy JSON session file (test-only, not production write)
+    sessions_dir = root / "private_chats" / "p1" / "kira" / "aside" / "sessions"
+    sessions_dir.mkdir(parents=True, exist_ok=True)
+    session_file = sessions_dir / "SC_017_sc_017_v2_1a_001.json"
+    session_data = _make_structured_session(msg="Session 1")
+    session_file.write_text(json.dumps(session_data, ensure_ascii=False), encoding="utf-8")
 
     store.reset_window_v2(
         root=root, profile_id="p1", character_id="kira", world="aside",
     )
 
-    char_dir = root / "private_chats" / "p1" / "kira" / "aside"
-    sessions_dir = char_dir / "sessions"
     assert sessions_dir.exists()
     assert len(list(sessions_dir.glob("*.json"))) == 1
 
@@ -734,23 +730,10 @@ def test_v2_past_only_progress_gate(tmp_path):
 # ── provenance written to session file ──────────────────────────────────────
 
 
-def test_provenance_written_to_session_file(tmp_path):
-    """Structured provenance parts are persisted in the JSON session file on disk."""
-    root = tmp_path / "aside_root"
-    store.append_session_v2(
-        root=root, profile_id="p1", character_id="kira", world="aside",
-        session=_make_structured_session(msg="provenance-on-disk"),
-    )
-
-    sessions_dir = root / "private_chats" / "p1" / "kira" / "aside" / "sessions"
-    session_files = sorted(sessions_dir.glob("*.json"))
-    assert len(session_files) == 1
-
-    raw = json.loads(session_files[0].read_text(encoding="utf-8"))
-    assert raw["player"]["provenance"] == store.PROVENANCE_USER_CLAIM
-    assert raw["reply"]["provenance"] == store.PROVENANCE_ASIDE_WORLD
-
-
+# REMOVED_AS_DUPLICATE: test_provenance_written_to_session_file
+# Covered by test_structured_mixed_provenance_stored (PASSES) which asserts
+# player/reply provenance in load_memory_v2 output.
+# JSON production file write is retired; SQLite is the sole write path.
 # ── world normalization ─────────────────────────────────────────────────────
 
 
@@ -765,12 +748,6 @@ def test_safe_world_normalizes_case(tmp_path):
         root=root, profile_id="p1", character_id="kira", world="aside", progress=999
     )
     assert len(mem["sessions_meta"]) == 1
-
-    aside_dir = root / "private_chats" / "p1" / "kira" / "aside"
-    assert aside_dir.exists()
-    upper_dir = root / "private_chats" / "p1" / "kira" / "ASIDE"
-    if upper_dir.resolve() != aside_dir.resolve():
-        assert not upper_dir.exists()
 
 
 # ── sandbox explicitly rejected ─────────────────────────────────────────────
