@@ -3,7 +3,7 @@
 > **Назначение.** Карта всех канонических документов проекта: где что лежит, статус, зачем.
 > Начинать чтение отсюда. Пути даны относительно корня репозитория.
 >
-> **Обновлено:** 2026-08-02
+> **Обновлено:** 2026-08-03
 > **Правило:** при добавлении/устаревании документа — обновить этот индекс.
 
 Легенда статусов: **ACTIVE** (действующий) · **CANONICAL** (источник правды) ·
@@ -65,6 +65,7 @@
 | [`PAC_CHARACTER_EVOLUTION_KNOWLEDGE_CAPTURE_v1.md`](PAC_CHARACTER_EVOLUTION_KNOWLEDGE_CAPTURE_v1.md) | ACTIVE (v1) | Сохранение идей, обоснований и заменённых подходов (K-001–K-017 + S-001–S-008). |
 | [`NARRATIVE_AUTONOMOUS_ENSEMBLE_CONCEPT_v1.md`](NARRATIVE_AUTONOMOUS_ENSEMBLE_CONCEPT_v1.md) | FUTURE (концепт) | Автономный ансамбль: персонажи действуют/общаются сами, автор наблюдает. Non-canon by default. |
 | [`AI_ROLES_AND_KNOWLEDGE_ROUTING_CONCEPT_v1.md`](AI_ROLES_AND_KNOWLEDGE_ROUTING_CONCEPT_v1.md) | PROPOSED (v1) | Role Registry, Role Evolution, per-role Knowledge Profile, будущий Knowledge Router и context assembly. Read-side = Gateway; builders = reusable primitives. Один consolidated preflight. Impl NOT AUTHORIZED (D-RKR-1–D-RKR-15 pending). |
+| [`AI_ROLES_AND_KNOWLEDGE_ROUTING_DECISION_REGISTER_v1.md`](AI_ROLES_AND_KNOWLEDGE_ROUTING_DECISION_REGISTER_v1.md) | PROPOSED (v1) / OWNER REVIEW REQUIRED | **Persona Context Routing Decision Register (D-RKR-16–D-RKR-35).** 20 решений: responsibility boundary, input contract, scene type taxonomy, classification authority, module policy, required/optional/forbidden, partner/level/intimacy/conflict routing, context budget, ordering, manifest, failure policy, test gates, code location, PAC/Aside boundaries, security, authorization gate. **10 BLOCKING decisions; CODE NOT AUTHORIZED.** Основание: READ-ONLY AUDIT 2026-08-03 (LEVEL_ONLY, GAP-01–GAP-04). |
 
 > **N8 — Persona Voice Model:** FUTURE, NOT AUTHORIZED. Заблокирован данными; см. `NARRATIVE_ROADMAP.md` и N9 (PAC производит корпус).
 > **Character Evolution Sandbox:** PROPOSED. Документация и модель состояния — разрешены. Имплементация — BLOCKED (D-CES-1 – D-CES-10 pending).
