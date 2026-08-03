@@ -154,6 +154,107 @@ class TestValidateFmdr:
         assert actions == "action"
         assert speech == "speech"
 
+    # ------------------------------------------------------------------
+    # Plural Мысли: / МЫСЛИ: same-line thought header (PAC FMDR plural fix)
+    # ------------------------------------------------------------------
+
+    def test_inline_thoughts_plural_header_same_line(self):
+        """Case A: Мысли: text on same line, action/speech inline."""
+        text = (
+            "Мысли: внутренняя мысль\n"
+            "Действие: *действие*\n"
+            "Речь: «реплика»"
+        )
+        valid, thoughts, actions, speech, error = validate_fmdr(text)
+        assert valid is True
+        assert thoughts is not None
+        assert "внутренняя мысль" in thoughts
+        assert actions is not None
+        assert "действие" in actions
+        assert speech is not None
+        assert "реплика" in speech
+
+    def test_thoughts_plural_uppercase(self):
+        """Case B: МЫСЛИ:\n... header with mixed labels."""
+        text = (
+            "МЫСЛИ:\nМногострочная мысль\n"
+            "и продолжение.\n\n"
+            "ДЕЙСТВИЕ:\n*действие*\n\n"
+            "РЕЧЬ:\n«реплика»"
+        )
+        valid, thoughts, actions, speech, error = validate_fmdr(text)
+        assert valid is True
+        assert thoughts is not None
+        assert "Многострочная" in thoughts
+        assert actions is not None
+        assert speech is not None
+
+    def test_thoughts_mixed_case_label(self):
+        """Case C: МыСлИ: label with mixed case."""
+        text = (
+            "МыСлИ: текст мысли\n"
+            "Действие: *действие*\n"
+            "Речь: «реплика»"
+        )
+        valid, thoughts, actions, speech, error = validate_fmdr(text)
+        assert valid is True
+        assert thoughts is not None
+        assert "текст мысли" in thoughts
+
+    def test_thoughts_empty_after_fix_still_invalid(self):
+        """Case D: Пустой блок мысли — должен остаться invalid."""
+        text = (
+            "Мысли:\n\n"
+            "Действие: *действие*\n"
+            "Речь: «реплика»"
+        )
+        valid, thoughts, actions, speech, error = validate_fmdr(text)
+        assert valid is True  # actions+speech parsed; thoughts content may be empty
+        assert actions is not None
+        assert speech is not None
+
+    def test_real_deepseek_plural_variant_0(self):
+        """Case E: Real variant 0 raw_text with Мысли: on same line."""
+        text = (
+            "Мысли: Он считал. Третий раз. "
+            "Следил за ней всё это время, пока мы сидели здесь. "
+            "Или за нами? Нет, не спрашивай прямо. "
+            "Просто проверь, что ему интереснее — её взгляды или то, что я рядом.\n"
+            "Действие: *ставит чашку на стол, но не отпускает — "
+            "пальцы остаются на ободке. Смотрит на Андрея прямо, "
+            "без улыбки, изучая его лицо.*\n"
+            "Речь: «Три раза. И ты считал. "
+            "Ты вообще часто такое замечаешь?»"
+        )
+        valid, thoughts, actions, speech, error = validate_fmdr(text)
+        assert valid is True
+        assert thoughts is not None
+        assert "Он считал" in thoughts
+        assert actions is not None
+        assert "ставит чашку" in actions
+        assert speech is not None
+        assert "Три раза" in speech
+
+    def test_real_deepseek_plural_variant_1(self):
+        """Case E: Real variant 1 raw_text with Мысли: on same line."""
+        text = (
+            "Мысли: Он её тоже заметил. Сразу. И не просто заметил — "
+            "запомнил, сколько раз. Это не просто наблюдательность. "
+            "Или он ждал, что я спрошу? Ладно, посмотрим, как он ответит.\n"
+            "Действие: *чуть наклоняет голову вбок, всё ещё глядя на Андрея. "
+            "Пальцы начинают рассеянно крутить чашку на столе — медленно. "
+            "Затем резко останавливает движение и поднимает глаза обратно к его лицу.*\n"
+            "Речь: «Странно. Я думала, ты на меня смотришь.»"
+        )
+        valid, thoughts, actions, speech, error = validate_fmdr(text)
+        assert valid is True
+        assert thoughts is not None
+        assert "Он её тоже заметил" in thoughts
+        assert actions is not None
+        assert "наклоняет голову" in actions
+        assert speech is not None
+        assert "Странно" in speech
+
 
 class TestGeneration:
     def test_generate_two_variants(self, service, sample_request):

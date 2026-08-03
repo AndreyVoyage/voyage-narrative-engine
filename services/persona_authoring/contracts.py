@@ -306,9 +306,10 @@ _FMDR_THOUGHTS_INLINE_RE = re.compile(
     re.DOTALL | re.IGNORECASE,
 )
 
-# Format B: header-style МЫСЛЬ:\n... (content runs until next header or marker)
+# Format B/C: header-style МЫСЛЬ:\n... or Мысли: text on same line
+# Content runs until the next labelled block, or the next *action* or «speech» marker
 _FMDR_THOUGHTS_HEADER_RE = re.compile(
-    r"(?:^|\n)\s*" + _THOUGHT_LABEL + r"\s*:\s*\n(.*?)(?=\n\s*(?:" + _ACTION_LABEL + r"|" + _SPEECH_LABEL + r")\s*:\s*\n|\n\s*\*|\n\s*«|\Z)",
+    r"(?:^|\n)\s*" + _THOUGHT_LABEL + r"\s*:\s*\n?(.*?)(?=\n\s*(?:" + _ACTION_LABEL + r"|" + _SPEECH_LABEL + r")\s*:\s*|\n\s*\*|\n\s*«|\Z)",
     re.DOTALL | re.IGNORECASE,
 )
 
