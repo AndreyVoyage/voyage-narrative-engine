@@ -1,0 +1,245 @@
+{
+  "schema_version": "2.0",
+  "id": "SC_029",
+  "name": "Кира — взгляды в кафе",
+  "version": "1.0",
+  "location": "cafe",
+  "time": "day",
+  "archetype": "none",
+  "intensity": 2,
+  "risk": 1,
+  "duration_minutes": 6,
+  "prerequisites": [],
+  "flags_required": [],
+  "emotional_anchors": [
+    "взаимное наблюдение Киры и Андрея",
+    "игра взглядов",
+    "Кира проверяет интерес Андрея",
+    "неожиданное признание Андрея",
+    "смущение Киры"
+  ],
+  "symbols": [
+    "SC_029:kira:U2-A:cafe_glances:v1"
+  ],
+  "characters": [
+    {
+      "id": "kira",
+      "display_name": "Кира",
+      "role": "protagonist",
+      "present": true,
+      "state_start": "U2-A",
+      "state_end": "U2-A"
+    },
+    {
+      "id": "andrey",
+      "display_name": "Андрей",
+      "role": "partner",
+      "present": true,
+      "state_start": null,
+      "state_end": null
+    }
+  ],
+  "pov_default": "kira",
+  "entry_beats": [],
+  "choice_points": [
+    {
+      "id": "CP_1",
+      "timing": "kira_notices_andrey_glances",
+      "pov_default": "kira",
+      "prompt": "Андрей спрашивает, не отвлекает ли он Киру. Она понимает, что он тоже за ней наблюдал.",
+      "branches": [
+        {
+          "id": "1A",
+          "option_text": "Кира отвечает, постепенно раскрывая, что тоже его заметила.",
+          "beats": [
+            {
+              "beat_id": "1A-b1",
+              "type": "thought",
+              "speaker": "kira",
+              "pov": "kira",
+              "speech": null,
+              "action": null,
+              "thought": "Он спрашивает так, будто сам её заметил. Или нет — проверяет меня. Третий взгляд. Кому он предназначался?",
+              "thought_visibility": "hidden",
+              "narration": null,
+              "emotion": "U2-A",
+              "visual_cue": null
+            },
+            {
+              "beat_id": "1A-b2",
+              "type": "action",
+              "speaker": "kira",
+              "pov": "kira",
+              "speech": null,
+              "action": "Кира медленно ставит чашку, не отрывая глаз от Андрея. Уголок рта чуть подрагивает, но она сдерживает усмешку.",
+              "thought": null,
+              "thought_visibility": null,
+              "narration": null,
+              "emotion": "U2-A",
+              "visual_cue": null
+            },
+            {
+              "beat_id": "1A-b3",
+              "type": "dialogue",
+              "speaker": "kira",
+              "pov": "kira",
+              "speech": "Нет. А ты?",
+              "action": null,
+              "thought": null,
+              "thought_visibility": null,
+              "narration": null,
+              "emotion": null,
+              "visual_cue": null
+            },
+            {
+              "beat_id": "1A-b4",
+              "type": "dialogue",
+              "speaker": "andrey",
+              "pov": "kira",
+              "speech": "Тоже нет. Просто заметил, что она уже третий раз смотрит сюда.",
+              "action": null,
+              "thought": null,
+              "thought_visibility": null,
+              "narration": null,
+              "emotion": null,
+              "visual_cue": null
+            },
+            {
+              "beat_id": "1A-b5",
+              "type": "thought",
+              "speaker": "kira",
+              "pov": "kira",
+              "speech": null,
+              "action": null,
+              "thought": "Он её тоже заметил. И не просто заметил — запомнил, сколько раз. Это просто наблюдательность или он ждал, что я спрошу? Ладно, посмотрим, как он ответит.",
+              "thought_visibility": "hidden",
+              "narration": null,
+              "emotion": "U2-A",
+              "visual_cue": null
+            },
+            {
+              "beat_id": "1A-b6",
+              "type": "action",
+              "speaker": "kira",
+              "pov": "kira",
+              "speech": null,
+              "action": "Кира чуть наклоняет голову, продолжая смотреть на Андрея. Пальцы медленно поворачивают чашку на столе, затем движение резко останавливается.",
+              "thought": null,
+              "thought_visibility": null,
+              "narration": null,
+              "emotion": "U2-A",
+              "visual_cue": null
+            },
+            {
+              "beat_id": "1A-b7",
+              "type": "dialogue",
+              "speaker": "kira",
+              "pov": "kira",
+              "speech": "Странно. А я думала, ты на меня смотришь.",
+              "action": null,
+              "thought": null,
+              "thought_visibility": null,
+              "narration": null,
+              "emotion": null,
+              "visual_cue": null
+            },
+            {
+              "beat_id": "1A-b8",
+              "type": "dialogue",
+              "speaker": "andrey",
+              "pov": "kira",
+              "speech": "Я и смотрел. Поэтому и заметил, что ты всё время отвлекаешься.",
+              "action": null,
+              "thought": null,
+              "thought_visibility": null,
+              "narration": null,
+              "emotion": null,
+              "visual_cue": null
+            },
+            {
+              "beat_id": "1A-b9",
+              "type": "thought",
+              "speaker": "kira",
+              "pov": "kira",
+              "speech": null,
+              "action": null,
+              "thought": "Он смотрел на меня. Всё это время. Я зря себя накрутила. Теперь не знаю, куда деть руки.",
+              "thought_visibility": "hidden",
+              "narration": null,
+              "emotion": "U2-A",
+              "visual_cue": null
+            },
+            {
+              "beat_id": "1A-b10",
+              "type": "action",
+              "speaker": "kira",
+              "pov": "kira",
+              "speech": null,
+              "action": "Кира берёт салфетку, расправляет её на столе и разглаживает пальцем уголок.",
+              "thought": null,
+              "thought_visibility": null,
+              "narration": null,
+              "emotion": "U2-A",
+              "visual_cue": null
+            },
+            {
+              "beat_id": "1A-b11",
+              "type": "dialogue",
+              "speaker": "kira",
+              "pov": "kira",
+              "speech": "Значит, заметил. Ладно. Я просто задумалась.",
+              "action": null,
+              "thought": null,
+              "thought_visibility": null,
+              "narration": null,
+              "emotion": null,
+              "visual_cue": null
+            }
+          ],
+          "effects": {
+            "flags_set": [
+              "sc_029_complete",
+              "kira_u2a_cafe_glances_exchanged"
+            ],
+            "flags_cleared": [],
+            "level_changes": {
+              "kira": "U2-A"
+            },
+            "relationship_changes": {
+              "kira_andrey": "+mutual_observation_acknowledged"
+            }
+          },
+          "next": {
+            "on_complete": "scene_end",
+            "next_scene": null,
+            "completion_flag": "sc_029_complete"
+          }
+        }
+      ]
+    }
+  ],
+  "visual": {
+    "scene_id": "VS_SC_029",
+    "stills": []
+  },
+  "safety": {
+    "content_rating": "G",
+    "stop_words_enabled": true,
+    "present_constraints": "Андрей присутствует. Сцена — лёгкий разговор в кафе без физической эскалации.",
+    "notes": "Canonical scene SC_029 for Kira U2-A. Source: PAC human-curated trial, model deepseek-v4-pro, level U2-A. Owner scene verdict: APPROVE_SCENE. Нет физической эскалации, принуждения, угроз или игнорирования стоп-слов. Канон персонажа не изменён."
+  },
+  "_pac_provenance": {
+    "source": "PAC human-curated trial",
+    "character": "kira",
+    "level": "U2-A",
+    "provider": "cloud",
+    "model": "deepseek-v4-pro",
+    "owner_scene_verdict": "APPROVE_SCENE",
+    "dataset_approval": "NO",
+    "source_run_ids": [
+      "20260802T205906Z-30581a27",
+      "20260802T210416Z-e193cd22",
+      "20260803T093602Z-6c744019"
+    ]
+  }
+}
