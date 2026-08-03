@@ -194,7 +194,15 @@ def _project_context(
        matrix entry.
     3. Excluded category prefixes: removed unconditionally.
     4. All other modules: preserved as-is.
+
+    Raises:
+        TypeError: when *level* is ``None`` (caller must guard).
+        PacGatewayError: when the requested level module or speech
+            matrix entry is absent.
     """
+    if level is None:
+        raise TypeError("level must not be None; caller must guard with 'if level is not None'")
+
     projected: Dict[str, dict] = {}
     expected_level_module = f"levels/{level}.json"
     level_module_found = False
