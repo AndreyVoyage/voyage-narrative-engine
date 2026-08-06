@@ -46,3 +46,5 @@ memory/SUMMARY_*.md
 
 # N9 PAC v0 non-canonical runtime output
 /local_runs/pac/
+
+/local_runs/cis_pilot/
