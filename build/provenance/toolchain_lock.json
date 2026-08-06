@@ -1,0 +1,45 @@
+{
+  "timestamp": "2026-08-06T12:00:00Z",
+  "toolchain": {
+    "name": "llvm-mingw-20241217-ucrt-x86_64",
+    "archive_sha256": "f4f3ad8616c4183ce7b0d72df634400945b41ea9816145fc2430df6003455db7",
+    "compiler": "Clang 19.1.6",
+    "compiler_binary": "x86_64-w64-mingw32-clang.exe",
+    "compiler_target": "x86_64-w64-windows-gnu",
+    "compiler_version_string": "clang version 19.1.6 (https://github.com/llvm/llvm-project.git e21dc4bd5474d04b8e62d7331362edcc5648d7e5)",
+    "compiler_sha256": "7b22156097868661bc9dff58ac72270748ff3765501e954c4d5a99ae0a68f1d7",
+    "linker": "LLD 19.1.6",
+    "linker_binary": "ld.lld.exe",
+    "linker_sha256": "e59241b1af9c763cebad2fe4bb37c6ab44d3593f6a18d1011f57f0fd64d14035",
+    "cxx_compiler": "x86_64-w64-mingw32-clang++.exe",
+    "strip_tool": "x86_64-w64-mingw32-strip.exe",
+    "runtime": "UCRT (Universal C Runtime)",
+    "license": "Apache 2.0 with LLVM Exceptions"
+  },
+  "import_library": {
+    "name": "libpython3.12.a",
+    "sha256": "125add086832756cbdb72625c97f692cea52b678ba4cb93983ac1ed7784e26e6",
+    "generated_from": "Ren'Py 8.5.3 SDK lib/python3.12.dll",
+    "generation_method": "gendef python3.12.dll > python3.12.def; llvm-dlltool -m i386:x86-64 -d python3.12.def -l libpython3.12.a",
+    "target_dll": "libpython3.12.dll",
+    "note": "This import library is NOT the Ren'Py SDK DLL itself — it is a MinGW-compatible import library generated from the SDK DLL for linking purposes."
+  },
+  "abi": {
+    "extension_suffix": ".cp312-mingw_x86_64_ucrt_llvm.pyd",
+    "cache_tag": "cpython-312",
+    "python_version": "3.12.7",
+    "renpy_version": "8.5.3.26051504",
+    "platform": "Windows x86_64"
+  },
+  "compile_definitions": {
+    "sqlite_core": [
+      "-DSQLITE_ENABLE_FTS5",
+      "-DSQLITE_THREADSAFE=1",
+      "-DSQLITE_OMIT_LOAD_EXTENSION",
+      "-DSQLITE_DEFAULT_WAL_SYNCHRONOUS=1",
+      "-DSQLITE_DQS=0"
+    ],
+    "cpython_wrapper": "PY_SQLITE_ENABLE_LOAD_EXTENSION NOT defined (load-extension FORBIDDEN)",
+    "build_env": ["-D_WIN64", "-DNDEBUG"]
+  }
+}

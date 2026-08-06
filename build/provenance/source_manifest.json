@@ -1,0 +1,33 @@
+{
+  "timestamp": "2026-08-06T12:00:00Z",
+  "sqlite": {
+    "version": "3.45.3",
+    "archive_name": "sqlite-amalgamation-3450300.zip",
+    "archive_sha256": "ea170e73e447703e8359308ca2e4366a3ae0c4304a8665896f068c736781c651",
+    "official_url": "https://www.sqlite.org/2024/sqlite-amalgamation-3450300.zip",
+    "release_date": "2024-04-15",
+    "license": "Public Domain"
+  },
+  "cpython": {
+    "version": "3.12.7",
+    "archive_name": "cpython-3.12.7-source-fresh.tar.gz",
+    "archive_sha256": "0c4db8f00ab490bfb5a4b0d0e763319d017226b5521f97e851412342ff04d459",
+    "official_url": "https://github.com/python/cpython/tree/v3.12.7",
+    "license": "PSF License Version 2"
+  },
+  "toolchain": {
+    "name": "llvm-mingw-20241217-ucrt-x86_64",
+    "archive_sha256": "f4f3ad8616c4183ce7b0d72df634400945b41ea9816145fc2430df6003455db7",
+    "official_url": "https://github.com/mstorsjo/llvm-mingw/releases/tag/20241217",
+    "compiler": "Clang 19.1.6",
+    "compiler_target": "x86_64-w64-windows-gnu",
+    "linker": "LLD 19.1.6",
+    "license": "Apache 2.0 with LLVM Exceptions"
+  },
+  "import_library": {
+    "name": "libpython3.12.a",
+    "sha256": "125add086832756cbdb72625c97f692cea52b678ba4cb93983ac1ed7784e26e6",
+    "generated_from": "Ren'Py 8.5.3 lib/python3.12.dll",
+    "method": "gendef + llvm-dlltool"
+  }
+}

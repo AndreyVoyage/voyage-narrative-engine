@@ -1,0 +1,24 @@
+# Source Hashes — ASIDE V2 SLICE 2 SQLITE CORRECTION SLICE B
+# Generated: 2026-08-06
+# This file records pinned SHA-256 hashes for all source inputs.
+# These hashes MUST match before any deterministic rebuild is permitted.
+
+# SQLite 3.45.3 amalgamation archive
+ea170e73e447703e8359308ca2e4366a3ae0c4304a8665896f068c736781c651  sqlite-amalgamation-3450300.zip
+
+# CPython 3.12.7 source archive
+0c4db8f00ab490bfb5a4b0d0e763319d017226b5521f97e851412342ff04d459  cpython-3.12.7-source-fresh.tar.gz
+
+# LLVM-MinGW 20241217 UCRT x86_64 toolchain archive
+f4f3ad8616c4183ce7b0d72df634400945b41ea9816145fc2430df6003455db7  llvm-mingw-20241217-ucrt-x86_64.zip
+
+# Import library (generated from Ren'Py 8.5.3 lib/python3.12.dll via gendef + llvm-dlltool)
+125add086832756cbdb72625c97f692cea52b678ba4cb93983ac1ed7784e26e6  libpython3.12.a
+
+# Native binary output (for verification only — not a build input)
+d6f829149200b18dfcfb5a3bc96c80e00005deed2536743a24f4b428957bbe4d  _sqlite3.cp312-mingw_x86_64_ucrt_llvm.pyd
+
+# Pure-Python pair (CPython 3.12.7 Lib/sqlite3/)
+f7cc982617b68e147540ef352d38310fe4d25c2c9c2542b67d0590c871df09a8  sqlite3/__init__.py
+7c5c8d98df1f2c50c4062a3be2c0f0499190c179fa4fc281507a1ef763a98f28  sqlite3/dbapi2.py
+bbd9b9d14affcb013f8bd996e30e2cfd1b214d40a37916b9a67fce5b11820eff  sqlite3/dump.py
