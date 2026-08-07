@@ -142,6 +142,28 @@ init python:
     # validation clean when tools/ are not present (e.g. temp copies).
     _VNE_TOOLS_DIR = str(Path(config.gamedir).parent.parent / "tools")
 
+    # ── Project-local python-packages bootstrap (Slice 2) ───────────────
+    # real Ren'Py sys.path does not include <config.gamedir>\python-packages
+    # by default.  Add it early (init priority 0) before any user-triggered
+    # Aside storage operation can import sqlite3 / _sqlite3.
+    _vne_python_packages_dir = os.path.abspath(
+        os.path.join(config.gamedir, "python-packages")
+    )
+    _vne_python_packages_key = os.path.normcase(
+        os.path.normpath(_vne_python_packages_dir)
+    )
+    _vne_existing_sys_path_keys = {
+        os.path.normcase(os.path.normpath(os.path.abspath(p)))
+        for p in sys.path
+        if p
+    }
+    if (
+        os.path.isdir(_vne_python_packages_dir)
+        and _vne_python_packages_key not in _vne_existing_sys_path_keys
+    ):
+        sys.path.insert(0, _vne_python_packages_dir)
+    # ────────────────────────────────────────────────────────────────────
+
     def _vne_assert_plain_worker_payload(value, path="payload"):
         """Reject live or non-plain values before crossing the thread boundary."""
         allowed_scalars = (str, int, float, bool, type(None))

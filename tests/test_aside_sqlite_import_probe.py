@@ -509,5 +509,313 @@ class TestRepositoryLocalImport(unittest.TestCase):
         self.assertEqual(sqlite3.threadsafety, 3)
 
 
+class TestBootstrapRegression(unittest.TestCase):
+    """Verify the Ren'Py bootstrap in aside.rpy satisfies all path correction
+    requirements.
+
+    These tests inspect the actual aside.rpy source and verify the bootstrap
+    logic meets all constraints. They do NOT require a live Ren'Py runtime.
+    """
+
+    _aside_rpy_content: str = ""
+
+    @classmethod
+    def setUpClass(cls):
+        aside_path = os.path.join(REPO_ROOT, "novel", "game", "aside.rpy")
+        with open(aside_path, "r", encoding="utf-8") as f:
+            cls._aside_rpy_content = f.read()
+
+    def _assert_in_block(self, text, description):
+        self.assertIn(
+            text,
+            self._aside_rpy_content,
+            f"aside.rpy missing required {description}",
+        )
+
+    def _assert_not_in(self, text, description):
+        self.assertNotIn(
+            text,
+            self._aside_rpy_content,
+            f"aside.rpy should NOT contain {description}",
+        )
+
+    def test_config_gamedir_used(self):
+        """config.gamedir is used to derive the bootstrap path."""
+        self._assert_in_block("config.gamedir", "config.gamedir usage")
+
+    def test_child_directory_is_python_packages(self):
+        """The child directory is exactly 'python-packages'."""
+        self._assert_in_block(
+            'python-packages',
+            "python-packages child directory literal",
+        )
+
+    def test_absolute_normalized_path(self):
+        """Path is converted to absolute via os.path.abspath."""
+        self._assert_in_block(
+            'os.path.abspath',
+            "os.path.abspath normalization",
+        )
+        self._assert_in_block(
+            'os.path.normpath',
+            "os.path.normpath normalization",
+        )
+        self._assert_in_block(
+            'os.path.normcase',
+            "os.path.normcase normalization",
+        )
+
+    def test_duplicate_checking_uses_normalized_comparison(self):
+        """Duplicate checking uses normcase + normpath comparison."""
+        self._assert_in_block(
+            'not in _vne_existing_sys_path_keys',
+            "normalized set lookup for deduplication",
+        )
+
+    def test_inserted_at_index_0(self):
+        """Path is inserted at sys.path[0]."""
+        self._assert_in_block(
+            'sys.path.insert(0,',
+            "sys.path.insert at index 0",
+        )
+
+    def test_conditional_on_directory_existing(self):
+        """Insertion is conditional on os.path.isdir."""
+        self._assert_in_block(
+            'os.path.isdir',
+            "os.path.isdir existence guard",
+        )
+
+    def test_no_shared_sdk_path_hardcoded(self):
+        """No shared Ren'Py SDK path is hardcoded."""
+        self._assert_not_in(
+            "renpy-8.5",
+            "hardcoded SDK version path",
+        )
+        self._assert_not_in(
+            "C:\\DEV\\Narrative\\renpy",
+            "hardcoded SDK path",
+        )
+
+    def test_no_system_python_path_hardcoded(self):
+        """No system Python path is hardcoded."""
+        self._assert_not_in(
+            "C:\\Python",
+            "hardcoded system Python path",
+        )
+        self._assert_not_in(
+            "C:\\Program Files\\Python",
+            "hardcoded Program Files Python path",
+        )
+
+    def _bootstrap_region(self):
+        """Extract the bootstrap code region from aside.rpy content."""
+        parts = self._aside_rpy_content.split(
+            "# ── Project-local python-packages bootstrap"
+        )
+        if len(parts) < 2:
+            return ""
+        region = parts[1].split(
+            "# ─────────────────────────────────────"
+        )[0]
+        return region
+
+    def test_no_network_or_download(self):
+        """No network or download behavior is introduced in the bootstrap."""
+        bootstrap = self._bootstrap_region()
+        for pattern, desc in [
+            ("urllib.request", "urllib.request network access"),
+            ("requests.get", "requests.get network access"),
+            ("http://", "http:// URL"),
+            ("https://", "https:// URL"),
+            ("download", "download keyword"),
+        ]:
+            self.assertNotIn(
+                pattern.lower(),
+                bootstrap.lower(),
+                f"{desc} in bootstrap region",
+            )
+
+    def test_bootstrap_before_runtime_trigger(self):
+        """The bootstrap appears before _vne_run_aside_turn_from_snapshot which triggers
+        the first sqlite3 import at runtime."""
+        bootstrap_marker = (
+            "Project-local python-packages bootstrap (Slice 2)"
+        )
+        runtime_trigger = "_vne_run_aside_turn_from_snapshot"
+        bootstrap_pos = self._aside_rpy_content.find(bootstrap_marker)
+        runtime_pos = self._aside_rpy_content.find(runtime_trigger)
+        self.assertGreater(
+            bootstrap_pos,
+            -1,
+            "Bootstrap marker not found in aside.rpy",
+        )
+        self.assertGreater(
+            runtime_pos,
+            -1,
+            "Runtime trigger function not found in aside.rpy",
+        )
+        self.assertLess(
+            bootstrap_pos,
+            runtime_pos,
+            "Bootstrap must appear BEFORE _vne_run_aside_turn_from_snapshot",
+        )
+
+    def _extract_python_block(self):
+        """Extract the 'init python:' block from aside.rpy."""
+        parts = self._aside_rpy_content.split("init python:")
+        if len(parts) < 2:
+            return ""
+        # Find the end of the init python block: the next 'screen' or 'label' at top level
+        rest = parts[1]
+        # Split on top-level Ren'Py constructs
+        import re
+        end_markers = re.split(r"\n(screen|label)\s+[a-zA-Z_]", rest)
+        return end_markers[0] if end_markers else rest
+
+    def test_bootstrap_inside_init_block(self):
+        """The bootstrap appears inside the existing 'init python:' block."""
+        init_marker = "init python:"
+        bootstrap_marker = (
+            "Project-local python-packages bootstrap (Slice 2)"
+        )
+        init_pos = self._aside_rpy_content.find(init_marker)
+        bootstrap_pos = self._aside_rpy_content.find(bootstrap_marker)
+        # The bootstrap must come after 'init python:'
+        self.assertGreater(
+            bootstrap_pos, init_pos,
+            "Bootstrap must be inside the init python block",
+        )
+        # Find the next screen/label after init which would end the init block
+        # The init block ends before 'screen aside_dev_overlay():'
+        screen_marker = "screen aside_dev_overlay():"
+        screen_pos = self._aside_rpy_content.find(screen_marker)
+        self.assertLess(
+            bootstrap_pos, screen_pos,
+            "Bootstrap must be before the screen definition",
+        )
+
+
+class TestPathDeduplicationBehavior(unittest.TestCase):
+    """Pure-Python behavioral unit tests for path deduplication logic.
+
+    Uses temporary directories and synthetic sys.path lists.
+    Does NOT require Ren'Py runtime.
+    """
+
+    def _resolve_path(self, base_dir, child="python-packages"):
+        """Mimics the aside.rpy bootstrap path resolution."""
+        raw = os.path.join(base_dir, child)
+        return os.path.abspath(raw)
+
+    def _normalize_key(self, path):
+        """Mimics the normaized dedup key from aside.rpy."""
+        return os.path.normcase(os.path.normpath(os.path.abspath(path)))
+
+    def _simulate_bootstrap(self, base_dir, current_sys_path):
+        """Simulate the bootstrap logic and return (new_sys_path, inserted)."""
+        pkg_dir = self._resolve_path(base_dir, child="python-packages")
+        pkg_key = self._normalize_key(pkg_dir)
+        existing_keys = {
+            self._normalize_key(str(p)) for p in current_sys_path if p
+        }
+        if os.path.isdir(pkg_dir) and pkg_key not in existing_keys:
+            return ([pkg_dir] + list(current_sys_path), True)
+        return (list(current_sys_path), False)
+
+    def test_dir_exists_not_in_path_inserted_at_0(self):
+        """Directory exists and absent from sys.path → inserted once at index 0."""
+        with tempfile.TemporaryDirectory() as base:
+            pkgs = os.path.join(base, "python-packages")
+            os.makedirs(pkgs)
+            sys_path = ["/some/other/path", "/another/path"]
+            new_path, inserted = self._simulate_bootstrap(base, sys_path)
+            self.assertTrue(inserted)
+            self.assertEqual(new_path[0], os.path.abspath(pkgs))
+            self.assertEqual(
+                len(new_path),
+                len(sys_path) + 1,
+            )
+
+    def test_dir_already_present_exactly_not_duplicated(self):
+        """Directory already present exactly → not duplicated."""
+        with tempfile.TemporaryDirectory() as base:
+            pkgs = os.path.join(base, "python-packages")
+            os.makedirs(pkgs)
+            existing = os.path.abspath(pkgs)
+            sys_path = [existing, "/other/path"]
+            new_path, inserted = self._simulate_bootstrap(base, sys_path)
+            self.assertFalse(inserted)
+            self.assertEqual(new_path, sys_path)
+
+    def test_same_dir_different_case_not_duplicated_windows(self):
+        """Same directory with different case → not duplicated on Windows."""
+        with tempfile.TemporaryDirectory() as base:
+            pkgs = os.path.join(base, "python-packages")
+            os.makedirs(pkgs)
+            # Use lowercased version of the same path
+            existing_lower = os.path.abspath(pkgs).lower()
+            sys_path = [existing_lower, "/other/path"]
+            new_path, inserted = self._simulate_bootstrap(base, sys_path)
+            if os.name == "nt":
+                # On Windows, normcase normalizes case → should not insert
+                self.assertFalse(
+                    inserted,
+                    "Should NOT insert when same path with different case "
+                    "already in sys.path on Windows",
+                )
+                self.assertEqual(len(new_path), len(sys_path))
+            else:
+                # On Linux/Mac, case-sensitive → MAY insert
+                # Just verify no crash
+                pass
+
+    def test_same_dir_different_slash_not_duplicated(self):
+        """Same directory with alternative slash direction → not duplicated on Windows."""
+        with tempfile.TemporaryDirectory() as base:
+            pkgs = os.path.join(base, "python-packages")
+            os.makedirs(pkgs)
+            abs_path = os.path.abspath(pkgs)
+            # Use forward slashes
+            existing_forward = abs_path.replace("\\", "/")
+            sys_path = [existing_forward, "/other/path"]
+            new_path, inserted = self._simulate_bootstrap(base, sys_path)
+            # normpath normalizes slashes → should not insert
+            self.assertFalse(
+                inserted,
+                "Should NOT insert when same path with different slashes already "
+                "in sys.path",
+            )
+            self.assertEqual(len(new_path), len(sys_path))
+
+    def test_dir_absent_not_inserted(self):
+        """Directory does not exist → not inserted."""
+        with tempfile.TemporaryDirectory() as base:
+            # Do NOT create python-packages subdirectory
+            sys_path = ["/some/other/path"]
+            new_path, inserted = self._simulate_bootstrap(base, sys_path)
+            self.assertFalse(inserted)
+            self.assertEqual(new_path, sys_path)
+
+    def test_unrelated_paths_unchanged(self):
+        """Unrelated paths remain unchanged after bootstrap."""
+        with tempfile.TemporaryDirectory() as base:
+            pkgs = os.path.join(base, "python-packages")
+            os.makedirs(pkgs)
+            original_paths = [
+                "/system/python/path",
+                "/another/lib",
+                "/third/pkg",
+                str(pkgs).upper(),  # pre-existing with different case
+            ]
+            sys_path = list(original_paths)
+            new_path, inserted = self._simulate_bootstrap(base, sys_path)
+            if os.name == "nt":
+                # Should NOT insert because pkgs already present (different case)
+                self.assertFalse(inserted)
+            for orig in original_paths:
+                self.assertIn(orig, new_path, f"Unrelated path {orig} was removed")
+
+
 if __name__ == "__main__":
     unittest.main()
