@@ -25,8 +25,8 @@ if str(_REPO_ROOT) not in sys.path:
 
 from tools.cis_pilot.contracts import ALLOWED_P4_STATES, SourceArtifact
 from tools.cis_pilot.source_loader import (
-    AUTHORIZED_BASELINE_SHA,
     CHARACTER_ID,
+    FROZEN_SOURCE_BASELINE_SHA,
     ME1_EVENT_ID,
     ME1_EXPECTED_LITERAL_TEXT,
     ME1_JSON_PATH,
@@ -34,6 +34,7 @@ from tools.cis_pilot.source_loader import (
     ME2_EVENT_ID,
     ME2_EXPECTED_FIRST_SENTENCE,
     ME2_JSON_PATH,
+    PROTECTED_SOURCE_RELATIVE_PATHS,
     load_pilot_source_snapshot,
 )
 
@@ -297,17 +298,16 @@ def test_baseline_builder_source_artifact(snapshot):
     assert artifact.sha256 == expected
 
 
-def test_baseline_git_sha_matches_authorized_sha(snapshot):
-    assert snapshot.baseline.baseline_git_sha == AUTHORIZED_BASELINE_SHA
+def test_baseline_git_sha_matches_frozen_source_baseline(snapshot):
+    # baseline_git_sha records the PD-10 freeze anchor commit, not whatever
+    # HEAD happens to be at load time (see repo-HEAD-provenance section
+    # below for that distinction).
+    assert snapshot.baseline.baseline_git_sha == FROZEN_SOURCE_BASELINE_SHA
 
 
 # ---------------------------------------------------------------------------
-# Repo HEAD / authorization
+# Repo HEAD provenance (HEAD is captured, never used as a load-blocking gate)
 # ---------------------------------------------------------------------------
-
-
-def test_repo_head_matches_authorized_baseline_sha(snapshot):
-    assert snapshot.repo_head_sha == AUTHORIZED_BASELINE_SHA
 
 
 def test_repo_head_matches_independent_git_rev_parse(snapshot):
@@ -323,9 +323,161 @@ def test_repo_head_matches_independent_git_rev_parse(snapshot):
     assert snapshot.repo_head_sha == result.stdout.strip()
 
 
-def test_loader_fails_closed_on_baseline_sha_mismatch(monkeypatch):
+def test_head_advancement_past_frozen_baseline_does_not_block_loading(snapshot):
+    # This is the exact regression case this correction fixes: a routine,
+    # authorized commit (Slice 0's own commit, then Slice 1's uncommitted
+    # work) has advanced HEAD past FROZEN_SOURCE_BASELINE_SHA. The loader
+    # must still succeed (the `snapshot` fixture above already proves this
+    # by not raising) and must still report the real current HEAD as
+    # provenance, distinct from the frozen baseline anchor.
+    assert snapshot.repo_head_sha != FROZEN_SOURCE_BASELINE_SHA
+
+
+# ---------------------------------------------------------------------------
+# Frozen source baseline invariant (protected source CONTENT, not HEAD)
+# ---------------------------------------------------------------------------
+
+
+def test_protected_source_paths_match_independently_maintained_critical_sources():
+    # Cross-check: the production protected-source list (derived from the
+    # loader's own module-id constants) must cover exactly the same 14
+    # sources this test file independently hard-codes and hashes.
+    assert set(PROTECTED_SOURCE_RELATIVE_PATHS) == set(_CRITICAL_SOURCES)
+    assert len(PROTECTED_SOURCE_RELATIVE_PATHS) == 14
+
+
+def test_verify_frozen_source_invariant_passes_for_the_real_unmodified_repo():
     from tools.cis_pilot import source_loader
 
-    monkeypatch.setattr(source_loader, "AUTHORIZED_BASELINE_SHA", "0" * 40)
+    source_loader._verify_frozen_source_invariant(_REPO_ROOT)  # must not raise
+
+
+def test_frozen_blob_git_sha_matches_working_tree_blob_sha_for_real_repo():
+    # The real file has not drifted from the frozen baseline commit, so
+    # Git's own blob ids match -- even though this repo has
+    # core.autocrlf=true, which means the raw checked-out working-tree
+    # bytes (CRLF) legitimately differ from the raw committed blob bytes
+    # (LF). Comparing Git's own blob ids (both sides computed by Git,
+    # respecting the same normalization) is what makes this comparison
+    # correct across that platform-normalization difference.
+    from tools.cis_pilot import source_loader
+
+    relative_path = "personas/kira/psychology/VALUE_SYSTEM.json"
+    frozen_sha = source_loader._frozen_blob_git_sha(
+        _REPO_ROOT, FROZEN_SOURCE_BASELINE_SHA, relative_path
+    )
+    working_sha = source_loader._working_tree_blob_git_sha(_REPO_ROOT, relative_path)
+    assert len(frozen_sha) == 40
+    assert len(working_sha) == 40
+    assert frozen_sha == working_sha
+
+
+def test_frozen_blob_git_sha_missing_path_fails_closed():
+    from tools.cis_pilot import source_loader
+
     with pytest.raises(source_loader.SourceLoaderError):
-        load_pilot_source_snapshot(_REPO_ROOT)
+        source_loader._frozen_blob_git_sha(
+            _REPO_ROOT, FROZEN_SOURCE_BASELINE_SHA, "personas/kira/DOES_NOT_EXIST_AT_ALL.json"
+        )
+
+
+def test_frozen_blob_git_sha_unknown_commit_fails_closed():
+    from tools.cis_pilot import source_loader
+
+    with pytest.raises(source_loader.SourceLoaderError):
+        source_loader._frozen_blob_git_sha(
+            _REPO_ROOT, "0" * 40, "personas/kira/psychology/VALUE_SYSTEM.json"
+        )
+
+
+def test_frozen_blob_git_sha_subprocess_error_fails_closed(monkeypatch):
+    from tools.cis_pilot import source_loader
+
+    def _raise(*args, **kwargs):
+        raise OSError("git executable not found")
+
+    monkeypatch.setattr(source_loader.subprocess, "run", _raise)
+    with pytest.raises(source_loader.SourceLoaderError):
+        source_loader._frozen_blob_git_sha(
+            _REPO_ROOT, FROZEN_SOURCE_BASELINE_SHA, "personas/kira/psychology/VALUE_SYSTEM.json"
+        )
+
+
+def test_working_tree_blob_git_sha_missing_file_fails_closed():
+    from tools.cis_pilot import source_loader
+
+    with pytest.raises(source_loader.SourceLoaderError):
+        source_loader._working_tree_blob_git_sha(_REPO_ROOT, "personas/kira/DOES_NOT_EXIST_AT_ALL.json")
+
+
+def test_working_tree_blob_git_sha_subprocess_error_fails_closed(monkeypatch):
+    from tools.cis_pilot import source_loader
+
+    def _raise(*args, **kwargs):
+        raise OSError("git executable not found")
+
+    monkeypatch.setattr(source_loader.subprocess, "run", _raise)
+    with pytest.raises(source_loader.SourceLoaderError):
+        source_loader._working_tree_blob_git_sha(
+            _REPO_ROOT, "personas/kira/psychology/VALUE_SYSTEM.json"
+        )
+
+
+def test_missing_protected_source_fails_closed(tmp_path, monkeypatch):
+    # tmp_path only -- never the real repo (per instruction: do not mutate
+    # real personas/kira source for this test).
+    from tools.cis_pilot import source_loader
+
+    fake_relative_path = "personas/kira/psychology/DOES_NOT_EXIST.json"
+    monkeypatch.setattr(source_loader, "PROTECTED_SOURCE_RELATIVE_PATHS", (fake_relative_path,))
+    with pytest.raises(source_loader.SourceLoaderError):
+        source_loader._verify_frozen_source_invariant(tmp_path)
+
+
+def test_protected_source_content_drift_fails_closed(tmp_path, monkeypatch):
+    # tmp_path + monkeypatch only -- never the real repo. Simulates a
+    # protected source whose current Git blob id differs from its frozen
+    # blob id (i.e. genuine content drift, not a line-ending artifact).
+    from tools.cis_pilot import source_loader
+
+    fake_relative_path = "personas/kira/psychology/VALUE_SYSTEM.json"
+    current_file = tmp_path / fake_relative_path
+    current_file.parent.mkdir(parents=True, exist_ok=True)
+    current_file.write_bytes(b'{"drifted": true}')
+
+    monkeypatch.setattr(source_loader, "PROTECTED_SOURCE_RELATIVE_PATHS", (fake_relative_path,))
+    monkeypatch.setattr(
+        source_loader, "_working_tree_blob_git_sha", lambda repo_root, relative_path: "a" * 40
+    )
+    monkeypatch.setattr(
+        source_loader,
+        "_frozen_blob_git_sha",
+        lambda repo_root, frozen_sha, relative_path: "b" * 40,
+    )
+
+    with pytest.raises(source_loader.SourceLoaderError):
+        source_loader._verify_frozen_source_invariant(tmp_path)
+
+
+def test_protected_source_identical_content_passes(tmp_path, monkeypatch):
+    # The mirror-image positive case for the drift test above: identical
+    # current/frozen Git blob ids must not raise.
+    from tools.cis_pilot import source_loader
+
+    fake_relative_path = "personas/kira/psychology/VALUE_SYSTEM.json"
+    current_file = tmp_path / fake_relative_path
+    current_file.parent.mkdir(parents=True, exist_ok=True)
+    current_file.write_bytes(b'{"same": true}')
+
+    monkeypatch.setattr(source_loader, "PROTECTED_SOURCE_RELATIVE_PATHS", (fake_relative_path,))
+    same_sha = "c" * 40
+    monkeypatch.setattr(
+        source_loader, "_working_tree_blob_git_sha", lambda repo_root, relative_path: same_sha
+    )
+    monkeypatch.setattr(
+        source_loader,
+        "_frozen_blob_git_sha",
+        lambda repo_root, frozen_sha, relative_path: same_sha,
+    )
+
+    source_loader._verify_frozen_source_invariant(tmp_path)  # must not raise

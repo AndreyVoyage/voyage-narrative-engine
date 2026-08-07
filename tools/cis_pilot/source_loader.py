@@ -25,6 +25,7 @@ repo root via ``tools/cis_pilot/provenance.py``.
 from __future__ import annotations
 
 import json
+import subprocess
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Dict, Optional, Tuple
@@ -50,11 +51,18 @@ from .contracts import (
 
 CHARACTER_ID = "kira"
 
-# One authorized baseline SHA for this Slice 0 implementation pass. A repo
-# HEAD that no longer matches this value means the source has moved since
-# authorization -- fail closed rather than silently loading a different
-# snapshot.
-AUTHORIZED_BASELINE_SHA = "afa64d3af14ad78366dc34cad68af3fb91f2423c"
+# The commit whose content is the approved, frozen source baseline (PD-10
+# freeze anchor + the exact P0/P3/P4/ME-1/ME-2 values this loader validates
+# against). This is intentionally NOT a "current repo HEAD must equal this"
+# gate: a routine, authorized commit legitimately advances HEAD (Slice 0's
+# own commit did exactly that), and the loader must keep working afterwards
+# -- otherwise every subsequent commit would re-break it. Authorization is
+# instead based on PROTECTED SOURCE CONTENT identity, never HEAD identity:
+# every protected source file's current bytes must remain byte-identical to
+# its blob at this commit (see `_verify_frozen_source_invariant`). Current
+# HEAD is still captured and returned, but purely as provenance
+# (`PilotSourceSnapshot.repo_head_sha`), never as a load-blocking condition.
+FROZEN_SOURCE_BASELINE_SHA = "afa64d3af14ad78366dc34cad68af3fb91f2423c"
 
 P0_MODULE_IDS: Dict[str, str] = {
     "value_system": "psychology/VALUE_SYSTEM.json",
@@ -118,12 +126,146 @@ ME2_EVENT_ID = "SC_017"
 ME2_JSON_PATH = "entry_beats[0].narration"
 ME2_EXPECTED_FIRST_SENTENCE = "Телефон загорается новым сообщением от Сергея."
 
+# Every repo-relative POSIX path this loader reads and validates against a
+# fixed spec value. Derived from the module-id constants above -- never a
+# second, hand-maintained list -- so it cannot silently drift from what the
+# loader actually reads. Matches the 14 sources independently confirmed by
+# Slice 0 QA (13 mandatory sources + ATTACHMENT_STYLE_DYNAMIC.json, which is
+# read only to confirm its structural exclusion from P0Snapshot, never to
+# extract a value from it).
+PROTECTED_SOURCE_RELATIVE_PATHS: Tuple[str, ...] = tuple(
+    sorted(
+        {f"personas/{CHARACTER_ID}/{module_id}" for module_id in P0_MODULE_IDS.values()}
+        | {f"personas/{CHARACTER_ID}/{ATTACHMENT_STYLE_DYNAMIC_MODULE_ID}"}
+        | {f"personas/{CHARACTER_ID}/{P3_MODULE_ID}"}
+        | {f"personas/{CHARACTER_ID}/{P4_MODULE_ID}"}
+        | {f"personas/{CHARACTER_ID}/{module_id}" for module_id in BASELINE_MODULE_IDS.values()}
+        | {BUILDER_RELATIVE_PATH}
+        | {ME1_SCENARIO_RELATIVE_PATH}
+        | {ME2_SCENARIO_RELATIVE_PATH}
+    )
+)
+
+_FROZEN_BLOB_TIMEOUT_S = 5.0
+
 
 class SourceLoaderError(RuntimeError):
     """Raised when the pilot source snapshot cannot be loaded and
     validated safely (missing source, drift from spec, or fixture
     mismatch). Always fail-closed -- never silently substitutes or
     invents a value."""
+
+
+# ---------------------------------------------------------------------------
+# Frozen source baseline invariant (protected source content, not HEAD)
+# ---------------------------------------------------------------------------
+
+
+_GIT_SHA_HEX_DIGITS = frozenset("0123456789abcdef")
+
+
+def _require_git_sha(value: str, *, context: str) -> str:
+    if len(value) != 40 or any(c not in _GIT_SHA_HEX_DIGITS for c in value):
+        raise SourceLoaderError(f"unexpected git object id for {context}: {value!r}")
+    return value
+
+
+def _frozen_blob_git_sha(repo_root: Path, frozen_sha: str, relative_path: str) -> str:
+    """Return the Git blob object id for ``relative_path`` as committed at
+    ``frozen_sha``, via a read-only, binary-safe plumbing call
+    (``git rev-parse <tree-ish>:<path>``). Never writes, never uses
+    ``shell=True``, only ever reads a hardcoded protected-source path (never
+    a caller-controlled ref/path). Fails closed on any git error, missing
+    blob, or timeout."""
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--verify", f"{frozen_sha}:{relative_path}"],
+            cwd=str(repo_root),
+            capture_output=True,
+            text=True,
+            timeout=_FROZEN_BLOB_TIMEOUT_S,
+            shell=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise SourceLoaderError(
+            f"FROZEN_BLOB_READ_FAILED: failed to resolve frozen blob {relative_path!r} "
+            f"@ {frozen_sha}: {exc}"
+        ) from None
+
+    if result.returncode != 0:
+        raise SourceLoaderError(
+            f"FROZEN_BLOB_MISSING: git rev-parse failed for {relative_path!r} @ {frozen_sha} "
+            f"(exit {result.returncode}) -- baseline blob missing or git read failure"
+        )
+    return _require_git_sha(result.stdout.strip(), context=f"frozen blob {relative_path!r} @ {frozen_sha}")
+
+
+def _working_tree_blob_git_sha(repo_root: Path, relative_path: str) -> str:
+    """Return the Git blob object id ``relative_path``'s CURRENT working-tree
+    content would have if added to the index right now (``git hash-object``).
+
+    This deliberately delegates content-identity comparison to Git itself
+    rather than comparing raw bytes read two different ways: this repo has
+    ``core.autocrlf=true``, so a committed blob is stored with LF line
+    endings while the checked-out working-tree file legitimately has CRLF --
+    a raw byte/SHA-256 comparison between ``git show``'s output and
+    ``Path.read_bytes()`` would misreport that harmless, git-managed
+    normalization as source drift. ``git hash-object`` applies the exact
+    same normalization Git itself would apply, so comparing two Git blob ids
+    (this function's result vs. ``_frozen_blob_git_sha``'s) is the correct,
+    environment-independent content-identity check. Fails closed on any git
+    error, missing file, or timeout."""
+    try:
+        result = subprocess.run(
+            ["git", "hash-object", "--", relative_path],
+            cwd=str(repo_root),
+            capture_output=True,
+            text=True,
+            timeout=_FROZEN_BLOB_TIMEOUT_S,
+            shell=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise SourceLoaderError(
+            f"WORKING_TREE_HASH_FAILED: failed to hash-object {relative_path!r}: {exc}"
+        ) from None
+
+    if result.returncode != 0:
+        raise SourceLoaderError(
+            f"WORKING_TREE_HASH_FAILED: git hash-object failed for {relative_path!r} "
+            f"(exit {result.returncode})"
+        )
+    return _require_git_sha(result.stdout.strip(), context=f"working-tree {relative_path!r}")
+
+
+def _verify_frozen_source_invariant(repo_root: Path) -> None:
+    """Fail closed unless every protected source file's CURRENT content is
+    identical (per Git's own content-addressing, not a raw byte diff -- see
+    ``_working_tree_blob_git_sha``) to the frozen source baseline blob at
+    ``FROZEN_SOURCE_BASELINE_SHA``.
+
+    Git HEAD identity is never checked here -- only protected source
+    CONTENT identity. A repo HEAD that has advanced past
+    ``FROZEN_SOURCE_BASELINE_SHA`` (e.g. because Slice 0/1 code was
+    committed) is not source drift and must not block loading; only an
+    actual change to a protected file's content is.
+    """
+    for relative_path in PROTECTED_SOURCE_RELATIVE_PATHS:
+        current_full_path = repo_root / relative_path
+        if not current_full_path.is_file():
+            raise SourceLoaderError(
+                f"PROTECTED_SOURCE_MISSING: {relative_path!r} not found in current worktree"
+            )
+
+        current_blob_sha = _working_tree_blob_git_sha(repo_root, relative_path)
+        frozen_blob_sha = _frozen_blob_git_sha(repo_root, FROZEN_SOURCE_BASELINE_SHA, relative_path)
+
+        if current_blob_sha != frozen_blob_sha:
+            raise SourceLoaderError(
+                "PROTECTED_SOURCE_DRIFT_REQUIRES_OWNER_REVIEW: "
+                f"{relative_path!r} current content (git blob {current_blob_sha}) does not match "
+                f"the frozen source baseline @ {FROZEN_SOURCE_BASELINE_SHA} "
+                f"(git blob {frozen_blob_sha})"
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -136,18 +278,16 @@ def load_pilot_source_snapshot(repo_root: Optional[Path] = None) -> PilotSourceS
 
     Strictly read-only. Fails closed (raises ``SourceLoaderError`` or
     ``provenance.ProvenanceError``) on any missing source, drift from the
-    approved spec values, fixture mismatch, or repo HEAD that no longer
-    matches ``AUTHORIZED_BASELINE_SHA``.
+    approved spec values, fixture mismatch, or protected source content
+    that no longer matches the frozen source baseline (see
+    ``_verify_frozen_source_invariant``). Repo HEAD is captured as
+    provenance only -- it is never required to equal
+    ``FROZEN_SOURCE_BASELINE_SHA``.
     """
     root = _resolve_repo_root(repo_root)
 
     head_sha = provenance.get_head_sha(root)
-    if head_sha != AUTHORIZED_BASELINE_SHA:
-        raise SourceLoaderError(
-            "BASELINE_MOVED_REQUIRES_OWNER_REVIEW: repo HEAD "
-            f"{head_sha!r} does not match authorized Slice 0 baseline SHA "
-            f"{AUTHORIZED_BASELINE_SHA!r}"
-        )
+    _verify_frozen_source_invariant(root)
 
     persona_root = root / "personas" / CHARACTER_ID
     if not persona_root.is_dir():
@@ -172,7 +312,7 @@ def load_pilot_source_snapshot(repo_root: Optional[Path] = None) -> PilotSourceS
         root,
         base_artifact=p0_artifacts["base"],
         matrix_artifact=p3_artifact,
-        head_sha=head_sha,
+        baseline_git_sha=FROZEN_SOURCE_BASELINE_SHA,
     )
 
     return PilotSourceSnapshot(
@@ -451,7 +591,7 @@ def _load_baseline_source_set(
     *,
     base_artifact: SourceArtifact,
     matrix_artifact: SourceArtifact,
-    head_sha: str,
+    baseline_git_sha: str,
 ) -> BaselineSourceSet:
     try:
         identity_result = catalog.read_module(CHARACTER_ID, BASELINE_MODULE_IDS["identity"])
@@ -475,7 +615,7 @@ def _load_baseline_source_set(
         speech_matrix=speech_artifact,
         matrix=matrix_artifact,
         builder_source=builder_artifact,
-        baseline_git_sha=head_sha,
+        baseline_git_sha=baseline_git_sha,
     )
 
 
