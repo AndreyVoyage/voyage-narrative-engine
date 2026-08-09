@@ -19,10 +19,16 @@ import argparse
 import hashlib
 import json
 import os
+import ssl
 import sys
 import urllib.error
 import urllib.request
 from typing import Any
+
+try:
+    import certifi
+except ImportError:
+    certifi = None
 
 
 DEFAULT_LOCAL_BASE_URL = "http://localhost:11434"
@@ -201,9 +207,11 @@ def _post_json(
         )
 
     try:
+        _ssl_context = _get_ssl_context()
         with urllib.request.urlopen(
             request,
             timeout=timeout_value,
+            context=_ssl_context,
         ) as response:
             raw = response.read().decode("utf-8")
     except urllib.error.HTTPError as exc:
@@ -221,6 +229,24 @@ def _post_json(
     if not isinstance(data, dict):
         raise LLMProviderError("provider response must be a JSON object")
     return data
+
+
+def _get_ssl_context() -> ssl.SSLContext | None:
+    """Return a verified SSL context using certifi CA bundle.
+
+    On Ren'Py Windows the embedded Python may not load the Windows trust
+    store, resulting in a zero-CA default context.  certifi provides a
+    portable Mozilla-curated CA bundle that avoids this problem while
+    keeping full certificate verification enabled.
+
+    Returns None when certifi is unavailable so that callers that need
+    TLS can fail clearly rather than silently downgrading to an
+    insecure context.  (At this point certifi is always bundled with
+    Ren'Py, so None is effectively unreachable in production.)
+    """
+    if certifi is None:
+        return None
+    return ssl.create_default_context(cafile=certifi.where())
 
 
 def _last_message(messages: list[dict[str, str]], role: str) -> dict[str, str] | None:
