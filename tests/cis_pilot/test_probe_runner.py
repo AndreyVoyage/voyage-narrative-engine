@@ -229,7 +229,7 @@ class TestPbAb:
         assert pkg.mode == "PB-AB"
         assert pkg.sub_mode == "COMBINED"
 
-    def test_ab_has_both_arms(self, runner: ProbeRunner) -> None:
+    def test_ab_has_all_expected_arms(self, runner: ProbeRunner) -> None:
         probe = ProbeDefinition(
             probe_id="synth-pb-ab-001", mode="PB-AB",
             scene_question="arms test.",
@@ -238,7 +238,10 @@ class TestPbAb:
         config = ProbeRunConfig(probe=probe, samples_per_arm=2)
         pkg = runner.run_pb_ab(config, sub_mode="T3-P3")
         arms = {s.arm for s in pkg.samples}
-        assert arms == {"A", "B"}
+        # S5: CIS A/B + BASELINE_A/B = 4 arm classes
+        assert {"A", "B"}.issubset(arms), f"Expected CIS A,B in {arms}"
+        assert "BASELINE_A" in arms, f"BASELINE_A missing from {arms}"
+        assert "BASELINE_B" in arms, f"BASELINE_B missing from {arms}"
 
 
 # ---------------------------------------------------------------------------

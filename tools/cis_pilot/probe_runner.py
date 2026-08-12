@@ -117,6 +117,30 @@ def _synthetic_signals() -> SalienceSignals:
     )
 
 
+def _reject_resume_mismatch(
+    run_id: str,
+    probe: "ProbeDefinition",
+    sub_mode: str,
+    completed_keys: set,
+) -> None:
+    """Fail closed if existing evidence has conflicting identities.
+    Currently only checks that completed keys belong to the same probe_id;
+    does not require probe-set version/hash metadata (absent from current
+    persisted records). Non-blocking for S5 — deferred until richer metadata
+    is available in persisted records.
+    """
+    if not completed_keys:
+        return  # No prior evidence — nothing to mismatch
+    expected_probe_id = probe.probe_id
+    for key in completed_keys:
+        if key[0] is not None and key[0] != expected_probe_id:
+            raise ProbeRunnerError(
+                f"Resume mismatch for run_id={run_id!r}: "
+                f"existing records have probe_id={key[0]!r}, "
+                f"current config has probe_id={expected_probe_id!r}"
+            )
+
+
 class ProbeRunner:
     """Bounded deterministic runner for one probe mode."""
 
@@ -278,10 +302,52 @@ class ProbeRunner:
 
     # -- PB-AB -----------------------------------------------------------
 
-    def run_pb_ab(self, config: ProbeRunConfig, sub_mode: str) -> ResultPackage:
+    def _load_completed_keys(self, run_id: str) -> set:
+        """Return identities of already-persisted samples for a run_id.
+
+        Identity = (probe_id, state, arm, sample_index) per ProbeSampleRecord.sample_key().
+        Reads existing JSONL evidence; empty set when no prior records exist.
+        """
+        evidence_paths = (
+            f"evidence/{run_id}/samples.jsonl",
+            f"results/{run_id}/samples.jsonl",
+        )
+        keys: set = set()
+        for path in evidence_paths:
+            try:
+                for record in self._storage.read_jsonl(path):
+                    key = (
+                        record.get("probe_id"),
+                        record.get("state"),
+                        record.get("arm"),
+                        record.get("sample_index"),
+                    )
+                    keys.add(key)
+            except Exception:
+                # No existing evidence or malformed — treat as empty, fail-closed
+                pass
+        return keys
+
+    def _persist_sample(self, run_id: str, sample: ProbeSampleRecord) -> None:
+        """Append one sample to the evidence JSONL (TD-8b crash-resilient path)."""
+        self._storage.append_jsonl(
+            f"evidence/{run_id}/samples.jsonl",
+            sample.to_dict(),
+        )
+
+    def run_pb_ab(self, config: ProbeRunConfig, sub_mode: str,
+                  *, resume_run_id: Optional[str] = None) -> ResultPackage:
         if sub_mode not in ("T3-P3", "T3-P4", "COMBINED"):
             raise ProbeRunnerError(f"unsupported sub_mode: {sub_mode!r}")
-        run_id, timestamp = generate_run_id(), utc_now_iso()
+
+        # Resume: load previously completed sample identities
+        completed_keys: set = set()
+        if resume_run_id is not None:
+            completed_keys = self._load_completed_keys(resume_run_id)
+            _reject_resume_mismatch(resume_run_id, config.probe, sub_mode, completed_keys)
+
+        run_id = resume_run_id if resume_run_id is not None else generate_run_id()
+        timestamp = utc_now_iso()
         boundary = config.boundary
         samples, rel_decisions = [], []
         p3_a = construct_t3_p3_trust_override(self._canon_p3, 75) if sub_mode in ("T3-P3", "COMBINED") else self._canon_p3
@@ -332,6 +398,9 @@ class ProbeRunner:
                     generation=gen,
                     tags=("synthetic", "pb-ab", sub_mode.lower()),
                 ))
+        # Baseline A/B arms: same external scene/question, no P3/P4 injection
+        samples.extend(self._build_baseline_samples(boundary, config, arm="BASELINE_A"))
+        samples.extend(self._build_baseline_samples(boundary, config, arm="BASELINE_B"))
         return self._assemble(
             run_id=run_id, timestamp=timestamp, mode="PB-AB", sub_mode=sub_mode,
             config=config, samples=tuple(samples),
