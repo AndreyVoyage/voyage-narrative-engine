@@ -1,17 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-CIS Kira Pilot -- Slice 4 provider boundary (mock/deterministic only).
+CIS Kira Pilot -- provider boundary (mock + approved DeepSeek real path).
 
 Thin, pilot-scoped wrapper over the existing, unmodified
 ``tools.llm_provider.complete()`` (plan §4/§5 ``provider_boundary.py``,
-spec §5.10). Slice 4 is strictly OFFLINE: the only supported provider is
-``"mock"`` -- the deterministic, network-free provider already shipped in
-``tools/llm_provider.py``. Any other provider name (real cloud vendors,
-local endpoints, or any future name) fails CLOSED at construction with
-``ProviderBoundaryError``; there is no fallback to a real provider anywhere
-in this module (TD-14; real provider use is deferred to Slice 6 under a
-separate owner authorization, TD-1).
+spec §5.10). Two provider modes are supported, and only these two:
+
+* ``"mock"`` -- the deterministic, network-free provider already shipped in
+  ``tools/llm_provider.py`` (unchanged Slice 4 behavior).
+* ``"cloud"`` -- the approved DeepSeek Official API real path (TD-16 narrow
+  code-freeze exception), reached through the existing cloud
+  chat-completions side of ``tools.llm_provider.complete()`` with the model
+  hard-gated to ``deepseek-v4-pro`` and the base URL bound to
+  ``https://api.deepseek.com``.
+
+Any other provider name, any other real model, or any other endpoint fails
+CLOSED at construction with ``ProviderBoundaryError``. There is no fallback
+between providers, models, or endpoints anywhere in this module.
 
 The boundary fixes provider/model/params for one run (frozen
 ``ProviderConfig`` -- no silent per-call drift) and exposes the exact
@@ -46,9 +52,22 @@ from .memory_gate import (
     WorldEvent,
 )
 
-# The only provider Slice 4 is authorized to use (TD-14: mock/deterministic
-# only; unsupported provider => fail closed, never a fallback).
+# Default provider: the deterministic offline mock (existing Slice 4
+# behavior, preserved unchanged as the default). TD-16 adds one approved
+# real path below; no other provider token is ever forwarded.
 SUPPORTED_PROVIDER = "mock"
+
+# TD-16 narrow code-freeze exception: the approved real provider is
+# DeepSeek Official API, reached through the existing "cloud" token of
+# tools.llm_provider.complete() (chat-completions compatible). Model and
+# endpoint are hard-gated below; nothing else is authorized.
+DEEPSEEK_REAL_PROVIDER = "cloud"
+DEEPSEEK_MODEL_ID = "deepseek-v4-pro"
+DEEPSEEK_BASE_URL = "https://api.deepseek.com"
+
+# The complete set of provider tokens this boundary will ever forward to
+# tools.llm_provider.complete(). Anything else fails closed at construction.
+_SUPPORTED_PROVIDER_TOKENS = frozenset({SUPPORTED_PROVIDER, DEEPSEEK_REAL_PROVIDER})
 
 # Fixed model identifier recorded for provenance when the mock provider is
 # used. The mock provider is model-agnostic (its digest payload uses "mock"
@@ -58,10 +77,11 @@ MOCK_MODEL_ID = "mock-deterministic"
 
 
 class ProviderBoundaryError(RuntimeError):
-    """Fail-closed error for any unsupported (non-mock) provider request or
-    structurally invalid boundary input. There is deliberately NO fallback
-    path to a real provider: network-capable providers are out of Slice 4
-    scope entirely (TD-1/TD-14)."""
+    """Fail-closed error for any unsupported provider, unauthorized model or
+    endpoint, or structurally invalid boundary input. There is deliberately
+    NO fallback between providers, models, or endpoints: a real provider
+    must be requested explicitly via the approved DeepSeek path and fails
+    closed on any mismatch (TD-1/TD-16)."""
 
 
 @dataclass(frozen=True)
@@ -81,12 +101,14 @@ class ProviderConfig:
     def __post_init__(self) -> None:
         if not isinstance(self.provider, str) or not self.provider.strip():
             raise ContractValidationError("provider must be a non-empty string")
-        if self.provider.strip().lower() != SUPPORTED_PROVIDER:
+        normalized_provider = self.provider.strip().lower()
+        if normalized_provider not in _SUPPORTED_PROVIDER_TOKENS:
             raise ProviderBoundaryError(
-                f"provider {self.provider!r} is not supported in Slice 4: only "
-                f"{SUPPORTED_PROVIDER!r} (deterministic, offline) is authorized; "
-                "real/local/cloud providers require separate owner authorization "
-                "(Slice 6, TD-1) -- failing closed, no fallback"
+                f"provider {self.provider!r} is not supported: only "
+                f"{sorted(_SUPPORTED_PROVIDER_TOKENS)} are authorized "
+                "(mock = deterministic offline stub; cloud = approved "
+                "DeepSeek real path); any other provider -- and any "
+                "fallback between providers -- fails closed"
             )
         if not isinstance(self.model, str) or not self.model.strip():
             raise ContractValidationError("model must be a non-empty string")
@@ -95,8 +117,33 @@ class ProviderConfig:
         for key in self.params:
             if not isinstance(key, str):
                 raise ContractValidationError("params keys must be strings")
-        object.__setattr__(self, "provider", self.provider.strip().lower())
-        object.__setattr__(self, "params", MappingProxyType(dict(self.params)))
+
+        params = dict(self.params)
+        model = self.model.strip()
+
+        if normalized_provider == DEEPSEEK_REAL_PROVIDER:
+            # Approved real path (TD-16): model hard-gated to
+            # deepseek-v4-pro and endpoint bound to https://api.deepseek.com.
+            # Any other model or endpoint fails closed; there is no fallback
+            # to another model, provider, or endpoint.
+            if model != DEEPSEEK_MODEL_ID:
+                raise ProviderBoundaryError(
+                    f"model {model!r} is not authorized on the approved "
+                    f"real provider path: only {DEEPSEEK_MODEL_ID!r} is "
+                    "allowed -- failing closed, no fallback"
+                )
+            if "base_url" in params:
+                requested = str(params["base_url"]).rstrip("/")
+                if requested != DEEPSEEK_BASE_URL.rstrip("/"):
+                    raise ProviderBoundaryError(
+                        f"base_url {str(params['base_url'])!r} is not the "
+                        f"approved DeepSeek endpoint {DEEPSEEK_BASE_URL!r} "
+                        "-- failing closed, no fallback"
+                    )
+            params["base_url"] = DEEPSEEK_BASE_URL
+
+        object.__setattr__(self, "provider", normalized_provider)
+        object.__setattr__(self, "params", MappingProxyType(params))
 
     def provenance_metadata(self) -> dict[str, Any]:
         """The exact provider/model/params triple, as a plain JSON-ready
@@ -109,12 +156,15 @@ class ProviderConfig:
 
 
 class PilotProviderBoundary:
-    """One run's fixed binding to the deterministic mock provider.
+    """One run's fixed binding to its provider (mock or approved DeepSeek).
 
     Construction validates and freezes the ``ProviderConfig``; ``complete``
     forwards to ``tools.llm_provider.complete()`` unmodified with exactly
-    the frozen triple. No other provider can ever be reached through this
-    class: the config constructor fails closed before any call is made.
+    the frozen provider/model/params triple. For the approved DeepSeek real
+    path this is provider ``"cloud"`` with model ``deepseek-v4-pro`` and the
+    base URL bound to ``https://api.deepseek.com``. No other provider, model,
+    or endpoint can ever be reached through this class: the config
+    constructor fails closed before any call is made.
     """
 
     def __init__(
@@ -137,12 +187,17 @@ class PilotProviderBoundary:
         return self._config.provenance_metadata()
 
     def complete(self, messages: list[dict[str, str]]) -> str:
-        """Return one deterministic mock completion for ``messages``.
+        """Return one provider completion string for ``messages``.
 
         Delegates to the existing, unmodified ``tools.llm_provider.complete``
-        with the frozen provider/model/params. The mock provider is offline
+        with the frozen provider/model/params. For ``mock`` this is offline
         and deterministic (SHA-256-digest stub output): identical messages
-        always yield identical completions.
+        always yield identical completions. For the approved DeepSeek real
+        path this forwards to the existing cloud chat-completions
+        implementation with model ``deepseek-v4-pro`` and base URL
+        ``https://api.deepseek.com``. Provider/network errors propagate
+        unchanged (fail closed -- never a fallback to mock or another
+        provider).
         """
         return llm_provider.complete(
             messages,

@@ -19,9 +19,13 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
+from tools import llm_provider
 from tools.cis_pilot.provider_boundary import (
     SUPPORTED_PROVIDER,
     MOCK_MODEL_ID,
+    DEEPSEEK_REAL_PROVIDER,
+    DEEPSEEK_MODEL_ID,
+    DEEPSEEK_BASE_URL,
     ProviderBoundaryError,
     ProviderConfig,
     PilotProviderBoundary,
@@ -268,16 +272,43 @@ class TestGistProposalAdapter:
 
 class TestNoNetworkOrRealProvider:
     def test_no_network_imports(self) -> None:
-        """Verify production module imports no network/provider/SDK libs."""
+        """Verify production module imports no network/provider/SDK libs.
+
+        TD-16 (approved DeepSeek real path) reuses the existing
+        stdlib-only ``tools.llm_provider``; the module must not add any new
+        network import or SDK dependency. The literal string ``deepseek`` is
+        now a legitimate configuration identifier (model id / base URL), so
+        that token is asserted at the import-statement level rather than as
+        a raw substring anywhere in the source.
+        """
+        import re
+
         src = (Path(__file__).parents[2] / "tools" / "cis_pilot" /
                "provider_boundary.py").read_text(encoding="utf-8")
         forbidden = (
-            "openai", "anthropic", "deepseek", "kimi", "ollama",
+            "openai", "anthropic", "kimi", "ollama",
             "requests", "httpx", "urllib", "socket", "http.client",
-            "sqlite3", "sqlite", "renpy", "message_parts",
+            "aiohttp", "sqlite3", "sqlite", "renpy", "message_parts",
         )
         for token in forbidden:
             assert token not in src, f"forbidden token in source: {token}"
+
+        import_lines = [
+            ln.strip() for ln in src.splitlines()
+            if ln.strip().startswith(("import ", "from "))
+        ]
+        prohibited_import_prefixes = (
+            "import requests", "import httpx", "import urllib",
+            "import socket", "import aiohttp", "import openai",
+            "import anthropic", "import langgraph", "import sqlite",
+            "from openai", "from anthropic", "from deepseek",
+            "from langgraph", "from urllib", "from http", "from httpx",
+        )
+        for line in import_lines:
+            assert not line.startswith(prohibited_import_prefixes), (
+                f"prohibited import in source: {line}"
+            )
+        assert re.search(r"\bimport\s+re\b", src) is None
 
     def test_no_network_in_complete_path(self) -> None:
         """Confirm the complete() method only calls llm_provider.complete."""
@@ -307,3 +338,136 @@ class TestMockOnlyHardGate:
         for name in ("openai", "anthropic", "kimi"):
             with pytest.raises(ProviderBoundaryError):
                 PilotProviderBoundary(provider=name)
+
+
+# ---------------------------------------------------------------------------
+# TD-16: approved DeepSeek real path (offline; no network)
+# ---------------------------------------------------------------------------
+
+
+class TestApprovedDeepSeekRealPath:
+    def test_approved_config_accepted(self) -> None:
+        cfg = ProviderConfig(provider=DEEPSEEK_REAL_PROVIDER,
+                             model=DEEPSEEK_MODEL_ID, params={})
+        assert cfg.provider == "cloud"
+        assert cfg.model == DEEPSEEK_MODEL_ID
+        # Endpoint is bound to the approved DeepSeek base URL automatically.
+        assert dict(cfg.params)["base_url"] == DEEPSEEK_BASE_URL
+
+    def test_other_real_models_rejected(self) -> None:
+        for bad in ("deepseek-chat", "deepseek-reasoner", "gpt-4o-mini",
+                    "gpt-4", "claude-3", "kimi-k2", "ollama/llama3",
+                    "some-arbitrary-name"):
+            with pytest.raises(ProviderBoundaryError, match="not authorized"):
+                ProviderConfig(provider=DEEPSEEK_REAL_PROVIDER, model=bad,
+                               params={})
+
+    def test_empty_model_on_real_path_rejected(self) -> None:
+        with pytest.raises(ContractValidationError):
+            ProviderConfig(provider=DEEPSEEK_REAL_PROVIDER, model="",
+                           params={})
+
+    def test_other_base_url_rejected(self) -> None:
+        for bad_url in ("https://api.openai.com",
+                        "https://api.deepseek.com/v2",
+                        "http://localhost:11434"):
+            with pytest.raises(ProviderBoundaryError, match="base_url"):
+                ProviderConfig(provider=DEEPSEEK_REAL_PROVIDER,
+                               model=DEEPSEEK_MODEL_ID,
+                               params={"base_url": bad_url})
+
+    def test_approved_base_url_accepted_verbatim(self) -> None:
+        cfg = ProviderConfig(provider=DEEPSEEK_REAL_PROVIDER,
+                             model=DEEPSEEK_MODEL_ID,
+                             params={"base_url": DEEPSEEK_BASE_URL})
+        assert dict(cfg.params)["base_url"] == DEEPSEEK_BASE_URL
+
+    def test_no_api_key_in_provenance(self) -> None:
+        cfg = ProviderConfig(provider=DEEPSEEK_REAL_PROVIDER,
+                             model=DEEPSEEK_MODEL_ID, params={})
+        meta = cfg.provenance_metadata()
+        serialized = repr(meta)
+        assert "api_key" not in serialized
+        assert "OPENAI_API_KEY" not in serialized
+        assert "secret" not in serialized
+
+    def test_complete_forwards_approved_deepseek_params(self, monkeypatch) -> None:
+        calls: list[dict] = []
+
+        def fake_complete(messages, *, provider, model=None, system=None,
+                          params=None):
+            calls.append({
+                "messages": messages,
+                "provider": provider,
+                "model": model,
+                "params": params,
+            })
+            return "real-response"
+
+        monkeypatch.setattr(llm_provider, "complete", fake_complete)
+        boundary = PilotProviderBoundary(provider=DEEPSEEK_REAL_PROVIDER,
+                                         model=DEEPSEEK_MODEL_ID,
+                                         params={})
+        result = boundary.complete([{"role": "user", "content": "hello"}])
+        assert result == "real-response"
+        assert len(calls) == 1
+        call = calls[0]
+        assert call["provider"] == "cloud"
+        assert call["model"] == DEEPSEEK_MODEL_ID
+        assert call["params"]["base_url"] == DEEPSEEK_BASE_URL
+        assert call["messages"] == [{"role": "user", "content": "hello"}]
+
+    def test_helper_exception_propagates_no_mock_fallback(self, monkeypatch) -> None:
+        def fake_complete(messages, *, provider, model=None, system=None,
+                          params=None):
+            raise llm_provider.LLMProviderError(
+                "OPENAI_API_KEY is required for cloud provider"
+            )
+
+        monkeypatch.setattr(llm_provider, "complete", fake_complete)
+        boundary = PilotProviderBoundary(provider=DEEPSEEK_REAL_PROVIDER,
+                                         model=DEEPSEEK_MODEL_ID,
+                                         params={})
+        with pytest.raises(llm_provider.LLMProviderError):
+            boundary.complete([{"role": "user", "content": "hello"}])
+
+    def test_runner_facing_return_type_is_str(self, monkeypatch) -> None:
+        def fake_complete(messages, *, provider, model=None, system=None,
+                          params=None):
+            return "mock-free completion text"
+
+        monkeypatch.setattr(llm_provider, "complete", fake_complete)
+        boundary = PilotProviderBoundary(provider=DEEPSEEK_REAL_PROVIDER,
+                                         model=DEEPSEEK_MODEL_ID,
+                                         params={})
+        assert isinstance(boundary.complete([{"role": "user", "content": "x"}]),
+                          str)
+
+
+class TestMockPreservedAfterTD16:
+    """The deterministic mock path must remain byte-for-byte unchanged."""
+
+    def test_default_boundary_still_mock(self) -> None:
+        b = default_boundary()
+        assert b.config.provider == "mock"
+        assert b.config.model == MOCK_MODEL_ID
+        assert b.config.params == {}
+
+    def test_mock_deterministic_after_td16(self) -> None:
+        b = default_boundary()
+        messages = [{"role": "user", "content": "determinism-after-td16"}]
+        assert b.complete(messages) == b.complete(messages)
+        assert b.complete(messages).startswith("[MOCK]")
+
+    def test_mock_never_receives_base_url(self, monkeypatch) -> None:
+        calls: list[dict] = []
+
+        def fake_complete(messages, *, provider, model=None, system=None,
+                          params=None):
+            calls.append(params or {})
+            return "[MOCK] (user) x :: abcdef1234"
+
+        monkeypatch.setattr(llm_provider, "complete", fake_complete)
+        b = default_boundary()
+        b.complete([{"role": "user", "content": "x"}])
+        assert calls == [{}]
