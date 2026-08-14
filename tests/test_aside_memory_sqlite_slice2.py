@@ -250,10 +250,15 @@ def test_append_legacy_session_via_sqlite(tmp_path):
 
 
 def test_duplicate_session_ignored(tmp_path):
-    """Same (profile, character, world, scene, beat, progress) inserts only once."""
+    """Same (profile, character, world, scene, beat, progress) is fully idempotent.
+
+    Strengthened (TEST B): proves not only that the sessions row is not
+    duplicated, but that message_parts stays at 2 and the loaded `recent`
+    contains exactly one user/assistant pair (exact duplicate suppressed).
+    """
     root = tmp_path / "aside_root"
     setup_sqlite_db(root)
-    session = make_structured_session(msg="First")
+    session = make_structured_session(msg="First", reply="Understood")
     r1 = sqlite_store.append_session_sqlite(
         root=root, profile_id="p1", character_id="kira", world="aside", session=session
     )
@@ -265,6 +270,15 @@ def test_duplicate_session_ignored(tmp_path):
     assert r2["status"] == "appended"
 
     assert count_sessions_sqlite(root, "p1", "kira", "aside") == 1
+    assert count_parts_sqlite(root, "p1", "kira", "aside") == 2
+
+    recent = sqlite_store.load_memory_sqlite(
+        root=root, profile_id="p1", character_id="kira", world="aside", progress=999
+    )["recent"]
+    assert [(e["role"], e["content"]) for e in recent] == [
+        ("user", "First"),
+        ("assistant", "Understood"),
+    ]
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1351,3 +1365,164 @@ def test_invalid_world_rejected_sqlite(tmp_path):
             root=root, profile_id="p1", character_id="kira", world="sandbox",
             session=make_structured_session(),
         )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Multi-turn same-story-position persistence (ASIDE S2 regression)
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# One SQLite session per story/canon position MUST support multiple ordered
+# conversational user/assistant turns. Regression coverage for the confirmed
+# defect where a second turn at the same (profile, character, world, scene,
+# beat, progress_index) was silently lost.
+
+_S2_PROFILE = "dev_slot"
+_S2_CHARACTER = "kira"
+_S2_WORLD = "aside"
+_S2_SCENE = "SC_017"
+_S2_BEAT = "sc_017_v2_1a"
+_S2_PROGRESS = 17
+
+
+def _append_s2_turn(root, msg, reply):
+    """Append one structured user/assistant turn at the fixed S2 story position."""
+    return sqlite_store.append_session_sqlite(
+        root=root,
+        profile_id=_S2_PROFILE,
+        character_id=_S2_CHARACTER,
+        world=_S2_WORLD,
+        session=make_structured_session(
+            scene_id=_S2_SCENE,
+            beat_id=_S2_BEAT,
+            progress_index=_S2_PROGRESS,
+            msg=msg,
+            reply=reply,
+        ),
+    )
+
+
+def _load_s2(root):
+    """Return the full loaded memory dict for the fixed S2 scope."""
+    return sqlite_store.load_memory_sqlite(
+        root=root,
+        profile_id=_S2_PROFILE,
+        character_id=_S2_CHARACTER,
+        world=_S2_WORLD,
+        progress=999,
+    )
+
+
+def _recent_pairs(root):
+    """Return [(role, content), ...] from loaded recent for the S2 scope."""
+    return [(e["role"], e["content"]) for e in _load_s2(root)["recent"]]
+
+
+def test_aside_s2_first_append_preserved(tmp_path):
+    """TEST A — first conversational turn at a story position.
+
+    One structured session/turn (green notebook / understood) yields one
+    session row and exactly two ordered message parts.
+    """
+    root = tmp_path / "aside_root"
+    setup_sqlite_db(root)
+
+    result = _append_s2_turn(root, "green notebook", "understood")
+    assert result["status"] == "appended"
+
+    assert count_sessions_sqlite(root, _S2_PROFILE, _S2_CHARACTER, _S2_WORLD) == 1
+    assert count_parts_sqlite(root, _S2_PROFILE, _S2_CHARACTER, _S2_WORLD) == 2
+
+    assert _recent_pairs(root) == [
+        ("user", "green notebook"),
+        ("assistant", "understood"),
+    ]
+
+    # Provenance remains correct (USER_CLAIM for user, ASIDE_WORLD for assistant)
+    meta = _load_s2(root)["sessions_meta"][0]
+    assert meta["player"]["provenance"] == "USER_CLAIM"
+    assert meta["reply"]["provenance"] == "ASIDE_WORLD"
+
+
+def test_aside_s2_multiturn_same_story_position(tmp_path):
+    """TEST C — primary regression: a second turn at the same story position.
+
+    Turn 1: green notebook / understood
+    Turn 2: yellow card / understood
+    Expected: one session, four ordered message parts, both turns preserved.
+    """
+    root = tmp_path / "aside_root"
+    setup_sqlite_db(root)
+
+    _append_s2_turn(root, "green notebook", "understood")
+    _append_s2_turn(root, "yellow card", "understood")
+
+    assert count_sessions_sqlite(root, _S2_PROFILE, _S2_CHARACTER, _S2_WORLD) == 1
+    assert count_parts_sqlite(root, _S2_PROFILE, _S2_CHARACTER, _S2_WORLD) == 4
+
+    assert _recent_pairs(root) == [
+        ("user", "green notebook"),
+        ("assistant", "understood"),
+        ("user", "yellow card"),
+        ("assistant", "understood"),
+    ]
+
+    # Provenance: every user entry is USER_CLAIM, every assistant entry ASIDE_WORLD
+    recent = _load_s2(root)["recent"]
+    for e in recent:
+        if e["role"] == "user":
+            assert e["provenance"] == "USER_CLAIM"
+        elif e["role"] == "assistant":
+            assert e["provenance"] == "ASIDE_WORLD"
+
+
+def test_aside_s2_retry_later_turn_is_idempotent(tmp_path):
+    """TEST D — retry of the later turn is idempotent (no duplicate tail pair).
+
+    After Turn 1 + Turn 2, re-appending Turn 2 unchanged keeps 4 parts.
+    """
+    root = tmp_path / "aside_root"
+    setup_sqlite_db(root)
+
+    _append_s2_turn(root, "green notebook", "understood")
+    _append_s2_turn(root, "yellow card", "understood")
+
+    # Retry Turn 2 unchanged
+    _append_s2_turn(root, "yellow card", "understood")
+
+    assert count_sessions_sqlite(root, _S2_PROFILE, _S2_CHARACTER, _S2_WORLD) == 1
+    assert count_parts_sqlite(root, _S2_PROFILE, _S2_CHARACTER, _S2_WORLD) == 4
+    assert _recent_pairs(root) == [
+        ("user", "green notebook"),
+        ("assistant", "understood"),
+        ("user", "yellow card"),
+        ("assistant", "understood"),
+    ]
+
+
+def test_aside_s2_same_user_text_different_reply_is_new_turn(tmp_path):
+    """TEST E — same user text with a different assistant reply is a new turn.
+
+    Existing tail: yellow card / understood
+    New turn:      yellow card / different reply
+    This must NOT be treated as an idempotent duplicate — the pair differs,
+    so it must append. Proves duplicate detection uses the complete pair.
+    """
+    root = tmp_path / "aside_root"
+    setup_sqlite_db(root)
+
+    _append_s2_turn(root, "green notebook", "understood")
+    _append_s2_turn(root, "yellow card", "understood")
+
+    # Same user text, different reply → new turn
+    _append_s2_turn(root, "yellow card", "different reply")
+
+    assert count_sessions_sqlite(root, _S2_PROFILE, _S2_CHARACTER, _S2_WORLD) == 1
+    assert count_parts_sqlite(root, _S2_PROFILE, _S2_CHARACTER, _S2_WORLD) == 6
+    assert _recent_pairs(root) == [
+        ("user", "green notebook"),
+        ("assistant", "understood"),
+        ("user", "yellow card"),
+        ("assistant", "understood"),
+        ("user", "yellow card"),
+        ("assistant", "different reply"),
+    ]

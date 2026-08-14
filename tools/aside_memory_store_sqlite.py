@@ -332,78 +332,78 @@ def append_session(
         raise SqliteMemoryError("Failed to insert or retrieve session row")
     session_rowid = row[0]
 
-    # Check if we should insert message parts (only for new sessions with no parts)
+    # Build the incoming structured message parts (role, content, provenance).
+    incoming_parts: list[tuple[str, str, str]] = []
+
+    # Player message part (USER_CLAIM)
+    player = session.get("player")
+    if isinstance(player, dict):
+        player_text = str(player.get("text", player.get("data", "")))
+        if player_text.strip():
+            incoming_parts.append(("user", player_text.strip(), PROVENANCE_USER_CLAIM))
+    elif "player" not in session and "reply" not in session:
+        # Legacy session: map transcript entries
+        for entry in session.get("transcript", []):
+            if not isinstance(entry, dict):
+                continue
+            role = entry.get("role", "")
+            content = str(entry.get("content", "")).strip()
+            if not content:
+                continue
+            if role == "user":
+                entry_prov = PROVENANCE_USER_CLAIM
+            elif role == "assistant":
+                entry_prov = PROVENANCE_ASIDE_WORLD
+            else:
+                entry_prov = provenance
+            incoming_parts.append((role, content, entry_prov))
+
+    # Reply message part (ASIDE_WORLD)
+    reply = session.get("reply")
+    if isinstance(reply, dict):
+        reply_text = str(reply.get("text", reply.get("data", "")))
+        if reply_text.strip():
+            incoming_parts.append(("assistant", reply_text.strip(), PROVENANCE_ASIDE_WORLD))
+
+    # Load existing message parts for this session (ordered by part_order).
     cur = con.execute(
-        "SELECT COUNT(*) FROM message_parts WHERE session_id=?", (session_rowid,)
+        """
+        SELECT role, content, provenance
+        FROM message_parts
+        WHERE session_id=?
+        ORDER BY part_order
+        """,
+        (session_rowid,),
     )
-    existing_parts = cur.fetchone()[0]
+    stored_parts = cur.fetchall()
 
-    if existing_parts == 0:
-        part_order = 0
+    # Append new parts only when they differ from the immediately preceding
+    # stored conversational pair (narrow retry/idempotency guard).
+    if incoming_parts and not _pair_matches_tail(incoming_parts, stored_parts):
+        cur = con.execute(
+            "SELECT COALESCE(MAX(part_order), -1) + 1 FROM message_parts WHERE session_id=?",
+            (session_rowid,),
+        )
+        next_order = cur.fetchone()[0]
+        for role, content, part_prov in incoming_parts:
+            con.execute(
+                """
+                INSERT INTO message_parts
+                    (session_id, role, content, provenance, part_order, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (session_rowid, role, content, part_prov, next_order, created_at),
+            )
+            next_order += 1
 
-        # Player message part (USER_CLAIM)
-        player = session.get("player")
-        if isinstance(player, dict):
-            player_text = str(player.get("text", player.get("data", "")))
-            if player_text.strip():
-                con.execute(
-                    """
-                    INSERT INTO message_parts
-                        (session_id, role, content, provenance, part_order, created_at)
-                    VALUES (?, 'user', ?, ?, ?, ?)
-                    """,
-                    (
-                        session_rowid, player_text.strip(),
-                        PROVENANCE_USER_CLAIM, part_order, created_at,
-                    ),
-                )
-                part_order += 1
-        elif "player" not in session and "reply" not in session:
-            # Legacy session: map transcript entries
-            for entry in session.get("transcript", []):
-                if not isinstance(entry, dict):
-                    continue
-                role = entry.get("role", "")
-                content = str(entry.get("content", "")).strip()
-                if not content:
-                    continue
-                if role == "user":
-                    entry_prov = PROVENANCE_USER_CLAIM
-                elif role == "assistant":
-                    entry_prov = PROVENANCE_ASIDE_WORLD
-                else:
-                    entry_prov = provenance
-                con.execute(
-                    """
-                    INSERT INTO message_parts
-                        (session_id, role, content, provenance, part_order, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                    """,
-                    (session_rowid, role, content, entry_prov, part_order, created_at),
-                )
-                part_order += 1
-
-        # Reply message part (ASIDE_WORLD)
-        reply = session.get("reply")
-        if isinstance(reply, dict):
-            reply_text = str(reply.get("text", reply.get("data", "")))
-            if reply_text.strip():
-                con.execute(
-                    """
-                    INSERT INTO message_parts
-                        (session_id, role, content, provenance, part_order, created_at)
-                    VALUES (?, 'assistant', ?, ?, ?, ?)
-                    """,
-                    (
-                        session_rowid, reply_text.strip(),
-                        PROVENANCE_ASIDE_WORLD, part_order, created_at,
-                    ),
-                )
-                part_order += 1
-
-        # Canon snapshot
-        canon = session.get("canon_snapshot")
-        if isinstance(canon, dict):
+    # Canon snapshot (only if none already exists for this session).
+    canon = session.get("canon_snapshot")
+    if isinstance(canon, dict):
+        cur = con.execute(
+            "SELECT COUNT(*) FROM canonical_snapshots WHERE session_id=?",
+            (session_rowid,),
+        )
+        if cur.fetchone()[0] == 0:
             canon_data = canon.get("data", canon.get("text", canon))
             if isinstance(canon_data, dict):
                 canon_json = json.dumps(canon_data, ensure_ascii=False, sort_keys=True)
@@ -1108,3 +1108,22 @@ def _truncate(text: str, limit: int) -> str:
     if len(text) <= limit:
         return text
     return text[: max(0, limit - 1)].rstrip() + "…"
+
+
+def _pair_matches_tail(
+    incoming_parts: list[tuple[str, str, str]],
+    stored_parts: list[tuple[str, str, str]],
+) -> bool:
+    """Return True if incoming parts exactly match the tail of stored parts.
+
+    This is the narrow retry/idempotency guard: only an exact duplicate of
+    the immediately preceding stored conversational pair suppresses a new
+    append. A phrase reused earlier in history does NOT suppress a later
+    legitimate turn.
+    """
+    if not incoming_parts:
+        return False
+    if len(stored_parts) < len(incoming_parts):
+        return False
+    tail = stored_parts[-len(incoming_parts):]
+    return list(incoming_parts) == list(tail)
