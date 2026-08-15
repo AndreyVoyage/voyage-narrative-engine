@@ -112,6 +112,24 @@ def _ab_probe() -> ProbeDefinition:
     )
 
 
+def _counting_boundary():
+    """Return (boundary, calls) where ``calls`` records every provider invocation.
+
+    Provider-agnostic and offline: keeps the existing deterministic mock
+    boundary while counting how many times ``complete`` is actually reached.
+    """
+    boundary = default_boundary()
+    calls: list = []
+    real = boundary.complete
+
+    def counted(messages):
+        calls.append(messages)
+        return real(messages)
+
+    boundary.complete = counted
+    return boundary, calls
+
+
 # ---------------------------------------------------------------------------
 # Resume: partial run creation
 # ---------------------------------------------------------------------------
@@ -156,27 +174,35 @@ class TestPartialRunCreation:
         assert len(persisted) >= 3, "Pre-seeded evidence must still exist"
 
     def test_full_run_then_resume_zero_new(self, storage: CisPilotStorage) -> None:
-        """After a full run, a second resume should still produce all samples
-        deterministically (same config = same results)."""
+        """A completed resume run is idempotent: the second resume makes zero
+        provider calls and leaves persisted evidence byte-identical."""
         run_id = generate_run_id()
-        config = ProbeRunConfig(probe=_ab_probe(), samples_per_arm=2)
+        boundary = default_boundary()
+        config = ProbeRunConfig(probe=_ab_probe(), boundary=boundary, samples_per_arm=2)
         snapshot = _snapshot()
         runner = ProbeRunner(snapshot, storage)
 
-        # First run: generate all samples
+        # First run: generates and auto-persists every sample (resume path)
         pkg1 = runner.run_pb_ab(config, sub_mode="T3-P3", resume_run_id=run_id)
         evidence_path = f"evidence/{run_id}/samples.jsonl"
-        # Persist all samples from pkg1
-        for s in pkg1.samples:
-            storage.append_jsonl(evidence_path, s.to_dict())
-        count_before = len(pkg1.samples)
+        persisted_before = storage.read_jsonl(evidence_path)
+        assert len(persisted_before) == len(pkg1.samples)
 
-        # Second run: resume should produce same count (deterministic)
+        # Second resume must not invoke the provider at all.
+        calls: list = []
+
+        def fail_if_called(messages):
+            calls.append(messages)
+            raise AssertionError("provider must not be invoked on a completed resume")
+
+        boundary.complete = fail_if_called
+
         pkg2 = runner.run_pb_ab(config, sub_mode="T3-P3", resume_run_id=run_id)
-        count_after = len(pkg2.samples)
-        assert count_after == count_before, (
-            f"Second resume changed count: {count_before} -> {count_after}"
-        )
+        assert calls == [], "zero-work resume must make zero provider calls"
+        assert pkg2.deterministic_payload() == pkg1.deterministic_payload()
+
+        persisted_after = storage.read_jsonl(evidence_path)
+        assert persisted_after == persisted_before, "resume must not mutate existing evidence"
 
 
 # ---------------------------------------------------------------------------
@@ -332,3 +358,157 @@ class TestDeterministicContinuation:
         payload2 = pkg2.deterministic_payload()
 
         assert payload1 == payload2
+
+
+# ---------------------------------------------------------------------------
+# TD-21 — bounded real-run resume completion (skip / no-overwrite / fail-closed)
+# ---------------------------------------------------------------------------
+
+class TestTd21ResumeSkip:
+    """Completed identities are skipped before any provider call; missing
+    identities execute exactly once."""
+
+    def test_completed_identity_skipped_before_provider_call(self, storage: CisPilotStorage) -> None:
+        run_id = generate_run_id()
+        boundary, calls = _counting_boundary()
+        runner = ProbeRunner(_snapshot(), storage)
+
+        evidence_path = f"evidence/{run_id}/samples.jsonl"
+        storage.append_jsonl(evidence_path, {
+            "probe_id": "synth-pb-ab-001", "mode": "PB-AB", "state": "T3-P3",
+            "arm": "A", "sample_index": 0, "generation": "[pre-completed] A-0",
+            "tags": ["synthetic", "pb-ab", "t3-p3"],
+        })
+
+        config = ProbeRunConfig(probe=_ab_probe(), boundary=boundary, samples_per_arm=1)
+        pkg = runner.run_pb_ab(config, sub_mode="T3-P3", resume_run_id=run_id)
+
+        # A-0 reused without a provider call; B-0 + BASELINE_A-0 + BASELINE_B-0 fresh
+        assert len(calls) == 3
+        a0 = next(s for s in pkg.samples if s.arm == "A" and s.sample_index == 0)
+        assert a0.generation == "[pre-completed] A-0"
+
+        persisted = storage.read_jsonl(evidence_path)
+        identities = [(r["probe_id"], r["state"], r["arm"], r["sample_index"]) for r in persisted]
+        assert len(identities) == 4
+        assert len(set(identities)) == 4, "no duplicate identities after resume"
+
+    def test_incomplete_identity_executes(self, storage: CisPilotStorage) -> None:
+        run_id = generate_run_id()
+        boundary, calls = _counting_boundary()
+        runner = ProbeRunner(_snapshot(), storage)
+
+        storage.append_jsonl(f"evidence/{run_id}/samples.jsonl", {
+            "probe_id": "synth-pb-ab-001", "mode": "PB-AB", "state": "T3-P3",
+            "arm": "A", "sample_index": 0, "generation": "[seeded]", "tags": [],
+        })
+
+        config = ProbeRunConfig(probe=_ab_probe(), boundary=boundary, samples_per_arm=1)
+        pkg = runner.run_pb_ab(config, sub_mode="T3-P3", resume_run_id=run_id)
+
+        b0 = next(s for s in pkg.samples if s.arm == "B" and s.sample_index == 0)
+        assert b0.generation != "[seeded]"
+        assert len(calls) == 3, "missing B + baselines must each execute once"
+
+
+class TestTd21EvidenceImmutability:
+    def test_existing_evidence_not_overwritten(self, storage: CisPilotStorage) -> None:
+        run_id = generate_run_id()
+        boundary, _ = _counting_boundary()
+        runner = ProbeRunner(_snapshot(), storage)
+
+        evidence_path = f"evidence/{run_id}/samples.jsonl"
+        storage.append_jsonl(evidence_path, {
+            "probe_id": "synth-pb-ab-001", "mode": "PB-AB", "state": "T3-P3",
+            "arm": "A", "sample_index": 1, "generation": "ORIGINAL-EVIDENCE",
+            "tags": ["synthetic", "pb-ab"],
+        })
+
+        config = ProbeRunConfig(probe=_ab_probe(), boundary=boundary, samples_per_arm=2)
+        pkg = runner.run_pb_ab(config, sub_mode="T3-P3", resume_run_id=run_id)
+
+        a1 = next(s for s in pkg.samples if s.arm == "A" and s.sample_index == 1)
+        assert a1.generation == "ORIGINAL-EVIDENCE"
+
+        persisted = storage.read_jsonl(evidence_path)
+        a1_records = [r for r in persisted if r["arm"] == "A" and r["sample_index"] == 1]
+        assert len(a1_records) == 1
+        assert a1_records[0]["generation"] == "ORIGINAL-EVIDENCE"
+
+
+class TestTd21FailClosed:
+    def test_duplicate_identity_fail_closed(self, storage: CisPilotStorage) -> None:
+        run_id = generate_run_id()
+        boundary, calls = _counting_boundary()
+        runner = ProbeRunner(_snapshot(), storage)
+
+        evidence_path = f"evidence/{run_id}/samples.jsonl"
+        record = {
+            "probe_id": "synth-pb-ab-001", "mode": "PB-AB", "state": "T3-P3",
+            "arm": "A", "sample_index": 0, "generation": "dup", "tags": [],
+        }
+        storage.append_jsonl(evidence_path, record)
+        storage.append_jsonl(evidence_path, record)
+
+        config = ProbeRunConfig(probe=_ab_probe(), boundary=boundary, samples_per_arm=1)
+        with pytest.raises(ProbeRunnerError, match="duplicate"):
+            runner.run_pb_ab(config, sub_mode="T3-P3", resume_run_id=run_id)
+
+        assert calls == [], "duplicate evidence must fail closed before any provider call"
+        assert len(storage.read_jsonl(evidence_path)) == 2, "no new evidence appended"
+
+    def test_malformed_evidence_fail_closed(self, storage: CisPilotStorage) -> None:
+        run_id = generate_run_id()
+        boundary, calls = _counting_boundary()
+        runner = ProbeRunner(_snapshot(), storage)
+
+        evidence_path = storage.base_path / f"evidence/{run_id}/samples.jsonl"
+        evidence_path.parent.mkdir(parents=True, exist_ok=True)
+        evidence_path.write_text("{ this is not valid json\n", encoding="utf-8")
+
+        config = ProbeRunConfig(probe=_ab_probe(), boundary=boundary, samples_per_arm=1)
+        with pytest.raises(ProbeRunnerError, match="malformed"):
+            runner.run_pb_ab(config, sub_mode="T3-P3", resume_run_id=run_id)
+
+        assert calls == []
+
+
+class TestTd21ProviderFailure:
+    def test_provider_failure_persists_only_completed_evidence(self, storage: CisPilotStorage) -> None:
+        run_id = generate_run_id()
+        boundary = default_boundary()
+        real = boundary.complete
+        call_count = [0]
+
+        def flaky(messages):
+            call_count[0] += 1
+            if call_count[0] >= 2:
+                raise RuntimeError("simulated provider failure")
+            return real(messages)
+
+        boundary.complete = flaky
+        runner = ProbeRunner(_snapshot(), storage)
+        config = ProbeRunConfig(probe=_ab_probe(), boundary=boundary, samples_per_arm=2)
+
+        with pytest.raises(RuntimeError, match="simulated provider failure"):
+            runner.run_pb_ab(config, sub_mode="T3-P3", resume_run_id=run_id)
+
+        persisted = storage.read_jsonl(f"evidence/{run_id}/samples.jsonl")
+        assert len(persisted) == 1
+        assert persisted[0]["arm"] == "A" and persisted[0]["sample_index"] == 0
+        assert call_count[0] == 2, "no hidden automatic retry after failure"
+
+    def test_resume_after_failure_skips_completed_retries_missing_once(self, storage: CisPilotStorage) -> None:
+        run_id = generate_run_id()
+        storage.append_jsonl(f"evidence/{run_id}/samples.jsonl", {
+            "probe_id": "synth-pb-ab-001", "mode": "PB-AB", "state": "T3-P3",
+            "arm": "A", "sample_index": 0, "generation": "[survived]", "tags": [],
+        })
+        boundary, calls = _counting_boundary()
+        runner = ProbeRunner(_snapshot(), storage)
+        config = ProbeRunConfig(probe=_ab_probe(), boundary=boundary, samples_per_arm=1)
+
+        pkg = runner.run_pb_ab(config, sub_mode="T3-P3", resume_run_id=run_id)
+        a0 = next(s for s in pkg.samples if s.arm == "A" and s.sample_index == 0)
+        assert a0.generation == "[survived]"
+        assert len(calls) == 3, "completed A-0 skipped; missing B + baselines executed once each"

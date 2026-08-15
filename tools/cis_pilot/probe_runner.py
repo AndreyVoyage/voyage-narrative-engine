@@ -50,7 +50,7 @@ from .result_package import (
     utc_now_iso,
 )
 from .baseline_adapter import build_baseline_messages
-from .storage import CisPilotStorage
+from .storage import CisPilotStorage, CisPilotStorageError
 
 
 # ---------------------------------------------------------------------------
@@ -253,24 +253,41 @@ class ProbeRunner:
     def _build_baseline_samples(
         self, boundary: PilotProviderBoundary, config: ProbeRunConfig,
         arm: str,
+        completed_records: Optional[Dict[Tuple[Any, ...], Dict[str, Any]]] = None,
+        persist_run_id: Optional[str] = None,
     ) -> Tuple[ProbeSampleRecord, ...]:
-        """Build baseline-arm samples with identical external input, no CIS injection."""
+        """Build baseline-arm samples with identical external input, no CIS injection.
+
+        On a resume run (``completed_records`` / ``persist_run_id`` supplied),
+        a baseline identity that is already persisted is reused unchanged
+        (never re-invoked, never overwritten); only missing identities are
+        generated and appended once.
+        """
         canon_snapshot: Dict[str, Any] = {
             "relationships": {"user": {"trust": 0, "attraction": 0}},
         }
+        completed_records = completed_records or {}
         samples: List[ProbeSampleRecord] = []
         for idx in range(config.samples_per_arm):
+            identity_key = (config.probe.probe_id, None, arm, idx)
+            completed = completed_records.get(identity_key)
+            if completed is not None:
+                samples.append(ProbeSampleRecord.from_dict(completed))
+                continue
             baseline_msgs = build_baseline_messages(
                 canon_snapshot=canon_snapshot,
                 aside_memory=None,
                 player_message=config.probe.scene_question,
             )
             gen = boundary.complete(baseline_msgs)
-            samples.append(ProbeSampleRecord(
+            sample = ProbeSampleRecord(
                 probe_id=config.probe.probe_id, mode=config.probe.mode,
                 state=None, arm=arm, sample_index=idx,
                 generation=gen, tags=("synthetic", "baseline", arm.lower()),
-            ))
+            )
+            samples.append(sample)
+            if persist_run_id is not None:
+                self._persist_sample(persist_run_id, sample)
         return tuple(samples)
 
     def run_pb_rec(self, config: ProbeRunConfig) -> ResultPackage:
@@ -302,31 +319,56 @@ class ProbeRunner:
 
     # -- PB-AB -----------------------------------------------------------
 
-    def _load_completed_keys(self, run_id: str) -> set:
-        """Return identities of already-persisted samples for a run_id.
+    def _load_completed_records(self, run_id: str) -> Dict[Tuple[Any, ...], Dict[str, Any]]:
+        """Return already-persisted sample records for ``run_id`` keyed by the
+        resume identity ``(probe_id, state, arm, sample_index)``.
 
-        Identity = (probe_id, state, arm, sample_index) per ProbeSampleRecord.sample_key().
-        Reads existing JSONL evidence; empty set when no prior records exist.
+        Evidence is read from the per-sample evidence JSONL and the legacy
+        results JSONL path. Fail closed (``ProbeRunnerError``) on any
+        malformed/corrupt line or duplicate identity -- a partially written or
+        ambiguous log is never silently skipped or deduplicated (TD-21).
         """
         evidence_paths = (
             f"evidence/{run_id}/samples.jsonl",
             f"results/{run_id}/samples.jsonl",
         )
-        keys: set = set()
+        records: Dict[Tuple[Any, ...], Dict[str, Any]] = {}
         for path in evidence_paths:
             try:
-                for record in self._storage.read_jsonl(path):
-                    key = (
-                        record.get("probe_id"),
-                        record.get("state"),
-                        record.get("arm"),
-                        record.get("sample_index"),
+                entries = self._storage.read_jsonl(path)
+            except CisPilotStorageError as exc:
+                raise ProbeRunnerError(
+                    f"malformed persisted evidence for run_id={run_id!r} "
+                    f"at {path!r}: {exc}"
+                ) from exc
+            for record in entries:
+                if not isinstance(record, dict):
+                    raise ProbeRunnerError(
+                        f"malformed persisted evidence for run_id={run_id!r} "
+                        f"at {path!r}: expected a JSON object"
                     )
-                    keys.add(key)
-            except Exception:
-                # No existing evidence or malformed — treat as empty, fail-closed
-                pass
-        return keys
+                key = (
+                    record.get("probe_id"),
+                    record.get("state"),
+                    record.get("arm"),
+                    record.get("sample_index"),
+                )
+                if key in records:
+                    raise ProbeRunnerError(
+                        f"duplicate evidence identity {key!r} for "
+                        f"run_id={run_id!r}: refusing to silently deduplicate"
+                    )
+                records[key] = record
+        return records
+
+    def _load_completed_keys(self, run_id: str) -> set:
+        """Identity set of already-persisted samples for ``run_id``.
+
+        Identity = (probe_id, state, arm, sample_index) per ProbeSampleRecord.sample_key().
+        Fail closed on malformed or duplicate evidence (same guarantees as
+        ``_load_completed_records``); empty set when no prior records exist.
+        """
+        return set(self._load_completed_records(run_id).keys())
 
     def _persist_sample(self, run_id: str, sample: ProbeSampleRecord) -> None:
         """Append one sample to the evidence JSONL (TD-8b crash-resilient path)."""
@@ -340,13 +382,17 @@ class ProbeRunner:
         if sub_mode not in ("T3-P3", "T3-P4", "COMBINED"):
             raise ProbeRunnerError(f"unsupported sub_mode: {sub_mode!r}")
 
-        # Resume: load previously completed sample identities
-        completed_keys: set = set()
+        # Resume: load previously completed sample records (fail closed on
+        # malformed or duplicate evidence).
+        completed_records: Dict[Tuple[Any, ...], Dict[str, Any]] = {}
         if resume_run_id is not None:
-            completed_keys = self._load_completed_keys(resume_run_id)
-            _reject_resume_mismatch(resume_run_id, config.probe, sub_mode, completed_keys)
+            completed_records = self._load_completed_records(resume_run_id)
+            _reject_resume_mismatch(
+                resume_run_id, config.probe, sub_mode, set(completed_records.keys())
+            )
 
         run_id = resume_run_id if resume_run_id is not None else generate_run_id()
+        persist_run_id = run_id if resume_run_id is not None else None
         timestamp = utc_now_iso()
         boundary = config.boundary
         samples, rel_decisions = [], []
@@ -360,11 +406,27 @@ class ProbeRunner:
 
         for arm_label, p3, p4 in arms:
             for idx in range(config.samples_per_arm):
-                ctx = assemble_cis_context(
-                    p0=self._snapshot.p0, p3=p3, p4=p4,
-                    scene_question=config.probe.scene_question,
-                )
-                gen = boundary.complete(render_cis_messages(ctx))
+                identity_key = (config.probe.probe_id, sub_mode, arm_label, idx)
+                completed = completed_records.get(identity_key)
+                if completed is not None:
+                    # Already completed: reuse persisted evidence unchanged,
+                    # never overwrite, never invoke the provider again.
+                    sample = ProbeSampleRecord.from_dict(completed)
+                else:
+                    ctx = assemble_cis_context(
+                        p0=self._snapshot.p0, p3=p3, p4=p4,
+                        scene_question=config.probe.scene_question,
+                    )
+                    gen = boundary.complete(render_cis_messages(ctx))
+                    sample = ProbeSampleRecord(
+                        probe_id=config.probe.probe_id, mode="PB-AB",
+                        state=sub_mode, arm=arm_label, sample_index=idx,
+                        generation=gen,
+                        tags=("synthetic", "pb-ab", sub_mode.lower()),
+                    )
+                    if persist_run_id is not None:
+                        self._persist_sample(persist_run_id, sample)
+
                 if sub_mode in ("T3-P3", "COMBINED"):
                     ab_interp = CharacterInterpretation(
                         character_id="kira",
@@ -392,15 +454,16 @@ class ProbeRunner:
                         "trust_after": rel_r.state.current_p3.trust,
                         "decision": rel_r.decision,
                     })
-                samples.append(ProbeSampleRecord(
-                    probe_id=config.probe.probe_id, mode="PB-AB",
-                    state=sub_mode, arm=arm_label, sample_index=idx,
-                    generation=gen,
-                    tags=("synthetic", "pb-ab", sub_mode.lower()),
-                ))
+                samples.append(sample)
         # Baseline A/B arms: same external scene/question, no P3/P4 injection
-        samples.extend(self._build_baseline_samples(boundary, config, arm="BASELINE_A"))
-        samples.extend(self._build_baseline_samples(boundary, config, arm="BASELINE_B"))
+        samples.extend(self._build_baseline_samples(
+            boundary, config, arm="BASELINE_A",
+            completed_records=completed_records, persist_run_id=persist_run_id,
+        ))
+        samples.extend(self._build_baseline_samples(
+            boundary, config, arm="BASELINE_B",
+            completed_records=completed_records, persist_run_id=persist_run_id,
+        ))
         return self._assemble(
             run_id=run_id, timestamp=timestamp, mode="PB-AB", sub_mode=sub_mode,
             config=config, samples=tuple(samples),
