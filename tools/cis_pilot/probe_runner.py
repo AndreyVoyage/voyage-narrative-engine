@@ -41,6 +41,8 @@ from .provider_boundary import (
     default_boundary,
     make_interpretation_proposal_fn,
     make_gist_proposal_fn,
+    make_real_interpretation_proposal_fn,
+    make_real_gist_proposal_fn,
 )
 from .result_package import (
     ProbeSampleRecord,
@@ -265,6 +267,120 @@ class ProbeRunner:
                 "reason": rel_r.reason, "trust_before": p3_i.trust,
                 "trust_after": rel_r.state.current_p3.trust,
             })
+        return self._assemble(
+            run_id=run_id, timestamp=timestamp, mode="PB-MEM", config=config,
+            samples=tuple(samples), memory_trace=tuple(mem_trace),
+            relationship_decisions=tuple(rel_decisions),
+        )
+
+    def run_pb_mem_real(
+        self,
+        config: ProbeRunConfig,
+        *,
+        resume_run_id: Optional[str] = None,
+        interpretation_usage_sink: Optional[Any] = None,
+        gist_usage_sink: Optional[Any] = None,
+    ) -> ResultPackage:
+        """Real-provider PB-MEM (TD-26A): two provider calls per sample.
+
+        CALL #1 = interpretation (strict JSON), CALL #2 = retained-gist
+        (plain text), then the deterministic MemoryGate always runs, then the
+        completed sample is persisted exactly once under the per-probe
+        evidence path. Transactional sample resume: a completed sample is
+        skipped (both calls); an incomplete sample (call #1 success + call #2
+        failure) writes NO semantic sample evidence and, on a later explicit
+        resume, BOTH calls are re-proposed (owner-accepted re-proposal; no
+        sub-call checkpoint). Zero automatic retry; zero mock fallback.
+        """
+        completed_records: Dict[Tuple[Any, ...], Dict[str, Any]] = {}
+        if resume_run_id is not None:
+            completed_records = self._load_completed_records(
+                resume_run_id, config.probe.probe_id
+            )
+            _reject_resume_mismatch(
+                resume_run_id, config.probe, "", set(completed_records.keys())
+            )
+        run_id = resume_run_id if resume_run_id is not None else generate_run_id()
+        persist_run_id = run_id if resume_run_id is not None else None
+        timestamp = utc_now_iso()
+        boundary = config.boundary
+        signals = _synthetic_signals()
+        interp_fn = make_real_interpretation_proposal_fn(
+            boundary, usage_sink=interpretation_usage_sink
+        )
+        gist_fn = make_real_gist_proposal_fn(
+            boundary, usage_sink=gist_usage_sink
+        )
+        me = self._snapshot.me1
+        samples, mem_trace, rel_decisions = [], [], []
+
+        for idx in range(config.samples_per_arm):
+            identity_key = (config.probe.probe_id, None, None, idx)
+            completed = completed_records.get(identity_key)
+            if completed is not None:
+                samples.append(ProbeSampleRecord.from_dict(completed))
+                continue
+
+            event_id = f"synth-event-{idx:04d}"
+            objective_text = (
+                config.probe.objective_event
+                if config.probe.objective_event is not None
+                else f"[SYNTHETIC PB-MEM] {config.probe.scene_question} sample {idx}"
+            )
+            noticed = (
+                config.probe.perception_hint
+                if config.probe.perception_hint is not None
+                else f"[SYNTHETIC] noticed {event_id}"
+            )
+            ev = WorldEvent(
+                event_id=event_id,
+                objective_text=objective_text,
+                participants=("kira", "synthetic_user"),
+                scenario_repo_relative_path=me.scenario_repo_relative_path,
+                json_path=me.json_path, source_sha256=me.sha256,
+            )
+            perc = CharacterPerception(
+                character_id="kira", world_event_id=ev.event_id,
+                noticed=noticed,
+            )
+            interp = interp_fn(ev, perc)          # CALL #1
+            gist = gist_fn(ev, perc, interp)      # CALL #2
+            cand = CharacterMemory(
+                character_id="kira", world_event=ev, retained_gist=gist,
+                salience=signals.score(), possible_distortion=None,
+                tags=("frozen", "pb-mem"),
+            )
+            mem_state = EpisodicMemoryState()
+            result = evaluate_memory_candidate(ev, perc, interp, cand, signals, mem_state)
+            mem_trace.append({
+                "sample_index": idx, "event_id": ev.event_id,
+                "perception_noticed": perc.noticed,
+                "interpretation_meaning": interp.meaning,
+                "gist": gist, "salience": cand.salience,
+                "memory_decision": result.decision, "memory_reason": result.reason,
+            })
+            sample = ProbeSampleRecord(
+                probe_id=config.probe.probe_id, mode="PB-MEM",
+                state=None, arm=None, sample_index=idx,
+                generation=gist, tags=("frozen", "pb-mem"),
+            )
+            samples.append(sample)
+            if persist_run_id is not None:
+                self._persist_sample(persist_run_id, sample)
+
+            p3_i = P3State(trust=75, attraction=85)
+            rel_s = initial_relationship_state(p3_i)
+            evid = RelationshipEvidence(
+                character_id="kira", interpretation=interp,
+                world_event=ev, evidence_type="trust_supporting",
+            )
+            rel_r = evaluate_relationship_evidence(evid, rel_s)
+            rel_decisions.append({
+                "sample_index": idx, "decision": rel_r.decision,
+                "reason": rel_r.reason, "trust_before": p3_i.trust,
+                "trust_after": rel_r.state.current_p3.trust,
+            })
+
         return self._assemble(
             run_id=run_id, timestamp=timestamp, mode="PB-MEM", config=config,
             samples=tuple(samples), memory_trace=tuple(mem_trace),

@@ -33,6 +33,10 @@ from tools.cis_pilot.provider_boundary import (
     default_boundary,
     make_interpretation_proposal_fn,
     make_gist_proposal_fn,
+    make_real_interpretation_proposal_fn,
+    make_real_gist_proposal_fn,
+    parse_real_interpretation,
+    parse_real_gist,
     _mock_completion_digest,
 )
 from tools.cis_pilot.contracts import ContractValidationError
@@ -555,3 +559,84 @@ class TestTd22aCloudTimeout:
         with pytest.raises(llm_provider.LLMProviderError):
             boundary.complete([{"role": "user", "content": "hi"}])
         assert attempt_count[0] == 1
+
+
+# ---------------------------------------------------------------------------
+# TD-26A: real-provider (PB-MEM) strict interpretation + gist parsing
+# ---------------------------------------------------------------------------
+
+
+class TestTd26aRealParsers:
+    """Real interpretation = strict 2-field JSON; real gist = plain text."""
+
+    def test_mock_interpretation_parser_unchanged(self) -> None:
+        res = _mock_completion_digest("[MOCK] (user) hello :: abcdef1234")
+        assert res == "abcdef1234"
+
+    def test_mock_gist_parser_unchanged(self) -> None:
+        fn = make_gist_proposal_fn(default_boundary())
+        assert callable(fn)
+
+    def test_valid_real_interpretation_accepted(self) -> None:
+        meaning, coloring = parse_real_interpretation(
+            '{"meaning": "она доверилась", "emotional_coloring": "ранимость"}'
+        )
+        assert meaning == "она доверилась"
+        assert coloring == "ранимость"
+
+    def test_real_interpretation_strips_surrounding_whitespace(self) -> None:
+        meaning, coloring = parse_real_interpretation(
+            '  {"meaning": "a", "emotional_coloring": "b"}  '
+        )
+        assert (meaning, coloring) == ("a", "b")
+
+    def test_empty_interpretation_rejected(self) -> None:
+        for bad in ("", "   ", "\n"):
+            with pytest.raises(ProviderBoundaryError):
+                parse_real_interpretation(bad)
+
+    def test_malformed_json_rejected(self) -> None:
+        with pytest.raises(ProviderBoundaryError, match="not valid JSON"):
+            parse_real_interpretation("not-json at all")
+
+    def test_missing_key_rejected(self) -> None:
+        with pytest.raises(ProviderBoundaryError, match="exactly"):
+            parse_real_interpretation('{"meaning": "a"}')
+
+    def test_extra_key_rejected(self) -> None:
+        with pytest.raises(ProviderBoundaryError, match="exactly"):
+            parse_real_interpretation(
+                '{"meaning": "a", "emotional_coloring": "b", "character_id": "kira"}'
+            )
+
+    def test_wrong_type_rejected(self) -> None:
+        with pytest.raises(ProviderBoundaryError):
+            parse_real_interpretation('{"meaning": 1, "emotional_coloring": "b"}')
+        with pytest.raises(ProviderBoundaryError):
+            parse_real_interpretation('{"meaning": "a", "emotional_coloring": null}')
+
+    def test_empty_string_value_rejected(self) -> None:
+        with pytest.raises(ProviderBoundaryError):
+            parse_real_interpretation('{"meaning": "  ", "emotional_coloring": "b"}')
+
+    def test_code_fenced_json_rejected(self) -> None:
+        with pytest.raises(ProviderBoundaryError, match="not valid JSON"):
+            parse_real_interpretation('```json\n{"meaning":"a","emotional_coloring":"b"}\n```')
+
+    def test_real_gist_valid_text_accepted(self) -> None:
+        assert parse_real_gist("  она доверилась  ", "Падает ему на грудь.") == \
+            "она доверилась"
+
+    def test_real_gist_empty_rejected(self) -> None:
+        with pytest.raises(ProviderBoundaryError):
+            parse_real_gist("   ", "Падает ему на грудь.")
+
+    def test_real_gist_objective_event_equal_rejected(self) -> None:
+        with pytest.raises(ProviderBoundaryError, match="objective event"):
+            parse_real_gist("Падает ему на грудь.", "Падает ему на грудь.")
+
+    def test_no_mock_fallback_on_real_parse_failure(self) -> None:
+        # _mock_completion_digest is never invoked by the real parser; the real
+        # parser raises directly and does not attempt the mock digest path.
+        with pytest.raises(ProviderBoundaryError):
+            parse_real_interpretation("[MOCK] (user) x :: abcdef1234")

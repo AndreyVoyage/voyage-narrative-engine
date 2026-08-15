@@ -37,6 +37,7 @@ effects.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Any, Mapping, Optional
@@ -342,5 +343,148 @@ def make_gist_proposal_fn(boundary: PilotProviderBoundary) -> GistProposalFn:
         )
         completion = boundary.complete([{"role": "user", "content": prompt}])
         return f"mock-gist:{_mock_completion_digest(completion)}"
+
+    return propose
+
+
+# ---------------------------------------------------------------------------
+# TD-26A -- real-provider (approved DeepSeek) PB-MEM proposal parsing
+# ---------------------------------------------------------------------------
+#
+# The real path must NOT use ``_mock_completion_digest``. Interpretation is
+# strict JSON with exactly two fields; gist is plain text. Both fail closed on
+# malformed output and never fall back to the mock digest parser.
+
+INTERPRETATION_KEYS = frozenset({"meaning", "emotional_coloring"})
+
+
+def parse_real_interpretation(completion: str) -> tuple[str, str]:
+    """Strictly parse a real interpretation completion as a JSON object with
+    EXACTLY two string fields: ``meaning`` and ``emotional_coloring``.
+
+    Rules (TD-26A §7): top level must be a JSON object; the key set must be
+    exactly {meaning, emotional_coloring}; both values must be non-empty
+    strings after strip; code fences / surrounding prose are NOT accepted.
+    Any deviation raises ``ProviderBoundaryError`` (no mock fallback).
+    """
+    if not isinstance(completion, str) or not completion.strip():
+        raise ProviderBoundaryError("real interpretation response is empty")
+    text = completion.strip()
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise ProviderBoundaryError(
+            f"real interpretation response is not valid JSON: {exc}"
+        ) from None
+    if not isinstance(data, dict):
+        raise ProviderBoundaryError(
+            "real interpretation response must be a JSON object"
+        )
+    if set(data.keys()) != INTERPRETATION_KEYS:
+        raise ProviderBoundaryError(
+            "real interpretation JSON must contain exactly keys "
+            f"{sorted(INTERPRETATION_KEYS)}; got {sorted(data.keys())}"
+        )
+    meaning = data["meaning"]
+    coloring = data["emotional_coloring"]
+    if not isinstance(meaning, str) or not meaning.strip():
+        raise ProviderBoundaryError(
+            "interpretation 'meaning' must be a non-empty string"
+        )
+    if not isinstance(coloring, str) or not coloring.strip():
+        raise ProviderBoundaryError(
+            "interpretation 'emotional_coloring' must be a non-empty string"
+        )
+    return meaning.strip(), coloring.strip()
+
+
+def parse_real_gist(completion: str, objective_text: str) -> str:
+    """Parse a real retained-gist completion as plain text.
+
+    Rules (TD-26A §9): strip surrounding whitespace; must be non-empty; must
+    NOT equal the objective event text (CIS-Q6 shortcut). No JSON, no label,
+    no mock digest parsing. Fails closed otherwise.
+    """
+    if not isinstance(completion, str):
+        raise ProviderBoundaryError("real gist response must be a string")
+    gist = completion.strip()
+    if not gist:
+        raise ProviderBoundaryError("real gist response is empty")
+    if gist == objective_text:
+        raise ProviderBoundaryError(
+            "real gist equals the objective event text "
+            "(objective event != subjective memory, CIS-Q6)"
+        )
+    return gist
+
+
+def make_real_interpretation_proposal_fn(
+    boundary: PilotProviderBoundary,
+    usage_sink: Optional[Any] = None,
+) -> InterpretationProposalFn:
+    """Real interpretation proposal: strict-JSON decode into
+    ``CharacterInterpretation``. Linkage fields (``character_id``,
+    ``world_event_id``) and ``belief_tag`` are derived by code, never accepted
+    from the model."""
+    if not isinstance(boundary, PilotProviderBoundary):
+        raise ProviderBoundaryError("boundary must be a PilotProviderBoundary instance")
+
+    def propose(
+        world_event: WorldEvent, perception: CharacterPerception
+    ) -> CharacterInterpretation:
+        if not isinstance(world_event, WorldEvent):
+            raise ProviderBoundaryError("world_event must be a WorldEvent instance")
+        if not isinstance(perception, CharacterPerception):
+            raise ProviderBoundaryError("perception must be a CharacterPerception instance")
+        prompt = (
+            "interpretation-proposal\n"
+            f"objective: {world_event.objective_text}\n"
+            f"noticed: {perception.noticed}\n"
+            'Respond with only a JSON object containing exactly two string '
+            'fields: "meaning" and "emotional_coloring".'
+        )
+        completion = boundary.complete(
+            [{"role": "user", "content": prompt}], usage_sink=usage_sink
+        )
+        meaning, coloring = parse_real_interpretation(completion)
+        return CharacterInterpretation(
+            character_id=perception.character_id,
+            world_event_id=world_event.event_id,
+            meaning=meaning,
+            emotional_coloring=coloring,
+        )
+
+    return propose
+
+
+def make_real_gist_proposal_fn(
+    boundary: PilotProviderBoundary,
+    usage_sink: Optional[Any] = None,
+) -> GistProposalFn:
+    """Real retained-gist proposal: plain text, CIS-Q6 safe."""
+    if not isinstance(boundary, PilotProviderBoundary):
+        raise ProviderBoundaryError("boundary must be a PilotProviderBoundary instance")
+
+    def propose(
+        world_event: WorldEvent,
+        perception: CharacterPerception,
+        interpretation: CharacterInterpretation,
+    ) -> str:
+        if not isinstance(interpretation, CharacterInterpretation):
+            raise ProviderBoundaryError(
+                "interpretation must be a CharacterInterpretation instance"
+            )
+        prompt = (
+            "gist-proposal\n"
+            f"objective: {world_event.objective_text}\n"
+            f"noticed: {perception.noticed}\n"
+            f"meaning: {interpretation.meaning}\n"
+            "Respond with only the character's retained subjective memory gist "
+            "as plain text, never the objective event text verbatim."
+        )
+        completion = boundary.complete(
+            [{"role": "user", "content": prompt}], usage_sink=usage_sink
+        )
+        return parse_real_gist(completion, world_event.objective_text)
 
     return propose

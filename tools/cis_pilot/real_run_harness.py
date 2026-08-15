@@ -1,50 +1,54 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-TD-24 bounded real-run harness + usage accounting (offline-safe scaffold).
+TD-24/26A bounded real-run harness + usage accounting (offline-safe scaffold).
 
 Loads the frozen real probe set, verifies its SHA-256 before anything else,
-builds the exact real-capable call plan (PB-REC 30 + PB-AB 120 + PB-LEAK 10 =
-160; PB-MEM remains deferred/mock-only), and executes it against one approved
-``PilotProviderBoundary`` with TD-21 resume and per-sample persistence.
+builds the exact real-capable plan (PB-REC 30 + PB-MEM 20 + PB-AB 120 +
+PB-LEAK 10 = 180); PB-MEM delegates to ``ProbeRunner.run_pb_mem_real`` (two
+provider calls per sample), PB-LEAK uses the approved direct render, PB-REC and
+PB-AB delegate to ``ProbeRunner.run_pb_rec`` / ``run_pb_ab``.
 
 This module performs NO judge logic and no real network I/O by itself: it only
-delegates to the approved provider boundary and storage. A real run additionally
-requires an owner-supplied tariff table + budget ceiling. Until then the tariff
-defaults to ``UNSET`` and every provider call is refused BEFORE network (fail
-closed). No retries, no fallback, no 120s change here (timeout is bound by
-provider_boundary via TD-22A).
+delegates to the approved provider boundary and storage. A real run requires an
+owner-supplied tariff table + budget ceiling; until then the tariff defaults to
+``UNSET`` and every provider call is refused BEFORE network (fail closed). No
+retries, no fallback (the 120s transport timeout is bound by provider_boundary
+via TD-22A).
+
+TD-26A adds a ``DurableUsageSink``: per-call usage is accounted immediately
+(including a succeeded PB-MEM call #1 when call #2 later fails) and durably
+appended to the run artifact namespace before semantic sample completion, so
+usage is not lost on process interruption or explicit resume.
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 from .context_assembler import assemble_cis_context, render_cis_messages
 from .probe_runner import (
     ProbeDefinition,
     ProbeRunner,
-    ProbeRunnerError,
     ProbeRunConfig,
 )
 from .provider_boundary import (
-    DEEPSEEK_MODEL_ID,
-    DEEPSEEK_REAL_PROVIDER,
     PilotProviderBoundary,
 )
+from .result_package import generate_run_id
 from .storage import CisPilotStorage
 
 # Frozen real probe set (owner-approved, TD-20).
 FROZEN_PROBE_SET_REL = "local_runs/cis_pilot/probe_sets/CIS_KIRA_S6_REAL_PROBE_SET_v1.json"
 FROZEN_PROBE_SET_SHA256 = "d5bc4fff53954de791050cd8d1b91ce50142343bc14d310e912ef195bbe477e1"
 
-# Real-capable family mapping (PB-MEM deferred: mock-only memory DI path).
-REAL_FAMILIES = ("PB-REC", "PB-AB", "PB-LEAK")
+# Real-capable family mapping (TD-26A: PB-MEM included).
+REAL_FAMILIES = ("PB-REC", "PB-MEM", "PB-AB", "PB-LEAK")
 N_PER_ARM = 10
-EXPECTED_REAL_CALLS = 160
+EXPECTED_REAL_CALLS = 180
 
 # Tariff sentinel: the production cost table is NOT hard-coded and defaults to
 # UNSET; any real call is refused until an owner tariff table is supplied.
@@ -96,6 +100,52 @@ class UsageLedger:
         self.events += 1
 
 
+class DurableUsageSink:
+    """Per-call usage capture with immediate durable accounting (TD-26A).
+
+    ``llm_provider._complete_cloud`` appends each provider ``usage`` dict via
+    ``.append(...)`` immediately after a successful HTTP response -- BEFORE any
+    parsing. This sink records the dict in-memory AND (when a run_id + storage
+    are available) durably appends a ``{"phase", "usage"}`` record to
+    ``usage/{run_id}/usage.jsonl`` so a succeeded PB-MEM call #1 is not lost if
+    call #2 fails or the process resumes.
+    """
+
+    def __init__(
+        self,
+        storage: Optional[CisPilotStorage] = None,
+        run_id: Optional[str] = None,
+        phase: str = "unknown",
+    ) -> None:
+        self.entries: List[Dict[str, Any]] = []
+        self._storage = storage
+        self._run_id = run_id
+        self._phase = phase
+
+    def append(self, usage: Dict[str, Any]) -> None:
+        if not isinstance(usage, dict):
+            return
+        self.entries.append(dict(usage))
+        if self._storage is not None and self._run_id:
+            self._storage.append_jsonl(
+                f"usage/{self._run_id}/usage.jsonl",
+                {"phase": self._phase, "usage": dict(usage)},
+            )
+
+    def __iter__(self):
+        return iter(self.entries)
+
+
+def load_cumulative_usage(storage: CisPilotStorage, run_id: str) -> UsageLedger:
+    """Reconstruct the cumulative ledger from durable per-call usage records."""
+    ledger = UsageLedger()
+    for record in storage.read_jsonl(f"usage/{run_id}/usage.jsonl"):
+        usage = record.get("usage") if isinstance(record, dict) else None
+        if isinstance(usage, dict):
+            ledger.record(usage)
+    return ledger
+
+
 def estimate_cost_usd(tariff: Optional[TariffTable], ledger: UsageLedger) -> Optional[float]:
     """Parameterized cost estimate under a frozen tariff table (TD-24).
 
@@ -121,6 +171,7 @@ class RealRunHarness:
         storage: CisPilotStorage,
         boundary: PilotProviderBoundary,
         *,
+        run_id: Optional[str] = None,
         tariff: Optional[TariffTable] = None,
         budget_usd: Optional[float] = None,
     ) -> None:
@@ -131,6 +182,7 @@ class RealRunHarness:
         self._snapshot = snapshot
         self._storage = storage
         self._boundary = boundary
+        self._run_id = run_id or generate_run_id()
         self._tariff = tariff
         self._budget_usd = budget_usd
         self._ledger = UsageLedger()
@@ -159,9 +211,10 @@ class RealRunHarness:
 
     @staticmethod
     def build_real_plan(probe_set: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Build the exact real-capable plan (160 entries; PB-MEM excluded).
+        """Build the exact real-capable plan = 180 PROVIDER-CALL entries.
 
-        Each entry is one sample identity ``(probe_id, state, arm, sample_index)``.
+        Each PB-REC/PB-AB/PB-LEAK sample contributes one call; each PB-MEM
+        sample contributes TWO calls (interpretation + gist).
         """
         n = probe_set.get("sample_count_per_arm_state", N_PER_ARM)
         plan: List[Dict[str, Any]] = []
@@ -183,6 +236,14 @@ class RealRunHarness:
                         "probe_id": probe_id, "family": family,
                         "sub_mode": None, "arm": None, "sample_index": idx,
                     })
+            elif family == "PB-MEM":
+                for idx in range(n):
+                    for phase in ("interpretation", "gist"):
+                        plan.append({
+                            "probe_id": probe_id, "family": family,
+                            "sub_mode": None, "arm": None, "sample_index": idx,
+                            "call_phase": phase,
+                        })
             elif family == "PB-AB":
                 sub_mode = probe.get("sub_mode")
                 for arm in ("A", "B", "BASELINE_A", "BASELINE_B"):
@@ -235,16 +296,39 @@ class RealRunHarness:
     # Execution
     # ------------------------------------------------------------------
 
-    def _usage_sink(self) -> List[Dict[str, Any]]:
-        return []
+    def run_pb_mem_delegated(self, probe_definition: ProbeDefinition) -> None:
+        """Delegate real PB-MEM to ProbeRunner (2 calls/sample, gate, resume).
 
-    def run_delegated(
-        self,
-        probe_definition: ProbeDefinition,
-        *,
-        resume_run_id: Optional[str] = None,
-    ) -> None:
-        """Delegate PB-REC / PB-AB execution to ProbeRunner (TD-21/usage-aware)."""
+        Two durable, phase-tagged usage sinks so a succeeded call #1 is
+        accounted even when call #2 fails; transactional sample resume means no
+        completed semantic evidence is written for an incomplete sample.
+        """
+        self._assert_tariff_ready()
+        runner = ProbeRunner(self._snapshot, self._storage)
+        config = ProbeRunConfig(
+            probe=probe_definition,
+            boundary=self._boundary,
+            samples_per_arm=N_PER_ARM,
+        )
+        interp_sink = DurableUsageSink(
+            self._storage, self._run_id, phase="interpretation"
+        )
+        gist_sink = DurableUsageSink(
+            self._storage, self._run_id, phase="gist"
+        )
+        runner.run_pb_mem_real(
+            config,
+            resume_run_id=self._run_id,
+            interpretation_usage_sink=interp_sink,
+            gist_usage_sink=gist_sink,
+        )
+        for usage in interp_sink:
+            self._ledger.record(usage)
+        for usage in gist_sink:
+            self._ledger.record(usage)
+
+    def run_delegated(self, probe_definition: ProbeDefinition) -> None:
+        """Delegate PB-REC / PB-AB to ProbeRunner (TD-21/usage-aware)."""
         self._assert_tariff_ready()
         runner = ProbeRunner(self._snapshot, self._storage)
         config = ProbeRunConfig(
@@ -256,12 +340,12 @@ class RealRunHarness:
         family = probe_definition.mode
         if family == "PB-REC":
             runner.run_pb_rec(
-                config, resume_run_id=resume_run_id, usage_sink=usage_sink
+                config, resume_run_id=self._run_id, usage_sink=usage_sink
             )
         elif family == "PB-AB":
             sub_mode = probe_definition.sub_modes[0]
             runner.run_pb_ab(
-                config, sub_mode=sub_mode, resume_run_id=resume_run_id,
+                config, sub_mode=sub_mode, resume_run_id=self._run_id,
                 usage_sink=usage_sink,
             )
         else:
@@ -269,12 +353,7 @@ class RealRunHarness:
         for usage in usage_sink:
             self._ledger.record(usage)
 
-    def run_pb_leak_direct(
-        self,
-        probe: Dict[str, Any],
-        *,
-        resume_run_id: Optional[str] = None,
-    ) -> None:
+    def run_pb_leak_direct(self, probe: Dict[str, Any]) -> None:
         """PB-LEAK direct render (TD-24 owner decision).
 
         One approved provider call per sample with the exact frozen
@@ -296,7 +375,7 @@ class RealRunHarness:
         )
         messages = render_cis_messages(ctx)
         runner = ProbeRunner(self._snapshot, self._storage)
-        already = runner._load_completed_records(resume_run_id, probe_id) if resume_run_id else {}
+        already = runner._load_completed_records(self._run_id, probe_id)
 
         for idx in range(N_PER_ARM):
             key = (probe_id, None, None, idx)
@@ -318,7 +397,7 @@ class RealRunHarness:
                 "leakage_forbidden": list(probe.get("leakage_forbidden") or []),
             }
             self._storage.append_jsonl(
-                f"evidence/{resume_run_id}/{probe_id}/samples.jsonl", record
+                f"evidence/{self._run_id}/{probe_id}/samples.jsonl", record
             )
 
     def _snapshot_runner_p4(self) -> Any:
@@ -330,6 +409,10 @@ class RealRunHarness:
         return runner._p4_exploration
 
     # -- Accounting helpers -------------------------------------------------
+
+    @property
+    def run_id(self) -> str:
+        return self._run_id
 
     @property
     def ledger(self) -> UsageLedger:
