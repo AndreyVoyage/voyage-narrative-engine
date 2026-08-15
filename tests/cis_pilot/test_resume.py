@@ -5,11 +5,10 @@
 Verifies: partial run creation, resume of missing samples, completed-sample
 skip, second resume zero-work, duplicate prevention, existing evidence
 preservation, mismatch fail-close, deterministic continuation, JSONL
-append/read semantics.
+append/read semantics, and TD-24 per-probe evidence segregation.
 """
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 from types import MappingProxyType
@@ -44,6 +43,13 @@ from tools.cis_pilot.result_package import (
 
 DUMMY_SHA256 = "b" * 64
 DUMMY_SHA40 = "a" * 40
+
+_AB_PROBE_ID = "synth-pb-ab-001"
+
+
+def _ab_evidence(run_id: str) -> str:
+    """TD-24 per-probe evidence path for the AB test probe."""
+    return f"evidence/{run_id}/{_AB_PROBE_ID}/samples.jsonl"
 
 
 def _artifact(path: str, kind: str = "p0_module") -> SourceArtifact:
@@ -106,7 +112,7 @@ def runner(storage: CisPilotStorage) -> ProbeRunner:
 
 def _ab_probe() -> ProbeDefinition:
     return ProbeDefinition(
-        probe_id="synth-pb-ab-001", mode="PB-AB",
+        probe_id=_AB_PROBE_ID, mode="PB-AB",
         scene_question="Resume test PB-AB.",
         sub_modes=("T3-P3",),
     )
@@ -122,9 +128,9 @@ def _counting_boundary():
     calls: list = []
     real = boundary.complete
 
-    def counted(messages):
+    def counted(messages, usage_sink=None):
         calls.append(messages)
-        return real(messages)
+        return real(messages, usage_sink=usage_sink)
 
     boundary.complete = counted
     return boundary, calls
@@ -145,10 +151,10 @@ class TestPartialRunCreation:
         runner = ProbeRunner(snapshot, storage)
 
         # First: create partial evidence by persisting only CIS A samples
-        evidence_path = f"evidence/{run_id}/samples.jsonl"
+        evidence_path = _ab_evidence(run_id)
         for idx in range(3):
             record = {
-                "probe_id": "synth-pb-ab-001",
+                "probe_id": _AB_PROBE_ID,
                 "mode": "PB-AB",
                 "state": "T3-P3",
                 "arm": "A",
@@ -163,15 +169,13 @@ class TestPartialRunCreation:
         assert pkg.run_id == run_id
 
         # All 4 arms × 3 samples should be represented in the result package
-        # (the resumed run produces fresh samples for ALL arms since
-        # persist-to-jsonl is not integrated into _assemble — the existing
-        # evidence is read for identity but samples are always generated fresh)
         arms = {s.arm for s in pkg.samples}
         assert arms == {"A", "B", "BASELINE_A", "BASELINE_B"}
 
-        # After resume: verify prior evidence is preserved
+        # After resume: verify prior evidence is preserved (A samples reused)
         persisted = storage.read_jsonl(evidence_path)
-        assert len(persisted) >= 3, "Pre-seeded evidence must still exist"
+        a_records = [r for r in persisted if r["arm"] == "A"]
+        assert len(a_records) == 3, "Pre-seeded A evidence must still exist unchanged"
 
     def test_full_run_then_resume_zero_new(self, storage: CisPilotStorage) -> None:
         """A completed resume run is idempotent: the second resume makes zero
@@ -184,14 +188,14 @@ class TestPartialRunCreation:
 
         # First run: generates and auto-persists every sample (resume path)
         pkg1 = runner.run_pb_ab(config, sub_mode="T3-P3", resume_run_id=run_id)
-        evidence_path = f"evidence/{run_id}/samples.jsonl"
+        evidence_path = _ab_evidence(run_id)
         persisted_before = storage.read_jsonl(evidence_path)
         assert len(persisted_before) == len(pkg1.samples)
 
         # Second resume must not invoke the provider at all.
         calls: list = []
 
-        def fail_if_called(messages):
+        def fail_if_called(messages, usage_sink=None):
             calls.append(messages)
             raise AssertionError("provider must not be invoked on a completed resume")
 
@@ -240,34 +244,34 @@ class TestResumeIdentity:
 
     def test_sample_key_composition(self) -> None:
         s = ProbeSampleRecord(
-            probe_id="synth-pb-ab-001",
+            probe_id=_AB_PROBE_ID,
             mode="PB-AB",
             state="T3-P3",
             arm="A",
             sample_index=5,
             generation="test",
         )
-        assert s.sample_key() == ("synth-pb-ab-001", "T3-P3", "A", 5)
+        assert s.sample_key() == (_AB_PROBE_ID, "T3-P3", "A", 5)
 
     def test_load_completed_keys(self, storage: CisPilotStorage) -> None:
         run_id = generate_run_id()
         snapshot = _snapshot()
         runner = ProbeRunner(snapshot, storage)
 
-        # Pre-seed two records
-        evidence_path = f"evidence/{run_id}/samples.jsonl"
+        # Pre-seed two records in the per-probe evidence file
+        evidence_path = _ab_evidence(run_id)
         storage.append_jsonl(evidence_path, {
-            "probe_id": "synth-pb-ab-001", "state": "T3-P3",
+            "probe_id": _AB_PROBE_ID, "state": "T3-P3",
             "arm": "A", "sample_index": 0, "generation": "x",
         })
         storage.append_jsonl(evidence_path, {
-            "probe_id": "synth-pb-ab-001", "state": "T3-P3",
+            "probe_id": _AB_PROBE_ID, "state": "T3-P3",
             "arm": "B", "sample_index": 7, "generation": "y",
         })
 
-        keys = runner._load_completed_keys(run_id)
-        assert ("synth-pb-ab-001", "T3-P3", "A", 0) in keys
-        assert ("synth-pb-ab-001", "T3-P3", "B", 7) in keys
+        keys = runner._load_completed_keys(run_id, _AB_PROBE_ID)
+        assert (_AB_PROBE_ID, "T3-P3", "A", 0) in keys
+        assert (_AB_PROBE_ID, "T3-P3", "B", 7) in keys
         assert len(keys) == 2
 
 
@@ -283,8 +287,8 @@ class TestResumeMismatch:
         snapshot = _snapshot()
         runner = ProbeRunner(snapshot, storage)
 
-        # Seed evidence with wrong probe_id
-        evidence_path = f"evidence/{run_id}/samples.jsonl"
+        # Seed the AB probe's evidence file with a wrong probe_id record
+        evidence_path = _ab_evidence(run_id)
         storage.append_jsonl(evidence_path, {
             "probe_id": "WRONG_PROBE", "state": "T3-P3",
             "arm": "A", "sample_index": 0, "generation": "x",
@@ -373,9 +377,9 @@ class TestTd21ResumeSkip:
         boundary, calls = _counting_boundary()
         runner = ProbeRunner(_snapshot(), storage)
 
-        evidence_path = f"evidence/{run_id}/samples.jsonl"
+        evidence_path = _ab_evidence(run_id)
         storage.append_jsonl(evidence_path, {
-            "probe_id": "synth-pb-ab-001", "mode": "PB-AB", "state": "T3-P3",
+            "probe_id": _AB_PROBE_ID, "mode": "PB-AB", "state": "T3-P3",
             "arm": "A", "sample_index": 0, "generation": "[pre-completed] A-0",
             "tags": ["synthetic", "pb-ab", "t3-p3"],
         })
@@ -398,8 +402,8 @@ class TestTd21ResumeSkip:
         boundary, calls = _counting_boundary()
         runner = ProbeRunner(_snapshot(), storage)
 
-        storage.append_jsonl(f"evidence/{run_id}/samples.jsonl", {
-            "probe_id": "synth-pb-ab-001", "mode": "PB-AB", "state": "T3-P3",
+        storage.append_jsonl(_ab_evidence(run_id), {
+            "probe_id": _AB_PROBE_ID, "mode": "PB-AB", "state": "T3-P3",
             "arm": "A", "sample_index": 0, "generation": "[seeded]", "tags": [],
         })
 
@@ -417,9 +421,9 @@ class TestTd21EvidenceImmutability:
         boundary, _ = _counting_boundary()
         runner = ProbeRunner(_snapshot(), storage)
 
-        evidence_path = f"evidence/{run_id}/samples.jsonl"
+        evidence_path = _ab_evidence(run_id)
         storage.append_jsonl(evidence_path, {
-            "probe_id": "synth-pb-ab-001", "mode": "PB-AB", "state": "T3-P3",
+            "probe_id": _AB_PROBE_ID, "mode": "PB-AB", "state": "T3-P3",
             "arm": "A", "sample_index": 1, "generation": "ORIGINAL-EVIDENCE",
             "tags": ["synthetic", "pb-ab"],
         })
@@ -442,9 +446,9 @@ class TestTd21FailClosed:
         boundary, calls = _counting_boundary()
         runner = ProbeRunner(_snapshot(), storage)
 
-        evidence_path = f"evidence/{run_id}/samples.jsonl"
+        evidence_path = _ab_evidence(run_id)
         record = {
-            "probe_id": "synth-pb-ab-001", "mode": "PB-AB", "state": "T3-P3",
+            "probe_id": _AB_PROBE_ID, "mode": "PB-AB", "state": "T3-P3",
             "arm": "A", "sample_index": 0, "generation": "dup", "tags": [],
         }
         storage.append_jsonl(evidence_path, record)
@@ -462,7 +466,7 @@ class TestTd21FailClosed:
         boundary, calls = _counting_boundary()
         runner = ProbeRunner(_snapshot(), storage)
 
-        evidence_path = storage.base_path / f"evidence/{run_id}/samples.jsonl"
+        evidence_path = storage.base_path / _ab_evidence(run_id)
         evidence_path.parent.mkdir(parents=True, exist_ok=True)
         evidence_path.write_text("{ this is not valid json\n", encoding="utf-8")
 
@@ -480,11 +484,11 @@ class TestTd21ProviderFailure:
         real = boundary.complete
         call_count = [0]
 
-        def flaky(messages):
+        def flaky(messages, usage_sink=None):
             call_count[0] += 1
             if call_count[0] >= 2:
                 raise RuntimeError("simulated provider failure")
-            return real(messages)
+            return real(messages, usage_sink=usage_sink)
 
         boundary.complete = flaky
         runner = ProbeRunner(_snapshot(), storage)
@@ -493,15 +497,15 @@ class TestTd21ProviderFailure:
         with pytest.raises(RuntimeError, match="simulated provider failure"):
             runner.run_pb_ab(config, sub_mode="T3-P3", resume_run_id=run_id)
 
-        persisted = storage.read_jsonl(f"evidence/{run_id}/samples.jsonl")
+        persisted = storage.read_jsonl(_ab_evidence(run_id))
         assert len(persisted) == 1
         assert persisted[0]["arm"] == "A" and persisted[0]["sample_index"] == 0
         assert call_count[0] == 2, "no hidden automatic retry after failure"
 
     def test_resume_after_failure_skips_completed_retries_missing_once(self, storage: CisPilotStorage) -> None:
         run_id = generate_run_id()
-        storage.append_jsonl(f"evidence/{run_id}/samples.jsonl", {
-            "probe_id": "synth-pb-ab-001", "mode": "PB-AB", "state": "T3-P3",
+        storage.append_jsonl(_ab_evidence(run_id), {
+            "probe_id": _AB_PROBE_ID, "mode": "PB-AB", "state": "T3-P3",
             "arm": "A", "sample_index": 0, "generation": "[survived]", "tags": [],
         })
         boundary, calls = _counting_boundary()

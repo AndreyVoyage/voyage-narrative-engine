@@ -207,7 +207,11 @@ class PilotProviderBoundary:
         """Provider/model/params exactly as used for every call this run."""
         return self._config.provenance_metadata()
 
-    def complete(self, messages: list[dict[str, str]]) -> str:
+    def complete(
+        self,
+        messages: list[dict[str, str]],
+        usage_sink: Optional[Any] = None,
+    ) -> str:
         """Return one provider completion string for ``messages``.
 
         Delegates to the existing, unmodified ``tools.llm_provider.complete``
@@ -216,7 +220,12 @@ class PilotProviderBoundary:
         always yield identical completions. For the approved DeepSeek real
         path this forwards to the existing cloud chat-completions
         implementation with model ``deepseek-v4-pro`` and base URL
-        ``https://api.deepseek.com``. Provider/network errors propagate
+        ``https://api.deepseek.com``.
+
+        ``usage_sink`` is an optional, backward-compatible hook forwarded
+        verbatim to ``tools.llm_provider.complete`` so the approved real path
+        can collect provider-returned ``usage`` objects (TD-24). Mock/local
+        providers never write to it. Provider/network errors propagate
         unchanged (fail closed -- never a fallback to mock or another
         provider).
         """
@@ -225,6 +234,7 @@ class PilotProviderBoundary:
             provider=self._config.provider,
             model=self._config.model,
             params=dict(self._config.params),
+            usage_sink=usage_sink,
         )
 
 

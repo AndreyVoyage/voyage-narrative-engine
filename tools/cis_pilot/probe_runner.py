@@ -59,19 +59,31 @@ from .storage import CisPilotStorage, CisPilotStorageError
 
 @dataclass(frozen=True)
 class ProbeDefinition:
-    """One synthetic probe fixture definition."""
+    """One probe fixture definition.
+
+    ``scene_question`` is the external visible input text. For the real PB-MEM
+    probe, ``objective_event`` and ``perception_hint`` (TD-24 faithful mapping)
+    optionally replace the synthetic memory-chain text; when both are ``None``
+    the synthetic PB-MEM behavior is preserved unchanged.
+    """
     probe_id: str
     mode: str
     scene_question: str
     sub_modes: Tuple[str, ...] = ()
     forbidden_markers: Tuple[str, ...] = ()
     allowed_context: Tuple[str, ...] = ()
+    objective_event: Optional[str] = None
+    perception_hint: Optional[str] = None
 
     def __post_init__(self) -> None:
         if not self.probe_id.strip():
             raise ContractValidationError("probe_id must be non-empty")
         if self.mode not in ("PB-REC", "PB-MEM", "PB-AB", "PB-LEAK"):
             raise ContractValidationError(f"unsupported mode: {self.mode!r}")
+        if self.objective_event is not None and not isinstance(self.objective_event, str):
+            raise ContractValidationError("objective_event must be a string or None")
+        if self.perception_hint is not None and not isinstance(self.perception_hint, str):
+            raise ContractValidationError("perception_hint must be a string or None")
 
 
 SYNTHETIC_PROBES: Tuple[ProbeDefinition, ...] = (
@@ -198,16 +210,27 @@ class ProbeRunner:
         samples, mem_trace, rel_decisions = [], [], []
 
         for idx in range(config.samples_per_arm):
+            event_id = f"synth-event-{idx:04d}"
+            objective_text = (
+                config.probe.objective_event
+                if config.probe.objective_event is not None
+                else f"[SYNTHETIC PB-MEM] {config.probe.scene_question} sample {idx}"
+            )
+            noticed = (
+                config.probe.perception_hint
+                if config.probe.perception_hint is not None
+                else f"[SYNTHETIC] noticed {event_id}"
+            )
             ev = WorldEvent(
-                event_id=f"synth-event-{idx:04d}",
-                objective_text=f"[SYNTHETIC PB-MEM] {config.probe.scene_question} sample {idx}",
+                event_id=event_id,
+                objective_text=objective_text,
                 participants=("kira", "synthetic_user"),
                 scenario_repo_relative_path=me.scenario_repo_relative_path,
                 json_path=me.json_path, source_sha256=me.sha256,
             )
             perc = CharacterPerception(
                 character_id="kira", world_event_id=ev.event_id,
-                noticed=f"[SYNTHETIC] noticed {ev.event_id}",
+                noticed=noticed,
             )
             interp = proposal_fn(ev, perc)
             gist = gist_fn(ev, perc, interp)
@@ -255,6 +278,7 @@ class ProbeRunner:
         arm: str,
         completed_records: Optional[Dict[Tuple[Any, ...], Dict[str, Any]]] = None,
         persist_run_id: Optional[str] = None,
+        usage_sink: Optional[Any] = None,
     ) -> Tuple[ProbeSampleRecord, ...]:
         """Build baseline-arm samples with identical external input, no CIS injection.
 
@@ -279,7 +303,7 @@ class ProbeRunner:
                 aside_memory=None,
                 player_message=config.probe.scene_question,
             )
-            gen = boundary.complete(baseline_msgs)
+            gen = boundary.complete(baseline_msgs, usage_sink=usage_sink)
             sample = ProbeSampleRecord(
                 probe_id=config.probe.probe_id, mode=config.probe.mode,
                 state=None, arm=arm, sample_index=idx,
@@ -290,27 +314,66 @@ class ProbeRunner:
                 self._persist_sample(persist_run_id, sample)
         return tuple(samples)
 
-    def run_pb_rec(self, config: ProbeRunConfig) -> ResultPackage:
-        run_id, timestamp = generate_run_id(), utc_now_iso()
+    def run_pb_rec(
+        self,
+        config: ProbeRunConfig,
+        *,
+        resume_run_id: Optional[str] = None,
+        usage_sink: Optional[Any] = None,
+    ) -> ResultPackage:
+        """Run PB-REC (KIRA_CANDIDATE + OTHER_CHARACTER_DECOY + GENERIC_DECOY).
+
+        When ``resume_run_id`` is supplied, already-completed identities are
+        skipped before any provider call (TD-21) and each fresh sample is
+        appended to evidence immediately. ``usage_sink`` is forwarded to the
+        provider for usage capture (TD-24); it must not affect output.
+        """
+        completed_records: Dict[Tuple[Any, ...], Dict[str, Any]] = {}
+        if resume_run_id is not None:
+            completed_records = self._load_completed_records(
+                resume_run_id, config.probe.probe_id
+            )
+            _reject_resume_mismatch(
+                resume_run_id, config.probe, "", set(completed_records.keys())
+            )
+        run_id = resume_run_id if resume_run_id is not None else generate_run_id()
+        persist_run_id = run_id if resume_run_id is not None else None
+        timestamp = utc_now_iso()
         boundary = config.boundary
         p4 = self._p4_exploration
         samples: List[ProbeSampleRecord] = []
         # KIRA candidate (CIS-arm)
         for idx in range(config.samples_per_arm):
-            ctx = assemble_cis_context(
-                p0=self._snapshot.p0, p3=self._canon_p3, p4=p4,
-                scene_question=config.probe.scene_question,
-            )
-            gen = boundary.complete(render_cis_messages(ctx))
-            samples.append(ProbeSampleRecord(
-                probe_id=config.probe.probe_id, mode="PB-REC",
-                state=None, arm="KIRA_CANDIDATE", sample_index=idx,
-                generation=gen, tags=("synthetic", "pb-rec", "kira_candidate"),
-            ))
+            identity_key = (config.probe.probe_id, None, "KIRA_CANDIDATE", idx)
+            completed = completed_records.get(identity_key)
+            if completed is not None:
+                sample = ProbeSampleRecord.from_dict(completed)
+            else:
+                ctx = assemble_cis_context(
+                    p0=self._snapshot.p0, p3=self._canon_p3, p4=p4,
+                    scene_question=config.probe.scene_question,
+                )
+                gen = boundary.complete(render_cis_messages(ctx), usage_sink=usage_sink)
+                sample = ProbeSampleRecord(
+                    probe_id=config.probe.probe_id, mode="PB-REC",
+                    state=None, arm="KIRA_CANDIDATE", sample_index=idx,
+                    generation=gen, tags=("synthetic", "pb-rec", "kira_candidate"),
+                )
+                if persist_run_id is not None:
+                    self._persist_sample(persist_run_id, sample)
+            samples.append(sample)
         # OTHER_CHARACTER_DECOY — synthetic non-Kira character (same external input, no CIS context)
-        samples.extend(self._build_baseline_samples(boundary, config, arm="OTHER_CHARACTER_DECOY"))
+        samples.extend(self._build_baseline_samples(
+            boundary, config, arm="OTHER_CHARACTER_DECOY",
+            completed_records=completed_records, persist_run_id=persist_run_id,
+            usage_sink=usage_sink,
+        ))
         # GENERIC_DECOY — another synthetic baseline pass
-        samples.extend(self._build_baseline_samples(boundary, config, arm="GENERIC_DECOY"))
+        samples.extend(self._build_baseline_samples(
+            boundary, config, arm="GENERIC_DECOY",
+            completed_records=completed_records, persist_run_id=persist_run_id,
+            usage_sink=usage_sink,
+        ))
         return self._assemble(
             run_id=run_id, timestamp=timestamp, mode="PB-REC", config=config,
             samples=tuple(samples),
@@ -319,66 +382,72 @@ class ProbeRunner:
 
     # -- PB-AB -----------------------------------------------------------
 
-    def _load_completed_records(self, run_id: str) -> Dict[Tuple[Any, ...], Dict[str, Any]]:
-        """Return already-persisted sample records for ``run_id`` keyed by the
-        resume identity ``(probe_id, state, arm, sample_index)``.
+    def _evidence_path(self, run_id: str, probe_id: str) -> str:
+        """Per-probe evidence path (TD-24): each probe family owns its own
+        single-probe evidence file, so a multi-family run under one ``run_id``
+        resumes each family without tripping the cross-probe mismatch guard."""
+        return f"evidence/{run_id}/{probe_id}/samples.jsonl"
 
-        Evidence is read from the per-sample evidence JSONL and the legacy
-        results JSONL path. Fail closed (``ProbeRunnerError``) on any
-        malformed/corrupt line or duplicate identity -- a partially written or
-        ambiguous log is never silently skipped or deduplicated (TD-21).
+    def _load_completed_records(
+        self, run_id: str, probe_id: str
+    ) -> Dict[Tuple[Any, ...], Dict[str, Any]]:
+        """Return already-persisted sample records for ``run_id``/``probe_id``
+        keyed by the resume identity ``(probe_id, state, arm, sample_index)``.
+
+        Reads the per-probe evidence JSONL. Fails closed (``ProbeRunnerError``)
+        on any malformed/corrupt line or duplicate identity -- a partially
+        written or ambiguous log is never silently skipped or deduplicated
+        (TD-21).
         """
-        evidence_paths = (
-            f"evidence/{run_id}/samples.jsonl",
-            f"results/{run_id}/samples.jsonl",
-        )
+        path = self._evidence_path(run_id, probe_id)
         records: Dict[Tuple[Any, ...], Dict[str, Any]] = {}
-        for path in evidence_paths:
-            try:
-                entries = self._storage.read_jsonl(path)
-            except CisPilotStorageError as exc:
+        try:
+            entries = self._storage.read_jsonl(path)
+        except CisPilotStorageError as exc:
+            raise ProbeRunnerError(
+                f"malformed persisted evidence for run_id={run_id!r} "
+                f"probe_id={probe_id!r} at {path!r}: {exc}"
+            ) from exc
+        for record in entries:
+            if not isinstance(record, dict):
                 raise ProbeRunnerError(
                     f"malformed persisted evidence for run_id={run_id!r} "
-                    f"at {path!r}: {exc}"
-                ) from exc
-            for record in entries:
-                if not isinstance(record, dict):
-                    raise ProbeRunnerError(
-                        f"malformed persisted evidence for run_id={run_id!r} "
-                        f"at {path!r}: expected a JSON object"
-                    )
-                key = (
-                    record.get("probe_id"),
-                    record.get("state"),
-                    record.get("arm"),
-                    record.get("sample_index"),
+                    f"probe_id={probe_id!r} at {path!r}: expected a JSON object"
                 )
-                if key in records:
-                    raise ProbeRunnerError(
-                        f"duplicate evidence identity {key!r} for "
-                        f"run_id={run_id!r}: refusing to silently deduplicate"
-                    )
-                records[key] = record
+            key = (
+                record.get("probe_id"),
+                record.get("state"),
+                record.get("arm"),
+                record.get("sample_index"),
+            )
+            if key in records:
+                raise ProbeRunnerError(
+                    f"duplicate evidence identity {key!r} for "
+                    f"run_id={run_id!r}: refusing to silently deduplicate"
+                )
+            records[key] = record
         return records
 
-    def _load_completed_keys(self, run_id: str) -> set:
-        """Identity set of already-persisted samples for ``run_id``.
+    def _load_completed_keys(self, run_id: str, probe_id: str) -> set:
+        """Identity set of already-persisted samples for ``run_id``/``probe_id``.
 
         Identity = (probe_id, state, arm, sample_index) per ProbeSampleRecord.sample_key().
         Fail closed on malformed or duplicate evidence (same guarantees as
         ``_load_completed_records``); empty set when no prior records exist.
         """
-        return set(self._load_completed_records(run_id).keys())
+        return set(self._load_completed_records(run_id, probe_id).keys())
 
     def _persist_sample(self, run_id: str, sample: ProbeSampleRecord) -> None:
-        """Append one sample to the evidence JSONL (TD-8b crash-resilient path)."""
+        """Append one sample to its probe's evidence JSONL (TD-8b crash-
+        resilient path)."""
         self._storage.append_jsonl(
-            f"evidence/{run_id}/samples.jsonl",
+            self._evidence_path(run_id, sample.probe_id),
             sample.to_dict(),
         )
 
     def run_pb_ab(self, config: ProbeRunConfig, sub_mode: str,
-                  *, resume_run_id: Optional[str] = None) -> ResultPackage:
+                  *, resume_run_id: Optional[str] = None,
+                  usage_sink: Optional[Any] = None) -> ResultPackage:
         if sub_mode not in ("T3-P3", "T3-P4", "COMBINED"):
             raise ProbeRunnerError(f"unsupported sub_mode: {sub_mode!r}")
 
@@ -386,7 +455,9 @@ class ProbeRunner:
         # malformed or duplicate evidence).
         completed_records: Dict[Tuple[Any, ...], Dict[str, Any]] = {}
         if resume_run_id is not None:
-            completed_records = self._load_completed_records(resume_run_id)
+            completed_records = self._load_completed_records(
+                resume_run_id, config.probe.probe_id
+            )
             _reject_resume_mismatch(
                 resume_run_id, config.probe, sub_mode, set(completed_records.keys())
             )
@@ -417,7 +488,7 @@ class ProbeRunner:
                         p0=self._snapshot.p0, p3=p3, p4=p4,
                         scene_question=config.probe.scene_question,
                     )
-                    gen = boundary.complete(render_cis_messages(ctx))
+                    gen = boundary.complete(render_cis_messages(ctx), usage_sink=usage_sink)
                     sample = ProbeSampleRecord(
                         probe_id=config.probe.probe_id, mode="PB-AB",
                         state=sub_mode, arm=arm_label, sample_index=idx,
@@ -459,10 +530,12 @@ class ProbeRunner:
         samples.extend(self._build_baseline_samples(
             boundary, config, arm="BASELINE_A",
             completed_records=completed_records, persist_run_id=persist_run_id,
+            usage_sink=usage_sink,
         ))
         samples.extend(self._build_baseline_samples(
             boundary, config, arm="BASELINE_B",
             completed_records=completed_records, persist_run_id=persist_run_id,
+            usage_sink=usage_sink,
         ))
         return self._assemble(
             run_id=run_id, timestamp=timestamp, mode="PB-AB", sub_mode=sub_mode,

@@ -50,8 +50,16 @@ def complete(
     model: str | None = None,
     system: str | None = None,
     params: dict[str, Any] | None = None,
+    usage_sink: Any = None,
 ) -> str:
-    """Return a completion string from mock, local, or cloud provider."""
+    """Return a completion string from mock, local, or cloud provider.
+
+    ``usage_sink`` is an OPTIONAL, backward-compatible hook for the approved
+    real (cloud) path. When it is a mutable list-like (has ``append``) and the
+    cloud response carries a ``usage`` object, that object is appended as a
+    plain dict (provider verbatim). Existing callers that pass only
+    ``messages``/``provider`` are unaffected; mock/local never write to it.
+    """
     normalized = _normalize_messages(messages, system=system)
     selected = provider.strip().lower()
     options = params or {}
@@ -61,7 +69,9 @@ def complete(
     if selected == "local":
         return _complete_local(normalized, model=model, params=options)
     if selected == "cloud":
-        return _complete_cloud(normalized, model=model, params=options)
+        return _complete_cloud(
+            normalized, model=model, params=options, usage_sink=usage_sink
+        )
 
     raise LLMProviderError(f"Unknown provider: {provider}")
 
@@ -145,6 +155,7 @@ def _complete_cloud(
     *,
     model: str | None = None,
     params: dict[str, Any] | None = None,
+    usage_sink: Any = None,
 ) -> str:
     options = params or {}
     api_key = os.environ.get("OPENAI_API_KEY")
@@ -169,6 +180,10 @@ def _complete_cloud(
     data = _post_json(
         f"{base_url}/v1/chat/completions", payload, headers=headers, timeout_s=timeout_s
     )
+    if usage_sink is not None:
+        usage = data.get("usage")
+        if isinstance(usage, dict):
+            usage_sink.append(dict(usage))
     choices = data.get("choices")
     if isinstance(choices, list) and choices:
         message = choices[0].get("message") if isinstance(choices[0], dict) else None

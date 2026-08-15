@@ -398,12 +398,13 @@ class TestApprovedDeepSeekRealPath:
         calls: list[dict] = []
 
         def fake_complete(messages, *, provider, model=None, system=None,
-                          params=None):
+                          params=None, usage_sink=None):
             calls.append({
                 "messages": messages,
                 "provider": provider,
                 "model": model,
                 "params": params,
+                "usage_sink": usage_sink,
             })
             return "real-response"
 
@@ -422,7 +423,7 @@ class TestApprovedDeepSeekRealPath:
 
     def test_helper_exception_propagates_no_mock_fallback(self, monkeypatch) -> None:
         def fake_complete(messages, *, provider, model=None, system=None,
-                          params=None):
+                          params=None, usage_sink=None):
             raise llm_provider.LLMProviderError(
                 "OPENAI_API_KEY is required for cloud provider"
             )
@@ -436,7 +437,7 @@ class TestApprovedDeepSeekRealPath:
 
     def test_runner_facing_return_type_is_str(self, monkeypatch) -> None:
         def fake_complete(messages, *, provider, model=None, system=None,
-                          params=None):
+                          params=None, usage_sink=None):
             return "mock-free completion text"
 
         monkeypatch.setattr(llm_provider, "complete", fake_complete)
@@ -466,7 +467,7 @@ class TestMockPreservedAfterTD16:
         calls: list[dict] = []
 
         def fake_complete(messages, *, provider, model=None, system=None,
-                          params=None):
+                          params=None, usage_sink=None):
             calls.append(params or {})
             return "[MOCK] (user) x :: abcdef1234"
 
@@ -523,8 +524,8 @@ class TestTd22aCloudTimeout:
         calls: list[dict] = []
 
         def fake_complete(messages, *, provider, model=None, system=None,
-                          params=None):
-            calls.append({"params": params})
+                          params=None, usage_sink=None):
+            calls.append({"params": params, "usage_sink": usage_sink})
             return "real-response"
 
         monkeypatch.setattr(llm_provider, "complete", fake_complete)
@@ -544,7 +545,7 @@ class TestTd22aCloudTimeout:
         attempt_count = [0]
 
         def failing_complete(messages, *, provider, model=None, system=None,
-                             params=None):
+                             params=None, usage_sink=None):
             attempt_count[0] += 1
             raise llm_provider.LLMProviderError("boom")
 
