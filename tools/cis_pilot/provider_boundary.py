@@ -64,6 +64,10 @@ SUPPORTED_PROVIDER = "mock"
 DEEPSEEK_REAL_PROVIDER = "cloud"
 DEEPSEEK_MODEL_ID = "deepseek-v4-pro"
 DEEPSEEK_BASE_URL = "https://api.deepseek.com"
+# TD-22A: transport-only timeout for the approved DeepSeek real path (seconds).
+# This is consumed by tools.llm_provider as the HTTP timeout and is NOT
+# serialized into the outbound request body. No other timeout is authorized.
+DEEPSEEK_TIMEOUT_S = 120.0
 
 # The complete set of provider tokens this boundary will ever forward to
 # tools.llm_provider.complete(). Anything else fails closed at construction.
@@ -141,6 +145,23 @@ class ProviderConfig:
                         "-- failing closed, no fallback"
                     )
             params["base_url"] = DEEPSEEK_BASE_URL
+
+            # TD-22A: the approved real path carries a fixed transport timeout.
+            # A caller may omit it (default applied) or pass exactly the
+            # approved value; anything else fails closed. This is NOT the
+            # generic timeout acceptance -- only 120.0 is authorized here.
+            if "timeout_s" in params:
+                try:
+                    requested_timeout = float(params["timeout_s"])
+                except (TypeError, ValueError):
+                    requested_timeout = None
+                if requested_timeout != DEEPSEEK_TIMEOUT_S:
+                    raise ProviderBoundaryError(
+                        f"timeout_s {params['timeout_s']!r} is not the approved "
+                        f"DeepSeek timeout {DEEPSEEK_TIMEOUT_S!r} "
+                        "-- failing closed, no fallback"
+                    )
+            params["timeout_s"] = DEEPSEEK_TIMEOUT_S
 
         object.__setattr__(self, "provider", normalized_provider)
         object.__setattr__(self, "params", MappingProxyType(params))

@@ -26,6 +26,7 @@ from tools.cis_pilot.provider_boundary import (
     DEEPSEEK_REAL_PROVIDER,
     DEEPSEEK_MODEL_ID,
     DEEPSEEK_BASE_URL,
+    DEEPSEEK_TIMEOUT_S,
     ProviderBoundaryError,
     ProviderConfig,
     PilotProviderBoundary,
@@ -353,6 +354,8 @@ class TestApprovedDeepSeekRealPath:
         assert cfg.model == DEEPSEEK_MODEL_ID
         # Endpoint is bound to the approved DeepSeek base URL automatically.
         assert dict(cfg.params)["base_url"] == DEEPSEEK_BASE_URL
+        # TD-22A: the approved transport timeout is applied automatically.
+        assert dict(cfg.params)["timeout_s"] == DEEPSEEK_TIMEOUT_S
 
     def test_other_real_models_rejected(self) -> None:
         for bad in ("deepseek-chat", "deepseek-reasoner", "gpt-4o-mini",
@@ -471,3 +474,83 @@ class TestMockPreservedAfterTD16:
         b = default_boundary()
         b.complete([{"role": "user", "content": "x"}])
         assert calls == [{}]
+
+
+# ---------------------------------------------------------------------------
+# TD-22A: shared cloud transport timeout surface
+# ---------------------------------------------------------------------------
+
+
+class TestTd22aCloudTimeout:
+    """Transport-only cloud timeout; CIS DeepSeek real path uses 120s.
+
+    Offline: the cloud HTTP layer is stubbed at ``_post_json`` / ``complete``,
+    so no network, no credential value, and no real provider is ever reached.
+    """
+
+    def test_cloud_default_timeout_30(self, monkeypatch) -> None:
+        monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+        captured: list[dict] = []
+
+        def fake_post(url, payload, *, headers, timeout_s=30.0):
+            captured.append({"payload": payload, "timeout_s": timeout_s})
+            return {"choices": [{"message": {"content": "ok"}}]}
+
+        monkeypatch.setattr(llm_provider, "_post_json", fake_post)
+        llm_provider.complete([{"role": "user", "content": "hi"}],
+                              provider="cloud", model="gpt-4o-mini")
+        assert captured[0]["timeout_s"] == 30.0
+        assert "timeout_s" not in captured[0]["payload"]
+        assert "base_url" not in captured[0]["payload"]
+
+    def test_cloud_explicit_timeout_120_transport_only(self, monkeypatch) -> None:
+        monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+        captured: list[dict] = []
+
+        def fake_post(url, payload, *, headers, timeout_s=30.0):
+            captured.append({"payload": payload, "timeout_s": timeout_s})
+            return {"choices": [{"message": {"content": "ok"}}]}
+
+        monkeypatch.setattr(llm_provider, "_post_json", fake_post)
+        llm_provider.complete([{"role": "user", "content": "hi"}],
+                              provider="cloud", model="gpt-4o-mini",
+                              params={"timeout_s": 120})
+        # 120 reaches the transport timeout, never the request body.
+        assert captured[0]["timeout_s"] == 120.0
+        assert "timeout_s" not in captured[0]["payload"]
+
+    def test_cis_deepseek_forwards_timeout_120(self, monkeypatch) -> None:
+        calls: list[dict] = []
+
+        def fake_complete(messages, *, provider, model=None, system=None,
+                          params=None):
+            calls.append({"params": params})
+            return "real-response"
+
+        monkeypatch.setattr(llm_provider, "complete", fake_complete)
+        boundary = PilotProviderBoundary(provider=DEEPSEEK_REAL_PROVIDER,
+                                         model=DEEPSEEK_MODEL_ID, params={})
+        boundary.complete([{"role": "user", "content": "hi"}])
+        assert calls[0]["params"]["timeout_s"] == DEEPSEEK_TIMEOUT_S
+        assert calls[0]["params"]["base_url"] == DEEPSEEK_BASE_URL
+
+    def test_cis_deepseek_rejects_wrong_timeout(self) -> None:
+        with pytest.raises(ProviderBoundaryError, match="timeout_s"):
+            ProviderConfig(provider=DEEPSEEK_REAL_PROVIDER,
+                           model=DEEPSEEK_MODEL_ID,
+                           params={"timeout_s": 30})
+
+    def test_provider_failure_exactly_one_attempt_no_retry(self, monkeypatch) -> None:
+        attempt_count = [0]
+
+        def failing_complete(messages, *, provider, model=None, system=None,
+                             params=None):
+            attempt_count[0] += 1
+            raise llm_provider.LLMProviderError("boom")
+
+        monkeypatch.setattr(llm_provider, "complete", failing_complete)
+        boundary = PilotProviderBoundary(provider=DEEPSEEK_REAL_PROVIDER,
+                                         model=DEEPSEEK_MODEL_ID, params={})
+        with pytest.raises(llm_provider.LLMProviderError):
+            boundary.complete([{"role": "user", "content": "hi"}])
+        assert attempt_count[0] == 1

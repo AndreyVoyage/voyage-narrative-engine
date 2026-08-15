@@ -152,16 +152,23 @@ def _complete_cloud(
         raise LLMProviderError("OPENAI_API_KEY is required for cloud provider")
 
     base_url = str(options.get("base_url") or os.environ.get("OPENAI_BASE_URL") or DEFAULT_CLOUD_BASE_URL).rstrip("/")
+    # Transport-only timeout (TD-22A): consumed here as HTTP timeout, never
+    # serialized into the outbound chat-completions body. Default stays 30s
+    # for generic cloud consumers; the CIS DeepSeek path supplies 120s
+    # explicitly via params.
+    timeout_s = options.get("timeout_s", 30.0)
     payload: dict[str, Any] = {
         "model": model or DEFAULT_CLOUD_MODEL,
         "messages": messages,
     }
     for key, value in options.items():
-        if key != "base_url":
+        if key not in ("base_url", "timeout_s"):
             payload[key] = value
 
     headers = {"Authorization": f"Bearer {api_key}"}
-    data = _post_json(f"{base_url}/v1/chat/completions", payload, headers=headers)
+    data = _post_json(
+        f"{base_url}/v1/chat/completions", payload, headers=headers, timeout_s=timeout_s
+    )
     choices = data.get("choices")
     if isinstance(choices, list) and choices:
         message = choices[0].get("message") if isinstance(choices[0], dict) else None
