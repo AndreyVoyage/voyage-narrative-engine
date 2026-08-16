@@ -1,21 +1,32 @@
 # CRP vNext — MVP SPECIFICATION (v1)
 
-> **STATUS:** CANDIDATE_FOR_OWNER_RATIFICATION
-> **IMPLEMENTATION:** NOT AUTHORIZED
-> **Date:** 2026-08-16
+> **STATUS:** OWNER_RATIFIED_SPECIFICATION
+> **RATIFICATION_DATE:** 2026-08-16
+> **OWNER_GAP_COUNT:** 0 (independently reviewed — see
+> `LOCAL_STORAGE/handoffs/CRP_MVP_SPEC_V1_OWNER_RATIFICATION_REVIEW_2026-08-16.md`, verdict
+> `A. CRP_MVP_SPEC_V1_READY_FOR_OWNER_RATIFICATION_WITH_ZERO_GAPS`)
+> **IMPLEMENTATION:** NOT AUTHORIZED — ratification of this specification is a distinct act from
+> authorizing implementation; no implementation branch has been created by any ratification task.
+> **Kira reconstruction execution:** NOT AUTHORIZED. **Role prompt implementation:** NOT AUTHORIZED.
+> **Canon/persona mutation:** FORBIDDEN. **Main integration of this specification:** NOT AUTHORIZED BY ANY
+> RATIFICATION TASK TO DATE.
+> **Date drafted:** 2026-08-16
 > **Track:** CRP vNext MVP Specification
 > **Companion document:** [`CRP_MVP_CONTRACTS_v1.md`](CRP_MVP_CONTRACTS_v1.md) — the conceptual schemas
-> this spec builds on.
+> this spec builds on, ratified alongside this document as `OWNER_RATIFIED_SPECIFICATION_CONTRACTS`.
 > **Baseline authority:** `CRP_VNEXT_ARCHITECTURE_RATIFICATION_v1.md` +
 > `CRP_VNEXT_DECISION_REGISTER_v1.md` (CRP-OD-1…14, all `OWNER_RATIFIED`, integrated on `main` at
 > `cedbf0a6f9bed13cc9e7dc464f12df1e93d9c865`).
 
-This document is a **specification candidate**. It transforms the ratified CRP vNext architecture into a
-concrete first MVP design. It does not, by itself, authorize any implementation, role-prompt writing,
-KB rewrite, or Kira reconstruction execution. Where a ratified decision left a design parameter open
-(decision register §F), this spec proposes a concrete, labeled **spec candidate** and explains why it does
-not require a new owner decision — never by silently treating the choice as if it had already been
-ratified.
+**This document is the owner-ratified MVP specification** — accepted in full by the owner on 2026-08-16,
+following an independent review that found zero true owner decisions among its 20
+implementation/specification parameters (report above). It transforms the ratified CRP vNext architecture
+into a concrete first MVP design. **Ratification of the specification is not, by itself, authorization of
+any implementation, role-prompt writing, KB rewrite, or Kira reconstruction execution** — those each
+require their own separate, explicit, future owner authorization. Where a previously-open design
+parameter (decision register §F) is resolved below, it is resolved as ratified specification content, not
+as a placeholder awaiting further owner input — the independent review confirmed none of these choices
+constituted an unratified owner-level decision.
 
 ---
 
@@ -461,17 +472,21 @@ Future implementation must prove, **offline, before any real Kira reconstruction
 
 ## 25. Precedence and status (restated)
 
-This spec candidate does not supersede any CRP-OD. If a future implementation effort finds an actual
+This specification does not supersede any CRP-OD. If a future implementation effort finds an actual
 contradiction between this spec and a ratified CRP-OD, the CRP-OD wins and this document must be revised
-— it does not silently override ratified decisions. No such contradiction was found while drafting this
-spec.
+— ratification of this spec does not override ratified decisions. No such contradiction was found while
+drafting this spec, nor during the independent owner-ratification review.
 
 ```
-implementation authorized:  NO
-role prompt writing:        NOT AUTHORIZED
-KB rewrite:                 NOT AUTHORIZED
-canon/persona mutation:     NOT AUTHORIZED
-Kira reconstruction:        NOT EXECUTED, NOT AUTHORIZED
+spec status:                 OWNER_RATIFIED_SPECIFICATION (2026-08-16)
+owner gap count:              0
+implementation authorized:    NO
+implementation branch:        NOT CREATED BY THIS OR ANY PRIOR RATIFICATION TASK
+role prompt writing:          NOT AUTHORIZED
+KB rewrite:                   NOT AUTHORIZED
+canon/persona mutation:       FORBIDDEN
+Kira reconstruction:          NOT EXECUTED, NOT AUTHORIZED
+main integration:             NOT AUTHORIZED BY THIS TASK
 ```
 
 *End of spec. See `CRP_MVP_CONTRACTS_v1.md` for the field-level schemas referenced throughout.*
