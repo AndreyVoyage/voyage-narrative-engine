@@ -1,20 +1,25 @@
 # CRP MVP — CONCEPTUAL CONTRACTS (v1)
 
-> **STATUS:** CANDIDATE_FOR_OWNER_RATIFICATION
+> **STATUS:** OWNER_RATIFIED_SPECIFICATION_CONTRACTS
+> **RATIFICATION_DATE:** 2026-08-16
 > **IMPLEMENTATION:** NOT AUTHORIZED
-> **Date:** 2026-08-16
+> **Date drafted:** 2026-08-16
 > **Track:** CRP vNext MVP Specification
-> **Companion document:** [`CRP_MVP_SPEC_v1.md`](CRP_MVP_SPEC_v1.md)
+> **Companion document:** [`CRP_MVP_SPEC_v1.md`](CRP_MVP_SPEC_v1.md) — ratified alongside this document as
+> `OWNER_RATIFIED_SPECIFICATION`.
 > **Authority:** derives from `CRP_VNEXT_ARCHITECTURE_RATIFICATION_v1.md` and
 > `CRP_VNEXT_DECISION_REGISTER_v1.md` (CRP-OD-1…14, all `OWNER_RATIFIED`, on `main` as of `cedbf0a…`).
 > This document does not reopen any ratified decision. Where it fills a gap left open by design
-> (§37/D-RKR "implementation parameter" items), it says so explicitly and marks the choice as a
-> **spec candidate**, not a new ratified fact.
+> (§37/D-RKR "implementation parameter" items), the resolution is now ratified specification content,
+> confirmed by independent review (`CRP_MVP_SPEC_V1_OWNER_RATIFICATION_REVIEW_2026-08-16.md`) to contain
+> zero true owner-level decisions — not a new fact silently substituted for owner judgment.
 
 These are **conceptual schemas** — field lists and invariants, not executable JSON Schema. No project
 convention currently mandates JSON Schema for narrative decision documents (`docs/narrative/*` uses
 prose + Markdown tables throughout, e.g. `PAC_TRAINING_DATASET_SCHEMA_v1.md`), so this document follows
-that convention. Executable schema is deferred to implementation.
+that convention. Executable schema, and any implementation field beyond what is needed to record this
+ratification, remain deferred to a separately-authorized implementation effort — ratifying these contracts
+as specification content does not convert them into executable schema.
 
 ---
 
