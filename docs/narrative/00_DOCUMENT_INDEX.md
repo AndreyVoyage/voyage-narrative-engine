@@ -3,7 +3,7 @@
 > **Назначение.** Карта всех канонических документов проекта: где что лежит, статус, зачем.
 > Начинать чтение отсюда. Пути даны относительно корня репозитория.
 >
-> **Обновлено:** 2026-08-16 (добавлены CRP vNext ratification + decision register)
+> **Обновлено:** 2026-08-16 (добавлены CRP vNext ratification + decision register + MVP spec/contracts)
 > **Правило:** при добавлении/устаревании документа — обновить этот индекс.
 
 Легенда статусов: **ACTIVE** (действующий) · **CANONICAL** (источник правды) ·
@@ -67,6 +67,8 @@
 | [`AI_ROLES_AND_KNOWLEDGE_ROUTING_CONCEPT_v1.md`](AI_ROLES_AND_KNOWLEDGE_ROUTING_CONCEPT_v1.md) | PROPOSED (v1) | Role Registry, Role Evolution, per-role Knowledge Profile, будущий Knowledge Router и context assembly. Read-side = Gateway; builders = reusable primitives. Один consolidated preflight. Impl NOT AUTHORIZED (D-RKR-1–D-RKR-15 pending). |
 | [`CRP_VNEXT_ARCHITECTURE_RATIFICATION_v1.md`](CRP_VNEXT_ARCHITECTURE_RATIFICATION_v1.md) | **OWNER-RATIFIED DIRECTION** (2026-08-16, updated same day) | CRP vNext ("Character Reconstruction Pipeline", formal name for what was informally called "Variant C"): ratifies CRP-OD-1…14 (owner shorthand OD-1…10, D-CRP-11…14) — vNext direction, R4/R5/R7 authority, MVP role subset, revision budget, Kira benchmark split, confidence policy, R3 gate, contradiction priority, Role Registry mechanics, PAC/Sandbox access policy, legacy KB policy. Successor direction to legacy R1–R8 (`roles/`), which remains reference-only. **IMPLEMENTATION NOT AUTHORIZED.** |
 | [`CRP_VNEXT_DECISION_REGISTER_v1.md`](CRP_VNEXT_DECISION_REGISTER_v1.md) | **ACTIVE DECISION REGISTER** (2026-08-16, updated same day) | Companion register: full CRP-OD-1…14 entries, complete §37 (18/18) and D-RKR (15/15) historical mapping, claim-taxonomy reconciliation (source_type + confidence axes; no pre-existing detailed taxonomy found to reconcile against — see §D), owner-gap countdown (**0 open**, was 4), implementation-parameter and source-cleanup backlogs. |
+| [`CRP_MVP_SPEC_v1.md`](CRP_MVP_SPEC_v1.md) | **CANDIDATE_FOR_OWNER_RATIFICATION** (2026-08-16) | First implementable CRP vNext MVP specification: roles R1+R2+R4+R6+R8 active (R3/R5 excluded, R7 as deterministic function), execution DAG, 3-round revision-loop semantics (initial + 2 corrections), registry/knowledge-routing/PAC-Sandbox spec candidates, Kira benchmark design (not executed), full mapping of all 20 decision-register implementation parameters and 4 source-cleanup items, MVP acceptance criteria. Builds on `CRP_VNEXT_ARCHITECTURE_RATIFICATION_v1.md` without reopening any CRP-OD. **IMPLEMENTATION NOT AUTHORIZED.** |
+| [`CRP_MVP_CONTRACTS_v1.md`](CRP_MVP_CONTRACTS_v1.md) | **CANDIDATE_FOR_OWNER_RATIFICATION** (2026-08-16) | Companion contracts document: conceptual schemas for SourceEvidence, RoleClaim, ContradictionRecord, RoleTask, RoleResult, RoleRegistryEntry, KnowledgeProfile, CandidateCharacterPackage, ReconstructionAudit, BehavioralValidationRequest/Result — fields, invariants, producer/consumer, forbidden behavior, versioning, per contract. |
 
 > **N8 — Persona Voice Model:** FUTURE, NOT AUTHORIZED. Заблокирован данными; см. `NARRATIVE_ROADMAP.md` и N9 (PAC производит корпус).
 > **Character Evolution Sandbox:** PROPOSED. Документация и модель состояния — разрешены. Имплементация — BLOCKED (D-CES-1 – D-CES-10 pending).
