@@ -127,8 +127,51 @@ def renpy_escape(text: Any) -> str:
     value = "" if text is None else str(text)
     value = value.replace("\\", "\\\\")
     value = value.replace('"', '\\"')
+    # Ren'Py text-substitution / text-tag metacharacters that open a parse
+    # state MUST be doubled so player-visible source text stays literal:
+    # '[' → '[[' (opens interpolation) and '{' → '{{' (opens a text tag).
+    # ']' and '}' close such states and are already literal in LITERAL state,
+    # so they are intentionally NOT doubled (Ren'Py substitutions.py never
+    # treats ']' as special; no ']]' collapse rule exists).
+    value = value.replace("[", "[[")
+    value = value.replace("{", "{{")
     value = value.replace("\r\n", "\n").replace("\r", "\n")
     return " ".join(value.splitlines())
+
+
+def renpy_stmt_escape(text: Any) -> str:
+    """Escape a string value for embedding inside a Ren'Py Python ``$`` statement.
+
+    Produces a safe Python string literal that can contain Cyrillic, quotes,
+    apostrophes, backslashes, and line breaks. Prefers single-quoted literals
+    with backslash-escaped single quotes and backslashes.
+    """
+    if text is None:
+        return "''"
+    s = str(text)
+    s = s.replace("\r\n", "\n").replace("\r", "\n")
+    s = s.replace("\\", "\\\\")
+    s = s.replace("'", "\\'")
+    s = " ".join(s.splitlines())
+    return "'{}'".format(s)
+
+
+def renpy_played_event_str(event_dict: dict[str, Any]) -> str:
+    """Build a Ren'Py Python literal for a played-event record dict.
+
+    Produces a ``{...}`` dict literal using single-quoted string values
+    that are safe for Cyrillic, quotes, apostrophes, backslashes, and
+    line breaks. Never uses ``repr()`` or ``json.dumps()`` for Ren'Py
+    code generation — all escaping is explicit.
+    """
+    parts = []
+    for key in ("scene_id", "beat_id", "kind", "speaker", "summary"):
+        value = event_dict.get(key, "")
+        parts.append("'{}': {}".format(
+            str(key),
+            renpy_stmt_escape(value),
+        ))
+    return "{ " + ", ".join(parts) + " }"
 
 
 def safe_label_id(scene_id: Any) -> str:
@@ -182,6 +225,30 @@ def beat_channel(beat: dict[str, Any]) -> str:
     return "narration"
 
 
+def beat_kind(beat: dict[str, Any]) -> str:
+    """Map beat type to the compact event kind label."""
+    beat_type = beat.get("type")
+    if beat_type == "dialogue":
+        return "dialogue"
+    if beat_type == "action":
+        return "action"
+    if beat_type == "thought":
+        return "thought"
+    return "narration"
+
+
+def beat_summary(beat: dict[str, Any]) -> str:
+    """Extract a short, bounded summary from the beat's primary text channel."""
+    channel = beat_channel(beat)
+    text = beat.get(channel)
+    if not isinstance(text, str) or not text.strip():
+        return ""
+    summary = " ".join(text.strip().splitlines()).strip()
+    if len(summary) > 200:
+        summary = summary[:197] + "..."
+    return summary
+
+
 def display_name(scene: dict[str, Any], character_id: Any) -> str:
     if character_id is None:
         return "Narrator"
@@ -193,7 +260,44 @@ def display_name(scene: dict[str, Any], character_id: Any) -> str:
     return str(character_id)
 
 
+def beat_speaker_str(scene: dict[str, Any], beat: dict[str, Any]) -> str:
+    """Return the speaker name (or empty string) for an event record."""
+    speaker = beat.get("speaker")
+    if speaker is None:
+        return ""
+    return display_name(scene, speaker)
+
+
+def emit_set_scene_beat(scene_id: str, beat_id: str) -> str:
+    """Generate a ``$ _vne_aside_set_scene_beat(...)`` Ren'Py statement."""
+    return "$ _vne_aside_set_scene_beat({}, {})".format(
+        renpy_stmt_escape(scene_id),
+        renpy_stmt_escape(beat_id),
+    )
+
+
+def emit_note_played_event(scene_id: str, beat: dict[str, Any], speaker: str = "") -> str:
+    """Generate a ``$ _vne_aside_note_played_event({...})`` Ren'Py statement."""
+    beat_id = beat.get("beat_id", "")
+    kind = beat_kind(beat)
+    summary = beat_summary(beat)
+    event = {
+        "scene_id": scene_id,
+        "beat_id": str(beat_id),
+        "kind": kind,
+        "speaker": speaker,
+        "summary": summary,
+    }
+    return "$ _vne_aside_note_played_event({})".format(renpy_played_event_str(event))
+
+
+# ---------------------------------------------------------------------------
+# Render functions (with runtime-context hooks)
+# ---------------------------------------------------------------------------
+
 def render_beat(scene: dict[str, Any], beat: dict[str, Any]) -> list[str]:
+    """Render a single beat with set-position-before and note-event-after hooks."""
+    scene_id = scene.get("id", "")
     beat_id = beat.get("beat_id")
     beat_type = beat.get("type")
     speaker = beat.get("speaker")
@@ -203,25 +307,29 @@ def render_beat(scene: dict[str, Any], beat: dict[str, Any]) -> list[str]:
 
     if beat_id:
         lines.append(f"    # beat_id: {beat_id}")
+        # Set current scene and beat position BEFORE rendering content.
+        lines.append(f"    {emit_set_scene_beat(str(scene_id), str(beat_id))}")
 
     if beat_type == "dialogue":
         name = display_name(scene, speaker)
         lines.append(f'    narrator "{renpy_escape(name)}: {renpy_escape(text)}"')
-        return lines
-
-    if beat_type == "action":
+    elif beat_type == "action":
         name = display_name(scene, speaker)
-        lines.append(f'    narrator "[{renpy_escape(name)} action] {renpy_escape(text)}"')
-        return lines
-
-    if beat_type == "thought":
+        # No synthetic square brackets: "[...]" would be parsed by Ren'Py as
+        # interpolation. Use a plain-text label-separator form instead.
+        lines.append(f'    narrator "{renpy_escape(name)} action: {renpy_escape(text)}"')
+    elif beat_type == "thought":
         visibility = beat.get("thought_visibility")
         name = display_name(scene, speaker)
         marker = f"thought:{name}; visibility={visibility}"
-        lines.append(f'    narrator "[{renpy_escape(marker)}] {renpy_escape(text)}"')
-        return lines
+        # No synthetic square brackets around the marker, same reason as above.
+        lines.append(f'    narrator "{renpy_escape(marker)}: {renpy_escape(text)}"')
+    else:
+        lines.append(f'    narrator "{renpy_escape(text)}"')
 
-    lines.append(f'    narrator "{renpy_escape(text)}"')
+    # Note the played event AFTER rendering content.
+    _spk = beat_speaker_str(scene, beat)
+    lines.append(f"    {emit_note_played_event(str(scene_id), beat, speaker=_spk)}")
     return lines
 
 
@@ -268,13 +376,36 @@ def render_effect_statements(branch: dict[str, Any]) -> list[str]:
     return lines
 
 
+def render_menu_choice_event(scene_id: str, branch_id: str, option_text: str) -> str:
+    """Generate a ``$ _vne_aside_note_played_event(...)`` for the selected choice.
+
+    This is emitted only inside the chosen branch, never for unselected choices.
+    """
+    event = {
+        "scene_id": str(scene_id),
+        "beat_id": str(branch_id),
+        "kind": "choice",
+        "speaker": "",
+        "summary": "Choice: " + str(option_text or branch_id),
+    }
+    return "$ _vne_aside_note_played_event({})".format(renpy_played_event_str(event))
+
+
 def render_branch(scene: dict[str, Any], choice_point: dict[str, Any], branch: dict[str, Any]) -> list[str]:
     branch_id = branch.get("id")
     label = branch_label_id(scene.get("id"), branch_id)
+    scene_id = str(scene.get("id", ""))
+    option_text = branch.get("option_text", "")
     lines = ["", f"label {label}:", ""]
+
+    # Record the selected choice ONLY inside the chosen branch.
+    lines.append(f"    {render_menu_choice_event(scene_id, str(branch_id), str(option_text))}")
+
+    # Set current position to the branch entry, then render beats.
     for beat in branch.get("beats", []):
         if isinstance(beat, dict):
             lines.extend(render_beat(scene, beat))
+
     lines.append("")
     branch["_scene_id"] = scene.get("id")
     lines.extend(render_effect_statements(branch))
@@ -316,6 +447,9 @@ def render_scene(scene: dict[str, Any], scene_path: Path) -> str:
         "",
     ]
 
+    # Set scene-level position at the start label.
+    lines.append(f"    {emit_set_scene_beat(str(scene_id), 'start')}")
+
     if scene_name:
         lines.append(f'    narrator "{renpy_escape(scene_name)}"')
 
@@ -326,6 +460,9 @@ def render_scene(scene: dict[str, Any], scene_path: Path) -> str:
     prompt = choice_point.get("prompt")
     if prompt:
         lines.append("")
+        # Set position to the choice point before showing the menu.
+        cp_id = choice_point.get("id", "menu")
+        lines.append(f"    {emit_set_scene_beat(str(scene_id), str(cp_id))}")
         lines.append(f'    narrator "{renpy_escape(prompt)}"')
 
     lines.append("")

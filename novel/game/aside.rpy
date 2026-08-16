@@ -10,12 +10,25 @@
 #
 # Slice 1 (aside-v2): profile_id + world + provenance + window-only Reset.
 
-# Dev/test tracking variables for the current scene/beat. These are local UI
-# state, not canon; v2_* remains the single source of canonical truth.
-default vne_current_scene_id = "SC_017"
-default vne_current_beat_id = "sc_017_v2_1a"
-default vne_current_progress_index = 17
-default vne_current_content_rating = "PG-13"
+# Runtime tracking variables for the current scene/beat and played events.
+# These are local UI state, not canon; v2_* remains the single source of
+# canonical truth. Initialised as empty save-safe defaults: the exporter
+# populates them at runtime via _vne_aside_set_scene_beat and
+# _vne_aside_note_played_event hooks.
+default vne_current_scene_id = ""
+default vne_current_beat_id = ""
+default vne_current_progress_index = 0
+default vne_current_content_rating = ""
+default vne_recent_played_events = []
+
+# Ring limit for played events (fixed; see N6 Character Aside Contract §1).
+define VNE_ASIDE_PLAYED_EVENT_LIMIT = 12
+
+# Per-turn context diagnostics computed by the worker from the detached
+# snapshot. Six fields: context_available, scene_id, current_beat,
+# played_event_count, context_block_included, context_fingerprint. Updated by
+# _vne_aside_finish_reply.
+default vne_aside_last_context_diagnostics = {}
 
 # ── Aside v2 memory identity (Slice 1) ────────────────────────────────────
 # Isolated memory keys (saved with RenPy save, not canon).
@@ -199,36 +212,51 @@ init python:
         )
 
     def _vne_detach_plain_worker_value(value, path):
-        """Recursively copy store values into detached built-in containers."""
-        allowed_scalars = (str, int, float, bool, type(None))
+        """Recursively copy store values into detached built-in containers.
+
+        Accepts built-in scalar, list, tuple, and dict types as well as
+        Ren'Py rollback-aware sequence and mapping containers that are not
+        subclasses of the built-in types. Strings and bytes are treated as
+        scalars, never as sequences.
+        """
+        allowed_scalars = (str, int, float, bool, type(None), bytes)
 
         if isinstance(value, allowed_scalars):
             return value
 
-        if isinstance(value, list):
-            return [
-                _vne_detach_plain_worker_value(item, "{}[{}]".format(path, index))
-                for index, item in enumerate(value)
-            ]
-
-        if isinstance(value, tuple):
-            return tuple(
-                _vne_detach_plain_worker_value(item, "{}[{}]".format(path, index))
-                for index, item in enumerate(value)
-            )
-
-        if isinstance(value, dict):
+        # Mapping-like: try .keys()/value[key] for both dict and
+        # Ren'Py rollback-aware mapping wrappers.
+        try:
+            _keys = list(value.keys())
+        except Exception:
+            _keys = None
+        if _keys is not None:
             detached = {}
-            for key, item in value.items():
+            for key in _keys:
                 if not isinstance(key, str):
                     raise TypeError(
                         "{} contains non-string key: {!r}".format(path, key)
                     )
                 detached[str(key)] = _vne_detach_plain_worker_value(
-                    item,
+                    value[key],
                     "{}.{}".format(path, key),
                 )
             return detached
+
+        # Sequence-like: built-in list or tuple OR Ren'Py rollback-aware
+        # sequence wrapper (RevertableList etc.). Strings and bytes were
+        # already returned as scalars above so they never reach here.
+        try:
+            _len = value.__len__()
+        except Exception:
+            _len = None
+        if _len is not None:
+            return [
+                _vne_detach_plain_worker_value(
+                    value[index], "{}[{}]".format(path, index)
+                )
+                for index in range(_len)
+            ]
 
         raise TypeError(
             "{} contains unsafe worker value of type {}".format(
@@ -244,6 +272,72 @@ init python:
         if threading.current_thread() is not threading.main_thread():
             raise RuntimeError("Aside turn snapshot must be built on MainThread")
 
+        # Resolve repo root for the scene context bridge.
+        # config.gamedir is novel/game/ → parent.parent is repo root.
+        _repo_root = Path(config.gamedir).resolve().parent.parent
+
+        canon = {
+            "scene_id": str(store.vne_current_scene_id),
+            "beat_id": str(store.vne_current_beat_id),
+            "progress_index": int(store.vne_current_progress_index),
+            "flags": sorted(str(value) for value in store.v2_flags),
+            "completed_scenes": sorted(
+                str(value) for value in store.v2_completed_scenes
+            ),
+            "levels": _vne_detach_plain_worker_value(
+                store.v2_levels,
+                "payload.canon.levels",
+            ),
+            "relationships": _vne_detach_plain_worker_value(
+                store.v2_relationships,
+                "payload.canon.relationships",
+            ),
+            "content_rating": str(store.vne_current_content_rating),
+        }
+
+        # v0 Scene Context Bridge: attach static scene metadata.
+        # Best-effort main-thread read of the V2 JSON; any failure degrades
+        # safely — the context builder renders [CONTEXT UNAVAILABLE] and the
+        # conversation continues without interruption.
+        try:
+            _tools_dir = str(_repo_root / "tools")
+            if _tools_dir not in sys.path:
+                sys.path.insert(0, _tools_dir)
+            import scene_context_bridge as _scb
+
+            _current_label = None
+            try:
+                _ctx = renpy.context()
+                if _ctx is not None and hasattr(_ctx, "current"):
+                    _current_label = _ctx.current
+            except Exception:
+                pass
+
+            _played_events = _vne_detach_plain_worker_value(
+                getattr(store, "vne_recent_played_events", []),
+                "payload.canon.played_events",
+            )
+
+            _scene_ctx = _scb.build_scene_context_snapshot(
+                scene_id=str(store.vne_current_scene_id),
+                beat_id=str(store.vne_current_beat_id),
+                current_label=_current_label,
+                repo_root=_repo_root,
+                played_events=_played_events,
+            )
+
+            _detached_scene_ctx = _vne_detach_plain_worker_value(
+                _scene_ctx,
+                "payload.canon.scene_context",
+            )
+            if _detached_scene_ctx is not None:
+                canon["scene_context"] = _detached_scene_ctx
+        except Exception:
+            # Any bridge failure must not block the Aside conversation.
+            # When scene_context is absent, the context builder simply
+            # skips the [CURRENT STORY CONTEXT] block.
+            pass
+
         snapshot = {
             "character_id": str(character_id),
             "player_message": str(player_message),
@@ -257,24 +351,7 @@ init python:
             "diagnostics_enabled": bool(config.developer),
             "trace_path": str(_vne_aside_trace_path_main_thread()),
             "memory_root": str(_vne_aside_memory_root()),
-            "canon": {
-                "scene_id": str(store.vne_current_scene_id),
-                "beat_id": str(store.vne_current_beat_id),
-                "progress_index": int(store.vne_current_progress_index),
-                "flags": sorted(str(value) for value in store.v2_flags),
-                "completed_scenes": sorted(
-                    str(value) for value in store.v2_completed_scenes
-                ),
-                "levels": _vne_detach_plain_worker_value(
-                    store.v2_levels,
-                    "payload.canon.levels",
-                ),
-                "relationships": _vne_detach_plain_worker_value(
-                    store.v2_relationships,
-                    "payload.canon.relationships",
-                ),
-                "content_rating": str(store.vne_current_content_rating),
-            },
+            "canon": canon,
         }
         _vne_assert_plain_worker_payload(snapshot)
         return snapshot
@@ -282,6 +359,59 @@ init python:
     def _vne_aside_memory_root():
         """Isolated aside memory root inside RenPy save directory."""
         return Path(renpy.config.savedir) / "vne_aside_memory"
+
+    def _vne_aside_set_scene_beat(scene_id, beat_id):
+        """Assign current scene and beat, incrementing monotonic progress when
+        the (scene_id, beat_id) pair changes.
+
+        Sanitises identifiers to plain strings. Never modifies v2_* state or
+        the played-event ring.
+        """
+        import store
+        new_scene = str(scene_id or "")
+        new_beat = str(beat_id or "")
+        old_scene = getattr(store, "vne_current_scene_id", "")
+        old_beat = getattr(store, "vne_current_beat_id", "")
+        if (new_scene, new_beat) != (old_scene, old_beat):
+            store.vne_current_progress_index = (
+                int(getattr(store, "vne_current_progress_index", 0)) + 1
+            )
+        store.vne_current_scene_id = new_scene
+        store.vne_current_beat_id = new_beat
+
+    def _vne_aside_note_played_event(event):
+        """Append a compact JSON-compatible event record to the played-event ring.
+
+        Requirements:
+        - event must be a plain dict with str keys and JSON-compatible values.
+        - The existing list is never mutated in place. A new bounded list is
+          built and assigned back to the Ren'Py store variable.
+        - Ring limit is VNE_ASIDE_PLAYED_EVENT_LIMIT (12).
+        - Never modifies v2_* state.
+        """
+        import store
+
+        if not isinstance(event, dict):
+            return
+
+        clean = {}
+        for key, value in event.items():
+            if not isinstance(key, str):
+                continue
+            str_key = str(key)
+            if isinstance(value, (str, int, float, bool, type(None))):
+                clean[str_key] = value
+            else:
+                clean[str_key] = str(value)
+
+        limit = getattr(store, "VNE_ASIDE_PLAYED_EVENT_LIMIT", 12)
+        old_ring = list(getattr(store, "vne_recent_played_events", []))
+        new_ring = list(old_ring)
+        new_ring.append(clean)
+        if len(new_ring) > limit:
+            new_ring = new_ring[-limit:]
+
+        store.vne_recent_played_events = new_ring
 
     def _vne_is_connection_error(exc):
         """Return True if an LLMProviderError is a connection/timeout failure."""
@@ -327,6 +457,15 @@ init python:
             character_id=character_id,
             world=world,
             progress=progress,
+        )
+
+        # Compute context diagnostics from the same turn data before the LLM
+        # call. These are pure plain-data helpers that never access Ren'Py store.
+        diagnostics = aside_context_builder.build_context_diagnostics(
+            character_id=character_id,
+            canon_snapshot=canon,
+            aside_memory=memory,
+            player_message=player_message,
         )
 
         # Build context: persona + past canon + aside memory + player message.
@@ -402,7 +541,12 @@ init python:
             session=session,
         )
 
-        return {"reply": reply, "fallback": fallback, "warning": warning}
+        return {
+            "reply": reply,
+            "fallback": fallback,
+            "warning": warning,
+            "diagnostics": diagnostics,
+        }
 
     # ── Slice 1: Reset / Wipe v2 ──────────────────────────────────────────
 
@@ -509,10 +653,21 @@ init python:
             return ("send", msg)
         return None
 
-    def _vne_aside_finish_reply(character_id, msg, reply):
-        """Finalize one turn in the main thread and refresh the Aside UI."""
+    def _vne_aside_finish_reply(character_id, msg, reply, diagnostics=None):
+        """Finalize one turn in the main thread and refresh the Aside UI.
+
+        Accepts an optional diagnostics dict computed by the worker from the
+        detached snapshot and stores it for the dev diagnostics overlay.
+        """
         import store
         _vne_aside_trace("main_thread_callback", msg=msg, reply_preview=reply[:160])
+
+        _detached_diag = _vne_detach_plain_worker_value(
+            diagnostics,
+            "payload.diagnostics",
+        ) if isinstance(diagnostics, dict) else None
+        if _detached_diag is not None:
+            store.vne_aside_last_context_diagnostics = _detached_diag
 
         user_line = "You: " + msg
         thinking_line = character_id.capitalize() + ": [[thinking...]]"
@@ -624,10 +779,12 @@ init python:
                 character_id=character_id,
                 msg=msg,
             )
+        turn_diagnostics = None
         try:
             turn = _vne_run_aside_turn_from_snapshot(snapshot)
             if isinstance(turn, dict):
                 reply = turn.get("reply", str(turn))
+                turn_diagnostics = turn.get("diagnostics")
             else:
                 reply = str(turn)
             if diagnostics_enabled:
@@ -656,6 +813,7 @@ init python:
             character_id,
             msg,
             reply,
+            turn_diagnostics,
         )
 
     # Overlay visible always (RenPy sets config.developer AFTER init python).
@@ -680,7 +838,7 @@ screen aside_dev_overlay():
                 color "#888888"
 
             textbutton "Aside":
-                action Jump("aside_dev_entry")
+                action Call("aside_dev_entry")
                 text_size 14
                 padding (10, 4)
                 background Solid("#3a4658")

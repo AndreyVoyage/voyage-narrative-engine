@@ -547,6 +547,24 @@ init python:
         snap["aside_chat_history_len"] = len(getattr(store, "aside_chat_history", []))
         snap["aside_llm_pending"] = getattr(store, "aside_llm_pending", None)
         snap["aside_provider"] = getattr(store, "vne_aside_config_provider", None)
+
+        # QA Gap 01: expose per-turn context diagnostics.
+        _diagnostics = getattr(store, "vne_aside_last_context_diagnostics", None)
+        if isinstance(_diagnostics, dict):
+            snap["context_available"] = _diagnostics.get("context_available", False)
+            snap["scene_id"] = _diagnostics.get("scene_id", "")
+            snap["current_beat"] = _diagnostics.get("current_beat", "")
+            snap["played_event_count"] = _diagnostics.get("played_event_count", 0)
+            snap["context_block_included"] = _diagnostics.get("context_block_included", False)
+            snap["context_fingerprint"] = _diagnostics.get("context_fingerprint", "")
+        else:
+            snap["context_available"] = False
+            snap["scene_id"] = ""
+            snap["current_beat"] = ""
+            snap["played_event_count"] = 0
+            snap["context_block_included"] = False
+            snap["context_fingerprint"] = ""
+
         store.vne_diag_aside_snapshot = snap
         _vne_diag_log("ASIDE", "REFRESH ASIDE SNAPSHOT", result=screen_status)
         renpy.restart_interaction()

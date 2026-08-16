@@ -16,6 +16,7 @@ not access the network, and does not write repository/canon files.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -69,6 +70,16 @@ def build_context(
     )
 
     messages: list[dict[str, str]] = [{"role": "system", "content": system_content}]
+
+    # v0 Scene Context Bridge: inject static scene metadata when available.
+    # This is a detached plain-data snapshot captured on the Ren'Py main thread
+    # before the worker starts. When absent, the message is simply skipped.
+    scene_context = snapshot.get("scene_context")
+    if isinstance(scene_context, dict):
+        messages.append(
+            {"role": "system", "content": _build_scene_context_block(scene_context)}
+        )
+
     messages.append({"role": "system", "content": _build_snapshot_block(snapshot)})
 
     summary = memory.get("summary")
@@ -150,6 +161,91 @@ def _build_frame_block() -> str:
             "Answer as the character in the present moment, without knowledge of future beats.",
         ]
     )
+
+
+def _build_scene_context_block(scene_context: dict) -> str:
+    """Render the [CURRENT STORY CONTEXT] system message from a bridge snapshot.
+
+    When context is unavailable, returns a brief unavailability note so the
+    model knows it is operating without concrete scene awareness.
+    """
+    if not isinstance(scene_context, dict):
+        return "[CONTEXT UNAVAILABLE] Scene context bridge did not return a valid snapshot."
+
+    available = scene_context.get("context_available")
+    if not available:
+        reason = scene_context.get("reason", "unknown reason")
+        return (
+            "[CONTEXT UNAVAILABLE]\n"
+            "The Character Aside cannot determine the current narrative situation.\n"
+            f"Reason: {reason}\n"
+            "Respond as Kira in a neutral conversational mode. "
+            "Do not invent a scene, location, or recent events."
+        )
+
+    lines = ["[CURRENT STORY CONTEXT]"]
+
+    title = scene_context.get("scene_title")
+    scene_id = scene_context.get("scene_id")
+    if title and scene_id:
+        lines.append(f"Scene: «{title}» ({scene_id})")
+    elif title:
+        lines.append(f"Scene: «{title}»")
+    elif scene_id:
+        lines.append(f"Scene: {scene_id}")
+
+    beat_id = scene_context.get("beat_id")
+    if beat_id:
+        lines.append(f"Current beat: {beat_id}")
+
+    location = scene_context.get("location")
+    time_or_phase = scene_context.get("time_or_phase")
+    if location and time_or_phase:
+        lines.append(f"Location: {location} — {time_or_phase}")
+    elif location:
+        lines.append(f"Location: {location}")
+    elif time_or_phase:
+        lines.append(f"Time/phase: {time_or_phase}")
+
+    active_chars = scene_context.get("active_characters")
+    if isinstance(active_chars, list) and active_chars:
+        names = ", ".join(
+            entry["name"] for entry in active_chars
+            if isinstance(entry, dict) and "name" in entry
+        )
+        if names:
+            lines.append(f"Characters present: {names}")
+
+    rating = scene_context.get("content_rating", "not specified")
+    lines.append(f"Content rating: {rating}")
+
+    # Already played section — derived ONLY from runtime played events.
+    played = scene_context.get("played_events")
+    if isinstance(played, list) and played:
+        lines.append("")
+        lines.append("Already played:")
+        for event in played:
+            if isinstance(event, dict):
+                summary = event.get("summary", "")
+                kind = event.get("kind", "")
+                speaker = event.get("speaker", "")
+                if speaker:
+                    entry = f"- [{kind}] {speaker}: {summary}"
+                else:
+                    entry = f"- [{kind}] {summary}"
+                lines.append(entry)
+
+    lines.append("")
+    lines.append(
+        "Instructions: "
+        "only Already played entries are completed events; "
+        "do not infer unlisted events; "
+        "do not assume unselected choices occurred; "
+        "do not expose future branches; "
+        "do not modify game state."
+    )
+
+    return "\n".join(lines)
 
 
 def _build_snapshot_block(snapshot: dict[str, Any]) -> str:
@@ -250,6 +346,184 @@ def _first_text(data: Any, keys: tuple[str, ...]) -> str | None:
 
 def _stable_json(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2)
+
+
+# ---------------------------------------------------------------------------
+# QA Gap 01 diagnostics — pure, testable helpers
+# ---------------------------------------------------------------------------
+
+# Whitelist of keys permitted in the fingerprint payload.
+_FINGERPRINT_KEYS = frozenset({
+    "scene_id",
+    "beat_id",
+    "progress_index",
+    "flags",
+    "completed_scenes",
+    "levels",
+    "relationships",
+    "content_rating",
+})
+
+# Allowed scene-context keys for fingerprinting (static framing only).
+_FINGERPRINT_SCENE_CTX_KEYS = frozenset({
+    "scene_id",
+    "scene_title",
+    "location",
+    "time_or_phase",
+    "active_characters",
+    "content_rating",
+    "beat_id",
+    "played_events",
+})
+
+
+def _sanitize_plain_value(value: Any) -> Any:
+    """Recursively convert a plain-data value to a canonically-sortable form."""
+    if isinstance(value, (str, int, float, bool, type(None))):
+        return value
+    if isinstance(value, list):
+        # Sort list-of-dict by stable JSON representation.
+        items: list[Any] = []
+        for item in value:
+            items.append(_sanitize_plain_value(item))
+        # Sort by canonical JSON to make list order stable.
+        items.sort(
+            key=lambda x: json.dumps(
+                x, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+            )
+        )
+        return items
+    if isinstance(value, dict):
+        result: dict[str, Any] = {}
+        for k in sorted(value.keys()):
+            result[str(k)] = _sanitize_plain_value(value[k])
+        return result
+    return str(value)
+
+
+def _sanitize_snapshot_for_fingerprint(
+    canon_snapshot: dict[str, Any],
+) -> dict[str, Any]:
+    """Return a stable, shallow-copied subset safe for fingerprint hashing.
+
+    Only whitelisted keys are included. Lists are sorted where order is not
+    guaranteed. Uses deep-copy of plain-data values so mutations cannot
+    affect the fingerprint input.
+    """
+    if not isinstance(canon_snapshot, dict):
+        return {}
+
+    sanitized: dict[str, Any] = {}
+    for key in sorted(_FINGERPRINT_KEYS):
+        value = canon_snapshot.get(key)
+        if value is None:
+            continue
+        sanitized[key] = _sanitize_plain_value(value)
+
+    # Include whitelisted scene-context fields when available.
+    scene_ctx = canon_snapshot.get("scene_context")
+    if isinstance(scene_ctx, dict):
+        ctx_sanitized: dict[str, Any] = {}
+        for key in _FINGERPRINT_SCENE_CTX_KEYS:
+            value = scene_ctx.get(key)
+            if value is None:
+                continue
+            ctx_sanitized[key] = _sanitize_plain_value(value)
+        if ctx_sanitized:
+            sanitized["scene_context"] = ctx_sanitized
+
+    return sanitized
+
+
+def compute_context_fingerprint(canon_snapshot: dict[str, Any]) -> str:
+    """Return a 64-character lowercase SHA-256 hex fingerprint.
+
+    The fingerprint is computed over a canonical JSON representation
+    of a sanitized, whitelisted subset of the canon snapshot. It does
+    NOT include secrets, paths, full prompts, provider responses, or
+    mutable Ren'Py store references.
+    """
+    sanitized = _sanitize_snapshot_for_fingerprint(canon_snapshot)
+    canonical_bytes = json.dumps(
+        sanitized,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(canonical_bytes).hexdigest()
+
+
+def detect_context_block_included(messages: list[dict[str, str]]) -> bool:
+    """Return True when the messages list contains a story-context block.
+
+    Detects either the available [CURRENT STORY CONTEXT] block or the safe
+    [CONTEXT UNAVAILABLE] block by checking the content of system messages
+    inserted by _build_scene_context_block.  Returns True for either variant
+    because the model is informed about current story context (or its absence).
+    Returns False only when no such block was added.
+    """
+    if not isinstance(messages, list):
+        return False
+    for msg in messages:
+        if not isinstance(msg, dict):
+            continue
+        if msg.get("role") != "system":
+            continue
+        content = msg.get("content")
+        if not isinstance(content, str):
+            continue
+        if "[CURRENT STORY CONTEXT]" in content or "[CONTEXT UNAVAILABLE]" in content:
+            return True
+    return False
+
+
+def compute_played_event_count(canon_snapshot: dict[str, Any]) -> int:
+    """Return the count of detached played events in the snapshot.
+
+    Counts only the detached ``played_events`` list inside the
+    ``scene_context`` sub-dict.  Returns 0 when the list is missing,
+    None, or not a list.  Never counts future events, static scene
+    metadata, or diagnostics records.
+    """
+    if not isinstance(canon_snapshot, dict):
+        return 0
+    scene_ctx = canon_snapshot.get("scene_context")
+    if not isinstance(scene_ctx, dict):
+        return 0
+    played = scene_ctx.get("played_events")
+    if isinstance(played, list):
+        return len(played)
+    return 0
+
+
+def build_context_diagnostics(
+    character_id: str,
+    canon_snapshot: dict[str, Any],
+    aside_memory: dict[str, Any] | None,
+    player_message: str,
+) -> dict[str, Any]:
+    """Compute a complete diagnostics dict for one Character Aside turn.
+
+    Returns a plain-data dict suitable for marshalling across the
+    Ren'Py thread boundary.  All six required fields are generated from
+    the same turn data so they are internally consistent.
+    """
+    messages = build_context(character_id, canon_snapshot, aside_memory, player_message)
+
+    scene_ctx = canon_snapshot.get("scene_context") if isinstance(canon_snapshot, dict) else None
+    if isinstance(scene_ctx, dict):
+        context_available = bool(scene_ctx.get("context_available"))
+    else:
+        context_available = False
+
+    return {
+        "context_available": context_available,
+        "scene_id": str(canon_snapshot.get("scene_id", "")) if isinstance(canon_snapshot, dict) else "",
+        "current_beat": str(canon_snapshot.get("beat_id", "")) if isinstance(canon_snapshot, dict) else "",
+        "played_event_count": compute_played_event_count(canon_snapshot),
+        "context_block_included": detect_context_block_included(messages),
+        "context_fingerprint": compute_context_fingerprint(canon_snapshot),
+    }
 
 
 def _configure_stdio() -> None:

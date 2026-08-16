@@ -12,10 +12,14 @@ default v2_relationships = {}
 
 label sc_017_v2_start:
 
+    $ _vne_aside_set_scene_beat('SC_017', 'start')
     narrator "Сергей пишет снова"
     # beat_id: e1
+    $ _vne_aside_set_scene_beat('SC_017', 'e1')
     narrator "Телефон загорается новым сообщением от Сергея. Утренний разговор с Яковым ещё не успел стать привычкой."
+    $ _vne_aside_note_played_event({ 'scene_id': 'SC_017', 'beat_id': 'e1', 'kind': 'narration', 'speaker': '', 'summary': 'Телефон загорается новым сообщением от Сергея. Утренний разговор с Яковым ещё не успел стать привычкой.' })
 
+    $ _vne_aside_set_scene_beat('SC_017', 'CP_1')
     narrator "Телефон загорается новым сообщением от Сергея. Утренний разговор с Яковым ещё не успел стать привычкой. Что делает Кира?"
 
     menu:
@@ -28,16 +32,27 @@ label sc_017_v2_start:
 
 label sc_017_v2_1a:
 
+    $ _vne_aside_note_played_event({ 'scene_id': 'SC_017', 'beat_id': '1A', 'kind': 'choice', 'speaker': '', 'summary': 'Choice: Показывает сообщение Якову сразу. Прозрачность прежде реакции.' })
     # beat_id: 1A-b1
-    narrator "[Кира action] Показывает сообщение Якову сразу. Прозрачность прежде реакции."
+    $ _vne_aside_set_scene_beat('SC_017', '1A-b1')
+    narrator "Кира action: Показывает сообщение Якову сразу. Прозрачность прежде реакции."
+    $ _vne_aside_note_played_event({ 'scene_id': 'SC_017', 'beat_id': '1A-b1', 'kind': 'action', 'speaker': 'Кира', 'summary': 'Показывает сообщение Якову сразу. Прозрачность прежде реакции.' })
     # beat_id: 1A-b2
+    $ _vne_aside_set_scene_beat('SC_017', '1A-b2')
     narrator "Кира: Он написал."
+    $ _vne_aside_note_played_event({ 'scene_id': 'SC_017', 'beat_id': '1A-b2', 'kind': 'dialogue', 'speaker': 'Кира', 'summary': 'Он написал.' })
     # beat_id: 1A-b3
+    $ _vne_aside_set_scene_beat('SC_017', '1A-b3')
     narrator "Кира: Я показываю тебе это до ответа. Не потому что прошу разрешения. Потому что не хочу тайны."
+    $ _vne_aside_note_played_event({ 'scene_id': 'SC_017', 'beat_id': '1A-b3', 'kind': 'dialogue', 'speaker': 'Кира', 'summary': 'Я показываю тебе это до ответа. Не потому что прошу разрешения. Потому что не хочу тайны.' })
     # beat_id: 1A-b4
+    $ _vne_aside_set_scene_beat('SC_017', '1A-b4')
     narrator "Яков: Ты показываешь мне это до ответа?"
+    $ _vne_aside_note_played_event({ 'scene_id': 'SC_017', 'beat_id': '1A-b4', 'kind': 'dialogue', 'speaker': 'Яков', 'summary': 'Ты показываешь мне это до ответа?' })
     # beat_id: 1A-b5
+    $ _vne_aside_set_scene_beat('SC_017', '1A-b5')
     narrator "Яков: Тогда я рядом. Но отвечать будешь ты. Я не буду читать за тебя и не буду решать вместо тебя."
+    $ _vne_aside_note_played_event({ 'scene_id': 'SC_017', 'beat_id': '1A-b5', 'kind': 'dialogue', 'speaker': 'Яков', 'summary': 'Тогда я рядом. Но отвечать будешь ты. Я не буду читать за тебя и не буду решать вместо тебя.' })
 
     # effects
     $ v2_flags.add("kira_shows_message_immediately")
@@ -53,16 +68,27 @@ label sc_017_v2_1a:
 
 label sc_017_v2_1b:
 
+    $ _vne_aside_note_played_event({ 'scene_id': 'SC_017', 'beat_id': '1B', 'kind': 'choice', 'speaker': '', 'summary': 'Choice: Сначала читает сама. Просит одну минуту, прежде чем делиться.' })
     # beat_id: 1B-b1
-    narrator "[Кира action] Сначала читает сама. Просит одну минуту, прежде чем делиться."
+    $ _vne_aside_set_scene_beat('SC_017', '1B-b1')
+    narrator "Кира action: Сначала читает сама. Просит одну минуту, прежде чем делиться."
+    $ _vne_aside_note_played_event({ 'scene_id': 'SC_017', 'beat_id': '1B-b1', 'kind': 'action', 'speaker': 'Кира', 'summary': 'Сначала читает сама. Просит одну минуту, прежде чем делиться.' })
     # beat_id: 1B-b2
+    $ _vne_aside_set_scene_beat('SC_017', '1B-b2')
     narrator "Кира: Я прочитаю сначала сама. Одну минуту."
+    $ _vne_aside_note_played_event({ 'scene_id': 'SC_017', 'beat_id': '1B-b2', 'kind': 'dialogue', 'speaker': 'Кира', 'summary': 'Я прочитаю сначала сама. Одну минуту.' })
     # beat_id: 1B-b3
+    $ _vne_aside_set_scene_beat('SC_017', '1B-b3')
     narrator "Кира: Мне нужно понять, что я чувствую, прежде чем объяснять это тебе."
+    $ _vne_aside_note_played_event({ 'scene_id': 'SC_017', 'beat_id': '1B-b3', 'kind': 'dialogue', 'speaker': 'Кира', 'summary': 'Мне нужно понять, что я чувствую, прежде чем объяснять это тебе.' })
     # beat_id: 1B-b4
+    $ _vne_aside_set_scene_beat('SC_017', '1B-b4')
     narrator "Яков: Я хочу спросить, почему не сразу. Но я подожду."
+    $ _vne_aside_note_played_event({ 'scene_id': 'SC_017', 'beat_id': '1B-b4', 'kind': 'dialogue', 'speaker': 'Яков', 'summary': 'Я хочу спросить, почему не сразу. Но я подожду.' })
     # beat_id: 1B-b5
+    $ _vne_aside_set_scene_beat('SC_017', '1B-b5')
     narrator "Яков: Только не исчезай в этом одна."
+    $ _vne_aside_note_played_event({ 'scene_id': 'SC_017', 'beat_id': '1B-b5', 'kind': 'dialogue', 'speaker': 'Яков', 'summary': 'Только не исчезай в этом одна.' })
 
     # effects
     $ v2_flags.add("kira_reads_first")
@@ -78,16 +104,27 @@ label sc_017_v2_1b:
 
 label sc_017_v2_1c:
 
+    $ _vne_aside_note_played_event({ 'scene_id': 'SC_017', 'beat_id': '1C', 'kind': 'choice', 'speaker': '', 'summary': 'Choice: Не отвечает пока. Отказывается быть сразу втянутой в чужую срочность.' })
     # beat_id: 1C-b1
-    narrator "[Кира action] Не отвечает пока. Отказывается быть сразу втянутой в чужую срочность."
+    $ _vne_aside_set_scene_beat('SC_017', '1C-b1')
+    narrator "Кира action: Не отвечает пока. Отказывается быть сразу втянутой в чужую срочность."
+    $ _vne_aside_note_played_event({ 'scene_id': 'SC_017', 'beat_id': '1C-b1', 'kind': 'action', 'speaker': 'Кира', 'summary': 'Не отвечает пока. Отказывается быть сразу втянутой в чужую срочность.' })
     # beat_id: 1C-b2
+    $ _vne_aside_set_scene_beat('SC_017', '1C-b2')
     narrator "Кира: Я не буду отвечать сейчас."
+    $ _vne_aside_note_played_event({ 'scene_id': 'SC_017', 'beat_id': '1C-b2', 'kind': 'dialogue', 'speaker': 'Кира', 'summary': 'Я не буду отвечать сейчас.' })
     # beat_id: 1C-b3
+    $ _vne_aside_set_scene_beat('SC_017', '1C-b3')
     narrator "Кира: Не потому что боюсь. Потому что не хочу, чтобы его боль снова стала моим расписанием."
+    $ _vne_aside_note_played_event({ 'scene_id': 'SC_017', 'beat_id': '1C-b3', 'kind': 'dialogue', 'speaker': 'Кира', 'summary': 'Не потому что боюсь. Потому что не хочу, чтобы его боль снова стала моим расписанием.' })
     # beat_id: 1C-b4
+    $ _vne_aside_set_scene_beat('SC_017', '1C-b4')
     narrator "Яков: Тогда пусть сообщение подождёт. А мы — нет."
+    $ _vne_aside_note_played_event({ 'scene_id': 'SC_017', 'beat_id': '1C-b4', 'kind': 'dialogue', 'speaker': 'Яков', 'summary': 'Тогда пусть сообщение подождёт. А мы — нет.' })
     # beat_id: 1C-b5
+    $ _vne_aside_set_scene_beat('SC_017', '1C-b5')
     narrator "Яков: Ты имеешь право выбирать свой темп."
+    $ _vne_aside_note_played_event({ 'scene_id': 'SC_017', 'beat_id': '1C-b5', 'kind': 'dialogue', 'speaker': 'Яков', 'summary': 'Ты имеешь право выбирать свой темп.' })
 
     # effects
     $ v2_flags.add("kira_delays_answer")

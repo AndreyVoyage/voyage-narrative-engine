@@ -44,13 +44,13 @@ label start:
             jump sc_016_start
 
         "SC_017 — Сергей пишет снова":
-            jump sc_017_start
+            jump sc_017_v2_start
 
         "SC_018 — Кира отвечает":
             jump sc_018_start
 
-        "SC_017 — V2 JSON-generated proof (dev/test)":
-            jump sc_017_v2_start
+        "SC_017 — V1 legacy (no runtime hooks)":
+            jump sc_017_start
 
 
 label sc_003_start:
