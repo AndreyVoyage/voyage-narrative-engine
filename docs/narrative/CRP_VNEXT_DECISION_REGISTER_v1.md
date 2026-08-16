@@ -3,11 +3,19 @@
 > **Status:** ACTIVE DECISION REGISTER — IMPLEMENTATION NOT AUTHORIZED
 > **Date:** 2026-08-16
 > **Companion document:** [`CRP_VNEXT_ARCHITECTURE_RATIFICATION_v1.md`](CRP_VNEXT_ARCHITECTURE_RATIFICATION_v1.md)
-> **ID namespace:** owner decisions in this track use `CRP-OD-1…10`, aliased to the owner's original
-> shorthand `OD-1…OD-10`. This is distinct from the pre-existing `D-RKR-1…15` register
-> (`AI_ROLES_AND_KNOWLEDGE_ROUTING_CONCEPT_v1.md §7`) and from the historical `§37` list
-> (`RKR_R1_R8_ROLE_INTELLIGENCE_READONLY_AUDIT_2026-08-03.md §37`). No renumbering of either historical
-> register has been performed.
+> **ID namespace:** owner decisions in this track use `CRP-OD-1…14`, aliased to the owner's original
+> shorthand — `OD-1…OD-10` for the first ten, `D-CRP-11…D-CRP-14` for the four ratified in this
+> continuation pass (2026-08-16, second ratification session). This is distinct from the pre-existing
+> `D-RKR-1…15` register (`AI_ROLES_AND_KNOWLEDGE_ROUTING_CONCEPT_v1.md §7`) and from the historical `§37`
+> list (`RKR_R1_R8_ROLE_INTELLIGENCE_READONLY_AUDIT_2026-08-03.md §37`). No renumbering of either
+> historical register has been performed.
+>
+> **Naming continuity note (2026-08-16, continuation pass):** the follow-up task brief that authorized
+> D-CRP-11–14 refers to them (and, in passing, to the first ten) using a `D-CRP-N` prefix. To avoid
+> renaming the already-committed-and-pushed `CRP-OD-1…10` entries, this register keeps `CRP-OD-N` as the
+> single internal primary-ID prefix for all fourteen entries, and records `D-CRP-11…D-CRP-14` as the exact
+> owner/task-brief label for the four new ones — the same alias pattern already used for `OD-1…OD-10`. No
+> decision content differs by naming convention; this is a labeling continuity note only.
 
 ---
 
@@ -172,6 +180,90 @@ mappings · supersedes · does-not-authorize.
 - **Supersedes:** legacy R6 behavior of "correcting" R3 against R2 on conflict (audit §19/§37-#2 area) — for CRP vNext specifically.
 - **Does NOT authorize:** implementing the contradiction register or its resolution logic.
 
+### CRP-OD-11 (D-CRP-11) — Role Registry mechanics
+
+- **Status:** OWNER_RATIFIED · **Date:** 2026-08-16
+- **Decision:** The CRP Role Registry is an explicit, authoritative catalog of invokable/versioned CRP
+  role contracts. It is **not** a prompt store, **not** filesystem auto-discovery, **not** "latest file
+  wins," and does **not** automatically activate a newly found role version. First MVP **ACTIVE**
+  execution roles/functions: R1, R2, R4, R6, R8 (matches OD-5). R3: known vNext function, **INACTIVE /
+  NOT YET RATIFIED FOR EXECUTION** until its specific contract/gate is defined. R5: known vNext Visual
+  Observer, **INACTIVE / OPTIONAL** until its specific execution contract is defined. R7: Consistency
+  Validator, deterministic-first, not required as an **ACTIVE** autonomous LLM role. Registry entries
+  must conceptually bind at least: `role_id`, `version`, `status`, `prompt_ref`, `knowledge_profile_ref`,
+  `input_contract_ref`, `output_contract_ref`, `permissions`, `activation_gate`. New version activation
+  requires evaluation + human approval. No automatic version promotion.
+- **Rationale/implication:** Decides registry **authority/activation semantics** — an owner architecture
+  question. It does **not** decide the physical registry file format, exact YAML/JSON schema, loader
+  implementation, cache implementation, or exact filesystem paths — those remain implementation/spec
+  parameters, not owner gaps.
+- **Historical mappings:** §37-#12 (closes the authority/activation-semantics component; hash-chain and
+  rollback-tooling mechanics remain implementation parameters — see §B). D-RKR-1 (closes, in combination
+  with OD-5 — see §C), D-RKR-2 (does not close — prompt physical location remains open, reclassified from
+  open-owner-question to implementation parameter), D-RKR-9 (closes — direct, complete answer), D-RKR-10
+  (partially closes — principle that versions are retained/selectable ratified; exact rollback
+  tooling/mechanism remains an implementation parameter).
+- **Supersedes:** nothing; formalizes D-RKR-9's own "proposal → human" recommendation as ratified policy.
+- **Does NOT authorize:** MVP implementation, registry file format/schema, loader/cache code, or writing
+  any role contract.
+
+### CRP-OD-12 (D-CRP-12) — PAC memory access
+
+- **Status:** OWNER_RATIFIED · **Date:** 2026-08-16
+- **Decision:** Default: **direct CRP access to PAC memory = DENY.** CRP roles may not silently read PAC
+  memory, use PAC as hidden reconstruction context, or directly write PAC memory. If PAC-derived material
+  is needed: explicit authorized export → `SourceEvidence` → provenance recorded → immutable authoring
+  input snapshot. Only then may CRP consume it. Conceptual flow: `PAC → explicit authorized export →
+  SourceEvidence → CRP` — **not** `CRP role → direct PAC lookup`.
+- **Rationale/implication:** Ratifies the "no by default" recommendation already present in D-RKR-11's own
+  text, specifically for CRP roles, and specifies the only permitted access path (export-to-evidence, not
+  a live read). This closes the CRP-specific instance of the question; it does not rule on PAC access for
+  any other, non-CRP role or feature.
+- **Historical mappings:** §37-#15 (closes the PAC half, for CRP purposes). D-RKR-11 (closes, for CRP
+  roles specifically).
+- **Supersedes:** nothing (no prior ratified PAC-access decision existed for CRP roles).
+- **Does NOT authorize:** implementing the export/snapshot adapter, its API, schema, or authorization
+  carrier.
+
+### CRP-OD-13 (D-CRP-13) — Sandbox / CES access
+
+- **Status:** OWNER_RATIFIED · **Date:** 2026-08-16
+- **Decision:** Default: **direct live CRP read from Sandbox = DENY; direct CRP write to Sandbox = DENY.**
+  If Sandbox/CES material is needed: explicit owner-authorized immutable snapshot → `SourceEvidence` →
+  provenance-tagged → non-canon → immutable authoring input. CRP may not mutate sandbox state, treat
+  Sandbox as hidden memory, or silently consume evolving sandbox state. Boundary restated: Sandbox/CES =
+  experimental state; CRP = authoring/reconstruction; CIS = behavioral validation; Canon = human
+  controlled.
+- **Rationale/implication:** Ratifies the "no by default" recommendation already present in D-RKR-12's own
+  text, specifically for CRP roles, mirroring OD-12's snapshot-based access pattern.
+- **Historical mappings:** §37-#15 (closes the Sandbox half, for CRP purposes). D-RKR-12 (closes, for CRP
+  roles specifically).
+- **Supersedes:** nothing.
+- **Does NOT authorize:** implementing the snapshot mechanism, adapter API, or any CES/Sandbox integration
+  code.
+
+### CRP-OD-14 (D-CRP-14) — Legacy KB policy
+
+- **Status:** OWNER_RATIFIED · **Date:** 2026-08-16
+- **Decision:** Legacy R1–R8 knowledge base = `LEGACY_REFERENCE`. Default inheritance into CRP vNext =
+  **NO**. CRP vNext Knowledge Profiles are separate from legacy KB. Reuse of a legacy KB fragment requires
+  explicit compatibility review + provenance review — never the assumption "legacy KB exists ⇒ vNext role
+  receives it." Without a further, separate owner authorization, permitted cleanup is **non-destructive
+  only**: status documentation, stale-reference correction, index correction, migration
+  inventory/backlog, compatibility classification. **Not authorized:** deleting legacy KB, moving legacy
+  KB, mass content rewrite, destructive consolidation, or silently replacing legacy material.
+- **Rationale/implication:** Resolves the §37-#17 cleanup-authority gap by granting narrow,
+  **non-destructive** documentation/inventory authority — it does not grant destructive cleanup authority,
+  which remains a distinct, separate, still-deferred question if ever needed.
+- **Historical mappings:** §37-#17 (partially closes — non-destructive cleanup now authorized; destructive
+  cleanup remains a separate, deferred question, not an owner gap blocking anything ratified here). §37-#13
+  / D-RKR-5 (clarifies: vNext knowledge profiles are defined fresh, not auto-populated from legacy KB —
+  refines but does not fully close #13/D-RKR-5, whose remaining question is the exact per-role
+  paths/budgets).
+- **Supersedes:** nothing.
+- **Does NOT authorize:** any destructive action on the 37 legacy `knowledge_base/` files, or any KB
+  content rewrite.
+
 ---
 
 ## B. §37 historical decision map (18/18)
@@ -192,23 +284,33 @@ Source: `RKR_R1_R8_ROLE_INTELLIGENCE_READONLY_AUDIT_2026-08-03.md`, §37 "Requir
 | 9 | R6/R7 deterministic status | Addressed directly | OD-1, OD-4, OD-5 | — | CLOSED_BY_OD | R6 = deterministic compiler (mandatory, MVP); R7 = deterministic-first consistency validator, not required standalone in MVP | Exact module boundary between R6/R7/R8 | Implementation parameter only |
 | 10 | Human approval points / canon-write authority | Cross-cutting principle already independently ratified (RKR concept §3, CIS gates, N9 §8); restated by OD-1 | OD-1 | — | CLOSED_BY_OD | No automatic canon writes; human-only canon action, separate commit boundary | Exact canon-write mechanism/tooling | Implementation parameter only |
 | 11 | Conflict priority: owner evidence > interpretation; unresolved over silent correction | Addressed directly | OD-10 | — | CLOSED_BY_OD | OD-10 is a direct, complete answer | none at policy level | Implementation of contradiction register |
-| 12 | Role registry authority/version/hash/rollback | Not addressed by OD-1–10 (OD-5 only sets execution subset, not registry mechanics) | OD-5 (partial) | D-RKR-1, D-RKR-2, D-RKR-9, D-RKR-10 | STILL_OPEN_OWNER_DECISION | Execution subset ≠ registry membership/versioning/hash/rollback; see §C | Registry schema, versioning scheme, hash chain, rollback mechanism | Owner decision required before Role Registry implementation |
-| 13 | KB profiles/forbidden sources/context budgets | Direction set (least privilege, bounded tools — OD-1); no concrete profile/budget values | OD-1 (partial) | D-RKR-5, D-RKR-6, D-RKR-7 | PARTIALLY_CLOSED_BY_OD | Architecture §19 gives a proposal-grade per-role KB table for CRP roles specifically, adopted as base direction, but exact paths/budgets not owner-ratified as fixed values | Exact KB paths per role; context budget numbers; modular-vs-semantic search order | MVP spec must finalize |
+| 12 | Role registry authority/version/hash/rollback | Authority/activation semantics addressed 2026-08-16 via D-CRP-11 | OD-11 | D-RKR-1, D-RKR-2, D-RKR-9, D-RKR-10 | PARTIALLY_CLOSED_BY_OD *(was STILL_OPEN_OWNER_DECISION)* | OD-11 ratifies registry authority/activation semantics (bound fields, human-approval-gated version activation, no auto-promotion) — the owner-architecture component is now decided | Physical registry file format/schema, loader/cache implementation, exact hash-chain mechanics, exact rollback tooling — all implementation parameters, not owner gaps | Draft registry schema in future MVP spec |
+| 13 | KB profiles/forbidden sources/context budgets | Direction set (least privilege — OD-1); legacy-inheritance policy added 2026-08-16 via D-CRP-14 | OD-1, OD-14 (partial) | D-RKR-5, D-RKR-6, D-RKR-7 | PARTIALLY_CLOSED_BY_OD | OD-1 gives least-privilege principle; OD-14 clarifies vNext profiles are defined fresh, not auto-inherited from legacy KB (reuse requires compatibility+provenance review) — but exact paths/budgets remain unset | Exact KB paths per role; context budget numbers; modular-vs-semantic search order | MVP spec must finalize |
 | 14 | Cross-character access policy | Direction set (immutable snapshot, bounded tools — OD-1; Kira leakage control — OD-7); no implementation/test | OD-1, OD-7 (partial) | D-RKR-13 | PARTIALLY_CLOSED_BY_OD | Policy direction (default-deny, per-character scope, default-deny `personas/kira/**` during benchmark) closed for CRP; general cross-project mechanism and any test/enforcement not built | Implementation + test of default-deny enforcement | Implementation parameter |
-| 15 | PAC/Sandbox default-deny/provenance | Not addressed by OD-1–10 at all | none | D-RKR-11, D-RKR-12 | STILL_OPEN_OWNER_DECISION | Architecture §19 *recommends* PAC/Sandbox default-deny as proposal-grade text, but no OD ratifies it; `AI_ROLES_AND_KNOWLEDGE_ROUTING_CONCEPT_v1.md` guardrail #4 still explicitly requires "a separate decision (§7 D-RKR-11/12)" | Owner decision on PAC memory / Sandbox state read access for CRP roles | Owner decision required |
+| 15 | PAC/Sandbox default-deny/provenance | Addressed 2026-08-16 via D-CRP-12 (PAC) and D-CRP-13 (Sandbox) | OD-12, OD-13 | D-RKR-11, D-RKR-12 | CLOSED_BY_OD *(was STILL_OPEN_OWNER_DECISION)* | Both halves now ratified for CRP roles: direct PAC read = DENY (OD-12), direct Sandbox read/write = DENY (OD-13); only path in is explicit export → `SourceEvidence` snapshot | Export/snapshot adapter API, schema, authorization carrier — implementation parameters | Implementation parameter only |
 | 16 | R8 critical gates/fixed probes/stale invalidation | R8 role + 10-check minimum set ratified via inclusion in MVP; the fixed-probe/stale-invalidation mechanics are proposal-grade only | OD-1, OD-5 (partial) | — | PARTIALLY_CLOSED_BY_OD | R8 = Independent Evidence Auditor, mandatory in MVP, with the 10-check list from architecture §16 adopted as base direction; exact fixed-probe set and stale-hash invalidation rule not separately ratified | Fixed probe set; stale-audit invalidation rule; verdict-enum finalization | MVP spec / R8 contract |
-| 17 | Legacy KB/guides cleanup authority | Not addressed by OD-1–10 | none | — | SOURCE_CLEANUP_ONLY | No OD grants or denies cleanup authority over the 37 legacy KB files or stale guides identified in the audit | Who is authorized to retire/rewrite legacy KB/guide files | Separate cleanup-authorization decision, out of CRP vNext scope |
+| 17 | Legacy KB/guides cleanup authority | Addressed 2026-08-16 via D-CRP-14 (non-destructive cleanup only) | OD-14 | — | PARTIALLY_CLOSED_BY_OD *(was SOURCE_CLEANUP_ONLY, unresolved as owner gap)* | OD-14 authorizes non-destructive cleanup (documentation, stale-reference correction, index correction, migration inventory, compatibility classification) over the 37 legacy KB files; destructive cleanup (delete/move/rewrite/consolidate) remains a distinct, separate, still-deferred question, not decided here | Any destructive cleanup, if ever proposed, needs its own separate owner authorization | Non-destructive cleanup may proceed as a documentation task; destructive cleanup stays deferred |
 | 18 | Pilot fixture/success thresholds/owner | Fixture choice + split authority closed (Kira, OD-7); numeric success thresholds not set | OD-7 | — | PARTIALLY_CLOSED_BY_OD | OD-7 chooses Kira and the authoring/hidden split; audit §36's generic success criteria (100% canon claims source+approval, 0 leakage, etc.) are reference, not re-ratified as Kira-specific numeric thresholds | Exact Kira-benchmark pass/fail thresholds | MVP spec / benchmark design |
 
-**Count check:** 18/18 items mapped. `CLOSED_BY_OD`: 6 (#2, #4, #6, #9, #10, #11).
-`PARTIALLY_CLOSED_BY_OD`: 8 (#1, #5, #7, #8, #13, #14, #16, #18). `STILL_OPEN_OWNER_DECISION`: 2 (#12, #15).
-`SOURCE_CLEANUP_ONLY`: 1 (#17). `CLOSED_BY_OD` (architecture-level only, taxonomy caveat — tallied
-separately, see note below): 1 (#3). Total: 6 + 8 + 2 + 1 + 1 = 18.
+**Count check (updated 2026-08-16, post D-CRP-11–14):** 18/18 items mapped. `CLOSED_BY_OD`: 7
+(#2, #4, #6, #9, #10, #11, #15 — **#15 newly closed** by OD-12/OD-13). `PARTIALLY_CLOSED_BY_OD`: 10
+(#1, #5, #7, #8, #12, #13, #14, #16, #17, #18 — **#12 and #17 newly reclassified**, both previously
+`STILL_OPEN_OWNER_DECISION` / `SOURCE_CLEANUP_ONLY`). `STILL_OPEN_OWNER_DECISION`: **0** (was 2 — both
+#12 and #15 resolved by D-CRP-11–14). `SOURCE_CLEANUP_ONLY`: **0** (was 1 — #17 resolved, non-destructive
+scope, by D-CRP-14). `CLOSED_BY_OD` (architecture-level only, taxonomy caveat — tallied separately, see
+note below): 1 (#3). Total: 7 + 10 + 0 + 0 + 1 = 18.
 
-*Note on the count line above: item #3 is tallied separately from the other six `CLOSED_BY_OD` items
-(#2, #4, #6, #9, #10, #11) because its closure is explicitly architecture-level-only per the taxonomy
-correction in §D — flagging this so a future reader does not read it as full closure of "claim
-taxonomy" in the detailed-schema sense the original §37 phrasing could suggest.*
+*Note: item #3 (§37 "claim taxonomy") is tallied separately from the other `CLOSED_BY_OD` items because
+its closure is explicitly architecture-level-only per the taxonomy correction in §D — this is unrelated to
+D-CRP-11–14 and unchanged by this continuation pass. Note also that §37 item #11 ("conflict priority,"
+closed by OD-10 in the first ratification pass) is a coincidental number match with `CRP-OD-11`/`D-CRP-11`
+("Role Registry mechanics," this pass) — the two are unrelated; §37 uses its own independent 1–18
+numbering.*
+
+**No item is `STILL_OPEN_OWNER_DECISION` or `SOURCE_CLEANUP_ONLY` (unresolved) after this pass** — matching
+the owner's authorization that closes the CRP vNext owner-gap count to zero. Several items remain
+`PARTIALLY_CLOSED_BY_OD`; per explicit task instruction, this is correct and expected — remaining
+questions there are implementation mechanics, not owner architecture decisions.
 
 ---
 
@@ -219,26 +321,37 @@ Source: `docs/narrative/AI_ROLES_AND_KNOWLEDGE_ROUTING_CONCEPT_v1.md §7` (verba
 
 | D-RKR_ID | ORIGINAL_QUESTION (verbatim, translated) | MAPPED_§37 | MAPPED_OD | STATUS_AFTER_RATIFICATION | WHAT_IS_DECIDED | WHAT_REMAINS | BLOCKS_MVP_SPEC | BLOCKS_IMPLEMENTATION |
 |---|---|---|---|---|---|---|---|---|
-| D-RKR-1 | Which roles enter the first registry? | #12 | OD-5 (partial) | PARTIALLY_CLOSED | MVP **execution** subset = R1,R2,R4,R6,R8 | Whether the **registry** additionally lists R3,R5,R7 as registered-but-conditional/support entries | NO | YES (registry schema needs this) |
-| D-RKR-2 | Where does the canonical role prompt live (`roles/` vs elsewhere)? | #1 (adjacent) | none | OPEN | — | Canonical prompt location policy for vNext roles (new contracts per OD-2/OD-3/OD-4) | NO | YES |
+| D-RKR-1 | Which roles enter the first registry? | #12 | OD-5, OD-11 | **CLOSED** *(was PARTIALLY_CLOSED)* | OD-5 sets MVP **execution** subset (R1,R2,R4,R6,R8); OD-11 now completes the picture — registry conceptually spans all vNext-defined roles, each tagged with a status (R1,R2,R4,R6,R8 = ACTIVE; R3,R5 = INACTIVE/OPTIONAL pending their own contracts; R7 = deterministic support, not required ACTIVE) | Physical registry file format only (implementation parameter) | NO | NO (registry authority/membership fully specified; only serialization remains) |
+| D-RKR-2 | Where does the canonical role prompt live (`roles/` vs elsewhere)? | #1 (adjacent) | OD-11 (partial) | **IMPLEMENTATION_PARAMETER** *(was OPEN)* | OD-11 introduces `prompt_ref` as an abstract registry field, confirming a canonical-prompt-pointer *concept* exists | Exact location policy for new vNext contracts (`roles/` vs elsewhere) — a filesystem/spec convention, not a further owner architecture call | NO | YES |
 | D-RKR-3 | Who selects the role for a task: human / router / hybrid? | — | none | OPEN | — | Selection mechanism; CRP's own pipeline graph (architecture §17) is a fixed sequence, which sidesteps but does not answer the general question | NO | YES (for router, not for CRP's own fixed graph) |
 | D-RKR-4 | Can one task invoke multiple roles sequentially? | — | OD-1 (partial, CRP-specific) | PARTIALLY_CLOSED | For CRP vNext specifically: yes — the ratified pipeline graph is parallel (R2‖R4‖R5) then sequential (→R6→R7→R8) | As a general cross-project question, still open | NO | NO (CRP-specific answer suffices for CRP) |
-| D-RKR-5 | Knowledge profile per role (allowed directories/modules)? | #13 | OD-1 (partial) | PARTIALLY_CLOSED | Principle: bounded, least-privilege, default-deny (OD-1); architecture §19 gives a proposal-grade per-role table for CRP roles | Exact ratified paths/allowlist per role | YES | YES |
+| D-RKR-5 | Knowledge profile per role (allowed directories/modules)? | #13 | OD-1, OD-14 (partial) | PARTIALLY_CLOSED | Principle: bounded, least-privilege, default-deny (OD-1); OD-14 adds: legacy KB is NOT auto-inherited into vNext profiles — each profile is defined fresh, legacy reuse needs compatibility+provenance review | Exact ratified paths/allowlist per role | YES | YES |
 | D-RKR-6 | Semantic search or exact-modular-first? | #13 | none | OPEN | — | D-RKR-6's own text already recommends "modular first," but this is a recommendation, not an owner ratification | NO | YES |
 | D-RKR-7 | How is context size bounded? | #13 | none | OPEN | — | Concrete budget mechanism/numbers | NO | YES |
 | D-RKR-8 | How is role quality measured? | — | none | OPEN | — | Role-quality evaluation methodology (distinct from R8's package/evidence audit) | NO | NO (not MVP-blocking; R8 audits the package, not "role quality") |
-| D-RKR-9 | How is a new role version approved? (recommended: proposal → human) | #12 | OD-1 (principle only) | PARTIALLY_CLOSED | Cross-cutting human-approval principle ratified (OD-1: human controls canon, no auto-writes) | Exact role-version-approval workflow | NO | YES |
-| D-RKR-10 | How is rollback performed? | #12 | none | OPEN | — | Rollback mechanism | NO | YES |
-| D-RKR-11 | Can a role read PAC session memory? (recommended: no by default) | #15 | none | OPEN | — | Owner ratification of the recommended default-deny posture | NO | YES |
-| D-RKR-12 | Can a role read Sandbox state? (recommended: no by default) | #15 | none | OPEN | — | Owner ratification of the recommended default-deny posture | NO | YES |
+| D-RKR-9 | How is a new role version approved? (recommended: proposal → human) | #12 | OD-11 | **CLOSED** *(was PARTIALLY_CLOSED)* | OD-11 directly answers this: new version activation requires evaluation + human approval; no automatic version promotion | none | NO | NO |
+| D-RKR-10 | How is rollback performed? | #12 | OD-11 (partial) | PARTIALLY_CLOSED *(was OPEN)* | OD-11 establishes the principle that versions are immutable and retained/selectable (no automatic promotion implies no destructive overwrite) | Exact rollback mechanism/tooling/audit trail | NO | YES |
+| D-RKR-11 | Can a role read PAC session memory? (recommended: no by default) | #15 | OD-12 | **CLOSED** *(was OPEN)* | OD-12 ratifies default-deny for CRP roles: direct PAC read denied; only explicit export → `SourceEvidence` snapshot permitted | Export/snapshot adapter implementation (implementation parameter) | NO | NO (policy decided; only adapter code remains, which is implementation) |
+| D-RKR-12 | Can a role read Sandbox state? (recommended: no by default) | #15 | OD-13 | **CLOSED** *(was OPEN)* | OD-13 ratifies default-deny for CRP roles: direct Sandbox read/write denied; only explicit owner-authorized immutable snapshot → `SourceEvidence` permitted | Snapshot adapter implementation (implementation parameter) | NO | NO (policy decided; only adapter code remains, which is implementation) |
 | D-RKR-13 | How is cross-character knowledge leakage prevented? | #14 | OD-1, OD-7 (partial, CRP/Kira-specific) | PARTIALLY_CLOSED | Policy direction for CRP: immutable per-run evidence snapshot, default-deny `personas/kira/**` during Kira benchmark, R8 leakage check | General cross-project mechanism; implementation/test of the CRP-specific policy | NO | YES |
 | D-RKR-14 | Where does the future Knowledge Router live? (recommended: thin layer over Gateway) | — | none | OPEN | — | Owner ratification of the recommended placement | NO | YES |
 | D-RKR-15 | How is provenance of used context preserved? | #3 (adjacent) | OD-1 (partial, CRP-specific) | PARTIALLY_CLOSED | CRP-specific provenance requirement ratified conceptually (OD-1; architecture §26 `RoleTask`/`RoleResult` contracts carry `provenance_log_ref`) | General cross-project Knowledge Router provenance mechanism | NO | YES |
 
-**Count check:** 15/15 items mapped. `CLOSED`: 0. `PARTIALLY_CLOSED`: 6 (D-RKR-1, D-RKR-4, D-RKR-5, D-RKR-9, D-RKR-13, D-RKR-15). `OPEN`: 9 (D-RKR-2, D-RKR-3, D-RKR-6, D-RKR-7, D-RKR-8, D-RKR-10, D-RKR-11, D-RKR-12, D-RKR-14). `SUPERSEDED`: 0. `DEFERRED`: 0. `IMPLEMENTATION_PARAMETER`: 0 (folded into PARTIALLY_CLOSED remainders above).
+**Count check (updated 2026-08-16, post D-CRP-11–14):** 15/15 items mapped.
+`CLOSED`: 4 (D-RKR-1, D-RKR-9, D-RKR-11, D-RKR-12 — **all newly closed** this pass).
+`PARTIALLY_CLOSED`: 5 (D-RKR-4, D-RKR-5, D-RKR-10, D-RKR-13, D-RKR-15).
+`IMPLEMENTATION_PARAMETER`: 1 (D-RKR-2 — **newly reclassified** from OPEN; no further owner architecture
+decision needed, only a filesystem/spec convention).
+`OPEN`: 5 (D-RKR-3, D-RKR-6, D-RKR-7, D-RKR-8, D-RKR-14 — **unaffected** by D-CRP-11–14, genuinely still
+open, not owner gaps of the CRP vNext track specifically — see §E).
+`SUPERSEDED`: 0. `DEFERRED`: 0. Total: 4 + 5 + 1 + 5 = 15.
 
 No D-RKR item is marked `CLOSED` merely because an OD is topically related — each `PARTIALLY_CLOSED` row
-states exactly what is decided and exactly what remains, per the no-hand-waving requirement.
+states exactly what is decided and exactly what remains, per the no-hand-waving requirement. The five
+`OPEN` items (D-RKR-3, 6, 7, 8, 14) are **not** part of the CRP vNext owner-gap count (§E) — they are
+general cross-project questions (role-selection mechanism, search order, context-budget numbers,
+role-quality measurement, Knowledge Router placement) that no CRP-specific owner decision in this track
+has been asked to resolve, and remain open pending their own future ratification track if/when needed.
 
 ---
 
@@ -329,28 +442,42 @@ of the `canon_state` enum remains a genuine future parameter (§F), not a blocke
 
 ## E. Unresolved items (owner gaps)
 
-=== CRP vNEXT RATIFICATION OWNER GAP COUNTDOWN ===
+=== CRP vNEXT RATIFICATION OWNER GAP COUNTDOWN (updated 2026-08-16, post D-CRP-11–14) ===
 
 - [G1] Role Registry authority: version/hash/rollback mechanics, and whether registry membership extends
-  beyond the MVP execution subset to include R3/R5/R7 as registered-but-conditional. (§37-#12, D-RKR-1/2/9/10)
+  beyond the MVP execution subset to include R3/R5/R7 as registered-but-conditional. (§37-#12,
+  D-RKR-1/2/9/10) — **CLOSED by D-CRP-11.** Registry authority/activation semantics ratified; remaining
+  hash-chain/rollback-tooling/file-format details are implementation parameters (§F), not owner gaps.
 - [G2] PAC session memory read access for CRP roles — default-deny is recommended but not owner-ratified.
-  (§37-#15, D-RKR-11)
+  (§37-#15, D-RKR-11) — **CLOSED by D-CRP-12.** Direct access = DENY; export-to-`SourceEvidence` is the
+  only permitted path. Adapter implementation is an implementation parameter (§F), not an owner gap.
 - [G3] Sandbox state read access for CRP roles — default-deny is recommended but not owner-ratified.
-  (§37-#15, D-RKR-12)
+  (§37-#15, D-RKR-12) — **CLOSED by D-CRP-13.** Direct read/write = DENY; explicit immutable-snapshot
+  export is the only permitted path. Adapter implementation is an implementation parameter (§F), not an
+  owner gap.
 - [G4] Legacy KB/guides cleanup authority — no owner decision grants or denies who may retire/rewrite the
-  37 legacy knowledge-base files or stale guides identified in the 2026-08-03 audit. (§37-#17)
+  37 legacy knowledge-base files or stale guides identified in the 2026-08-03 audit. (§37-#17) —
+  **CLOSED by D-CRP-14.** Non-destructive cleanup (documentation, stale-reference correction, index
+  correction, migration inventory, compatibility classification) is now authorized. Destructive cleanup
+  (delete/move/rewrite/consolidate) remains explicitly **not** authorized and would require its own,
+  separate, future owner decision if ever proposed — that potential future decision is not itself an
+  open gap of *this* ratification; it simply hasn't been asked for.
 
-**REMAINING OWNER GAPS: 4**
+**REMAINING OWNER GAPS: 0**
 
-None of these four gaps blocks the truthfulness of this ratification — each is recorded honestly as
-`STILL_OPEN_OWNER_DECISION` or `SOURCE_CLEANUP_ONLY` in §B/§C above, not silently closed. They **do**
-block specific future work (Role Registry implementation for G1; any role touching PAC/Sandbox state for
-G2/G3; any legacy-KB rewrite for G4), but they do not block ratifying OD-1–OD-10 or drafting a future MVP
-specification that simply defers them.
+All four gaps from the first ratification pass are closed by D-CRP-11–14, per explicit owner
+authorization dated 2026-08-16 (this continuation pass). This does **not** mean every historical §37/D-RKR
+item is `CLOSED` — several remain `PARTIALLY_CLOSED`, `IMPLEMENTATION_PARAMETER`, or genuinely `OPEN` (see
+§B/§C, updated counts). Per explicit task instruction: an owner-gap count of zero does not require a
+historical-open-item count of zero — the remaining open items are implementation mechanics or
+general/non-CRP-specific questions, not CRP vNext owner architecture decisions still pending.
 
 ---
 
 ## F. Implementation parameters (not owner gaps — engineering/spec work)
+
+*Updated 2026-08-16 (post D-CRP-11–14): items resolved this pass are removed; new implementation
+parameters surfaced by D-CRP-11–14 are added, marked **NEW**.*
 
 - Exact R2 "sufficient evidence" threshold defining `SKIPPED_INSUFFICIENT_EVIDENCE` (§37-#5).
 - Exact R4 corpus floor number and PB-REC-style recognizability rubric (§37-#7).
@@ -361,25 +488,47 @@ specification that simply defers them.
 - Implementation and test of the default-deny cross-character/leakage policy (§37-#14, D-RKR-13).
 - Fixed probe set and stale-audit invalidation rule for R8 (§37-#16).
 - Exact numeric/qualitative Kira-benchmark success thresholds (§37-#18).
-- `canon_state` enum definition (§D.2/§D.4) — deferred, not invented here.
-- Canonical role-prompt location policy for new vNext contracts (D-RKR-2).
+- `canon_state` enum definition (§D.2/§D.4) — deferred, not invented here; unaffected by D-CRP-11–14.
+- Canonical role-prompt location policy for new vNext contracts, i.e. exact value the registry's
+  `prompt_ref` field points to (D-RKR-2; concept ratified by D-CRP-11, exact location still open).
 - Role/task selection mechanism beyond CRP's own fixed pipeline graph (D-RKR-3).
 - Modular-vs-semantic search order ratification (D-RKR-6) — currently only a recommendation.
-- Role-version-approval workflow specifics (D-RKR-9) — human-approval principle is ratified, workflow is not.
-- Rollback mechanism (D-RKR-10).
 - Knowledge Router placement ratification (D-RKR-14) — currently only a recommendation.
 - General (non-CRP-specific) Knowledge Router context-provenance mechanism (D-RKR-15).
+- **NEW** — Role Registry physical file format/schema (YAML/JSON), loader implementation, cache
+  implementation, exact filesystem paths, and exact hash-chain mechanics for versioning (D-CRP-11,
+  §37-#12).
+- **NEW** — Exact rollback mechanism/tooling/audit trail — D-CRP-11 ratifies the *principle* (versions
+  immutable, retained, selectable); the mechanism itself is not specified (D-RKR-10, §37-#12).
+- **NEW** — PAC-memory export/snapshot adapter: API, `SourceEvidence` schema mapping, authorization
+  carrier (D-CRP-12, D-RKR-11).
+- **NEW** — Sandbox/CES snapshot adapter: API, `SourceEvidence` schema mapping, authorization carrier,
+  owner-authorization mechanism for triggering a snapshot (D-CRP-13, D-RKR-12).
+- **NEW** — Tooling to produce the legacy-KB migration inventory and compatibility classification
+  authorized (non-destructively) by D-CRP-14 (§37-#17) — the inventory itself is a source-cleanup task
+  (§G below); the *tooling* to generate/maintain it is an implementation parameter.
+
+*Removed this pass (resolved, no longer implementation parameters):* role-version-approval workflow
+specifics (D-RKR-9 — now `CLOSED`: evaluation + human approval, no auto-promotion, per D-CRP-11).
 
 ## G. Source-cleanup backlog
 
-- 37 legacy `knowledge_base/` files not wired to any role prompt (audit §8–9) — cleanup/retirement
-  authority not decided (§37-#17, gap G4).
+*Updated 2026-08-16: non-destructive legacy-KB cleanup is now explicitly authorized by D-CRP-14 (within
+the non-destructive scope only — see D-CRP-14 entry in §A). Destructive cleanup remains not authorized.*
+
+- 37 legacy `knowledge_base/` files not wired to any role prompt (audit §8–9) — **non-destructive**
+  cleanup (status documentation, index correction, migration inventory, compatibility classification)
+  now authorized by D-CRP-14. Destructive cleanup (delete/move/rewrite/consolidate) remains **not**
+  authorized.
 - Stale cross-role version references (R1→R2 v1.2, R2→R3 v2.1, R3→R4 v1.1, R4→R5 v1.1, R5→R6 v2.0) —
-  cosmetic, not corrected by this ratification.
-- `schemas/persona_schema_v3_2_VOYAGE.json` filename/title mismatch (v3_2 vs "v3.1") — cosmetic, not
-  corrected by this ratification.
+  cosmetic; correcting the reference text (documentation-only) falls within D-CRP-14's non-destructive
+  scope if it touches legacy KB, otherwise unaffected and not corrected by this ratification.
+- `schemas/persona_schema_v3_2_VOYAGE.json` filename/title mismatch (v3_2 vs "v3.1") — cosmetic, outside
+  KB scope, not corrected by this ratification.
 - `docs/06_KNOWLEDGE_BASE_GUIDE.md` describes an author-based KB layout diverging from the actual
-  role-based layout — not corrected by this ratification.
+  role-based layout — documentation-only correction falls within D-CRP-14's non-destructive scope; not
+  performed by this ratification pass (docs-only write-set limit; deferred to a future dedicated cleanup
+  task).
 
 ---
 
