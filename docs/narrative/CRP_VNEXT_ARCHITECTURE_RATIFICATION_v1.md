@@ -1,24 +1,33 @@
 # CRP vNext — ARCHITECTURE RATIFICATION (v1)
 
 > **Status:** OWNER-RATIFIED DIRECTION — IMPLEMENTATION NOT AUTHORIZED
-> **Date:** 2026-08-16
+> **Date:** 2026-08-16 (first pass: OD-1…10) · **updated 2026-08-16** (continuation pass: D-CRP-11…14)
 > **Track:** CRP vNext (Character Reconstruction Pipeline), successor direction to legacy R1–R8
-> **Companion document:** [`CRP_VNEXT_DECISION_REGISTER_v1.md`](CRP_VNEXT_DECISION_REGISTER_v1.md) — full §37 / D-RKR mapping, taxonomy, owner-gap countdown.
-> **Source authority:** owner acceptance communicated 2026-08-16, formalizing the proposal in
-> `RKR_CHARACTER_RECONSTRUCTION_PIPELINE_VNEXT_ARCHITECTURE_2026-08-16.md` (`LOCAL_STORAGE/handoffs/`).
+> **Companion document:** [`CRP_VNEXT_DECISION_REGISTER_v1.md`](CRP_VNEXT_DECISION_REGISTER_v1.md) — full §37 / D-RKR mapping, taxonomy, owner-gap countdown (now 0).
+> **Source authority:** owner acceptance communicated 2026-08-16 (two ratification passes, same day),
+> formalizing the proposal in `RKR_CHARACTER_RECONSTRUCTION_PIPELINE_VNEXT_ARCHITECTURE_2026-08-16.md`
+> (`LOCAL_STORAGE/handoffs/`) and, for D-CRP-11–14, closing the four owner gaps that first pass left open.
 
 ---
 
 ## 0. What this document is
 
-This document formally ratifies **CRP-OD-1 … CRP-OD-10** (owner shorthand: **OD-1 … OD-10**) — ten
-owner decisions accepted on 2026-08-16 that establish the direction for the Character Reconstruction
-Pipeline vNext. It does **not** ratify an MVP specification, does **not** authorize implementation, and
-does **not** close the pre-existing `D-RKR-1…15` register or all eighteen `§37` historical decisions —
-those are mapped item-by-item in the companion decision register, and most remain open or only
-partially closed.
+This document formally ratifies **CRP-OD-1 … CRP-OD-14** — the original ten owner decisions (owner
+shorthand `OD-1…OD-10`, accepted 2026-08-16) plus four more (owner/task-brief label `D-CRP-11…D-CRP-14`,
+accepted the same day in a continuation pass) that together establish the direction for the Character
+Reconstruction Pipeline vNext, **and close all four CRP vNext owner gaps identified after the first pass**
+(Role Registry authority, PAC memory access, Sandbox/CES access, legacy KB cleanup authority — see decision
+register §E).
 
-Do not read acceptance of OD-1–OD-10 as "all historical RKR decisions closed." They are not.
+It does **not** ratify an MVP specification and does **not** authorize implementation. It does **not**
+close every historical `D-RKR-1…15` question or every one of the eighteen `§37` historical decisions —
+several remain genuinely open or only partially closed as **implementation parameters** or
+**general/non-CRP-specific questions**, which is different from an unresolved **owner gap**. The
+companion decision register maps every item honestly, updated after each ratification pass.
+
+Do not read acceptance of OD-1–OD-10 / D-CRP-11–14 as "every historical RKR question closed." Owner
+*gaps* are closed (0 remaining); some historical *questions* remain open as engineering work, not as
+things requiring further owner judgment.
 
 ---
 
@@ -45,7 +54,7 @@ execution contract, and is not deprecated or deleted by this ratification (see �
 
 ---
 
-## 2. CRP-OD-1 … CRP-OD-10 (owner shorthand: OD-1 … OD-10)
+## 2. CRP-OD-1 … CRP-OD-14 (owner shorthand: OD-1…10, D-CRP-11…14)
 
 Full rationale/implication text lives in the decision register. Summary:
 
@@ -61,6 +70,13 @@ Full rationale/implication text lives in the decision register. Summary:
 | CRP-OD-8 | OD-8 | Confidence/uncertainty vocabulary = **KNOWN / PROBABLE / POSSIBLE / UNKNOWN / CONTRADICTORY**. No fake numeric precision, no mechanical averaging. Composite-conclusion confidence cannot exceed the weakest *necessary* evidentiary link. Contradictory evidence must remain visible. See decision register §D for full taxonomy reconciliation (this vocabulary is a **confidence axis**, kept separate from source/provenance and from canon state — see §5 below). |
 | CRP-OD-9 | OD-9 | R3 is **optional and explicitly gated**: requires relevant use case, authorization/opt-in where required, sufficient direct evidence. Allowed outcomes: `SKIPPED_NOT_AUTHORIZED`, `SKIPPED_NOT_NEEDED`, `INSUFFICIENT_EVIDENCE`. Forbidden: inference from appearance, forced completeness, inference solely from attachment labels, model priors promoted as character facts. |
 | CRP-OD-10 | OD-10 | `OWNER_DIRECT` outranks `MODEL_INFERENCE` for **promotion authority**. Higher-priority evidence does **not** delete conflicting evidence — material conflicts are preserved, both claims recorded, never silently averaged or "corrected." Canonical principle: **UNRESOLVED CONTRADICTION > SILENT CORRECTION.** |
+| CRP-OD-11 | D-CRP-11 | **Role Registry mechanics.** Registry = explicit authoritative catalog (not a prompt store, not filesystem auto-discovery, not "latest wins"). MVP ACTIVE roles: R1,R2,R4,R6,R8. R3/R5 = INACTIVE/OPTIONAL pending their own contracts. R7 = deterministic support, not required ACTIVE. New version activation requires evaluation + human approval; no automatic promotion. Physical schema/loader/paths = implementation parameters, not decided here. |
+| CRP-OD-12 | D-CRP-12 | **PAC memory access.** Direct CRP read of PAC memory = **DENY**. Only path in: explicit authorized export → `SourceEvidence` → provenance recorded → immutable authoring snapshot. Never a live/hidden lookup. |
+| CRP-OD-13 | D-CRP-13 | **Sandbox/CES access.** Direct CRP read/write of Sandbox = **DENY**. Only path in: explicit owner-authorized immutable snapshot → `SourceEvidence`, provenance-tagged, non-canon. CRP never mutates or silently tracks live sandbox state. |
+| CRP-OD-14 | D-CRP-14 | **Legacy KB policy.** Legacy R1–R8 KB = `LEGACY_REFERENCE`; **no** default inheritance into CRP vNext profiles. Reuse requires compatibility + provenance review. Non-destructive cleanup (documentation, index/stale-reference correction, migration inventory, compatibility classification) authorized; destructive cleanup (delete/move/rewrite/consolidate) is **not**. |
+
+All fourteen decisions are `OWNER_RATIFIED`, dated 2026-08-16. None of the four continuation-pass
+decisions (D-CRP-11–14) authorizes MVP implementation — see §7.
 
 ---
 
@@ -88,20 +104,26 @@ CRP vNext must **not**:
 
 This boundary is unchanged from the source architecture doc (`RKR_CHARACTER_RECONSTRUCTION_PIPELINE_VNEXT_ARCHITECTURE_2026-08-16.md` §20–21) and is ratified as-is; no new CIS layer names are introduced by this ratification (see decision register §D for why the previously expected "A. Authoring / B. Runtime / C. Memory / D. Evolution / E. Canon Promo" layer set was not used — it was not found in any accessible source).
 
+**PAC / Sandbox boundary (D-CRP-12, D-CRP-13):** CRP roles have **no direct read/write access** to PAC
+session memory or Sandbox/CES state. The only permitted path for either is an explicit,
+authorization-gated export into an immutable `SourceEvidence` record — never a live lookup, never a
+silent/hidden context injection. This closes what were, until this ratification's continuation pass, two
+open owner gaps (see decision register §E).
+
 ---
 
 ## 4. R1–R8 vNext role summary (as ratified)
 
-| Role | vNext name | MVP status (OD-5) | Key boundary |
-|---|---|---|---|
-| R1 | Evidence Interviewer | **Included** | No psychology invention; literary portrait is non-canon presentation only |
-| R2 | Psychological Hypothesis Analyst | **Included** | Competing hypotheses only; CIS verifies; never flattens into permanent trait |
-| R3 | Optional Intimacy Profile Specialist | Optional, gated (OD-9) | No inference from appearance; no forced completeness |
-| R4 | Voice Reconstruction Analyst | **Included** | Corpus-based; `OBSERVED/INFERRED/GENERATED/NEGATIVE` pattern labels; new contract required (OD-2) |
-| R5 | Visual Observer | Optional | Observation only; zero psychology/morality/intelligence/sexuality inference from appearance |
-| R6 | Deterministic Persona Compiler | **Included** | Invents nothing; module-first; contradictions compiled explicitly, never "corrected" |
-| R7 | Consistency Validator | Deterministic support stage | Never invents/improves content; not required as standalone LLM role in MVP |
-| R8 | Independent Evidence Auditor | **Included** | Reads package + evidence ledger, not authoring sessions; mandatory checks incl. canon-write attempt = immediate FAIL/BLOCKED |
+| Role | vNext name | MVP status (OD-5) | Registry status (D-CRP-11) | Key boundary |
+|---|---|---|---|---|
+| R1 | Evidence Interviewer | **Included** | ACTIVE | No psychology invention; literary portrait is non-canon presentation only |
+| R2 | Psychological Hypothesis Analyst | **Included** | ACTIVE | Competing hypotheses only; CIS verifies; never flattens into permanent trait |
+| R3 | Optional Intimacy Profile Specialist | Optional, gated (OD-9) | INACTIVE / NOT YET RATIFIED FOR EXECUTION until its specific contract/gate is defined | No inference from appearance; no forced completeness |
+| R4 | Voice Reconstruction Analyst | **Included** | ACTIVE | Corpus-based; `OBSERVED/INFERRED/GENERATED/NEGATIVE` pattern labels; new contract required (OD-2) |
+| R5 | Visual Observer | Optional | INACTIVE / OPTIONAL until its specific execution contract is defined | Observation only; zero psychology/morality/intelligence/sexuality inference from appearance |
+| R6 | Deterministic Persona Compiler | **Included** | ACTIVE | Invents nothing; module-first; contradictions compiled explicitly, never "corrected" |
+| R7 | Consistency Validator | Deterministic support stage | Not required as an ACTIVE autonomous LLM role | Never invents/improves content; not required as standalone LLM role in MVP |
+| R8 | Independent Evidence Auditor | **Included** | ACTIVE | Reads package + evidence ledger, not authoring sessions; mandatory checks incl. canon-write attempt = immediate FAIL/BLOCKED |
 
 ---
 
@@ -158,6 +180,8 @@ rewritten or invalidated.
 |---|---|
 | CRP vNext / Variant C direction | OWNER_RATIFIED |
 | OD-1 … OD-10 | OWNER_RATIFIED |
+| D-CRP-11 … D-CRP-14 | OWNER_RATIFIED (2026-08-16 continuation pass) |
+| CRP vNext owner-gap count | **0** (was 4 — see decision register §E) |
 | MVP specification | **NOT YET RATIFIED** |
 | MVP implementation | **NOT AUTHORIZED** |
 | Kira reconstruction execution | **NOT AUTHORIZED** |
