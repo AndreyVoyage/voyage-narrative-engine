@@ -105,6 +105,23 @@ class ClaimStatus(Enum):
     OWNER_RESOLVED = "OWNER_RESOLVED"
 
 
+class VoicePatternLabel(Enum):
+    """R4-scoped voice-pattern semantic label (CRP_MVP_SPEC_v1.md §12).
+
+    A fourth, INDEPENDENT axis specific to R4 voice-reconstruction output,
+    resolved by CRP_MVP_S2B_PROMPT_AUTHORING_PREFLIGHT_2026-08-17.md §6.
+    It is NOT a ``source_type`` (provenance/origin), NOT a ``confidence``
+    (epistemic strength), and NOT a general ``claim_type`` (claim semantic
+    type). It is prospective vNext vocabulary, not recovered historical
+    taxonomy.
+    """
+
+    OBSERVED = "OBSERVED"
+    INFERRED = "INFERRED"
+    GENERATED_RULE = "GENERATED_RULE"
+    NEGATIVE_EXAMPLE = "NEGATIVE_EXAMPLE"
+
+
 class Severity(Enum):
     """Contradiction severity (CRP_MVP_CONTRACTS_v1.md §C)."""
 
@@ -206,6 +223,7 @@ class RoleClaim:
     counterevidence_ids: Tuple[str, ...] = ()
     contradiction_ids: Tuple[str, ...] = ()
     revision_round: int = 0
+    voice_pattern_label: Optional[VoicePatternLabel] = None
 
     def __post_init__(self) -> None:
         _require_non_empty(self.claim_id, "claim_id")
@@ -235,6 +253,8 @@ class RoleClaim:
             raise CrpValidationError("counterevidence_ids/contradiction_ids must be tuples")
         if isinstance(self.revision_round, bool) or not isinstance(self.revision_round, int) or self.revision_round < 0:
             raise CrpValidationError("revision_round must be an int >= 0")
+        if self.voice_pattern_label is not None and not isinstance(self.voice_pattern_label, VoicePatternLabel):
+            raise CrpValidationError("voice_pattern_label must be a VoicePatternLabel or None")
         object.__setattr__(self, "source_evidence_ids", tuple(self.source_evidence_ids))
         object.__setattr__(self, "source_type_summary", tuple(self.source_type_summary))
         object.__setattr__(self, "counterevidence_ids", tuple(self.counterevidence_ids))
