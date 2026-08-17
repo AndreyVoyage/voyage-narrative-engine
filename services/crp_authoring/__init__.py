@@ -9,6 +9,8 @@ validation. No role execution, no compiler, no registry, no CLI, no provider,
 no canon access, no PAC/Sandbox access.
 """
 
+from .candidate_package import CandidateCharacterPackage, PackageStatus
+from .compiler import CompileContext, CompilerError, compile_candidate_package
 from .contracts import (
     ClaimStatus,
     ClaimType,
@@ -22,6 +24,7 @@ from .contracts import (
 )
 from .errors import CrpError, CrpValidationError, UnsupportedClaimError
 from .validation import check_contradiction_integrity, reject_unsupported_claim
+from .validator import ValidationFinding, ValidationReport, validate_package
 
 __all__ = [
     "SourceEvidence",
@@ -33,6 +36,14 @@ __all__ = [
     "ClaimStatus",
     "Severity",
     "ResolutionStatus",
+    "CandidateCharacterPackage",
+    "PackageStatus",
+    "CompileContext",
+    "CompilerError",
+    "compile_candidate_package",
+    "ValidationFinding",
+    "ValidationReport",
+    "validate_package",
     "CrpError",
     "CrpValidationError",
     "UnsupportedClaimError",

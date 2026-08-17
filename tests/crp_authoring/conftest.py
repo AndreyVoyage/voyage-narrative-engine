@@ -15,10 +15,13 @@ if str(_REPO_ROOT) not in sys.path:
 import pytest
 
 from services.crp_authoring import (
+    CandidateCharacterPackage,
     ClaimStatus,
     ClaimType,
+    CompileContext,
     Confidence,
     ContradictionRecord,
+    PackageStatus,
     ResolutionStatus,
     RoleClaim,
     Severity,
@@ -111,3 +114,59 @@ def claim_factory():
 @pytest.fixture
 def contradiction_factory():
     return make_contradiction
+
+
+def make_compile_context(
+    subject_id: str = "char-subject-1",
+    package_id: str = "pkg-001",
+    **overrides,
+) -> CompileContext:
+    """A minimal valid CompileContext with sensible defaults."""
+    kwargs = dict(
+        package_id=package_id,
+        subject_id=subject_id,
+        package_version=0,
+        source_snapshot_id="snapshot-1",
+        created_at=utc_now(),
+    )
+    kwargs.update(overrides)
+    return CompileContext(**kwargs)
+
+
+def make_package(
+    package_id: str = "pkg-001",
+    subject_id: str = "char-subject-1",
+    claims=(),
+    contradictions=(),
+    **overrides,
+) -> CandidateCharacterPackage:
+    """A minimal valid CandidateCharacterPackage with sensible defaults."""
+    kwargs = dict(
+        package_id=package_id,
+        subject_id=subject_id,
+        package_version=0,
+        source_snapshot_id="snapshot-1",
+        role_result_refs=(),
+        claims=tuple(claims),
+        contradictions=tuple(contradictions),
+        unknowns=(),
+        psychology_candidate={},
+        voice_candidate={},
+        validation_results={},
+        audit_result=None,
+        provenance_manifest={},
+        created_at=utc_now(),
+        status=PackageStatus.DRAFT,
+    )
+    kwargs.update(overrides)
+    return CandidateCharacterPackage(**kwargs)
+
+
+@pytest.fixture
+def compile_context_factory():
+    return make_compile_context
+
+
+@pytest.fixture
+def package_factory():
+    return make_package
