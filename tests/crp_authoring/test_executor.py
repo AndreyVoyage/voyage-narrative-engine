@@ -1,0 +1,167 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""CRP MVP S2A -- bounded role executor tests (fake provider only)."""
+
+from __future__ import annotations
+
+import json
+
+import pytest
+
+from services.crp_authoring import (
+    CrpError,
+    ExecutorError,
+    RoleRegistry,
+    RoleStatus,
+    SourceType,
+    execute_role_task,
+)
+
+from tests.crp_authoring.conftest import (
+    make_fake_provider,
+    make_knowledge_profile,
+    make_registry_entry,
+    make_role_task,
+    make_source,
+)
+
+
+def _r2_result_json(task_id="task-001", role_id="R2", role_version="v1",
+                    claim_type="HYPOTHESIS", target="psychology.P2",
+                    source_type="OWNER_DIRECT", confidence="POSSIBLE"):
+    return json.dumps({
+        "task_id": task_id,
+        "role_id": role_id,
+        "role_version": role_version,
+        "completion_status": "COMPLETE",
+        "claims": [{
+            "claim_id": "c1",
+            "subject_id": "char-subject-1",
+            "role_id": role_id,
+            "claim": "subject is guarded",
+            "claim_type": claim_type,
+            "source_evidence_ids": ["se-001"],
+            "source_type_summary": [source_type],
+            "confidence": confidence,
+            "rationale_summary": "from evidence",
+            "status": "PROPOSED",
+            "target_module_or_layer": target,
+        }],
+        "unknowns": [],
+        "contradictions": [],
+        "provenance_summary": {"used_evidence": ["se-001"]},
+        "requests_for_more_evidence": [],
+        "warnings": [],
+        "questions_for_r1": [],
+        "new_source_evidence": [],
+    }, ensure_ascii=False)
+
+
+def _r2_registry_scope():
+    entry = make_registry_entry(role_id="R2", version="v1")
+    registry = RoleRegistry((entry,))
+    profiles = {"profile-r2": make_knowledge_profile(profile_id="profile-r2", role_id="R2")}
+    evidence = (make_source(source_id="se-001", source_type=SourceType.OWNER_DIRECT),)
+    task = make_role_task(task_id="task-001", role_id="R2", role_version="v1",
+                          allowed_evidence_ids=("se-001",))
+    return registry, profiles, evidence, task
+
+
+class TestExecutor:
+    def test_fake_provider_executes_and_returns_result(self) -> None:
+        registry, profiles, evidence, task = _r2_registry_scope()
+        provider = make_fake_provider(_r2_result_json())
+        result = execute_role_task(task, registry, profiles, provider, evidence)
+        assert result.task_id == "task-001"
+        assert result.claims[0].claim_id == "c1"
+
+    def test_inactive_role_rejected(self) -> None:
+        entry = make_registry_entry(role_id="R2", version="v1", status=RoleStatus.INACTIVE)
+        registry = RoleRegistry((entry,))
+        profiles = {"profile-r2": make_knowledge_profile(profile_id="profile-r2", role_id="R2")}
+        evidence = (make_source(source_id="se-001", source_type=SourceType.OWNER_DIRECT),)
+        task = make_role_task(role_id="R2", allowed_evidence_ids=("se-001",))
+        with pytest.raises(ExecutorError):
+            execute_role_task(task, registry, profiles, make_fake_provider("{}"), evidence)
+
+    def test_role_version_mismatch_rejected(self) -> None:
+        registry, profiles, evidence, _ = _r2_registry_scope()
+        task = make_role_task(role_id="R2", role_version="v9")
+        with pytest.raises(ExecutorError):
+            execute_role_task(task, registry, profiles, make_fake_provider("{}"), evidence)
+
+    def test_absent_role_rejected(self) -> None:
+        registry = RoleRegistry((make_registry_entry(role_id="R1"),))
+        profiles = {"profile-r1": make_knowledge_profile(profile_id="profile-r1", role_id="R1")}
+        evidence = (make_source(source_id="se-001", source_type=SourceType.OWNER_DIRECT),)
+        task = make_role_task(role_id="R2")
+        with pytest.raises(ExecutorError):
+            execute_role_task(task, registry, profiles, make_fake_provider("{}"), evidence)
+
+    def test_revision_round_out_of_range_rejected(self) -> None:
+        # revision_round > 2 is rejected at RoleTask construction (fail-closed
+        # before the executor is even reachable).
+        with pytest.raises(CrpError):
+            make_role_task(revision_round=3)
+
+    def test_empty_output_rejected(self) -> None:
+        registry, profiles, evidence, task = _r2_registry_scope()
+        with pytest.raises(ExecutorError):
+            execute_role_task(task, registry, profiles, make_fake_provider("   "), evidence)
+
+    def test_malformed_output_rejected(self) -> None:
+        registry, profiles, evidence, task = _r2_registry_scope()
+        with pytest.raises(ExecutorError):
+            execute_role_task(task, registry, profiles, make_fake_provider("not json"), evidence)
+
+    def test_unknown_field_rejected(self) -> None:
+        registry, profiles, evidence, task = _r2_registry_scope()
+        payload = json.loads(_r2_result_json())
+        payload["extra_field"] = "nope"
+        with pytest.raises(ExecutorError):
+            execute_role_task(task, registry, profiles, make_fake_provider(json.dumps(payload)), evidence)
+
+    def test_wrong_role_id_rejected(self) -> None:
+        registry, profiles, evidence, task = _r2_registry_scope()
+        with pytest.raises(ExecutorError):
+            execute_role_task(task, registry, profiles, make_fake_provider(_r2_result_json(role_id="R4")), evidence)
+
+    def test_permission_violation_rejected(self) -> None:
+        # R2 emits a voice-targeted claim -> ROLE_PERMISSION_VIOLATION.
+        registry, profiles, evidence, task = _r2_registry_scope()
+        provider = make_fake_provider(_r2_result_json(target="voice.lexicon"))
+        with pytest.raises(ExecutorError, match="PERMISSION_VIOLATION"):
+            execute_role_task(task, registry, profiles, provider, evidence)
+
+    def test_unsupported_claim_rejected(self) -> None:
+        # A FACT claim with only MODEL_INFERENCE evidence is unsupported.
+        registry, profiles, evidence, task = _r2_registry_scope()
+        provider = make_fake_provider(_r2_result_json(
+            claim_type="FACT", source_type="MODEL_INFERENCE", confidence="KNOWN"))
+        with pytest.raises(CrpError):
+            execute_role_task(task, registry, profiles, provider, evidence)
+
+    def test_evidence_outside_allowlist_rejected(self) -> None:
+        registry, profiles, evidence, task = _r2_registry_scope()
+        # claim references evidence "se-999" not in allowed_evidence_ids
+        payload = json.loads(_r2_result_json())
+        payload["claims"][0]["source_evidence_ids"] = ["se-999"]
+        with pytest.raises(ExecutorError):
+            execute_role_task(task, registry, profiles, make_fake_provider(json.dumps(payload)), evidence)
+
+    def test_no_auto_retry_and_no_chaining(self) -> None:
+        registry, profiles, evidence, task = _r2_registry_scope()
+        calls = []
+
+        def counted(messages):
+            calls.append(messages)
+            return _r2_result_json()
+
+        result = execute_role_task(task, registry, profiles, counted, evidence)
+        assert len(calls) == 1  # exactly one provider invocation
+        assert result.role_id == "R2"
+
+    def test_required_provider_injection(self) -> None:
+        registry, profiles, evidence, task = _r2_registry_scope()
+        with pytest.raises(ExecutorError, match="required injected callable"):
+            execute_role_task(task, registry, profiles, None, evidence)

@@ -11,6 +11,16 @@ no canon access, no PAC/Sandbox access.
 
 from .candidate_package import CandidateCharacterPackage, PackageStatus
 from .compiler import CompileContext, CompilerError, compile_candidate_package
+from .executor import ExecutorError, execute_role_task
+from .knowledge_profile import KnowledgeProfile, RetrievalPolicy
+from .permissions import PERMISSIONS_BY_ROLE, Permission, permission_violations
+from .registry import (
+    ExecutionType,
+    RoleRegistry,
+    RoleRegistryEntry,
+    RoleStatus,
+)
+from .role_task import CompletionStatus, RoleResult, RoleTask
 from .contracts import (
     ClaimStatus,
     ClaimType,
@@ -47,6 +57,20 @@ __all__ = [
     "CrpError",
     "CrpValidationError",
     "UnsupportedClaimError",
+    "RoleTask",
+    "RoleResult",
+    "CompletionStatus",
+    "RoleRegistryEntry",
+    "RoleRegistry",
+    "RoleStatus",
+    "ExecutionType",
+    "KnowledgeProfile",
+    "RetrievalPolicy",
+    "Permission",
+    "PERMISSIONS_BY_ROLE",
+    "permission_violations",
+    "ExecutorError",
+    "execute_role_task",
     "reject_unsupported_claim",
     "check_contradiction_integrity",
 ]
