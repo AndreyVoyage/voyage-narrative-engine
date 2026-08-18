@@ -816,8 +816,9 @@ init python:
             turn_diagnostics,
         )
 
-    # Overlay visible always (RenPy sets config.developer AFTER init python).
-    config.overlay_screens.append("aside_dev_overlay")
+    # Overlay visible only in developer builds (Player Shell v0, OD-UX-05).
+    if config.developer:
+        config.overlay_screens.append("aside_dev_overlay")
 
 
 # Dev overlay button. Visible always.
