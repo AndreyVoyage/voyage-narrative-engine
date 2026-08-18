@@ -1,4 +1,11 @@
 label start:
+    if config.developer:
+        jump dev_scene_selector
+    else:
+        jump player_shell_new_game
+
+
+label dev_scene_selector:
 
     menu:
         "SC_003 — Спортзал ночью: первый контакт":
