@@ -2,11 +2,11 @@
 # -*- coding: utf-8 -*-
 """CRP MVP S2B-part-2 -- static (non-LLM) vNext prompt QA.
 
-Reads the three vNext prompt files as plain text and verifies structural/
-semantic contract markers (section presence, metadata, typed-output keyword
-presence, role-specific boundaries). No fixtures, no production imports, no
-provider, no Kira. Mirrors ``test_architecture_boundary.py``'s file-reading
-style but over Markdown text presence, not AST.
+Reads the vNext prompt files as plain text and verifies structural/semantic
+contract markers (section presence, metadata, typed-output keyword presence,
+role-specific boundaries). No fixtures, no production imports, no provider, no
+Kira. Mirrors ``test_architecture_boundary.py``'s file-reading style but over
+Markdown text presence, not AST.
 """
 
 from __future__ import annotations
@@ -21,12 +21,16 @@ _PIDS = {
     "R1": "ROLE_1_EVIDENCE_INTERVIEWER",
     "R2": "ROLE_2_PSYCHOLOGICAL_HYPOTHESIS_ANALYST",
     "R4": "ROLE_4_VOICE_RECONSTRUCTION_ANALYST",
+    "R3": "ROLE_3_INTIMACY_PROFILE_SPECIALIST",
 }
+
+_ALL_ROLES = ["R1", "R2", "R4", "R3"]
 
 _PROMPT_PATHS = {
     "R1": _REPO_ROOT / "roles" / "vnext" / "ROLE_1_EVIDENCE_INTERVIEWER_v1_PROMPT.md",
     "R2": _REPO_ROOT / "roles" / "vnext" / "ROLE_2_PSYCHOLOGICAL_HYPOTHESIS_ANALYST_v1_PROMPT.md",
     "R4": _REPO_ROOT / "roles" / "vnext" / "ROLE_4_VOICE_RECONSTRUCTION_ANALYST_v1_PROMPT.md",
+    "R3": _REPO_ROOT / "roles" / "vnext" / "ROLE_3_INTIMACY_PROFILE_SPECIALIST_v1_PROMPT.md",
 }
 
 REQUIRED_SECTIONS = (
@@ -76,13 +80,13 @@ def _lower(text: str) -> str:
 
 
 class TestCommonPromptContract:
-    @pytest.mark.parametrize("role_id", ["R1", "R2", "R4"])
+    @pytest.mark.parametrize("role_id", _ALL_ROLES)
     def test_all_required_sections_present(self, role_id: str) -> None:
         sections = _sections(_load()[role_id])
         missing = [s for s in REQUIRED_SECTIONS if s not in sections]
         assert not missing, f"{role_id}: missing sections {missing}"
 
-    @pytest.mark.parametrize("role_id", ["R1", "R2", "R4"])
+    @pytest.mark.parametrize("role_id", _ALL_ROLES)
     def test_metadata_present(self, role_id: str) -> None:
         text = _load()[role_id]
         assert f"role_id: {role_id}" in text
@@ -91,43 +95,43 @@ class TestCommonPromptContract:
         assert "contract_version" in text and "1.0" in text
         assert "status: AUTHORING_READY" in text
 
-    @pytest.mark.parametrize("role_id", ["R1", "R2", "R4"])
+    @pytest.mark.parametrize("role_id", _ALL_ROLES)
     def test_typed_output_keywords_present(self, role_id: str) -> None:
         text = _load()[role_id]
         for key in ("target_module_or_layer", "source_type_summary", "completion_status"):
             assert key in text, f"{role_id}: missing typed-output key {key!r}"
 
-    @pytest.mark.parametrize("role_id", ["R1", "R2", "R4"])
+    @pytest.mark.parametrize("role_id", _ALL_ROLES)
     def test_provenance_rules_mention_provenance(self, role_id: str) -> None:
         body = _sections(_load()[role_id])["PROVENANCE_RULES"].lower()
         assert "provenance" in body, f"{role_id}: PROVENANCE_RULES lacks provenance"
 
-    @pytest.mark.parametrize("role_id", ["R1", "R2", "R4"])
+    @pytest.mark.parametrize("role_id", _ALL_ROLES)
     def test_contradiction_rules_preserve(self, role_id: str) -> None:
         body = _sections(_load()[role_id])["CONTRADICTION_RULES"].lower()
         assert "preserved" in body
         assert "silently resolved" in body
 
-    @pytest.mark.parametrize("role_id", ["R1", "R2", "R4"])
+    @pytest.mark.parametrize("role_id", _ALL_ROLES)
     def test_canon_boundary_no_canon_write(self, role_id: str) -> None:
         body = _sections(_load()[role_id])["CANON_BOUNDARY"].lower()
         assert "no canon authority" in body
         assert "write canon" in body
 
-    @pytest.mark.parametrize("role_id", ["R1", "R2", "R4"])
+    @pytest.mark.parametrize("role_id", _ALL_ROLES)
     def test_pac_sandbox_boundary_denied(self, role_id: str) -> None:
         body = _sections(_load()[role_id])["PAC_SANDBOX_BOUNDARY"].lower()
         assert "pac" in body
         assert "sandbox" in body
         assert "direct" in body
 
-    @pytest.mark.parametrize("role_id", ["R1", "R2", "R4"])
+    @pytest.mark.parametrize("role_id", _ALL_ROLES)
     def test_no_hidden_eval(self, role_id: str) -> None:
         body = _sections(_load()[role_id])["NO_HIDDEN_EVAL"].lower()
         assert "kira" in body
         assert "hidden" in body
 
-    @pytest.mark.parametrize("role_id", ["R1", "R2", "R4"])
+    @pytest.mark.parametrize("role_id", _ALL_ROLES)
     def test_no_chain_of_thought_disclosure(self, role_id: str) -> None:
         body = _sections(_load()[role_id])["NO_CHAIN_OF_THOUGHT_DISCLOSURE"].lower()
         assert "rationale_summary" in body
@@ -203,3 +207,72 @@ class TestR4Prompt:
     def test_axes_independence_stated(self) -> None:
         low = _lower(_load()["R4"])
         assert "independent" in low
+
+
+class TestR3Prompt:
+    def test_gated_activation_rules_section_present(self) -> None:
+        sections = _sections(_load()["R3"])
+        assert "GATED_ACTIVATION_RULES" in sections
+
+    def test_optional_gated_skippable_identity(self) -> None:
+        low = _lower(_load()["R3"])
+        assert "optional" in low
+        assert "gated" in low
+        assert "skippable" in low
+
+    def test_human_activation_required(self) -> None:
+        body = _sections(_load()["R3"])["GATED_ACTIVATION_RULES"].lower()
+        assert "activation_authorization_ref" in body
+        assert "human-driven" in body
+
+    def test_no_self_activation(self) -> None:
+        body = _sections(_load()["R3"])["GATED_ACTIVATION_RULES"].lower()
+        assert "self-activation" in body
+
+    def test_relevant_evidence_not_authorization(self) -> None:
+        body = _sections(_load()["R3"])["GATED_ACTIVATION_RULES"].lower()
+        assert "does not" in body
+        assert "authorize" in body
+
+    def test_intimacy_target_family(self) -> None:
+        text = _load()["R3"]
+        assert "intimacy." in text
+
+    def test_psychology_and_voice_excluded_for_r3(self) -> None:
+        text = _load()["R3"]
+        assert "psychology.*" in text
+        assert "voice.*" in text
+
+    def test_no_appearance_inference(self) -> None:
+        low = _lower(_load()["R3"])
+        for term in ("appearance", "body features", "clothing", "attractiveness",
+                     "facial expression", "physiognomy", "presentation style"):
+            assert term in low, f"R3: missing appearance-boundary term {term!r}"
+
+    def test_no_attachment_only_inference(self) -> None:
+        low = _lower(_load()["R3"])
+        assert "attachment style" in low
+        assert "personality type" in low
+        assert "psychological archetype" in low
+        assert "relationship score" in low
+
+    def test_no_stereotype_inference(self) -> None:
+        low = _lower(_load()["R3"])
+        assert "stereotype" in low
+
+    def test_no_cross_character_comparison(self) -> None:
+        low = _lower(_load()["R3"])
+        assert "another named character" in low
+
+    def test_no_sexual_history_autofill(self) -> None:
+        low = _lower(_load()["R3"])
+        assert "autofill" in low
+
+    def test_no_forced_completeness(self) -> None:
+        low = _lower(_load()["R3"])
+        assert "force completeness" in low
+
+    def test_no_unknown_claim_emission(self) -> None:
+        low = _lower(_load()["R3"])
+        assert "claim_type=unknown" in low.replace(" ", "")
+        assert "insufficient_evidence" in low
