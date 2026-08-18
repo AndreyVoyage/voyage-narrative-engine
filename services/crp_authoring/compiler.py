@@ -118,6 +118,7 @@ def compile_candidate_package(
 
     psychology: Dict[str, List[RoleClaim]] = {}
     voice: Dict[str, List[RoleClaim]] = {}
+    intimacy: Dict[str, List[RoleClaim]] = {}
     provenance: Dict[str, List[str]] = {}
 
     for claim in claims:
@@ -131,13 +132,7 @@ def compile_candidate_package(
         elif family == "voice":
             bucket = voice
         else:
-            # "intimacy" family is not yet wired into the candidate package
-            # (CandidateCharacterPackage has no intimacy_candidate bucket).
-            # Fail-closed rather than silently misplacing it.
-            raise CompilerError(
-                f"claim target {claim.target_module_or_layer!r} is intimacy "
-                "family; intimacy candidate placement is not yet wired"
-            )
+            bucket = intimacy
         bucket.setdefault(key, []).append(claim)
         provenance.setdefault(claim.target_module_or_layer.strip(), []).append(claim.claim_id)
 
@@ -157,6 +152,7 @@ def compile_candidate_package(
         unknowns=(),
         psychology_candidate={k: tuple(v) for k, v in psychology.items()},
         voice_candidate={k: tuple(v) for k, v in voice.items()},
+        intimacy_candidate={k: tuple(v) for k, v in intimacy.items()},
         validation_results={},
         audit_result=None,
         provenance_manifest={k: tuple(v) for k, v in provenance.items()},

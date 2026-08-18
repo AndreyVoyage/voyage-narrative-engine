@@ -32,6 +32,7 @@ from .contracts import (
     Severity,
     SourceEvidence,
     SourceType,
+    VoicePatternLabel,
 )
 from .errors import CrpError
 from .knowledge_profile import KnowledgeProfile
@@ -56,6 +57,7 @@ _ROLE_CLAIM_JSON_KEYS = frozenset({
     "source_evidence_ids", "source_type_summary", "confidence",
     "rationale_summary", "status", "target_module_or_layer",
     "counterevidence_ids", "contradiction_ids", "revision_round",
+    "voice_pattern_label",
 })
 class ExecutorError(CrpError):
     """Fail-closed role-executor error. Never retried, never repaired."""
@@ -267,6 +269,11 @@ def _parse_claim(c) -> RoleClaim:
     source_type_summary = tuple(
         _enum(SourceType, v, "source_type_summary") for v in c.get("source_type_summary", [])
     )
+    raw_label = c.get("voice_pattern_label")
+    voice_pattern_label = (
+        _enum(VoicePatternLabel, raw_label, "voice_pattern_label")
+        if raw_label is not None else None
+    )
     return RoleClaim(
         claim_id=_required_str(c, "claim_id"),
         subject_id=_required_str(c, "subject_id"),
@@ -279,6 +286,7 @@ def _parse_claim(c) -> RoleClaim:
         rationale_summary=_required_str(c, "rationale_summary"),
         status=_enum(ClaimStatus, c.get("status"), "status"),
         target_module_or_layer=_required_str(c, "target_module_or_layer"),
+        voice_pattern_label=voice_pattern_label,
     )
 
 

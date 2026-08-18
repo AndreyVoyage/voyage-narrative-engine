@@ -142,3 +142,36 @@ class TestValidator:
         r2 = validate_package(pkg)
         assert r1.findings == r2.findings
         assert [f.message for f in r1.findings] == [f.message for f in r2.findings]
+
+
+class TestIntimacyValidation:
+    def test_intimacy_claim_validates_cleanly(self) -> None:
+        # A valid intimacy.* claim compiles and passes validation without
+        # INVALID_TARGET or PROVENANCE_BREAK findings.
+        ctx = make_compile_context()
+        c = make_claim(claim_id="c1", target_module_or_layer="intimacy.boundaries")
+        pkg = compile_candidate_package(ctx, (c,), ())
+        report = validate_package(pkg)
+        assert report.valid is True
+        assert report.findings == ()
+
+    def test_intimacy_provenance_break_detected(self) -> None:
+        # R7 still catches a provenance break in intimacy_candidate (symmetric
+        # with psychology/voice).
+        claim = make_claim(claim_id="real-claim", target_module_or_layer="intimacy.boundaries")
+        pkg = make_package(
+            claims=(claim,),
+            intimacy_candidate={"boundaries": (claim,)},
+            provenance_manifest={"intimacy.boundaries": ("real-claim", "ghost-claim")},
+        )
+        report = validate_package(pkg)
+        assert _claims_findings(report, CHECK_PROVENANCE)
+
+    def test_invalid_target_still_fail_closed(self) -> None:
+        # A claim with an unmappable target still fails closed.
+        ctx = make_compile_context()
+        c = make_claim(claim_id="c1", target_module_or_layer="no_prefix_here")
+        # classify_target raises before package construction
+        from services.crp_authoring import CompilerError
+        with pytest.raises(CompilerError):
+            compile_candidate_package(ctx, (c,), ())

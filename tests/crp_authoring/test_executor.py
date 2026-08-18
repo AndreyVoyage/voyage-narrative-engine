@@ -16,6 +16,7 @@ from services.crp_authoring import (
     SourceType,
     execute_role_task,
 )
+from services.crp_authoring.contracts import VoicePatternLabel
 
 from tests.crp_authoring.conftest import (
     make_fake_provider,
@@ -63,6 +64,50 @@ def _r2_registry_scope():
     profiles = {"profile-r2": make_knowledge_profile(profile_id="profile-r2", role_id="R2")}
     evidence = (make_source(source_id="se-001", source_type=SourceType.OWNER_DIRECT),)
     task = make_role_task(task_id="task-001", role_id="R2", role_version="v1",
+                          allowed_evidence_ids=("se-001",))
+    return registry, profiles, evidence, task
+
+
+def _r4_result_json(label=None):
+    """R4 voice result JSON, with an optional voice_pattern_label."""
+    claim = {
+        "claim_id": "v1",
+        "subject_id": "char-subject-1",
+        "role_id": "R4",
+        "claim": "uses clipped sentences",
+        "claim_type": "OBSERVATION",
+        "source_evidence_ids": ["se-001"],
+        "source_type_summary": ["OBSERVATION"],
+        "confidence": "KNOWN",
+        "rationale_summary": "observed in corpus",
+        "status": "PROPOSED",
+        "target_module_or_layer": "voice.lexicon",
+    }
+    if label is not None:
+        claim["voice_pattern_label"] = label
+    return json.dumps({
+        "task_id": "task-004",
+        "role_id": "R4",
+        "role_version": "v1",
+        "completion_status": "COMPLETE",
+        "claims": [claim],
+        "unknowns": [],
+        "contradictions": [],
+        "provenance_summary": {"used_evidence": ["se-001"]},
+        "requests_for_more_evidence": [],
+        "warnings": [],
+        "questions_for_r1": [],
+        "new_source_evidence": [],
+    }, ensure_ascii=False)
+
+
+def _r4_registry_scope():
+    entry = make_registry_entry(role_id="R4", version="v1")
+    registry = RoleRegistry((entry,))
+    profiles = {"profile-r4": make_knowledge_profile(profile_id="profile-r4", role_id="R4")}
+    # OBSERVATION is a direct source type; R4 profile must allow it.
+    evidence = (make_source(source_id="se-001", source_type=SourceType.OBSERVATION),)
+    task = make_role_task(task_id="task-004", role_id="R4", role_version="v1",
                           allowed_evidence_ids=("se-001",))
     return registry, profiles, evidence, task
 
@@ -165,3 +210,46 @@ class TestExecutor:
         registry, profiles, evidence, task = _r2_registry_scope()
         with pytest.raises(ExecutorError, match="required injected callable"):
             execute_role_task(task, registry, profiles, None, evidence)
+
+
+class TestVoicePatternLabelParsing:
+    @pytest.mark.parametrize("label", [
+        "OBSERVED", "INFERRED", "GENERATED_RULE", "NEGATIVE_EXAMPLE",
+    ])
+    def test_authorized_label_parses(self, label: str) -> None:
+        registry, profiles, evidence, task = _r4_registry_scope()
+        provider = make_fake_provider(_r4_result_json(label=label))
+        result = execute_role_task(task, registry, profiles, provider, evidence)
+        assert result.claims[0].voice_pattern_label is VoicePatternLabel(label)
+
+    def test_unknown_label_rejected(self) -> None:
+        registry, profiles, evidence, task = _r4_registry_scope()
+        provider = make_fake_provider(_r4_result_json(label="FABRICATED"))
+        with pytest.raises(ExecutorError):
+            execute_role_task(task, registry, profiles, provider, evidence)
+
+    def test_missing_label_remains_valid(self) -> None:
+        registry, profiles, evidence, task = _r4_registry_scope()
+        provider = make_fake_provider(_r4_result_json())
+        result = execute_role_task(task, registry, profiles, provider, evidence)
+        assert result.claims[0].voice_pattern_label is None
+
+    def test_parsed_label_preserves_other_axes(self) -> None:
+        # Parsing voice_pattern_label must not mutate source_type/confidence/
+        # claim_type.
+        registry, profiles, evidence, task = _r4_registry_scope()
+        provider = make_fake_provider(_r4_result_json(label="OBSERVED"))
+        result = execute_role_task(task, registry, profiles, provider, evidence)
+        claim = result.claims[0]
+        assert claim.source_type_summary == (SourceType.OBSERVATION,)
+        assert claim.confidence.value == "KNOWN"
+        assert claim.claim_type.value == "OBSERVATION"
+        assert claim.voice_pattern_label is VoicePatternLabel.OBSERVED
+
+    def test_backwards_compat_non_r4_no_label(self) -> None:
+        # Existing R2 JSON (no voice_pattern_label key) still parses with
+        # voice_pattern_label=None, identical to pre-fix behavior.
+        registry, profiles, evidence, task = _r2_registry_scope()
+        provider = make_fake_provider(_r2_result_json())
+        result = execute_role_task(task, registry, profiles, provider, evidence)
+        assert result.claims[0].voice_pattern_label is None

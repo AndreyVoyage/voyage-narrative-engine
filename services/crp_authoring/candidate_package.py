@@ -61,6 +61,7 @@ class CandidateCharacterPackage:
 
     lineage: Optional[str] = None
     behavioral_validation_refs: Tuple[str, ...] = ()
+    intimacy_candidate: Mapping[str, Tuple[RoleClaim, ...]] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         _require_non_empty(self.package_id, "package_id")
@@ -99,6 +100,8 @@ class CandidateCharacterPackage:
             _require_non_empty(self.lineage, "lineage")
         if not isinstance(self.behavioral_validation_refs, tuple):
             raise CrpValidationError("behavioral_validation_refs must be a tuple")
+        if not isinstance(self.intimacy_candidate, Mapping):
+            raise CrpValidationError("intimacy_candidate must be a mapping")
 
         # Freeze contained mutable structures in place (immutable value type).
         object.__setattr__(self, "role_result_refs", tuple(self.role_result_refs))
@@ -116,6 +119,12 @@ class CandidateCharacterPackage:
             self, "voice_candidate",
             MappingProxyType({
                 k: tuple(v) for k, v in self.voice_candidate.items()
+            }),
+        )
+        object.__setattr__(
+            self, "intimacy_candidate",
+            MappingProxyType({
+                k: tuple(v) for k, v in self.intimacy_candidate.items()
             }),
         )
         object.__setattr__(

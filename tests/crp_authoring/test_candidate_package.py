@@ -54,3 +54,22 @@ class TestCandidateCharacterPackage:
         pkg = make_package()
         assert pkg.role_result_refs == ()
         assert pkg.audit_result is None
+
+
+class TestIntimacyCandidate:
+    def test_intimacy_candidate_defaults_empty(self) -> None:
+        # R3 is optional; a package constructed without intimacy_candidate
+        # omits it (backward compatible) and it defaults to {}.
+        pkg = make_package()
+        assert pkg.intimacy_candidate == {}
+
+    def test_intimacy_candidate_accepts_mapping(self) -> None:
+        from tests.crp_authoring.conftest import make_claim
+        c = make_claim(claim_id="i1", target_module_or_layer="intimacy.boundaries")
+        pkg = make_package(intimacy_candidate={"boundaries": (c,)})
+        assert pkg.intimacy_candidate["boundaries"] == (c,)
+
+    def test_intimacy_candidate_immutable(self) -> None:
+        pkg = make_package()
+        with pytest.raises(Exception):
+            pkg.intimacy_candidate["boundaries"] = ()  # type: ignore[index]

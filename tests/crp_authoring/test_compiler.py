@@ -117,11 +117,28 @@ class TestIntimacyTargetFamily:
     def test_classify_target_intimacy(self) -> None:
         assert classify_target("intimacy.boundaries") == ("intimacy", "boundaries")
 
-    def test_intimacy_placement_not_wired_fail_closed(self) -> None:
-        # The R3a slice establishes the "intimacy" target family for future R3
-        # claims, but CandidateCharacterPackage has no intimacy bucket yet.
-        # R6 must fail closed rather than silently misplace an intimacy claim.
+    def test_intimacy_claim_compiles_into_intimacy_candidate(self) -> None:
+        # ERC-1 (GAP-B): intimacy.* claims now compile into
+        # package.intimacy_candidate, grouped by dimension.
         ctx = make_compile_context()
         c = make_claim(claim_id="c1", target_module_or_layer="intimacy.boundaries")
-        with pytest.raises(CompilerError):
-            compile_candidate_package(ctx, (c,), ())
+        pkg = compile_candidate_package(ctx, (c,), ())
+        assert pkg.intimacy_candidate["boundaries"] == (c,)
+
+    def test_intimacy_provenance_manifest_includes_target(self) -> None:
+        ctx = make_compile_context()
+        c = make_claim(claim_id="c1", target_module_or_layer="intimacy.preferences")
+        pkg = compile_candidate_package(ctx, (c,), ())
+        assert "intimacy.preferences" in pkg.provenance_manifest
+        assert "c1" in pkg.provenance_manifest["intimacy.preferences"]
+
+    def test_zero_intimacy_claims_package_still_valid(self) -> None:
+        # R3 is optional; a package compiled with only psychology/voice claims
+        # has intimacy_candidate == {} and is valid.
+        ctx = make_compile_context()
+        p = make_claim(claim_id="p1", target_module_or_layer="psychology.P2")
+        v = make_claim(claim_id="v1", target_module_or_layer="voice.lexicon")
+        pkg = compile_candidate_package(ctx, (p, v), ())
+        assert pkg.intimacy_candidate == {}
+        assert pkg.psychology_candidate["P2"] == (p,)
+        assert pkg.voice_candidate["lexicon"] == (v,)

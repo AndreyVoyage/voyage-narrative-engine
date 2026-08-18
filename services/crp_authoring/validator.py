@@ -196,7 +196,8 @@ def validate_package(
                     f"provenance target {target!r} references unknown claim id {cid!r}",
                 ))
     # Every placed module/layer's entries must also be resolvable claims.
-    for family in (package.psychology_candidate, package.voice_candidate):
+    for family in (package.psychology_candidate, package.voice_candidate,
+                   package.intimacy_candidate):
         for key, entries in family.items():
             for claim in entries:
                 if claim.claim_id not in known_claim_ids:
@@ -208,7 +209,7 @@ def validate_package(
     # --- #7 invalid target module/layer (defense in depth) -----------------
     for claim in package.claims:
         t = claim.target_module_or_layer.strip()
-        ok = t.startswith("psychology.P") or t.startswith("voice.")
+        ok = t.startswith("psychology.P") or t.startswith("voice.") or t.startswith("intimacy.")
         if not ok:
             findings.append(ValidationFinding(
                 CHECK_INVALID_TARGET, SEVERITY_ERROR,
