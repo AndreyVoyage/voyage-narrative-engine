@@ -40,10 +40,18 @@ from tests.crp_authoring.conftest import (
 SUBJECT = "char-subject-1"
 SNAPSHOT = "snapshot-1"
 
+# Exact real vNext prompt refs (fail-closed prompt assembly reads these files).
+_PROMPT_REFS = {
+    "R1": "roles/vnext/ROLE_1_EVIDENCE_INTERVIEWER_v1_PROMPT.md",
+    "R2": "roles/vnext/ROLE_2_PSYCHOLOGICAL_HYPOTHESIS_ANALYST_v1_PROMPT.md",
+    "R3": "roles/vnext/ROLE_3_INTIMACY_PROFILE_SPECIALIST_v1_PROMPT.md",
+    "R4": "roles/vnext/ROLE_4_VOICE_RECONSTRUCTION_ANALYST_v1_PROMPT.md",
+}
+
 
 def _role_scope(role_id, task_id, evidence, activation_ref=None):
     """Build a synthetic (registry, profiles, task) scope for one role."""
-    entry = make_registry_entry(role_id=role_id)
+    entry = make_registry_entry(role_id=role_id, prompt_ref=_PROMPT_REFS[role_id])
     registry = RoleRegistry((entry,))
     profiles = {
         f"profile-{role_id.lower()}": make_knowledge_profile(

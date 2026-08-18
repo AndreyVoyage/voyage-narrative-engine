@@ -20,6 +20,7 @@ No canon/PAC/Sandbox access, no legacy-KB fetch, no network, no storage.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Any, Callable, Tuple
 
 from .contracts import (
@@ -145,7 +146,8 @@ def execute_role_task(
             )
 
     # --- build context messages and invoke the injected provider ---
-    messages = _assemble_messages(task, allowed_evidence, allowed_prior)
+    prompt_text = _load_prompt_text(entry.prompt_ref)
+    messages = _assemble_messages(task, allowed_evidence, allowed_prior, prompt_text=prompt_text)
     raw = provider_callable(messages)
     if not isinstance(raw, str):
         raise ExecutorError("provider_callable must return a string")
@@ -321,8 +323,54 @@ def _parse_source_evidence(e) -> SourceEvidence:
     )
 
 
-def _assemble_messages(task, evidence, prior) -> list:
-    """Build the provider payload from the bounded allowed context only."""
+def _load_prompt_text(prompt_ref: str) -> str:
+    """Safely load the exact vNext prompt file identified by ``prompt_ref``.
+
+    Fail-closed path policy:
+    - absolute refs rejected;
+    - ``..`` traversal components rejected;
+    - the resolved path must remain under the allowed ``roles/vnext/`` root;
+    - the target must be a regular file;
+    - content is read explicitly as UTF-8.
+
+    No lookup fallback, no "latest", no auto-discovery. Loads the exact
+    registry-selected prompt path only.
+    """
+    if not isinstance(prompt_ref, str) or not prompt_ref.strip():
+        raise ExecutorError("prompt_ref must be a non-empty string")
+
+    ref = prompt_ref.strip()
+    if Path(ref).is_absolute():
+        raise ExecutorError(f"prompt_ref must be a relative path: {ref!r}")
+
+    pure = Path(ref)
+    if ".." in pure.parts:
+        raise ExecutorError(f"prompt_ref must not contain path traversal: {ref!r}")
+
+    repo_root = Path(__file__).resolve().parents[2]
+    allowed_root = (repo_root / "roles" / "vnext").resolve()
+    candidate = (repo_root / pure).resolve()
+
+    try:
+        candidate.relative_to(allowed_root)
+    except ValueError:
+        raise ExecutorError(
+            f"prompt_ref {ref!r} resolves outside the allowed roles/vnext root"
+        ) from None
+
+    if not candidate.is_file():
+        raise ExecutorError(f"prompt_ref does not reference a regular file: {ref!r}")
+
+    return candidate.read_text(encoding="utf-8")
+
+
+def _assemble_messages(task, evidence, prior, *, prompt_text: str) -> list:
+    """Build the provider payload from the exact prompt plus bounded context.
+
+    The loaded vNext prompt file text is injected verbatim as a ``system``
+    message (never rewritten, never searched/discovered); the bounded
+    task/evidence/prior context remains a single ``user`` message.
+    """
     lines = [f"task_goal: {task.task_goal}"]
     lines.append("allowed_evidence:")
     for ev in evidence:
@@ -330,7 +378,10 @@ def _assemble_messages(task, evidence, prior) -> list:
     lines.append("allowed_prior_results:")
     for r in prior:
         lines.append(f"- {r.task_id}")
-    return [{"role": "user", "content": "\n".join(lines)}]
+    return [
+        {"role": "system", "content": prompt_text},
+        {"role": "user", "content": "\n".join(lines)},
+    ]
 
 
 def _required_str(data, key: str) -> str:

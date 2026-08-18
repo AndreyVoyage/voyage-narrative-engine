@@ -146,6 +146,13 @@ def _complete_local(
     raise LLMProviderError("local provider returned no message content")
 
 
+# Transport/control fields the cloud transport consumes itself and must never
+# be forwarded into the outbound generation JSON payload. ``api_key`` may be an
+# already-read credential value; ``credential_env`` may be the NAME of an
+# environment variable holding one (read here, once, fail-closed if unusable).
+_CLOUD_CONTROL_FIELDS = frozenset({"base_url", "credential_env", "timeout_s", "api_key"})
+
+
 def _complete_cloud(
     messages: list[dict[str, str]],
     *,
@@ -153,21 +160,35 @@ def _complete_cloud(
     params: dict[str, Any] | None = None,
 ) -> str:
     options = params or {}
-    api_key = os.environ.get("OPENAI_API_KEY")
+
+    # Credential resolution -- never hardcodes a provider env-var name. The
+    # caller supplies either an already-read ``api_key`` value or the NAME of
+    # the environment variable holding the credential.
+    api_key = options.get("api_key")
     if not api_key:
-        raise LLMProviderError("OPENAI_API_KEY is required for cloud provider")
+        credential_env = options.get("credential_env")
+        if not credential_env:
+            raise LLMProviderError(
+                "cloud provider requires an explicit credential (api_key) or "
+                "a configured credential_env variable name"
+            )
+        api_key = os.environ.get(str(credential_env))
+    if not api_key:
+        raise LLMProviderError("cloud provider credential is not set or is empty")
 
     base_url = str(options.get("base_url") or os.environ.get("OPENAI_BASE_URL") or DEFAULT_CLOUD_BASE_URL).rstrip("/")
+    timeout_s = options.get("timeout_s", 30.0)
+
     payload: dict[str, Any] = {
         "model": model or DEFAULT_CLOUD_MODEL,
         "messages": messages,
     }
     for key, value in options.items():
-        if key != "base_url":
+        if key not in _CLOUD_CONTROL_FIELDS:
             payload[key] = value
 
     headers = {"Authorization": f"Bearer {api_key}"}
-    data = _post_json(f"{base_url}/v1/chat/completions", payload, headers=headers)
+    data = _post_json(f"{base_url}/v1/chat/completions", payload, headers=headers, timeout_s=timeout_s)
     choices = data.get("choices")
     if isinstance(choices, list) and choices:
         message = choices[0].get("message") if isinstance(choices[0], dict) else None

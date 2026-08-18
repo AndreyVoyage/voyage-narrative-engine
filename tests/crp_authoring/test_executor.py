@@ -17,6 +17,7 @@ from services.crp_authoring import (
     execute_role_task,
 )
 from services.crp_authoring.contracts import VoicePatternLabel
+from services.crp_authoring.executor import _assemble_messages, _load_prompt_text
 
 from tests.crp_authoring.conftest import (
     make_fake_provider,
@@ -25,6 +26,10 @@ from tests.crp_authoring.conftest import (
     make_role_task,
     make_source,
 )
+
+# Exact real vNext prompt files (fail-closed prompt assembly requires these).
+_R2_PROMPT_REF = "roles/vnext/ROLE_2_PSYCHOLOGICAL_HYPOTHESIS_ANALYST_v1_PROMPT.md"
+_R4_PROMPT_REF = "roles/vnext/ROLE_4_VOICE_RECONSTRUCTION_ANALYST_v1_PROMPT.md"
 
 
 def _r2_result_json(task_id="task-001", role_id="R2", role_version="v1",
@@ -59,7 +64,7 @@ def _r2_result_json(task_id="task-001", role_id="R2", role_version="v1",
 
 
 def _r2_registry_scope():
-    entry = make_registry_entry(role_id="R2", version="v1")
+    entry = make_registry_entry(role_id="R2", version="v1", prompt_ref=_R2_PROMPT_REF)
     registry = RoleRegistry((entry,))
     profiles = {"profile-r2": make_knowledge_profile(profile_id="profile-r2", role_id="R2")}
     evidence = (make_source(source_id="se-001", source_type=SourceType.OWNER_DIRECT),)
@@ -102,7 +107,7 @@ def _r4_result_json(label=None):
 
 
 def _r4_registry_scope():
-    entry = make_registry_entry(role_id="R4", version="v1")
+    entry = make_registry_entry(role_id="R4", version="v1", prompt_ref=_R4_PROMPT_REF)
     registry = RoleRegistry((entry,))
     profiles = {"profile-r4": make_knowledge_profile(profile_id="profile-r4", role_id="R4")}
     # OBSERVATION is a direct source type; R4 profile must allow it.
@@ -253,3 +258,74 @@ class TestVoicePatternLabelParsing:
         provider = make_fake_provider(_r2_result_json())
         result = execute_role_task(task, registry, profiles, provider, evidence)
         assert result.claims[0].voice_pattern_label is None
+
+
+class TestPromptAssembly:
+    def test_exact_prompt_ref_text_loaded(self) -> None:
+        text = _load_prompt_text(_R2_PROMPT_REF)
+        assert "ROLE_IDENTITY" in text
+        assert "psychology" in text.lower()
+        # Exact real file, not a placeholder.
+        assert "ROLE_2_PSYCHOLOGICAL_HYPOTHESIS_ANALYST" in text
+
+    def test_system_message_is_exact_prompt_text(self) -> None:
+        registry, profiles, evidence, task = _r2_registry_scope()
+        entry = registry.get("R2")
+        prompt_text = _load_prompt_text(entry.prompt_ref)
+        seen = {}
+
+        def capture(messages):
+            seen["messages"] = messages
+            return _r2_result_json()
+
+        execute_role_task(task, registry, profiles, capture, evidence)
+        messages = seen["messages"]
+        assert messages[0]["role"] == "system"
+        assert messages[0]["content"] == prompt_text
+        # User context message remains present.
+        assert any(m["role"] == "user" for m in messages)
+
+    def test_user_context_remains_present(self) -> None:
+        registry, profiles, evidence, task = _r2_registry_scope()
+        seen = {}
+
+        def capture(messages):
+            seen["messages"] = messages
+            return _r2_result_json()
+
+        execute_role_task(task, registry, profiles, capture, evidence)
+        user = [m for m in seen["messages"] if m["role"] == "user"]
+        assert len(user) == 1
+        assert "task_goal" in user[0]["content"]
+        assert "se-001" in user[0]["content"]
+
+    def test_missing_prompt_ref_fails_closed(self) -> None:
+        with pytest.raises(ExecutorError):
+            _load_prompt_text("roles/vnext/DOES_NOT_EXIST_v1_PROMPT.md")
+
+    def test_absolute_path_rejected(self) -> None:
+        with pytest.raises(ExecutorError):
+            _load_prompt_text("C:/somewhere/absolute.md")
+
+    def test_parent_traversal_rejected(self) -> None:
+        with pytest.raises(ExecutorError):
+            _load_prompt_text("../roles/vnext/ROLE_2_PSYCHOLOGICAL_HYPOTHESIS_ANALYST_v1_PROMPT.md")
+
+    def test_resolved_escape_outside_root_rejected(self) -> None:
+        with pytest.raises(ExecutorError):
+            _load_prompt_text("roles/ROLE_2_PERSONA_PSYCHOLOGIST_v1.4_PROMPT.md")
+
+    def test_non_file_target_rejected(self) -> None:
+        # A directory (roles/vnext) is not a regular file.
+        with pytest.raises(ExecutorError):
+            _load_prompt_text("roles/vnext")
+
+    def test_assemble_messages_system_first(self) -> None:
+        registry, profiles, evidence, task = _r2_registry_scope()
+        entry = registry.get("R2")
+        prompt_text = _load_prompt_text(entry.prompt_ref)
+        messages = _assemble_messages(
+            task, evidence, (), prompt_text=prompt_text,
+        )
+        assert messages[0] == {"role": "system", "content": prompt_text}
+        assert messages[1]["role"] == "user"
