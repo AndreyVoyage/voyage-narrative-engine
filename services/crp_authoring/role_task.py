@@ -35,6 +35,13 @@ class CompletionStatus(Enum):
     NEEDS_CLARIFICATION = "NEEDS_CLARIFICATION"
 
 
+# Roles that are optional and gated: a RoleTask for one of these requires a
+# non-empty ``activation_authorization_ref`` (human-driven authorization) and
+# can never be self-activated by any role's own output (CRP-OD-9). Initially
+# only R3.
+GATED_OPTIONAL_ROLES = frozenset({"R3"})
+
+
 @dataclass(frozen=True)
 class RoleTask:
     """Bounded, least-privilege-enforcing unit of work (CRP_MVP_CONTRACTS_v1.md §D)."""
@@ -53,6 +60,7 @@ class RoleTask:
     permissions: Tuple[str, ...]
     task_goal: str
     revision_round: int
+    activation_authorization_ref: Optional[str] = None
 
     stop_conditions: Optional[Any] = None
     deadline_policy: Optional[str] = None
@@ -81,6 +89,14 @@ class RoleTask:
             raise CrpValidationError("revision_round must be an int")
         if self.revision_round < 0 or self.revision_round > 2:
             raise CrpValidationError("revision_round must be within 0..2")
+        if self.activation_authorization_ref is not None and not isinstance(self.activation_authorization_ref, str):
+            raise CrpValidationError("activation_authorization_ref must be a string or None")
+        if self.role_id in GATED_OPTIONAL_ROLES:
+            if not self.activation_authorization_ref or not self.activation_authorization_ref.strip():
+                raise CrpValidationError(
+                    f"role_id {self.role_id!r} is a gated optional role and requires "
+                    "a non-empty activation_authorization_ref"
+                )
 
         object.__setattr__(self, "allowed_evidence_ids", tuple(self.allowed_evidence_ids))
         object.__setattr__(self, "allowed_prior_results", tuple(self.allowed_prior_results))

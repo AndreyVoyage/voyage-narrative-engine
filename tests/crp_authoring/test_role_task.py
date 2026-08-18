@@ -31,6 +31,28 @@ class TestRoleTask:
             task.task_goal = "mutated"  # type: ignore[misc]
 
 
+class TestActivationAuthorization:
+    def test_non_gated_role_defaults_none(self) -> None:
+        task = make_role_task(role_id="R2")
+        assert task.activation_authorization_ref is None
+
+    def test_r3_requires_activation_authorization_ref(self) -> None:
+        with pytest.raises(Exception):
+            make_role_task(role_id="R3")
+
+    def test_r3_accepted_with_ref(self) -> None:
+        task = make_role_task(role_id="R3", activation_authorization_ref="owner-signoff-001")
+        assert task.activation_authorization_ref == "owner-signoff-001"
+
+    def test_r3_rejects_blank_ref(self) -> None:
+        with pytest.raises(Exception):
+            make_role_task(role_id="R3", activation_authorization_ref="   ")
+
+    def test_non_string_ref_rejected(self) -> None:
+        with pytest.raises(Exception):
+            make_role_task(role_id="R3", activation_authorization_ref=123)  # type: ignore[arg-type]
+
+
 class TestRoleResult:
     def test_completion_status_vocabulary(self) -> None:
         assert [s.value for s in CompletionStatus] == [

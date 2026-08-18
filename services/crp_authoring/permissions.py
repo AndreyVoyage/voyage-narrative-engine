@@ -31,6 +31,7 @@ class Permission(Enum):
     EMIT_CLAIMS_UNKNOWN = "EMIT_CLAIMS_UNKNOWN"
     EMIT_CLAIMS_PSYCHOLOGY = "EMIT_CLAIMS_PSYCHOLOGY"
     EMIT_CLAIMS_VOICE = "EMIT_CLAIMS_VOICE"
+    EMIT_CLAIMS_INTIMACY = "EMIT_CLAIMS_INTIMACY"
 
 
 # Canonical per-role permission sets (mechanical encoding of ratified §10-12).
@@ -51,12 +52,18 @@ PERMISSIONS_BY_ROLE: dict[str, frozenset[Permission]] = {
         Permission.READ_PRIOR_ROLE_RESULTS,
         Permission.EMIT_CLAIMS_VOICE,
     }),
+    "R3": frozenset({
+        Permission.READ_SOURCE_EVIDENCE,
+        Permission.READ_PRIOR_ROLE_RESULTS,
+        Permission.EMIT_CLAIMS_INTIMACY,
+    }),
 }
 
 
 _FAMILY_EMIT_PERMISSION = {
     "psychology": Permission.EMIT_CLAIMS_PSYCHOLOGY,
     "voice": Permission.EMIT_CLAIMS_VOICE,
+    "intimacy": Permission.EMIT_CLAIMS_INTIMACY,
 }
 
 

@@ -45,9 +45,10 @@ def classify_target(target: str) -> Tuple[str, str]:
     """Deterministically classify a claim's ``target_module_or_layer`` into a
     ``(family, key)`` pair via the ratified string convention.
 
-    Returns ``("psychology", "Pn")`` or ``("voice", "<dimension>")``.
+    Returns ``("psychology", "Pn")``, ``("voice", "<dimension>")``, or
+    ``("intimacy", "<dimension>")``.
     Raises ``CompilerError`` when the target is absent, invalid, or does not
-    match either family prefix -- R6 never guesses a placement.
+    match any family prefix -- R6 never guesses a placement.
     """
     if not isinstance(target, str) or not target.strip():
         raise CompilerError("claim has an empty target_module_or_layer; R6 cannot place it")
@@ -68,9 +69,15 @@ def classify_target(target: str) -> Tuple[str, str]:
             raise CompilerError(f"claim target {target!r} has an empty voice dimension")
         return ("voice", dimension)
 
+    if t.startswith("intimacy."):
+        dimension = t[len("intimacy."):]
+        if not dimension:
+            raise CompilerError(f"claim target {target!r} has an empty intimacy dimension")
+        return ("intimacy", dimension)
+
     raise CompilerError(
         f"claim target {target!r} is unmappable: must be 'psychology.P{{0..5}}' "
-        "or 'voice.<dimension>'; R6 does not auto-classify"
+        "'voice.<dimension>', or 'intimacy.<dimension>'; R6 does not auto-classify"
     )
 
 
@@ -119,7 +126,18 @@ def compile_candidate_package(
         reject_unsupported_claim(claim)
 
         family, key = classify_target(claim.target_module_or_layer)
-        bucket = psychology if family == "psychology" else voice
+        if family == "psychology":
+            bucket = psychology
+        elif family == "voice":
+            bucket = voice
+        else:
+            # "intimacy" family is not yet wired into the candidate package
+            # (CandidateCharacterPackage has no intimacy_candidate bucket).
+            # Fail-closed rather than silently misplacing it.
+            raise CompilerError(
+                f"claim target {claim.target_module_or_layer!r} is intimacy "
+                "family; intimacy candidate placement is not yet wired"
+            )
         bucket.setdefault(key, []).append(claim)
         provenance.setdefault(claim.target_module_or_layer.strip(), []).append(claim.claim_id)
 

@@ -14,7 +14,7 @@ from services.crp_authoring import (
     SourceType,
     UnsupportedClaimError,
 )
-from services.crp_authoring.compiler import compile_candidate_package
+from services.crp_authoring.compiler import classify_target, compile_candidate_package
 
 from tests.crp_authoring.conftest import (
     make_claim,
@@ -111,3 +111,17 @@ class TestCompiler:
         pkg = compile_candidate_package(ctx, (c,), ())
         assert pkg.role_result_refs == ()
         assert pkg.audit_result is None
+
+
+class TestIntimacyTargetFamily:
+    def test_classify_target_intimacy(self) -> None:
+        assert classify_target("intimacy.boundaries") == ("intimacy", "boundaries")
+
+    def test_intimacy_placement_not_wired_fail_closed(self) -> None:
+        # The R3a slice establishes the "intimacy" target family for future R3
+        # claims, but CandidateCharacterPackage has no intimacy bucket yet.
+        # R6 must fail closed rather than silently misplace an intimacy claim.
+        ctx = make_compile_context()
+        c = make_claim(claim_id="c1", target_module_or_layer="intimacy.boundaries")
+        with pytest.raises(CompilerError):
+            compile_candidate_package(ctx, (c,), ())

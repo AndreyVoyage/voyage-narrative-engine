@@ -52,3 +52,26 @@ class TestPermissionVocabulary:
                  "access_pac", "access_sandbox"]
         known = {p.value for p in Permission}
         assert not any(name in known for name in broad)
+
+
+class TestIntimacyPermission:
+    def test_emit_claims_intimacy_exists(self) -> None:
+        assert Permission.EMIT_CLAIMS_INTIMACY.value == "EMIT_CLAIMS_INTIMACY"
+
+    def test_r3_may_emit_intimacy(self) -> None:
+        claim = make_claim(claim_id="c1", claim_type=ClaimType.OBSERVATION,
+                           source_type_summary=(SourceType.OBSERVATION,),
+                           target_module_or_layer="intimacy.boundaries")
+        assert permission_violations((claim,), PERMISSIONS_BY_ROLE["R3"]) == ()
+
+    def test_r2_cannot_emit_intimacy(self) -> None:
+        claim = make_claim(claim_id="c1", claim_type=ClaimType.OBSERVATION,
+                           source_type_summary=(SourceType.OBSERVATION,),
+                           target_module_or_layer="intimacy.boundaries")
+        assert permission_violations((claim,), PERMISSIONS_BY_ROLE["R2"])
+
+    def test_r3_cannot_emit_psychology(self) -> None:
+        claim = make_claim(claim_id="c1", claim_type=ClaimType.FACT,
+                           source_type_summary=(SourceType.OWNER_DIRECT,),
+                           target_module_or_layer="psychology.P3")
+        assert permission_violations((claim,), PERMISSIONS_BY_ROLE["R3"])
