@@ -1,0 +1,143 @@
+{
+  "schema_version": "2.0",
+  "id": "SC_029",
+  "name": "Yoga hall — treadmill warm-up",
+  "version": "1.0",
+  "location": "yoga_hall",
+  "time": "day",
+  "archetype": "none",
+  "intensity": 3,
+  "risk": 1,
+  "duration_minutes": 10,
+  "prerequisites": [],
+  "flags_required": [],
+  "emotional_anchors": [],
+  "symbols": [],
+  "characters": [
+    {
+      "id": "alice",
+      "display_name": "Alice",
+      "role": "protagonist",
+      "present": true,
+      "state_start": null,
+      "state_end": null
+    },
+    {
+      "id": "bob",
+      "display_name": "Bob",
+      "role": "trainer",
+      "present": true,
+      "state_start": null,
+      "state_end": null
+    }
+  ],
+  "pov_default": "alice",
+  "entry_beats": [
+    {
+      "beat_id": "b1",
+      "type": "action",
+      "speaker": "alice",
+      "pov": "alice",
+      "speech": null,
+      "action": "Alice is warming up on the treadmill.",
+      "thought": null,
+      "thought_visibility": null,
+      "narration": null,
+      "emotion": "U5-выбор",
+      "visual_cue": null
+    },
+    {
+      "beat_id": "b2",
+      "type": "action",
+      "speaker": "bob",
+      "pov": "alice",
+      "speech": null,
+      "action": "Bob is running on the neighbouring treadmill.",
+      "thought": null,
+      "thought_visibility": null,
+      "narration": null,
+      "emotion": null,
+      "visual_cue": null
+    }
+  ],
+  "choice_points": [
+    {
+      "id": "CP_1",
+      "timing": "warmup_done",
+      "pov_default": "alice",
+      "prompt": "How does Alice cool down?",
+      "branches": [
+        {
+          "id": "1A",
+          "option_text": "Slow jog to a walk.",
+          "beats": [
+            {
+              "beat_id": "1A-b1",
+              "type": "action",
+              "speaker": "alice",
+              "pov": "alice",
+              "speech": null,
+              "action": "Alice slows to a walk.",
+              "thought": null,
+              "thought_visibility": null,
+              "narration": null,
+              "emotion": null,
+              "visual_cue": null
+            }
+          ],
+          "effects": {
+            "flags_set": ["sc_029_1a"],
+            "flags_cleared": [],
+            "level_changes": {},
+            "relationship_changes": {}
+          },
+          "next": {
+            "on_complete": "scene_end",
+            "next_scene": null,
+            "completion_flag": "sc_029_complete"
+          }
+        },
+        {
+          "id": "1B",
+          "option_text": "Full stop and stretch.",
+          "beats": [
+            {
+              "beat_id": "1B-b1",
+              "type": "action",
+              "speaker": "alice",
+              "pov": "alice",
+              "speech": null,
+              "action": "Alice stops and stretches.",
+              "thought": null,
+              "thought_visibility": null,
+              "narration": null,
+              "emotion": null,
+              "visual_cue": null
+            }
+          ],
+          "effects": {
+            "flags_set": ["sc_029_1b"],
+            "flags_cleared": [],
+            "level_changes": {},
+            "relationship_changes": {}
+          },
+          "next": {
+            "on_complete": "scene_end",
+            "next_scene": null,
+            "completion_flag": "sc_029_complete"
+          }
+        }
+      ]
+    }
+  ],
+  "visual": {
+    "scene_id": "VS_029",
+    "stills": []
+  },
+  "safety": {
+    "content_rating": "PG",
+    "stop_words_enabled": true,
+    "present_constraints": "",
+    "notes": ""
+  }
+}
