@@ -33,6 +33,7 @@ _R4_PROMPT_REF = "roles/vnext/ROLE_4_VOICE_RECONSTRUCTION_ANALYST_v1_PROMPT.md"
 
 
 def _r2_result_json(task_id="task-001", role_id="R2", role_version="v1",
+                    subject_id="char-subject-1",
                     claim_type="HYPOTHESIS", target="psychology.P2",
                     source_type="OWNER_DIRECT", confidence="POSSIBLE"):
     return json.dumps({
@@ -42,7 +43,7 @@ def _r2_result_json(task_id="task-001", role_id="R2", role_version="v1",
         "completion_status": "COMPLETE",
         "claims": [{
             "claim_id": "c1",
-            "subject_id": "char-subject-1",
+            "subject_id": subject_id,
             "role_id": role_id,
             "claim": "subject is guarded",
             "claim_type": claim_type,
@@ -344,7 +345,7 @@ class TestTaskMetadataExposure:
         evidence = (make_source(source_id="se-001", source_type=SourceType.OWNER_DIRECT),)
         task = make_role_task(
             task_id="task-visible-123", role_id="R2", role_version="v-test-visible",
-            allowed_evidence_ids=("se-001",),
+            subject_id="subject-visible-456", allowed_evidence_ids=("se-001",),
         )
         return registry, profiles, evidence, task
 
@@ -356,6 +357,7 @@ class TestTaskMetadataExposure:
             seen["messages"] = messages
             return _r2_result_json(
                 task_id="task-visible-123", role_id="R2", role_version="v-test-visible",
+                subject_id="subject-visible-456",
             )
 
         execute_role_task(task, registry, profiles, capture, evidence)
@@ -364,11 +366,23 @@ class TestTaskMetadataExposure:
         assert "- task_id: task-visible-123" in user_content
         assert "- role_id: R2" in user_content
         assert "- role_version: v-test-visible" in user_content
+        assert "- subject_id: subject-visible-456" in user_content
+
+    def test_subject_id_exposed_exact_value(self) -> None:
+        # Distinct value proves _assemble_messages() preserves task.subject_id
+        # verbatim (no rewriting/slugging/normalization).
+        registry, profiles, evidence, task = self._visible_scope()
+        entry = registry.get("R2")
+        prompt_text = _load_prompt_text(entry.prompt_ref)
+        messages = _assemble_messages(task, evidence, (), prompt_text=prompt_text)
+        user_content = messages[1]["content"]
+        assert "- subject_id: subject-visible-456" in user_content
 
     def test_echo_success(self) -> None:
         registry, profiles, evidence, task = self._visible_scope()
         provider = make_fake_provider(_r2_result_json(
             task_id="task-visible-123", role_id="R2", role_version="v-test-visible",
+            subject_id="subject-visible-456",
         ))
         result = execute_role_task(task, registry, profiles, provider, evidence)
         assert result.task_id == "task-visible-123"
@@ -379,4 +393,14 @@ class TestTaskMetadataExposure:
         registry, profiles, evidence, task = self._visible_scope()
         provider = make_fake_provider(_r2_result_json(task_id="some-other-task-id"))
         with pytest.raises(ExecutorError, match="result task_id"):
+            execute_role_task(task, registry, profiles, provider, evidence)
+
+    def test_wrong_subject_id_fails_closed(self) -> None:
+        # Claim subject_id differing from task.subject_id must fail closed.
+        registry, profiles, evidence, task = self._visible_scope()
+        provider = make_fake_provider(_r2_result_json(
+            task_id="task-visible-123", role_id="R2", role_version="v-test-visible",
+            subject_id="some-other-subject",
+        ))
+        with pytest.raises(ExecutorError, match="subject_id"):
             execute_role_task(task, registry, profiles, provider, evidence)

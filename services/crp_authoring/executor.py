@@ -376,6 +376,7 @@ def _assemble_messages(task, evidence, prior, *, prompt_text: str) -> list:
         f"- task_id: {task.task_id}",
         f"- role_id: {task.role_id}",
         f"- role_version: {task.role_version}",
+        f"- subject_id: {task.subject_id}",
         f"task_goal: {task.task_goal}",
     ]
     lines.append("allowed_evidence:")
