@@ -404,3 +404,142 @@ class TestTaskMetadataExposure:
         ))
         with pytest.raises(ExecutorError, match="subject_id"):
             execute_role_task(task, registry, profiles, provider, evidence)
+
+
+class TestForbiddenRefEnforcement:
+    """GAP-2: forbidden refs rejected deterministically before the provider."""
+
+    def _forbidden_scope(self, forbidden_refs, *, content_ref="ref://raw/001",
+                         provenance="synthetic-fixture"):
+        entry = make_registry_entry(role_id="R2", version="v1", prompt_ref=_R2_PROMPT_REF)
+        registry = RoleRegistry((entry,))
+        profiles = {
+            "profile-r2": make_knowledge_profile(
+                profile_id="profile-r2", role_id="R2", forbidden_refs=forbidden_refs,
+            )
+        }
+        evidence = (
+            make_source(
+                source_id="se-001", source_type=SourceType.OWNER_DIRECT,
+                content_ref=content_ref, provenance=provenance,
+            ),
+        )
+        task = make_role_task(
+            task_id="task-001", role_id="R2", role_version="v1",
+            allowed_evidence_ids=("se-001",),
+        )
+        return registry, profiles, evidence, task
+
+    def test_exact_forbidden_ref_rejected_before_provider(self) -> None:
+        registry, profiles, evidence, task = self._forbidden_scope(
+            ("personas/kira/profile.json",),
+            content_ref="personas/kira/profile.json",
+        )
+        calls = []
+
+        def counted(messages):
+            calls.append(messages)
+            return _r2_result_json()
+
+        with pytest.raises(ExecutorError, match="forbidden"):
+            execute_role_task(task, registry, profiles, counted, evidence)
+        assert len(calls) == 0  # never reached the provider boundary
+
+    def test_prefix_descendant_rejected_before_provider(self) -> None:
+        registry, profiles, evidence, task = self._forbidden_scope(
+            ("personas/kira/**",),
+            content_ref="personas/kira/notes.md",
+        )
+        calls = []
+
+        def counted(messages):
+            calls.append(messages)
+            return _r2_result_json()
+
+        with pytest.raises(ExecutorError, match="forbidden"):
+            execute_role_task(task, registry, profiles, counted, evidence)
+        assert len(calls) == 0
+
+    def test_windows_backslash_rejected_before_provider(self) -> None:
+        registry, profiles, evidence, task = self._forbidden_scope(
+            ("personas/kira/**",),
+            content_ref=r"personas\kira\notes.md",
+        )
+        calls = []
+
+        def counted(messages):
+            calls.append(messages)
+            return _r2_result_json()
+
+        with pytest.raises(ExecutorError, match="forbidden"):
+            execute_role_task(task, registry, profiles, counted, evidence)
+        assert len(calls) == 0
+
+    def test_case_variant_rejected_before_provider(self) -> None:
+        registry, profiles, evidence, task = self._forbidden_scope(
+            ("personas/kira/**",),
+            content_ref="Personas/Kira/Notes.md",
+        )
+        calls = []
+
+        def counted(messages):
+            calls.append(messages)
+            return _r2_result_json()
+
+        with pytest.raises(ExecutorError, match="forbidden"):
+            execute_role_task(task, registry, profiles, counted, evidence)
+        assert len(calls) == 0
+
+    def test_near_miss_is_allowed(self) -> None:
+        # personas/kira2/... must NOT match personas/kira/**.
+        registry, profiles, evidence, task = self._forbidden_scope(
+            ("personas/kira/**",),
+            content_ref="personas/kira2/notes.md",
+        )
+        provider = make_fake_provider(_r2_result_json())
+        result = execute_role_task(task, registry, profiles, provider, evidence)
+        assert result.task_id == "task-001"
+
+    def test_provenance_only_kira_is_allowed(self) -> None:
+        # The literal word in provenance must not trigger rejection when
+        # content_ref is clean (structured-ref matching, not prose scanning).
+        registry, profiles, evidence, task = self._forbidden_scope(
+            ("personas/kira/**",),
+            content_ref="ref://raw/001",
+            provenance="owner notes mentioning a kira-like reference",
+        )
+        provider = make_fake_provider(_r2_result_json())
+        result = execute_role_task(task, registry, profiles, provider, evidence)
+        assert result.task_id == "task-001"
+
+    def test_empty_forbidden_refs_preserves_behavior(self) -> None:
+        registry, profiles, evidence, task = self._forbidden_scope(())
+        calls = []
+
+        def counted(messages):
+            calls.append(messages)
+            return _r2_result_json()
+
+        result = execute_role_task(task, registry, profiles, counted, evidence)
+        assert result.task_id == "task-001"
+        assert len(calls) == 1
+
+
+class TestClaimRoleIdEnforcement:
+    """Part B: individual RoleClaim.role_id must equal task.role_id."""
+
+    def test_wrong_claim_role_rejected(self) -> None:
+        # A correctly-labeled wrapper (RoleResult.role_id == R2) must not hide
+        # a misattributed individual claim (RoleClaim.role_id == R4).
+        registry, profiles, evidence, task = _r2_registry_scope()
+        payload = json.loads(_r2_result_json(role_id="R2"))
+        payload["claims"][0]["role_id"] = "R4"
+        provider = make_fake_provider(json.dumps(payload))
+        with pytest.raises(ExecutorError, match="role_id"):
+            execute_role_task(task, registry, profiles, provider, evidence)
+
+    def test_correct_claim_role_continues_to_pass(self) -> None:
+        registry, profiles, evidence, task = _r2_registry_scope()
+        provider = make_fake_provider(_r2_result_json(role_id="R2"))
+        result = execute_role_task(task, registry, profiles, provider, evidence)
+        assert result.claims[0].role_id == "R2"

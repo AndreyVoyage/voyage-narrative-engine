@@ -36,7 +36,7 @@ from .contracts import (
     VoicePatternLabel,
 )
 from .errors import CrpError
-from .knowledge_profile import KnowledgeProfile
+from .knowledge_profile import KnowledgeProfile, forbidden_ref_violation
 from .permissions import Permission, permission_violations
 from .registry import RoleRegistry, RoleStatus
 from .role_task import CompletionStatus, RoleResult, RoleTask
@@ -144,6 +144,15 @@ def execute_role_task(
                 f"evidence {ev.source_id!r} source_type {ev.source_type.value!r} "
                 "is not in the role's KnowledgeProfile allowed_source_types"
             )
+        # Enforce forbidden_refs (GAP-2): a forbidden origin reference is a
+        # deterministic, fail-closed rejection BEFORE any prompt assembly or
+        # provider invocation. Only the structured content_ref is matched.
+        matched = forbidden_ref_violation(ev.content_ref, profile.forbidden_refs)
+        if matched is not None:
+            raise ExecutorError(
+                f"evidence {ev.source_id!r} content_ref matches forbidden ref "
+                f"pattern {matched!r}"
+            )
 
     # --- build context messages and invoke the injected provider ---
     prompt_text = _load_prompt_text(entry.prompt_ref)
@@ -170,6 +179,11 @@ def execute_role_task(
             raise ExecutorError(
                 f"claim {claim.claim_id!r} subject_id {claim.subject_id!r} "
                 f"!= task subject_id {task.subject_id!r}"
+            )
+        if claim.role_id != task.role_id:
+            raise ExecutorError(
+                f"claim {claim.claim_id!r} role_id {claim.role_id!r} "
+                f"!= task role_id {task.role_id!r}"
             )
         reject_unsupported_claim(claim)
         for ev_id in claim.source_evidence_ids:

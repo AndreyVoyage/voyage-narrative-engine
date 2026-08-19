@@ -90,3 +90,66 @@ class KnowledgeProfile:
 def _req(value: str, field_name: str) -> None:
     if not isinstance(value, str) or not value.strip():
         raise CrpValidationError(f"{field_name} must be a non-empty string")
+
+
+def _normalize_ref(value: str) -> str:
+    """Normalize a stored reference for comparison ONLY (never rewrites storage).
+
+    Minimum normalization for the structured-reference security gate:
+    - ``\\`` -> ``/`` (Windows separator);
+    - collapse repeated ``/``;
+    - strip a leading ``./``;
+    - lowercase (case-insensitive security comparison).
+    """
+    v = value.replace("\\", "/")
+    while "//" in v:
+        v = v.replace("//", "/")
+    while v.startswith("./"):
+        v = v[2:]
+    return v.lower()
+
+
+def forbidden_ref_violation(
+    content_ref: str,
+    forbidden_refs: Tuple[str, ...],
+) -> Optional[str]:
+    """Return the first ``forbidden_ref`` pattern matching ``content_ref``, else ``None``.
+
+    Structured-reference security matching (GAP-2). Only ``SourceEvidence.content_ref``
+    is compared -- never provenance/metadata/claim/prompt text. This is a bounded
+    path-prefix / exact-literal match, not content moderation and not a regex/glob engine.
+
+    Two supported forms (per the ratified preflight convention):
+
+    * exact literal  -- ``some/ref/profile.json`` matches only the normalized
+      exact reference;
+    * prefix tree    -- ``some/ref/**`` matches the prefix itself AND every
+      descendant under it, with a hard boundary at the next ``/`` so a near-miss
+      like ``some/ref2/...`` is NOT matched.
+
+    No filesystem access, no network, no path-existence checks. An empty or blank
+    ``forbidden_refs`` (the default) rejects nothing.
+    """
+    if not isinstance(content_ref, str) or not content_ref.strip():
+        return None
+
+    normalized = _normalize_ref(content_ref)
+
+    for pattern in forbidden_refs:
+        if not isinstance(pattern, str) or not pattern.strip():
+            continue
+        pat = _normalize_ref(pattern)
+
+        if pat.endswith("/**"):
+            prefix = pat[:-3]
+            if prefix.endswith("/"):
+                prefix = prefix[:-1]
+            # Boundary safety: the ref either equals the prefix exactly, or the
+            # character immediately after the prefix is a "/" (a real descendant).
+            if normalized == prefix or normalized.startswith(prefix + "/"):
+                return pattern
+        else:
+            if normalized == pat:
+                return pattern
+
+    return None

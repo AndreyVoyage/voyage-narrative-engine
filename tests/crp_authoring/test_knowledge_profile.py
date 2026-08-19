@@ -11,6 +11,7 @@ from services.crp_authoring import (
     RetrievalPolicy,
     SourceType,
 )
+from services.crp_authoring.knowledge_profile import forbidden_ref_violation
 
 from tests.crp_authoring.conftest import make_knowledge_profile
 
@@ -44,3 +45,73 @@ class TestKnowledgeProfile:
         profile = make_knowledge_profile()
         with pytest.raises(Exception):
             profile.allowed_kb_refs = ("mutated",)  # type: ignore[misc]
+
+
+class TestForbiddenRefMatcher:
+    """GAP-2 structured-reference matching (content_ref only, bounded syntax)."""
+
+    def test_exact_literal_match_rejected(self) -> None:
+        matched = forbidden_ref_violation(
+            "personas/kira/profile.json",
+            ("personas/kira/profile.json",),
+        )
+        assert matched == "personas/kira/profile.json"
+
+    def test_descendant_of_prefix_rejected(self) -> None:
+        matched = forbidden_ref_violation(
+            "personas/kira/profile.json",
+            ("personas/kira/**",),
+        )
+        assert matched == "personas/kira/**"
+
+    def test_prefix_root_itself_rejected(self) -> None:
+        matched = forbidden_ref_violation(
+            "personas/kira",
+            ("personas/kira/**",),
+        )
+        assert matched == "personas/kira/**"
+
+    def test_windows_backslashes_rejected(self) -> None:
+        matched = forbidden_ref_violation(
+            r"personas\kira\profile.json",
+            ("personas/kira/**",),
+        )
+        assert matched == "personas/kira/**"
+
+    def test_case_variant_rejected(self) -> None:
+        matched = forbidden_ref_violation(
+            "Personas/Kira/Profile.json",
+            ("personas/kira/**",),
+        )
+        assert matched == "personas/kira/**"
+
+    def test_near_miss_kira2_allowed(self) -> None:
+        assert forbidden_ref_violation(
+            "personas/kira2/profile.json",
+            ("personas/kira/**",),
+        ) is None
+
+    def test_near_miss_kirabyte_allowed(self) -> None:
+        assert forbidden_ref_violation(
+            "personas/kirabyte/profile.json",
+            ("personas/kira/**",),
+        ) is None
+
+    def test_empty_forbidden_refs_rejects_nothing(self) -> None:
+        assert forbidden_ref_violation("personas/kira/profile.json", ()) is None
+
+    def test_leading_dot_slash_stripped(self) -> None:
+        matched = forbidden_ref_violation(
+            "./personas/kira/profile.json",
+            ("personas/kira/**",),
+        )
+        assert matched == "personas/kira/**"
+
+    def test_no_hash_free_text_scanning(self) -> None:
+        # The matcher never sees provenance/metadata; a raw prose word unrelated
+        # to a content_ref path pattern is irrelevant here. Verify the matcher
+        # performs structured path comparison, not substring scanning.
+        assert forbidden_ref_violation(
+            "ref://owner/notes/001",
+            ("personas/kira/**",),
+        ) is None
