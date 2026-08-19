@@ -3,12 +3,18 @@
 """
 Accepted Scene Snapshot (ASS v0) -- plain-data models.
 
-All models are ``@dataclass(frozen=True)`` and contain only detached plain
-data: ``dict``/``list``/``tuple``/``str``/``int``/``bool``/``None`` (or
-nested frozen dataclasses composed exclusively of the same). No model ever
-holds Ren'Py objects, live mutable references, open file handles, or
-provider objects. Immutability is by construction (frozen dataclass),
-matching the ``services/persona_gateway/models.py`` convention.
+All models are ``@dataclass(frozen=True)`` and hold only detached,
+**deeply immutable** plain data. Top-level fields are frozen by the
+dataclass; nested semantic structures (mappings/lists) are recursively
+frozen to ``types.MappingProxyType`` (mappings) and ``tuple`` (sequences)
+at construction time, so a caller can neither mutate an ASS through a
+retained input reference nor through the ASS object itself. This preserves
+the contract's "stored content_hash is a stable joint reference without
+recomputing" guarantee.
+
+``semantic_payload()``/``to_dict()`` always return **freshly-allocated**
+plain JSON-compatible dicts/lists (via ``_to_plain``) -- mutating the
+returned data never mutates the ASS, and never exposes an internal alias.
 
 The field set is exactly the ratified ASS v0 contract:
 
@@ -29,7 +35,9 @@ status, and any visual Canon data.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from collections.abc import Mapping
+from dataclasses import dataclass
+from types import MappingProxyType
 from typing import Any, Optional, Tuple
 
 
@@ -40,6 +48,35 @@ class AcceptedSceneSnapshot:
     exists so callers and type hints can reference the concept without
     depending on field layout.
     """
+
+
+def _freeze(value: Any) -> Any:
+    """Deeply convert a value into an immutable representation.
+
+    - ``dict``/``Mapping`` -> ``MappingProxyType`` of recursively-frozen
+      values (a fresh dict is built first, severing any caller alias).
+    - ``list``/``tuple`` -> ``tuple`` of recursively-frozen items.
+    - any other value (str/int/float/bool/None) is already immutable and is
+      returned unchanged.
+    """
+    if isinstance(value, Mapping):
+        return MappingProxyType({key: _freeze(item) for key, item in value.items()})
+    if isinstance(value, (list, tuple)):
+        return tuple(_freeze(item) for item in value)
+    return value
+
+
+def _to_plain(value: Any) -> Any:
+    """Deeply convert a (possibly frozen) value into fresh plain data.
+
+    Always allocates new dicts/lists; the returned structure shares no
+    storage with internal ASS state, and mutating it cannot affect the ASS.
+    """
+    if isinstance(value, Mapping):
+        return {key: _to_plain(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_to_plain(item) for item in value]
+    return value
 
 
 @dataclass(frozen=True)
@@ -71,6 +108,10 @@ class Beat:
     an explicit caller-supplied acceptance input -- never auto-copied from
     source ``beat.emotion`` (which holds state-machine codes like
     ``"U5-выбор"``, not human-reviewable emotion).
+
+    ``accepted_state`` is deeply frozen at construction (``MappingProxyType``
+    recursively), so it cannot be mutated through the ASS nor through any
+    retained caller input reference.
     """
 
     beat_id: str
@@ -78,6 +119,10 @@ class Beat:
     speaker: Optional[str]
     text: str
     accepted_state: Optional[dict[str, Any]] = None
+
+    def __post_init__(self) -> None:
+        if self.accepted_state is not None:
+            object.__setattr__(self, "accepted_state", _freeze(self.accepted_state))
 
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {
@@ -87,7 +132,7 @@ class Beat:
             "text": self.text,
         }
         if self.accepted_state is not None:
-            result["accepted_state"] = self.accepted_state
+            result["accepted_state"] = _to_plain(self.accepted_state)
         return result
 
 
@@ -97,14 +142,17 @@ class LocationStateOverride:
 
     Shape ``{predicate, value}`` -- e.g. ``{"predicate": "lights",
     "value": "off"}``. Never mutates permanent Location Canon
-    ``fixed_features``.
+    ``fixed_features``. ``value`` is deeply frozen at construction.
     """
 
     predicate: str
     value: Any
 
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "value", _freeze(self.value))
+
     def to_dict(self) -> dict[str, Any]:
-        return {"predicate": self.predicate, "value": self.value}
+        return {"predicate": self.predicate, "value": _to_plain(self.value)}
 
 
 @dataclass(frozen=True)
@@ -137,6 +185,10 @@ class ASS(AcceptedSceneSnapshot):
     Construct this directly only when the caller supplies every field,
     including an already-computed ``content_hash`` (see
     ``services.ass.importer`` for the normal path, which computes it).
+
+    ``participants``/``ordered_beats``/``location_state_overrides`` are
+    coerced to tuples; ``character_state_overrides`` is deeply frozen
+    (recursive ``MappingProxyType``) at construction.
     """
 
     schema_version: str
@@ -156,10 +208,19 @@ class ASS(AcceptedSceneSnapshot):
     created_at: Optional[str] = None
     author: Optional[str] = None
 
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "participants", tuple(self.participants))
+        object.__setattr__(self, "ordered_beats", tuple(self.ordered_beats))
+        if self.location_state_overrides is not None:
+            object.__setattr__(self, "location_state_overrides", tuple(self.location_state_overrides))
+        if self.character_state_overrides is not None:
+            object.__setattr__(self, "character_state_overrides", _freeze(self.character_state_overrides))
+
     def semantic_payload(self) -> dict[str, Any]:
         """Return exactly the hashed semantic payload from the contract.
 
-        Optional fields are omitted (not defaulted) when absent.
+        Optional fields are omitted (not defaulted) when absent. Nested
+        semantic structures are returned as fresh plain data (no aliases).
         """
         payload: dict[str, Any] = {
             "scene_id": self.scene_id,
@@ -171,7 +232,7 @@ class ASS(AcceptedSceneSnapshot):
         if self.scene_title is not None:
             payload["scene_title"] = self.scene_title
         if self.character_state_overrides is not None:
-            payload["character_state_overrides"] = self.character_state_overrides
+            payload["character_state_overrides"] = _to_plain(self.character_state_overrides)
         if self.location_state_overrides is not None:
             payload["location_state_overrides"] = [
                 o.to_dict() for o in self.location_state_overrides
@@ -179,7 +240,11 @@ class ASS(AcceptedSceneSnapshot):
         return payload
 
     def to_dict(self) -> dict[str, Any]:
-        """Return the full ASS envelope (hashed + non-hashed fields)."""
+        """Return the full ASS envelope (hashed + non-hashed fields).
+
+        Nested semantic structures are returned as fresh plain data (no
+        aliases into internal ASS storage).
+        """
         result: dict[str, Any] = {
             "schema_version": self.schema_version,
             "ass_id": self.ass_id,
@@ -195,7 +260,7 @@ class ASS(AcceptedSceneSnapshot):
         if self.scene_title is not None:
             result["scene_title"] = self.scene_title
         if self.character_state_overrides is not None:
-            result["character_state_overrides"] = self.character_state_overrides
+            result["character_state_overrides"] = _to_plain(self.character_state_overrides)
         if self.location_state_overrides is not None:
             result["location_state_overrides"] = [
                 o.to_dict() for o in self.location_state_overrides
