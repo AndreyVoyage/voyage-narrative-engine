@@ -142,3 +142,91 @@ class TestIntimacyTargetFamily:
         assert pkg.intimacy_candidate == {}
         assert pkg.psychology_candidate["P2"] == (p,)
         assert pkg.voice_candidate["lexicon"] == (v,)
+
+
+class TestBroadCoreTargetFamilies:
+    """Slice 2: five broad-core families compile into dedicated candidate fields."""
+
+    def test_classify_target_identity_biography(self) -> None:
+        assert classify_target("identity_biography.name") == ("identity_biography", "name")
+
+    def test_identity_biography_routes_to_own_field(self) -> None:
+        ctx = make_compile_context()
+        c = make_claim(claim_id="ib1", target_module_or_layer="identity_biography.name")
+        pkg = compile_candidate_package(ctx, (c,), ())
+        assert pkg.identity_biography_candidate["name"] == (c,)
+        assert pkg.psychology_candidate == {}
+        assert pkg.behavior_candidate == {}
+
+    def test_behavior_routes_to_own_field_not_psychology(self) -> None:
+        ctx = make_compile_context()
+        c = make_claim(claim_id="b1", target_module_or_layer="behavior.social")
+        pkg = compile_candidate_package(ctx, (c,), ())
+        assert pkg.behavior_candidate["social"] == (c,)
+        assert pkg.psychology_candidate == {}
+
+    def test_relationships_routes_to_own_field(self) -> None:
+        ctx = make_compile_context()
+        c = make_claim(claim_id="r1", target_module_or_layer="relationships.counterpart")
+        pkg = compile_candidate_package(ctx, (c,), ())
+        assert pkg.relationships_candidate["counterpart"] == (c,)
+
+    def test_boundaries_routes_to_own_field_not_intimacy(self) -> None:
+        ctx = make_compile_context()
+        c = make_claim(claim_id="g1", target_module_or_layer="boundaries.general")
+        pkg = compile_candidate_package(ctx, (c,), ())
+        assert pkg.boundaries_candidate["general"] == (c,)
+        assert pkg.intimacy_candidate == {}
+
+    def test_seed_memory_routes_to_own_field(self) -> None:
+        ctx = make_compile_context()
+        c = make_claim(claim_id="sm1", target_module_or_layer="seed_memory.event1")
+        pkg = compile_candidate_package(ctx, (c,), ())
+        assert pkg.seed_memory_candidate["event1"] == (c,)
+
+    def test_broad_core_claim_in_provenance_manifest(self) -> None:
+        ctx = make_compile_context()
+        c = make_claim(claim_id="ib1", target_module_or_layer="identity_biography.name")
+        pkg = compile_candidate_package(ctx, (c,), ())
+        assert "identity_biography.name" in pkg.provenance_manifest
+        assert "ib1" in pkg.provenance_manifest["identity_biography.name"]
+
+    def test_unknown_family_still_fail_closed(self) -> None:
+        ctx = make_compile_context()
+        bad = make_claim(claim_id="c1", target_module_or_layer="unknown_family.xyz")
+        with pytest.raises(CompilerError):
+            compile_candidate_package(ctx, (bad,), ())
+
+    def test_empty_broad_core_dimension_fail_closed(self) -> None:
+        ctx = make_compile_context()
+        bad = make_claim(claim_id="c1", target_module_or_layer="behavior.")
+        with pytest.raises(CompilerError):
+            compile_candidate_package(ctx, (bad,), ())
+
+    def test_near_miss_prefix_fail_closed(self) -> None:
+        ctx = make_compile_context()
+        bad = make_claim(claim_id="c1", target_module_or_layer="behaviors.social")
+        with pytest.raises(CompilerError):
+            compile_candidate_package(ctx, (bad,), ())
+
+
+class TestExistingFamiliesRegression:
+    """Slice 2: existing psychology/voice/intimacy routing unchanged."""
+
+    def test_psychology_still_routes(self) -> None:
+        ctx = make_compile_context()
+        c = make_claim(claim_id="p1", target_module_or_layer="psychology.P3")
+        pkg = compile_candidate_package(ctx, (c,), ())
+        assert pkg.psychology_candidate["P3"] == (c,)
+
+    def test_voice_still_routes(self) -> None:
+        ctx = make_compile_context()
+        c = make_claim(claim_id="v1", target_module_or_layer="voice.lexicon")
+        pkg = compile_candidate_package(ctx, (c,), ())
+        assert pkg.voice_candidate["lexicon"] == (c,)
+
+    def test_intimacy_still_routes(self) -> None:
+        ctx = make_compile_context()
+        c = make_claim(claim_id="i1", target_module_or_layer="intimacy.boundaries")
+        pkg = compile_candidate_package(ctx, (c,), ())
+        assert pkg.intimacy_candidate["boundaries"] == (c,)

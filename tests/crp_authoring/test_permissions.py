@@ -75,3 +75,75 @@ class TestIntimacyPermission:
                            source_type_summary=(SourceType.OWNER_DIRECT,),
                            target_module_or_layer="psychology.P3")
         assert permission_violations((claim,), PERMISSIONS_BY_ROLE["R3"])
+
+
+class TestBroadCorePermissions:
+    """Slice 2: five new emit verbs + family mapping (no real-role grants)."""
+
+    def test_five_new_permission_verbs_exist(self) -> None:
+        assert Permission.EMIT_CLAIMS_IDENTITY_BIOGRAPHY.value == "EMIT_CLAIMS_IDENTITY_BIOGRAPHY"
+        assert Permission.EMIT_CLAIMS_BEHAVIOR.value == "EMIT_CLAIMS_BEHAVIOR"
+        assert Permission.EMIT_CLAIMS_RELATIONSHIPS.value == "EMIT_CLAIMS_RELATIONSHIPS"
+        assert Permission.EMIT_CLAIMS_BOUNDARIES.value == "EMIT_CLAIMS_BOUNDARIES"
+        assert Permission.EMIT_CLAIMS_SEED_MEMORY.value == "EMIT_CLAIMS_SEED_MEMORY"
+
+    def _allowed(self, *permissions):
+        return frozenset(permissions)
+
+    def test_identity_biography_requires_matching_verb(self) -> None:
+        c = make_claim(claim_id="c1", claim_type=ClaimType.FACT,
+                       source_type_summary=(SourceType.OWNER_DIRECT,),
+                       target_module_or_layer="identity_biography.name")
+        assert permission_violations(
+            (c,), self._allowed(Permission.EMIT_CLAIMS_IDENTITY_BIOGRAPHY)) == ()
+        assert permission_violations((c,), self._allowed())
+
+    def test_behavior_requires_matching_verb(self) -> None:
+        c = make_claim(claim_id="c1", claim_type=ClaimType.FACT,
+                       source_type_summary=(SourceType.OWNER_DIRECT,),
+                       target_module_or_layer="behavior.social")
+        assert permission_violations(
+            (c,), self._allowed(Permission.EMIT_CLAIMS_BEHAVIOR)) == ()
+        assert permission_violations((c,), self._allowed())
+
+    def test_relationships_requires_matching_verb(self) -> None:
+        c = make_claim(claim_id="c1", claim_type=ClaimType.FACT,
+                       source_type_summary=(SourceType.OWNER_DIRECT,),
+                       target_module_or_layer="relationships.counterpart")
+        assert permission_violations(
+            (c,), self._allowed(Permission.EMIT_CLAIMS_RELATIONSHIPS)) == ()
+        assert permission_violations((c,), self._allowed())
+
+    def test_boundaries_requires_matching_verb(self) -> None:
+        c = make_claim(claim_id="c1", claim_type=ClaimType.FACT,
+                       source_type_summary=(SourceType.OWNER_DIRECT,),
+                       target_module_or_layer="boundaries.general")
+        assert permission_violations(
+            (c,), self._allowed(Permission.EMIT_CLAIMS_BOUNDARIES)) == ()
+        assert permission_violations((c,), self._allowed())
+
+    def test_seed_memory_requires_matching_verb(self) -> None:
+        c = make_claim(claim_id="c1", claim_type=ClaimType.FACT,
+                       source_type_summary=(SourceType.OWNER_DIRECT,),
+                       target_module_or_layer="seed_memory.event1")
+        assert permission_violations(
+            (c,), self._allowed(Permission.EMIT_CLAIMS_SEED_MEMORY)) == ()
+        assert permission_violations((c,), self._allowed())
+
+    def test_cross_family_no_authorization(self) -> None:
+        # EMIT_CLAIMS_BEHAVIOR must not authorize relationships.*.
+        c = make_claim(claim_id="c1", claim_type=ClaimType.FACT,
+                       source_type_summary=(SourceType.OWNER_DIRECT,),
+                       target_module_or_layer="relationships.counterpart")
+        assert permission_violations(
+            (c,), self._allowed(Permission.EMIT_CLAIMS_BEHAVIOR))
+
+    def test_no_real_role_gained_broad_core_grants(self) -> None:
+        # Slice 2 must not grant the new verbs to real roles.
+        for role in ("R1", "R2", "R3", "R4"):
+            perms = PERMISSIONS_BY_ROLE[role]
+            assert Permission.EMIT_CLAIMS_IDENTITY_BIOGRAPHY not in perms
+            assert Permission.EMIT_CLAIMS_BEHAVIOR not in perms
+            assert Permission.EMIT_CLAIMS_RELATIONSHIPS not in perms
+            assert Permission.EMIT_CLAIMS_BOUNDARIES not in perms
+            assert Permission.EMIT_CLAIMS_SEED_MEMORY not in perms

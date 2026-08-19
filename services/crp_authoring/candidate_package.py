@@ -62,6 +62,11 @@ class CandidateCharacterPackage:
     lineage: Optional[str] = None
     behavioral_validation_refs: Tuple[str, ...] = ()
     intimacy_candidate: Mapping[str, Tuple[RoleClaim, ...]] = field(default_factory=dict)
+    identity_biography_candidate: Mapping[str, Tuple[RoleClaim, ...]] = field(default_factory=dict)
+    behavior_candidate: Mapping[str, Tuple[RoleClaim, ...]] = field(default_factory=dict)
+    relationships_candidate: Mapping[str, Tuple[RoleClaim, ...]] = field(default_factory=dict)
+    boundaries_candidate: Mapping[str, Tuple[RoleClaim, ...]] = field(default_factory=dict)
+    seed_memory_candidate: Mapping[str, Tuple[RoleClaim, ...]] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         _require_non_empty(self.package_id, "package_id")
@@ -102,6 +107,16 @@ class CandidateCharacterPackage:
             raise CrpValidationError("behavioral_validation_refs must be a tuple")
         if not isinstance(self.intimacy_candidate, Mapping):
             raise CrpValidationError("intimacy_candidate must be a mapping")
+        if not isinstance(self.identity_biography_candidate, Mapping):
+            raise CrpValidationError("identity_biography_candidate must be a mapping")
+        if not isinstance(self.behavior_candidate, Mapping):
+            raise CrpValidationError("behavior_candidate must be a mapping")
+        if not isinstance(self.relationships_candidate, Mapping):
+            raise CrpValidationError("relationships_candidate must be a mapping")
+        if not isinstance(self.boundaries_candidate, Mapping):
+            raise CrpValidationError("boundaries_candidate must be a mapping")
+        if not isinstance(self.seed_memory_candidate, Mapping):
+            raise CrpValidationError("seed_memory_candidate must be a mapping")
 
         # Freeze contained mutable structures in place (immutable value type).
         object.__setattr__(self, "role_result_refs", tuple(self.role_result_refs))
@@ -125,6 +140,36 @@ class CandidateCharacterPackage:
             self, "intimacy_candidate",
             MappingProxyType({
                 k: tuple(v) for k, v in self.intimacy_candidate.items()
+            }),
+        )
+        object.__setattr__(
+            self, "identity_biography_candidate",
+            MappingProxyType({
+                k: tuple(v) for k, v in self.identity_biography_candidate.items()
+            }),
+        )
+        object.__setattr__(
+            self, "behavior_candidate",
+            MappingProxyType({
+                k: tuple(v) for k, v in self.behavior_candidate.items()
+            }),
+        )
+        object.__setattr__(
+            self, "relationships_candidate",
+            MappingProxyType({
+                k: tuple(v) for k, v in self.relationships_candidate.items()
+            }),
+        )
+        object.__setattr__(
+            self, "boundaries_candidate",
+            MappingProxyType({
+                k: tuple(v) for k, v in self.boundaries_candidate.items()
+            }),
+        )
+        object.__setattr__(
+            self, "seed_memory_candidate",
+            MappingProxyType({
+                k: tuple(v) for k, v in self.seed_memory_candidate.items()
             }),
         )
         object.__setattr__(

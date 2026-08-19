@@ -73,3 +73,41 @@ class TestIntimacyCandidate:
         pkg = make_package()
         with pytest.raises(Exception):
             pkg.intimacy_candidate["boundaries"] = ()  # type: ignore[index]
+
+
+class TestBroadCoreCandidateFields:
+    """Slice 2: five broad-core destination fields exist with empty defaults."""
+
+    def test_five_broad_core_fields_exist_and_default_empty(self) -> None:
+        pkg = make_package()
+        assert pkg.identity_biography_candidate == {}
+        assert pkg.behavior_candidate == {}
+        assert pkg.relationships_candidate == {}
+        assert pkg.boundaries_candidate == {}
+        assert pkg.seed_memory_candidate == {}
+
+    def test_existing_narrow_construction_still_succeeds(self) -> None:
+        # Narrow psychology/voice/intimacy construction remains valid.
+        from tests.crp_authoring.conftest import make_claim
+        p = make_claim(claim_id="p1", target_module_or_layer="psychology.P2")
+        v = make_claim(claim_id="v1", target_module_or_layer="voice.lexicon")
+        pkg = make_package(
+            psychology_candidate={"P2": (p,)},
+            voice_candidate={"lexicon": (v,)},
+        )
+        assert pkg.psychology_candidate["P2"] == (p,)
+        assert pkg.voice_candidate["lexicon"] == (v,)
+        assert pkg.identity_biography_candidate == {}
+
+    def test_each_broad_core_field_accepts_claim_mapping(self) -> None:
+        from tests.crp_authoring.conftest import make_claim
+        c = make_claim(claim_id="b1", target_module_or_layer="behavior.social")
+        pkg = make_package(behavior_candidate={"social": (c,)})
+        assert pkg.behavior_candidate["social"] == (c,)
+
+    def test_broad_core_fields_immutable(self) -> None:
+        pkg = make_package()
+        with pytest.raises(Exception):
+            pkg.behavior_candidate["social"] = ()  # type: ignore[index]
+        with pytest.raises(Exception):
+            pkg.seed_memory_candidate["e1"] = ()  # type: ignore[index]

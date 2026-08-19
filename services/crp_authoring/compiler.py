@@ -12,8 +12,14 @@ Its only transform is deterministic module/layer placement using the claim's
 already-set ``target_module_or_layer`` (a SAFE_SPECIFICATION_CHOICE string
 convention, not new semantic content):
 
-* ``"psychology.P{0..5}"`` -> ``psychology_candidate[Pn]``
-* ``"voice.<dimension>"``  -> ``voice_candidate[dimension]``
+* ``"psychology.P{0..5}"``        -> ``psychology_candidate[Pn]``
+* ``"voice.<dimension>"``         -> ``voice_candidate[dimension]``
+* ``"intimacy.<dimension>"``      -> ``intimacy_candidate[dimension]``
+* ``"identity_biography.<dim>"``  -> ``identity_biography_candidate[dim]``
+* ``"behavior.<dimension>"``      -> ``behavior_candidate[dimension]``
+* ``"relationships.<dimension>"`` -> ``relationships_candidate[dimension]``
+* ``"boundaries.<dimension>"``    -> ``boundaries_candidate[dimension]``
+* ``"seed_memory.<dimension>"``   -> ``seed_memory_candidate[dimension]``
 * anything else -> FAIL CLOSED (CompilerError): R6 never guesses a placement.
 
 Reuses S0's ``reject_unsupported_claim`` and ``check_contradiction_integrity``
@@ -45,8 +51,11 @@ def classify_target(target: str) -> Tuple[str, str]:
     """Deterministically classify a claim's ``target_module_or_layer`` into a
     ``(family, key)`` pair via the ratified string convention.
 
-    Returns ``("psychology", "Pn")``, ``("voice", "<dimension>")``, or
-    ``("intimacy", "<dimension>")``.
+    Returns ``("psychology", "Pn")``, ``("voice", "<dimension>")``,
+    ``("intimacy", "<dimension>")``, or one of the broad-core families
+    ``("identity_biography", dim)`` / ``("behavior", dim)`` /
+    ``("relationships", dim)`` / ``("boundaries", dim)`` /
+    ``("seed_memory", dim)``.
     Raises ``CompilerError`` when the target is absent, invalid, or does not
     match any family prefix -- R6 never guesses a placement.
     """
@@ -75,9 +84,22 @@ def classify_target(target: str) -> Tuple[str, str]:
             raise CompilerError(f"claim target {target!r} has an empty intimacy dimension")
         return ("intimacy", dimension)
 
+    for family in ("identity_biography", "behavior", "relationships",
+                   "boundaries", "seed_memory"):
+        prefix = family + "."
+        if t.startswith(prefix):
+            dimension = t[len(prefix):]
+            if not dimension:
+                raise CompilerError(
+                    f"claim target {target!r} has an empty {family} dimension"
+                )
+            return (family, dimension)
+
     raise CompilerError(
-        f"claim target {target!r} is unmappable: must be 'psychology.P{{0..5}}' "
-        "'voice.<dimension>', or 'intimacy.<dimension>'; R6 does not auto-classify"
+        f"claim target {target!r} is unmappable: must be 'psychology.P{{0..5}}', "
+        "'voice.<dimension>', 'intimacy.<dimension>', 'identity_biography.<dimension>', "
+        "'behavior.<dimension>', 'relationships.<dimension>', 'boundaries.<dimension>', "
+        "or 'seed_memory.<dimension>'; R6 does not auto-classify"
     )
 
 
@@ -119,6 +141,11 @@ def compile_candidate_package(
     psychology: Dict[str, List[RoleClaim]] = {}
     voice: Dict[str, List[RoleClaim]] = {}
     intimacy: Dict[str, List[RoleClaim]] = {}
+    identity_biography: Dict[str, List[RoleClaim]] = {}
+    behavior: Dict[str, List[RoleClaim]] = {}
+    relationships: Dict[str, List[RoleClaim]] = {}
+    boundaries: Dict[str, List[RoleClaim]] = {}
+    seed_memory: Dict[str, List[RoleClaim]] = {}
     provenance: Dict[str, List[str]] = {}
 
     for claim in claims:
@@ -127,12 +154,16 @@ def compile_candidate_package(
         reject_unsupported_claim(claim)
 
         family, key = classify_target(claim.target_module_or_layer)
-        if family == "psychology":
-            bucket = psychology
-        elif family == "voice":
-            bucket = voice
-        else:
-            bucket = intimacy
+        bucket = {
+            "psychology": psychology,
+            "voice": voice,
+            "intimacy": intimacy,
+            "identity_biography": identity_biography,
+            "behavior": behavior,
+            "relationships": relationships,
+            "boundaries": boundaries,
+            "seed_memory": seed_memory,
+        }[family]
         bucket.setdefault(key, []).append(claim)
         provenance.setdefault(claim.target_module_or_layer.strip(), []).append(claim.claim_id)
 
@@ -153,6 +184,11 @@ def compile_candidate_package(
         psychology_candidate={k: tuple(v) for k, v in psychology.items()},
         voice_candidate={k: tuple(v) for k, v in voice.items()},
         intimacy_candidate={k: tuple(v) for k, v in intimacy.items()},
+        identity_biography_candidate={k: tuple(v) for k, v in identity_biography.items()},
+        behavior_candidate={k: tuple(v) for k, v in behavior.items()},
+        relationships_candidate={k: tuple(v) for k, v in relationships.items()},
+        boundaries_candidate={k: tuple(v) for k, v in boundaries.items()},
+        seed_memory_candidate={k: tuple(v) for k, v in seed_memory.items()},
         validation_results={},
         audit_result=None,
         provenance_manifest={k: tuple(v) for k, v in provenance.items()},

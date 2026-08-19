@@ -32,6 +32,11 @@ class Permission(Enum):
     EMIT_CLAIMS_PSYCHOLOGY = "EMIT_CLAIMS_PSYCHOLOGY"
     EMIT_CLAIMS_VOICE = "EMIT_CLAIMS_VOICE"
     EMIT_CLAIMS_INTIMACY = "EMIT_CLAIMS_INTIMACY"
+    EMIT_CLAIMS_IDENTITY_BIOGRAPHY = "EMIT_CLAIMS_IDENTITY_BIOGRAPHY"
+    EMIT_CLAIMS_BEHAVIOR = "EMIT_CLAIMS_BEHAVIOR"
+    EMIT_CLAIMS_RELATIONSHIPS = "EMIT_CLAIMS_RELATIONSHIPS"
+    EMIT_CLAIMS_BOUNDARIES = "EMIT_CLAIMS_BOUNDARIES"
+    EMIT_CLAIMS_SEED_MEMORY = "EMIT_CLAIMS_SEED_MEMORY"
 
 
 # Canonical per-role permission sets (mechanical encoding of ratified §10-12).
@@ -64,6 +69,11 @@ _FAMILY_EMIT_PERMISSION = {
     "psychology": Permission.EMIT_CLAIMS_PSYCHOLOGY,
     "voice": Permission.EMIT_CLAIMS_VOICE,
     "intimacy": Permission.EMIT_CLAIMS_INTIMACY,
+    "identity_biography": Permission.EMIT_CLAIMS_IDENTITY_BIOGRAPHY,
+    "behavior": Permission.EMIT_CLAIMS_BEHAVIOR,
+    "relationships": Permission.EMIT_CLAIMS_RELATIONSHIPS,
+    "boundaries": Permission.EMIT_CLAIMS_BOUNDARIES,
+    "seed_memory": Permission.EMIT_CLAIMS_SEED_MEMORY,
 }
 
 
