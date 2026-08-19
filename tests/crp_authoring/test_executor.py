@@ -329,3 +329,54 @@ class TestPromptAssembly:
         )
         assert messages[0] == {"role": "system", "content": prompt_text}
         assert messages[1]["role"] == "user"
+
+
+class TestTaskMetadataExposure:
+    """S2C-C2: current task_id/role_id/role_version must be visible to the
+    provider so the model can echo them to satisfy exact-equality checks."""
+
+    def _visible_scope(self):
+        entry = make_registry_entry(
+            role_id="R2", version="v-test-visible", prompt_ref=_R2_PROMPT_REF,
+        )
+        registry = RoleRegistry((entry,))
+        profiles = {"profile-r2": make_knowledge_profile(profile_id="profile-r2", role_id="R2")}
+        evidence = (make_source(source_id="se-001", source_type=SourceType.OWNER_DIRECT),)
+        task = make_role_task(
+            task_id="task-visible-123", role_id="R2", role_version="v-test-visible",
+            allowed_evidence_ids=("se-001",),
+        )
+        return registry, profiles, evidence, task
+
+    def test_current_task_metadata_exposed(self) -> None:
+        registry, profiles, evidence, task = self._visible_scope()
+        seen = {}
+
+        def capture(messages):
+            seen["messages"] = messages
+            return _r2_result_json(
+                task_id="task-visible-123", role_id="R2", role_version="v-test-visible",
+            )
+
+        execute_role_task(task, registry, profiles, capture, evidence)
+
+        user_content = [m["content"] for m in seen["messages"] if m["role"] == "user"][0]
+        assert "- task_id: task-visible-123" in user_content
+        assert "- role_id: R2" in user_content
+        assert "- role_version: v-test-visible" in user_content
+
+    def test_echo_success(self) -> None:
+        registry, profiles, evidence, task = self._visible_scope()
+        provider = make_fake_provider(_r2_result_json(
+            task_id="task-visible-123", role_id="R2", role_version="v-test-visible",
+        ))
+        result = execute_role_task(task, registry, profiles, provider, evidence)
+        assert result.task_id == "task-visible-123"
+        assert result.role_id == "R2"
+        assert result.role_version == "v-test-visible"
+
+    def test_wrong_task_id_still_fails_closed(self) -> None:
+        registry, profiles, evidence, task = self._visible_scope()
+        provider = make_fake_provider(_r2_result_json(task_id="some-other-task-id"))
+        with pytest.raises(ExecutorError, match="result task_id"):
+            execute_role_task(task, registry, profiles, provider, evidence)
