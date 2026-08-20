@@ -23,6 +23,7 @@ from typing import Dict, List, Optional, Tuple
 
 from .candidate_package import CandidateCharacterPackage
 from .contracts import (
+    ClaimType,
     ContradictionRecord,
     Confidence,
     INFERENCE_SOURCE_TYPES,
@@ -53,6 +54,8 @@ CHECK_CANON = "CANON_SEMANTICS"
 CHECK_SUBJECT = "SUBJECT_MISMATCH"
 CHECK_CONFIDENCE = "CONFIDENCE_MISUSE"
 CHECK_CONTRADICTION_PRESERVED = "CONTRADICTION_NOT_PRESERVED"
+CHECK_UNKNOWN_INTEGRITY = "UNKNOWN_ENTRY_INTEGRITY"
+CHECK_UNKNOWN_MUTUAL_EXCLUSION = "UNKNOWN_MUTUAL_EXCLUSION"
 
 # Canon directory markers, assembled by concatenation so no single string
 # literal in this source equals a canon path token (the generic
@@ -208,6 +211,10 @@ def validate_package(
 
     # --- #7 invalid target module/layer (defense in depth) -----------------
     for claim in package.claims:
+        if claim.claim_type == ClaimType.UNKNOWN:
+            # An UNKNOWN claim's target records WHAT is unknown, never a
+            # candidate placement, so it is exempt from family-target checks.
+            continue
         t = claim.target_module_or_layer.strip()
         ok = t.startswith("psychology.P") or t.startswith("voice.") or t.startswith("intimacy.")
         if not ok:
@@ -215,6 +222,41 @@ def validate_package(
                 CHECK_INVALID_TARGET, SEVERITY_ERROR,
                 f"claim {claim.claim_id!r} has invalid target {claim.target_module_or_layer!r}",
             ))
+
+    # --- UNKNOWN registry structural checks (Slice 3, structural only) ----
+    # A. Entry integrity: every package.unknowns entry must originate from an
+    #    UNKNOWN RoleClaim.
+    unknown_claims: List[RoleClaim] = []
+    for unknown in package.unknowns:
+        if not isinstance(unknown, RoleClaim):
+            findings.append(ValidationFinding(
+                CHECK_UNKNOWN_INTEGRITY, SEVERITY_ERROR,
+                f"package.unknowns contains a non-RoleClaim entry {unknown!r}",
+            ))
+            continue
+        unknown_claims.append(unknown)
+        if unknown.claim_type != ClaimType.UNKNOWN:
+            findings.append(ValidationFinding(
+                CHECK_UNKNOWN_INTEGRITY, SEVERITY_ERROR,
+                f"package.unknowns entry {unknown.claim_id!r} is not claim_type=UNKNOWN",
+            ))
+
+    # B. Mutual exclusion: an UNKNOWN claim must never also sit in a normal
+    #    candidate family bucket.
+    unknown_ids = {u.claim_id for u in unknown_claims}
+    for family in (package.psychology_candidate, package.voice_candidate,
+                   package.intimacy_candidate,
+                   package.identity_biography_candidate, package.behavior_candidate,
+                   package.relationships_candidate, package.boundaries_candidate,
+                   package.seed_memory_candidate):
+        for key, entries in family.items():
+            for claim in entries:
+                if claim.claim_id in unknown_ids:
+                    findings.append(ValidationFinding(
+                        CHECK_UNKNOWN_MUTUAL_EXCLUSION, SEVERITY_ERROR,
+                        f"claim {claim.claim_id!r} appears both in package.unknowns "
+                        f"and in family bucket {key!r}",
+                    ))
 
     # --- #8 unsupported claim (reuse S0 rule) ------------------------------
     for claim in package.claims:

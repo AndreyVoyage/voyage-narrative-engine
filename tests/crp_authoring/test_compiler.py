@@ -230,3 +230,62 @@ class TestExistingFamiliesRegression:
         c = make_claim(claim_id="i1", target_module_or_layer="intimacy.boundaries")
         pkg = compile_candidate_package(ctx, (c,), ())
         assert pkg.intimacy_candidate["boundaries"] == (c,)
+
+
+class TestUnknownRouting:
+    """Slice 3: UNKNOWN claims route to package.unknowns, never a family bucket."""
+
+    def _unknown(self, claim_id, target):
+        return make_claim(
+            claim_id=claim_id, claim_type=ClaimType.UNKNOWN,
+            target_module_or_layer=target,
+            source_evidence_ids=(),
+            confidence=Confidence.UNKNOWN,
+        )
+
+    def test_unknown_routes_to_package_unknowns(self) -> None:
+        ctx = make_compile_context()
+        u = self._unknown("u1", "psychology.P2")
+        pkg = compile_candidate_package(ctx, (u,), ())
+        assert pkg.unknowns == (u,)
+
+    def test_unknown_excluded_from_all_normal_buckets(self) -> None:
+        ctx = make_compile_context()
+        u = make_claim(claim_id="u1", claim_type=ClaimType.UNKNOWN,
+                       target_module_or_layer="identity_biography.birthplace",
+                       source_evidence_ids=(), confidence=Confidence.UNKNOWN)
+        pkg = compile_candidate_package(ctx, (u,), ())
+        assert pkg.unknowns == (u,)
+        assert pkg.psychology_candidate == {}
+        assert pkg.voice_candidate == {}
+        assert pkg.intimacy_candidate == {}
+        assert pkg.identity_biography_candidate == {}
+        assert pkg.behavior_candidate == {}
+        assert pkg.relationships_candidate == {}
+        assert pkg.boundaries_candidate == {}
+        assert pkg.seed_memory_candidate == {}
+
+    def test_free_form_unknown_target_not_fail_closed(self) -> None:
+        # An UNKNOWN claim's target identifies WHAT is unknown; it is not a
+        # candidate family prefix and must not trigger CompilerError.
+        ctx = make_compile_context()
+        u = self._unknown("u1", "free.form.gap.target")
+        pkg = compile_candidate_package(ctx, (u,), ())
+        assert pkg.unknowns == (u,)
+
+    def test_distinct_unknowns_coexist(self) -> None:
+        ctx = make_compile_context()
+        u1 = self._unknown("u1", "psychology.P2")
+        u2 = self._unknown("u2", "behavior.conflict_style")
+        u3 = self._unknown("u3", "identity_biography.birthplace")
+        pkg = compile_candidate_package(ctx, (u1, u2, u3), ())
+        assert pkg.unknowns == (u1, u2, u3)
+
+    def test_mixed_unknown_and_normal_claims(self) -> None:
+        ctx = make_compile_context()
+        u = self._unknown("u1", "psychology.P2")
+        p = make_claim(claim_id="p1", target_module_or_layer="psychology.P3")
+        pkg = compile_candidate_package(ctx, (u, p), ())
+        assert pkg.unknowns == (u,)
+        assert pkg.psychology_candidate["P3"] == (p,)
+        assert pkg.psychology_candidate.get("P2") is None

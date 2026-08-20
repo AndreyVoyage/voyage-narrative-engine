@@ -261,3 +261,66 @@ class TestOfflineE2E:
 
         report = validate_package(pkg, input_contradictions=(record,))
         assert not any(f.check == CHECK_CONTRADICTION_PRESERVED for f in report.findings)
+
+    def test_scenario_6_r1_unknown_claim_reaches_package(self):
+        """Slice 3: an R1-shaped UNKNOWN RoleClaim now reaches package.unknowns
+        via R6 (previously this evidence-gap signal was lost before the package).
+
+        The future orchestrator aggregates R1 claims into R6's input; this test
+        proves that IF an UNKNOWN RoleClaim is passed to R6, it is preserved."""
+        evidence = _frozen_evidence()
+
+        # R1 produces a UNKNOWN gap claim targeting a broad-core family.
+        registry, profiles, task = _role_scope("R1", "task-r1", evidence)
+        payload = {
+            "task_id": "task-r1",
+            "role_id": "R1",
+            "role_version": "v1",
+            "completion_status": "INSUFFICIENT_EVIDENCE",
+            "claims": [{
+                "claim_id": "r1-gap-1",
+                "subject_id": SUBJECT,
+                "role_id": "R1",
+                "claim": "missing evidence for subject birthplace",
+                "claim_type": "UNKNOWN",
+                "source_evidence_ids": [],
+                "source_type_summary": ["OWNER_DIRECT"],
+                "confidence": "UNKNOWN",
+                "rationale_summary": "synthetic offline test",
+                "status": "PROPOSED",
+                "target_module_or_layer": "identity_biography.birthplace",
+            }],
+            "unknowns": [],
+            "contradictions": [],
+            "provenance_summary": {"used_evidence": ["se-001"]},
+            "requests_for_more_evidence": [],
+            "warnings": [],
+            "questions_for_r1": [],
+            "new_source_evidence": [],
+        }
+        result = execute_role_task(
+            task, registry, profiles,
+            make_fake_provider(json.dumps(payload, ensure_ascii=False)), evidence,
+        )
+
+        assert result.claims[0].claim_type is ClaimType.UNKNOWN
+
+        # Aggregate the claim into R6's input (orchestrator's future job).
+        ctx = make_compile_context(subject_id=SUBJECT)
+        pkg = compile_candidate_package(ctx, (result.claims[0],), ())
+
+        # UNKNOWN reached package.unknowns, not a normal family bucket.
+        assert pkg.unknowns == (result.claims[0],)
+        assert pkg.identity_biography_candidate == {}
+        assert pkg.psychology_candidate == {}
+        assert pkg.voice_candidate == {}
+        assert pkg.intimacy_candidate == {}
+        assert pkg.behavior_candidate == {}
+
+        # Claim identity/provenance preserved verbatim.
+        assert pkg.unknowns[0].claim_id == "r1-gap-1"
+        assert pkg.unknowns[0].role_id == "R1"
+
+        # Structurally-correct package passes R7.
+        report = validate_package(pkg)
+        assert report.valid is True

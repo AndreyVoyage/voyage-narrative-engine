@@ -21,6 +21,8 @@ from services.crp_authoring.validator import (
     CHECK_MISSING_EVIDENCE,
     CHECK_PROVENANCE,
     CHECK_SUBJECT,
+    CHECK_UNKNOWN_INTEGRITY,
+    CHECK_UNKNOWN_MUTUAL_EXCLUSION,
     DEFERRED_CHECKS,
     validate_package,
 )
@@ -175,3 +177,50 @@ class TestIntimacyValidation:
         from services.crp_authoring import CompilerError
         with pytest.raises(CompilerError):
             compile_candidate_package(ctx, (c,), ())
+
+
+class TestUnknownValidation:
+    """Slice 3: R7 structural checks over package.unknowns."""
+
+    def _unknown(self, claim_id, target="psychology.P2"):
+        return make_claim(
+            claim_id=claim_id, claim_type=ClaimType.UNKNOWN,
+            target_module_or_layer=target,
+            source_evidence_ids=(),
+            confidence=Confidence.UNKNOWN,
+        )
+
+    def test_valid_unknown_package_passes(self) -> None:
+        ctx = make_compile_context()
+        u = self._unknown("u1", "behavior.conflict_style")
+        pkg = compile_candidate_package(ctx, (u,), ())
+        report = validate_package(pkg)
+        assert report.valid is True
+        assert report.findings == ()
+
+    def test_non_roleclaim_unknown_entry_detected(self) -> None:
+        pkg = make_package(unknowns=("not-a-claim",))
+        report = validate_package(pkg)
+        assert _claims_findings(report, CHECK_UNKNOWN_INTEGRITY)
+
+    def test_non_unknown_claim_in_unknowns_detected(self) -> None:
+        plain = make_claim(claim_id="c1", target_module_or_layer="psychology.P2")
+        pkg = make_package(unknowns=(plain,))
+        report = validate_package(pkg)
+        assert _claims_findings(report, CHECK_UNKNOWN_INTEGRITY)
+
+    def test_mutual_exclusion_detected(self) -> None:
+        # Same claim present both in package.unknowns and a family bucket.
+        u = self._unknown("u1", "psychology.P2")
+        pkg = make_package(unknowns=(u,), psychology_candidate={"P2": (u,)})
+        report = validate_package(pkg)
+        assert _claims_findings(report, CHECK_UNKNOWN_MUTUAL_EXCLUSION)
+
+    def test_unknown_subject_mismatch_detected(self) -> None:
+        # Unknown claim subject differs from package subject -> existing
+        # CHECK_SUBJECT still catches it (subject integrity per §12.D).
+        ctx = make_compile_context(subject_id="package-subject")
+        u = self._unknown("u1", "psychology.P2")  # subject defaults to char-subject-1
+        pkg = compile_candidate_package(ctx, (u,), ())
+        report = validate_package(pkg)
+        assert _claims_findings(report, CHECK_SUBJECT)

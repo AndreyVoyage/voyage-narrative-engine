@@ -20,6 +20,8 @@ convention, not new semantic content):
 * ``"relationships.<dimension>"`` -> ``relationships_candidate[dimension]``
 * ``"boundaries.<dimension>"``    -> ``boundaries_candidate[dimension]``
 * ``"seed_memory.<dimension>"``   -> ``seed_memory_candidate[dimension]``
+* ``claim_type=UNKNOWN``          -> ``package.unknowns`` (gap signal, never a
+  family bucket)
 * anything else -> FAIL CLOSED (CompilerError): R6 never guesses a placement.
 
 Reuses S0's ``reject_unsupported_claim`` and ``check_contradiction_integrity``
@@ -34,7 +36,7 @@ from datetime import datetime
 from typing import Dict, List, Tuple
 
 from .candidate_package import CandidateCharacterPackage, PackageStatus
-from .contracts import ContradictionRecord, RoleClaim
+from .contracts import ClaimType, ContradictionRecord, RoleClaim
 from .errors import CrpError
 from .validation import check_contradiction_integrity, reject_unsupported_claim
 
@@ -123,9 +125,11 @@ def compile_candidate_package(
 
     - Rejects unsupported claims via ``reject_unsupported_claim`` first
       (fail-closed; a ``FACT`` claim with inference-only evidence raises).
-    - Places each claim into ``psychology_candidate`` / ``voice_candidate`` by
-      its deterministic ``target_module_or_layer``; an unmappable target raises
-      and no package is produced (never silently dropped).
+    - Routes ``claim_type=UNKNOWN`` claims verbatim into ``package.unknowns``
+      (evidence-gap signals), never into a normal candidate family.
+    - Places each remaining claim into its family bucket by deterministic
+      ``target_module_or_layer``; an unmappable target raises and no package is
+      produced (never silently dropped).
     - Copies every ``ContradictionRecord`` verbatim (both ``claim_ids`` intact)
       after ``check_contradiction_integrity``; never averages, never picks a
       winner, never sets ``resolution_status``.
@@ -146,12 +150,20 @@ def compile_candidate_package(
     relationships: Dict[str, List[RoleClaim]] = {}
     boundaries: Dict[str, List[RoleClaim]] = {}
     seed_memory: Dict[str, List[RoleClaim]] = {}
+    unknowns: List[RoleClaim] = []
     provenance: Dict[str, List[str]] = {}
 
     for claim in claims:
         if not isinstance(claim, RoleClaim):
             raise CompilerError("claims must contain RoleClaim instances")
         reject_unsupported_claim(claim)
+
+        if claim.claim_type == ClaimType.UNKNOWN:
+            # UNKNOWN claims are evidence-gap signals, not candidate family
+            # content: preserve them verbatim into package.unknowns, never a
+            # family bucket. R6 does not judge importance, infer, or resolve.
+            unknowns.append(claim)
+            continue
 
         family, key = classify_target(claim.target_module_or_layer)
         bucket = {
@@ -180,7 +192,7 @@ def compile_candidate_package(
         role_result_refs=(),
         claims=tuple(claims),
         contradictions=tuple(contradictions),
-        unknowns=(),
+        unknowns=tuple(unknowns),
         psychology_candidate={k: tuple(v) for k, v in psychology.items()},
         voice_candidate={k: tuple(v) for k, v in voice.items()},
         intimacy_candidate={k: tuple(v) for k, v in intimacy.items()},
