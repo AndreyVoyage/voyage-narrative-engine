@@ -85,15 +85,36 @@ class TestDeclarativeRegistryLoad:
 
     def test_r1_resolves_exact_version(self) -> None:
         registry = load_role_registry()
-        entry = registry.resolve("R1", "v1")
+        entry = registry.resolve("R1", "v2")
         assert entry.status is RoleStatus.ACTIVE
         assert entry.execution_type is ExecutionType.LLM_ROLE
 
     def test_r2_resolves_exact_version(self) -> None:
         registry = load_role_registry()
-        entry = registry.resolve("R2", "v1")
+        entry = registry.resolve("R2", "v2")
         assert entry.status is RoleStatus.ACTIVE
         assert entry.execution_type is ExecutionType.LLM_ROLE
+
+    def test_r1_old_version_not_resolvable(self) -> None:
+        # The registry stores only the current authoritative pin (no full
+        # history); the old v1 file remains on disk but is not a resolvable
+        # registry entry. No latest-wins, no fallback.
+        registry = load_role_registry()
+        with pytest.raises(CrpValidationError):
+            registry.resolve("R1", "v1")
+
+    def test_r2_old_version_not_resolvable(self) -> None:
+        registry = load_role_registry()
+        with pytest.raises(CrpValidationError):
+            registry.resolve("R2", "v1")
+
+    def test_r1_predecessor_version_recorded(self) -> None:
+        registry = load_role_registry()
+        assert registry.get("R1").predecessor_version == "v1"
+
+    def test_r2_predecessor_version_recorded(self) -> None:
+        registry = load_role_registry()
+        assert registry.get("R2").predecessor_version == "v1"
 
     def test_r4_resolves_exact_version(self) -> None:
         registry = load_role_registry()

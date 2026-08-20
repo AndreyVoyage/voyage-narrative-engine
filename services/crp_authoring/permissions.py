@@ -46,11 +46,22 @@ PERMISSIONS_BY_ROLE: dict[str, frozenset[Permission]] = {
         Permission.EMIT_SOURCE_EVIDENCE,
         Permission.EMIT_QUESTION_PLAN,
         Permission.EMIT_CLAIMS_UNKNOWN,
+        # Slice 5: direct-evidence broad-core structuring (no behavior, no
+        # psychological inference).
+        Permission.EMIT_CLAIMS_IDENTITY_BIOGRAPHY,
+        Permission.EMIT_CLAIMS_RELATIONSHIPS,
+        Permission.EMIT_CLAIMS_BOUNDARIES,
+        Permission.EMIT_CLAIMS_SEED_MEMORY,
     }),
     "R2": frozenset({
         Permission.READ_SOURCE_EVIDENCE,
         Permission.READ_PRIOR_ROLE_RESULTS,
         Permission.EMIT_CLAIMS_PSYCHOLOGY,
+        # Slice 5: first-class behavior + initial relational-state
+        # interpretation (no direct identity/biography, no seed memory, no
+        # boundaries extraction).
+        Permission.EMIT_CLAIMS_BEHAVIOR,
+        Permission.EMIT_CLAIMS_RELATIONSHIPS,
     }),
     "R4": frozenset({
         Permission.READ_SOURCE_EVIDENCE,

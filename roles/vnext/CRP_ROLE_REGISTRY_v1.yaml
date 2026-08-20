@@ -21,10 +21,10 @@ roles:
   # ---------------------------------------------------------------- R1
   - role_id: R1
     display_name: Evidence Interviewer
-    version: v1
+    version: v2
     status: ACTIVE
     execution_type: LLM_ROLE
-    prompt_ref: roles/vnext/ROLE_1_EVIDENCE_INTERVIEWER_v1_PROMPT.md
+    prompt_ref: roles/vnext/ROLE_1_EVIDENCE_INTERVIEWER_v2_PROMPT.md
     knowledge_profile_ref: profile-r1
     input_contract_ref: role_task_v1
     output_contract_ref: role_result_v1
@@ -33,15 +33,20 @@ roles:
       - EMIT_SOURCE_EVIDENCE
       - EMIT_QUESTION_PLAN
       - EMIT_CLAIMS_UNKNOWN
+      - EMIT_CLAIMS_IDENTITY_BIOGRAPHY
+      - EMIT_CLAIMS_RELATIONSHIPS
+      - EMIT_CLAIMS_BOUNDARIES
+      - EMIT_CLAIMS_SEED_MEMORY
     activation_gate: "CRP_MVP_SPEC_v1@2026-08-16:OWNER_RATIFIED_SPECIFICATION"
+    predecessor_version: v1
 
   # ---------------------------------------------------------------- R2
   - role_id: R2
     display_name: Psychological Hypothesis Analyst
-    version: v1
+    version: v2
     status: ACTIVE
     execution_type: LLM_ROLE
-    prompt_ref: roles/vnext/ROLE_2_PSYCHOLOGICAL_HYPOTHESIS_ANALYST_v1_PROMPT.md
+    prompt_ref: roles/vnext/ROLE_2_PSYCHOLOGICAL_HYPOTHESIS_ANALYST_v2_PROMPT.md
     knowledge_profile_ref: profile-r2
     input_contract_ref: role_task_v1
     output_contract_ref: role_result_v1
@@ -49,7 +54,10 @@ roles:
       - READ_SOURCE_EVIDENCE
       - READ_PRIOR_ROLE_RESULTS
       - EMIT_CLAIMS_PSYCHOLOGY
+      - EMIT_CLAIMS_BEHAVIOR
+      - EMIT_CLAIMS_RELATIONSHIPS
     activation_gate: "CRP_MVP_SPEC_v1@2026-08-16:OWNER_RATIFIED_SPECIFICATION"
+    predecessor_version: v1
 
   # ---------------------------------------------------------------- R3
   # Gated-optional (CRP-OD-9). INACTIVE by default. The existing
