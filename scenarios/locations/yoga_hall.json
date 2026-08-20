@@ -1,0 +1,19 @@
+{
+  "schema_version": "location/0.1",
+  "location_id": "yoga_hall",
+  "tier": "premium",
+  "scale": ["small", "intimate"],
+  "identity": [
+    "yoga",
+    "wellness",
+    "cardio_corner"
+  ],
+  "palette": ["warm", "sophisticated", "harmonious"],
+  "fixed_features": [
+    {"feature_id": "panoramic_windows", "label": "panoramic windows"},
+    {"feature_id": "mirrored_wall", "label": "mirrored wall"},
+    {"feature_id": "dark_wooden_floor", "label": "dark wooden floor"},
+    {"feature_id": "cardio_corner", "label": "cardio corner"},
+    {"feature_id": "treadmills", "label": "treadmills", "count": 2}
+  ]
+}
