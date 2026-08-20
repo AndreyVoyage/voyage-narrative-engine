@@ -33,6 +33,7 @@ invoked by any offline test or by this module at import time.
 
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 from dataclasses import dataclass
@@ -294,12 +295,76 @@ def run_r8_smoke(
 
 
 def run_r8_live_smoke() -> R8SmokeResult:
-    """Frozen future LIVE one-shot path. NOT invoked by any offline test.
+    """Frozen future LIVE one-shot path (explicit R4 authorization required).
 
     This composes ``build_provider_callable(make_r8_smoke_provider_config())``
-    with ``run_r8_smoke``. It performs a REAL provider call and therefore
-    requires explicit owner authorization (R4) before it is ever invoked.
+    with ``run_r8_smoke``. It performs a REAL provider call. Offline tests never
+    invoke this against a real provider (they monkeypatch ``build_provider_callable``
+    with a fake when ``main(["--live"])`` is exercised).
     """
     config = make_r8_smoke_provider_config()
     provider_callable = build_provider_callable(config)
     return run_r8_smoke(provider_callable)
+
+
+def _print_result(result: R8SmokeResult) -> None:
+    """Emit a concise, safe JSON summary. Never includes credentials, headers,
+    environment, chain-of-thought, or raw provider payloads."""
+    payload = {
+        "smoke_id": result.smoke_id,
+        "package_id": result.package_id,
+        "subject_id": result.subject_id,
+        "provider_id": result.provider_id,
+        "model": result.model,
+        "provider_attempts": result.provider_attempts,
+        "attempt_consumed": result.attempt_consumed,
+        "provider_path_pass": result.provider_path_pass,
+        "audit_content_outcome": result.audit_content_outcome,
+        "final_audit_verdict": result.final_audit_verdict,
+        "error_stage": result.error_stage,
+        "message": result.message,
+    }
+    print(json.dumps(payload, ensure_ascii=False, indent=2))
+
+
+def main(argv: Optional[list] = None) -> int:
+    """CLI entrypoint for the frozen one-shot R8 live smoke.
+
+    SAFE DEFAULT: running without ``--live`` never contacts a provider. The
+    real provider path requires the explicit ``--live`` signal.
+
+    Exit codes:
+      0 -- provider execution path completed (provider_path_pass == True).
+           A semantic audit finding does not make this non-zero.
+     non-zero -- safe refusal (no --live) or any fail-closed provider/parse/
+           identity/reference/composition failure.
+    """
+    parser = argparse.ArgumentParser(
+        prog="crp_r8_smoke_runner",
+        description="One-shot R8 live smoke (R8-SMOKE-001). Requires explicit --live.",
+    )
+    parser.add_argument(
+        "--live",
+        action="store_true",
+        dest="live",
+        help="Execute the one-shot live provider smoke (consumes the one "
+             "application provider attempt for R8-SMOKE-001).",
+    )
+    args = parser.parse_args(argv)
+
+    if not args.live:
+        # Safe default: no provider call, no credential read.
+        parser.print_help()
+        print(
+            "\nRefusing to run: --live was not specified; no provider call was made.",
+            file=sys.stderr,
+        )
+        return 1
+
+    result = run_r8_live_smoke()
+    _print_result(result)
+    return 0 if result.provider_path_pass else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

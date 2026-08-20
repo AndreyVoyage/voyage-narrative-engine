@@ -166,3 +166,114 @@ class TestLiveEntrypointGuarded:
         # The live entrypoint is a distinct function; offline tests never call it.
         assert callable(runner.run_r8_live_smoke)
         assert callable(runner.build_provider_callable)
+
+
+class TestCLI:
+    def _patch_builder(self, monkeypatch, provider_callable):
+        def fake_builder(config):
+            return provider_callable
+        monkeypatch.setattr(runner, "build_provider_callable", fake_builder)
+        return provider_callable
+
+    def test_cli_help_no_provider(self, monkeypatch, capsys):
+        calls = []
+        monkeypatch.setattr(runner, "run_r8_live_smoke",
+                            lambda: calls.append("live") or None)
+        # argparse -h exits successfully with SystemExit(0); no live call.
+        with pytest.raises(SystemExit) as excinfo:
+            runner.main(["--help"])
+        assert excinfo.value.code == 0
+        assert calls == []
+
+    def test_cli_no_args_refuses_safely(self, monkeypatch, capsys):
+        calls = []
+        monkeypatch.setattr(runner, "run_r8_live_smoke",
+                            lambda: calls.append("live") or None)
+        rc = runner.main([])
+        assert rc != 0
+        assert calls == []
+        err = capsys.readouterr().err
+        assert "Refusing to run" in err
+
+    def test_cli_live_valid_fake(self, monkeypatch):
+        calls = []
+        def fake(msgs):
+            calls.append(msgs)
+            return _valid_llm_json()
+        self._patch_builder(monkeypatch, fake)
+        rc = runner.main(["--live"])
+        assert rc == 0
+        assert len(calls) == 1
+
+    def test_cli_live_provider_exception(self, monkeypatch):
+        calls = []
+        def fake(msgs):
+            calls.append(msgs)
+            raise LLMProviderError("boom")
+        self._patch_builder(monkeypatch, fake)
+        rc = runner.main(["--live"])
+        assert rc != 0
+        assert len(calls) == 1  # no retry
+
+    def test_cli_live_malformed_response(self, monkeypatch):
+        calls = []
+        def fake(msgs):
+            calls.append(msgs)
+            return "not json"
+        self._patch_builder(monkeypatch, fake)
+        rc = runner.main(["--live"])
+        assert rc != 0
+        assert len(calls) == 1
+
+    def test_cli_live_semantic_finding_exit_zero(self, monkeypatch):
+        calls = []
+        def fake(msgs):
+            calls.append(msgs)
+            return _semantic_finding_json()
+        self._patch_builder(monkeypatch, fake)
+        rc = runner.main(["--live"])
+        # provider path succeeded even though audit content had a finding
+        assert rc == 0
+        assert len(calls) == 1
+
+    def test_cli_rejects_unknown_override_flags(self, monkeypatch, capsys):
+        # Any arbitrary override flag is rejected by argparse (no silent override).
+        with pytest.raises(SystemExit):
+            runner.main(["--live", "--model", "other-model"])
+        captured = capsys.readouterr()
+        assert "unrecognized arguments" in captured.err
+
+    def test_cli_output_has_no_secrets(self, monkeypatch, capsys):
+        def fake(msgs):
+            return _valid_llm_json()
+        self._patch_builder(monkeypatch, fake)
+        rc = runner.main(["--live"])
+        assert rc == 0
+        out = capsys.readouterr().out
+        assert "DEEPSEEK_API_KEY" not in out
+        assert "Authorization" not in out
+        assert "api_key" not in out
+        assert "Bearer" not in out
+
+    def test_import_has_no_provider_activity(self, monkeypatch):
+        calls = []
+        monkeypatch.setattr(runner, "run_r8_live_smoke",
+                            lambda: calls.append("live") or None)
+        with pytest.raises(SystemExit):
+            runner.main(["--help"])
+        assert calls == []
+
+    def test_live_uses_existing_one_shot_guard(self, monkeypatch):
+        # Exercise --live twice inside one process to prove the guard in the
+        # runner path caps at one provider invocation per run_r8_smoke call.
+        calls = []
+        def fake(msgs):
+            calls.append(msgs)
+            return _valid_llm_json()
+        self._patch_builder(monkeypatch, fake)
+        rc1 = runner.main(["--live"])
+        rc2 = runner.main(["--live"])
+        assert rc1 == 0 and rc2 == 0
+        # Two separate smoke runs; each may issue one call (no shared
+        # cross-run retry), so total == 2 and each run is internally one-shot.
+        assert len(calls) == 2
