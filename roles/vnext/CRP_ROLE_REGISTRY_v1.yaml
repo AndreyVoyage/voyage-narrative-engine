@@ -1,0 +1,147 @@
+# CRP vNext MVP — Authoritative Role Registry (v1)
+#
+# Declarative, deterministic registry DATA only. Ratified authority:
+#   - CRP-OD-5 / CRP-OD-11 (CRP_VNEXT_ARCHITECTURE_RATIFICATION_v1.md)
+#   - CRP_MVP_SPEC_v1.md §3 (OWNER_RATIFIED_SPECIFICATION, 2026-08-16)
+#   - CRP_MVP_CONTRACTS_v1.md §F (RoleRegistryEntry field schema)
+#
+# Semantics (non-negotiable, CRP-OD-11):
+#   - explicit catalog, NOT filesystem auto-discovery
+#   - exact version pinned per entry; never "latest"/"current"/"*"/"auto"
+#   - no automatic promotion to ACTIVE; activation_gate must hold a
+#     human-approval reference before a version becomes usable
+#   - duplicate role_id is rejected fail-closed by the loader
+#   - deterministic order = file order
+#
+# This file describes roles/versions/statuses/execution types ONLY. It grants
+# no new capabilities and does not alter the broad-core capability surface.
+# No secrets, no provider API config, no model credentials, no absolute paths.
+
+roles:
+  # ---------------------------------------------------------------- R1
+  - role_id: R1
+    display_name: Evidence Interviewer
+    version: v1
+    status: ACTIVE
+    execution_type: LLM_ROLE
+    prompt_ref: roles/vnext/ROLE_1_EVIDENCE_INTERVIEWER_v1_PROMPT.md
+    knowledge_profile_ref: profile-r1
+    input_contract_ref: role_task_v1
+    output_contract_ref: role_result_v1
+    permissions:
+      - READ_SOURCE_EVIDENCE
+      - EMIT_SOURCE_EVIDENCE
+      - EMIT_QUESTION_PLAN
+      - EMIT_CLAIMS_UNKNOWN
+    activation_gate: "CRP_MVP_SPEC_v1@2026-08-16:OWNER_RATIFIED_SPECIFICATION"
+
+  # ---------------------------------------------------------------- R2
+  - role_id: R2
+    display_name: Psychological Hypothesis Analyst
+    version: v1
+    status: ACTIVE
+    execution_type: LLM_ROLE
+    prompt_ref: roles/vnext/ROLE_2_PSYCHOLOGICAL_HYPOTHESIS_ANALYST_v1_PROMPT.md
+    knowledge_profile_ref: profile-r2
+    input_contract_ref: role_task_v1
+    output_contract_ref: role_result_v1
+    permissions:
+      - READ_SOURCE_EVIDENCE
+      - READ_PRIOR_ROLE_RESULTS
+      - EMIT_CLAIMS_PSYCHOLOGY
+    activation_gate: "CRP_MVP_SPEC_v1@2026-08-16:OWNER_RATIFIED_SPECIFICATION"
+
+  # ---------------------------------------------------------------- R3
+  # Gated-optional (CRP-OD-9). INACTIVE by default. The existing
+  # role_task.py GATED_OPTIONAL_ROLES + non-empty activation_authorization_ref
+  # keeps the gate enforced; the registry must never make R3 ACTIVE on its own.
+  - role_id: R3
+    display_name: Optional Intimacy Profile Specialist
+    version: v1
+    status: INACTIVE
+    execution_type: LLM_ROLE
+    prompt_ref: roles/vnext/ROLE_3_INTIMACY_PROFILE_SPECIALIST_v1_PROMPT.md
+    knowledge_profile_ref: profile-r3
+    input_contract_ref: role_task_v1
+    output_contract_ref: role_result_v1
+    permissions:
+      - READ_SOURCE_EVIDENCE
+      - READ_PRIOR_ROLE_RESULTS
+      - EMIT_CLAIMS_INTIMACY
+    activation_gate: "NOT_YET_AUTHORIZED_gated_optional_CRP-OD-9"
+
+  # ---------------------------------------------------------------- R4
+  - role_id: R4
+    display_name: Voice Reconstruction Analyst
+    version: v1
+    status: ACTIVE
+    execution_type: LLM_ROLE
+    prompt_ref: roles/vnext/ROLE_4_VOICE_RECONSTRUCTION_ANALYST_v1_PROMPT.md
+    knowledge_profile_ref: profile-r4
+    input_contract_ref: role_task_v1
+    output_contract_ref: role_result_v1
+    permissions:
+      - READ_SOURCE_EVIDENCE
+      - READ_PRIOR_ROLE_RESULTS
+      - EMIT_CLAIMS_VOICE
+    activation_gate: "CRP_MVP_SPEC_v1@2026-08-16:OWNER_RATIFIED_SPECIFICATION"
+
+  # ---------------------------------------------------------------- R5
+  # Not implemented, out of MVP scope (CRP-OD-11). INACTIVE; no prompt file.
+  # prompt_ref points at the authoritative spec artifact, never a fake prompt.
+  - role_id: R5
+    display_name: Visual Observer
+    version: v1
+    status: INACTIVE
+    execution_type: LLM_ROLE
+    prompt_ref: docs/narrative/CRP_MVP_SPEC_v1.md
+    knowledge_profile_ref: profile-r5
+    input_contract_ref: role_task_v1
+    output_contract_ref: role_result_v1
+    permissions: []
+    activation_gate: "NOT_YET_AUTHORIZED_out_of_mvp_scope"
+
+  # ---------------------------------------------------------------- R6
+  # Deterministic compiler — no LLM prompt (execution_type DETERMINISTIC_FUNCTION).
+  - role_id: R6
+    display_name: Deterministic Persona Compiler
+    version: v1
+    status: ACTIVE
+    execution_type: DETERMINISTIC_FUNCTION
+    prompt_ref: docs/narrative/CRP_MVP_SPEC_v1.md
+    knowledge_profile_ref: profile-r6
+    input_contract_ref: role_task_v1
+    output_contract_ref: role_result_v1
+    permissions: []
+    activation_gate: "CRP_MVP_SPEC_v1@2026-08-16:OWNER_RATIFIED_SPECIFICATION"
+
+  # ---------------------------------------------------------------- R7
+  # Consistency Validator — deterministic library/validation stage, deliberately
+  # NOT an ACTIVE standalone role (CRP-OD-4). No LLM prompt.
+  - role_id: R7
+    display_name: Consistency Validator
+    version: v1
+    status: INACTIVE
+    execution_type: DETERMINISTIC_FUNCTION
+    prompt_ref: docs/narrative/CRP_MVP_SPEC_v1.md
+    knowledge_profile_ref: profile-r7
+    input_contract_ref: role_task_v1
+    output_contract_ref: role_result_v1
+    permissions: []
+    activation_gate: "NOT_YET_AUTHORIZED_not_active_standalone_role"
+
+  # ---------------------------------------------------------------- R8
+  # Ratified architecturally (OD-5/OD-11 list R8 ACTIVE as the eventual target)
+  # but NOT implemented yet. INACTIVE here: never resolvable as a ready role,
+  # and no executable prompt/implementation is created in this slice.
+  - role_id: R8
+    display_name: Independent Evidence Auditor
+    version: v1
+    status: INACTIVE
+    execution_type: LLM_ROLE
+    prompt_ref: docs/narrative/CRP_MVP_SPEC_v1.md
+    knowledge_profile_ref: profile-r8
+    input_contract_ref: role_task_v1
+    output_contract_ref: role_result_v1
+    permissions: []
+    activation_gate: "NOT_YET_AUTHORIZED_not_implemented"
