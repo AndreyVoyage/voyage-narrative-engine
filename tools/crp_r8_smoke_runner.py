@@ -89,7 +89,7 @@ SMOKE_MODEL = "deepseek-v4-pro"
 SMOKE_BASE_URL = "https://api.deepseek.com"
 SMOKE_CREDENTIAL_ENV = "DEEPSEEK_API_KEY"
 SMOKE_TIMEOUT_S = 60.0
-SMOKE_MAX_TOKENS = 1200
+SMOKE_MAX_TOKENS = 8192
 
 
 # ---------------------------------------------------------------------------

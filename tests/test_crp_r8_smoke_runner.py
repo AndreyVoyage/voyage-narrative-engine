@@ -65,7 +65,7 @@ class TestFrozenManifest:
         assert cfg.provider_id == "deepseek"
         assert cfg.model == "deepseek-v4-pro"
         assert cfg.timeout_s == 60.0
-        assert cfg.max_tokens == 1200
+        assert cfg.max_tokens == 8192
         assert cfg.credential_env == "DEEPSEEK_API_KEY"
         # No secret value field exists.
         assert not hasattr(cfg, "api_key")
