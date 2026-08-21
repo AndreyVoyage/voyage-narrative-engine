@@ -17,6 +17,7 @@ from services.crp_authoring.validator import (
     CHECK_CONTRADICTION_PRESERVED,
     CHECK_DUP_CLAIM_ID,
     CHECK_DUP_SEMANTIC,
+    CHECK_INVALID_TARGET,
     CHECK_MISSING_CONTRADICTION,
     CHECK_MISSING_EVIDENCE,
     CHECK_PROVENANCE,
@@ -24,6 +25,7 @@ from services.crp_authoring.validator import (
     CHECK_UNKNOWN_INTEGRITY,
     CHECK_UNKNOWN_MUTUAL_EXCLUSION,
     DEFERRED_CHECKS,
+    SEVERITY_ERROR,
     validate_package,
 )
 
@@ -224,3 +226,82 @@ class TestUnknownValidation:
         pkg = compile_candidate_package(ctx, (u,), ())
         report = validate_package(pkg)
         assert _claims_findings(report, CHECK_SUBJECT)
+
+
+class TestTargetFamilyCompatibility:
+    """Slice 8 pre-orchestrator: R7 CHECK_INVALID_TARGET accepts the full
+    authoritative claim-family set (R6 classify_target + permissions)."""
+
+    # ---- T1: legacy families still accepted (no INVALID_TARGET) -----------
+    @pytest.mark.parametrize("target", [
+        "psychology.P0", "psychology.P2", "psychology.P5",
+        "voice.prosody", "intimacy.boundaries",
+    ])
+    def test_legacy_families_pass(self, target: str) -> None:
+        ctx = make_compile_context()
+        claim = make_claim(claim_id="c1", target_module_or_layer=target)
+        pkg = compile_candidate_package(ctx, (claim,), ())
+        report = validate_package(pkg)
+        assert _claims_findings(report, CHECK_INVALID_TARGET) == []
+
+    # ---- T2: newly recognized broad-core families pass --------------------
+    @pytest.mark.parametrize("target", [
+        "identity_biography.birthplace",
+        "behavior.conflict_style",
+        "relationships.friend_circle",
+        "boundaries.touch",
+        "seed_memory.first_meeting",
+    ])
+    def test_broad_core_families_pass(self, target: str) -> None:
+        ctx = make_compile_context()
+        claim = make_claim(claim_id="c1", target_module_or_layer=target)
+        pkg = compile_candidate_package(ctx, (claim,), ())
+        report = validate_package(pkg)
+        assert _claims_findings(report, CHECK_INVALID_TARGET) == []
+
+    # ---- T3: truly invalid arbitrary family still fails -------------------
+    def test_arbitrary_namespace_fails(self) -> None:
+        claim = make_claim(claim_id="c1", target_module_or_layer="totally_invalid.foo")
+        pkg = make_package(claims=(claim,))
+        report = validate_package(pkg)
+        assert _claims_findings(report, CHECK_INVALID_TARGET)
+
+    # ---- T4: near-miss prefixes do NOT become valid ----------------------
+    @pytest.mark.parametrize("target", [
+        "identity_biographyX.foo",
+        "behaviorX.foo",
+        "relationships_extra.foo",
+        "boundaries_extra.foo",
+        "seed_memoryX.foo",
+    ])
+    def test_near_miss_prefixes_fail(self, target: str) -> None:
+        claim = make_claim(claim_id="c1", target_module_or_layer=target)
+        pkg = make_package(claims=(claim,))
+        report = validate_package(pkg)
+        assert _claims_findings(report, CHECK_INVALID_TARGET)
+
+    # ---- T5: UNKNOWN exemption unchanged --------------------------------
+    def test_unknown_exemption_unchanged(self) -> None:
+        # UNKNOWN claims are exempt from INVALID_TARGET even with a weird target.
+        u = make_claim(
+            claim_id="u1", claim_type=ClaimType.UNKNOWN,
+            target_module_or_layer="totally_invalid.foo",
+            source_evidence_ids=(),
+            confidence=Confidence.UNKNOWN,
+        )
+        ctx = make_compile_context()
+        pkg = compile_candidate_package(ctx, (u,), ())
+        report = validate_package(pkg)
+        assert _claims_findings(report, CHECK_INVALID_TARGET) == []
+        assert report.valid is True
+
+    # ---- T6: finding identity / severity unchanged ------------------------
+    def test_invalid_target_finding_contract_unchanged(self) -> None:
+        claim = make_claim(claim_id="c1", target_module_or_layer="totally_invalid.foo")
+        pkg = make_package(claims=(claim,))
+        report = validate_package(pkg)
+        findings = _claims_findings(report, CHECK_INVALID_TARGET)
+        assert len(findings) == 1
+        assert findings[0].check == CHECK_INVALID_TARGET
+        assert findings[0].severity == SEVERITY_ERROR
+        assert "invalid target" in findings[0].message

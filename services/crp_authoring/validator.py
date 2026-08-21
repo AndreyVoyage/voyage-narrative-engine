@@ -42,6 +42,24 @@ DEFERRED_CHECKS: Tuple[str, ...] = (
 SEVERITY_ERROR = "error"
 SEVERITY_WARNING = "warning"
 
+# Closed explicit allowlist of non-UNKNOWN target families accepted by R7
+# (CHECK_INVALID_TARGET). Must match the authoritative set supported by BOTH R6
+# ``classify_target`` (compiler.py) and the permission model (permissions.py):
+# psychology (P tags), voice, intimacy, plus the broad-core families
+# identity_biography, behavior, relationships, boundaries, seed_memory.
+# Deliberately NOT regex-broadened and NOT "any dotted target": a near-miss
+# prefix (e.g. ``behaviorX.``) does not start with ``behavior.`` and is rejected.
+VALID_TARGET_PREFIXES: Tuple[str, ...] = (
+    "psychology.P",
+    "voice.",
+    "intimacy.",
+    "identity_biography.",
+    "behavior.",
+    "relationships.",
+    "boundaries.",
+    "seed_memory.",
+)
+
 # Check codes (stable, deterministic ordering throughout this module).
 CHECK_DUP_CLAIM_ID = "DUP_CLAIM_ID"
 CHECK_DUP_SEMANTIC = "DUP_SEMANTIC_CLAIM"
@@ -216,7 +234,7 @@ def validate_package(
             # candidate placement, so it is exempt from family-target checks.
             continue
         t = claim.target_module_or_layer.strip()
-        ok = t.startswith("psychology.P") or t.startswith("voice.") or t.startswith("intimacy.")
+        ok = any(t.startswith(prefix) for prefix in VALID_TARGET_PREFIXES)
         if not ok:
             findings.append(ValidationFinding(
                 CHECK_INVALID_TARGET, SEVERITY_ERROR,
