@@ -288,7 +288,7 @@ def run_deterministic_audit(
         if c.outcome is not AuditCheckOutcome.PASS
     )
 
-    package_hash = _package_hash(package)
+    package_hash = compute_package_hash(package)
     audit_id = f"audit-{package.package_id}-{package.package_version}"
     return ReconstructionAudit(
         audit_id=audit_id,
@@ -304,10 +304,14 @@ def run_deterministic_audit(
     )
 
 
-def _package_hash(package: CandidateCharacterPackage) -> str:
+def compute_package_hash(package: CandidateCharacterPackage) -> str:
     """Stable integrity anchor derived purely from package identity + manifest.
 
     No canon access; a deterministic digest so a stale audit is detectable.
+
+    This is the single public source of truth for the package hash used to bind
+    a ``ReconstructionAudit`` to the exact package content it audited. Lifecycle
+    code (Slice 9) must call this function rather than reimplementing it.
     """
     h = hashlib.sha256()
     h.update(package.package_id.encode("utf-8"))
