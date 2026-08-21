@@ -13,6 +13,7 @@ from .candidate_package import CandidateCharacterPackage, PackageStatus
 from .compiler import CompileContext, CompilerError, compile_candidate_package
 from .executor import ExecutorError, execute_role_task
 from .knowledge_profile import KnowledgeProfile, RetrievalPolicy
+from .orchestrator import run_reconstruction
 from .permissions import PERMISSIONS_BY_ROLE, Permission, permission_violations
 from .registry import (
     ExecutionType,
@@ -71,6 +72,7 @@ __all__ = [
     "permission_violations",
     "ExecutorError",
     "execute_role_task",
+    "run_reconstruction",
     "reject_unsupported_claim",
     "check_contradiction_integrity",
 ]
