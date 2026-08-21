@@ -205,7 +205,7 @@ class TestTransportControlSeparation:
             captured["payload"] = payload
             captured["timeout_s"] = timeout_s
             captured["headers"] = headers
-            return {"choices": [{"message": {"content": "resp-text"}}]}
+            return {"choices": [{"message": {"content": "resp-text"}, "finish_reason": "stop"}]}
 
         monkeypatch.setattr(llm_provider, "_post_json", fake_post_json)
         return captured
@@ -251,4 +251,69 @@ class TestTransportControlSeparation:
                 [{"role": "user", "content": "hi"}],
                 model="m",
                 params={"credential_env": "CRP_SYNTHETIC_UNSET_VAR_123456789"},
+            )
+
+
+class TestCloudExtractionBoundary:
+    """Regression coverage for the real _complete_cloud response-extraction boundary.
+
+    Proves the transport can never propagate an empty assistant answer into the
+    R8 parser, and can never accept a non-"stop" finish as a completed answer.
+    """
+
+    def _run(self, monkeypatch, body):
+        monkeypatch.setattr(llm_provider, "_post_json", lambda *a, **k: body)
+        return llm_provider._complete_cloud(
+            [{"role": "user", "content": "hi"}],
+            model="m",
+            params={"api_key": "synthetic-test-value", "base_url": "https://fake.invalid"},
+        )
+
+    def test_stop_with_content_returns(self, monkeypatch):
+        out = self._run(
+            monkeypatch,
+            {"choices": [{"message": {"content": "the-answer"}, "finish_reason": "stop"}]},
+        )
+        assert out == "the-answer"
+
+    def test_empty_content_fails_closed(self, monkeypatch):
+        with pytest.raises(llm_provider.LLMProviderError):
+            self._run(
+                monkeypatch,
+                {"choices": [{"message": {"content": ""}, "finish_reason": "stop"}]},
+            )
+
+    def test_whitespace_content_fails_closed(self, monkeypatch):
+        with pytest.raises(llm_provider.LLMProviderError):
+            self._run(
+                monkeypatch,
+                {"choices": [{"message": {"content": "   \n\t"}, "finish_reason": "stop"}]},
+            )
+
+    def test_non_stop_finish_reason_fails_closed(self, monkeypatch):
+        with pytest.raises(llm_provider.LLMProviderError):
+            self._run(
+                monkeypatch,
+                {"choices": [{"message": {"content": "partial"}, "finish_reason": "length"}]},
+            )
+
+    def test_missing_finish_reason_fails_closed(self, monkeypatch):
+        with pytest.raises(llm_provider.LLMProviderError):
+            self._run(
+                monkeypatch,
+                {"choices": [{"message": {"content": "no-reason"}}]},
+            )
+
+    def test_reasoning_content_not_used_as_answer(self, monkeypatch):
+        # Empty content with a populated reasoning_content must fail closed,
+        # never returning the reasoning text as the final answer.
+        with pytest.raises(llm_provider.LLMProviderError):
+            self._run(
+                monkeypatch,
+                {
+                    "choices": [{
+                        "message": {"content": "", "reasoning_content": "hidden reasoning"},
+                        "finish_reason": "stop",
+                    }],
+                },
             )

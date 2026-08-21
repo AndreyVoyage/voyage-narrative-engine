@@ -70,6 +70,30 @@ class TestFrozenManifest:
         # No secret value field exists.
         assert not hasattr(cfg, "api_key")
 
+    def test_frozen_provider_config_requests_json_mode(self):
+        cfg = runner.make_r8_smoke_provider_config()
+        assert cfg.json_mode is True
+
+    def test_frozen_provider_config_forwards_response_format(self, monkeypatch):
+        import crp_provider_adapter
+        captured = {}
+
+        def fake_complete(messages, *, provider, model=None, system=None, params=None):
+            captured["params"] = params
+            captured["provider"] = provider
+            captured["model"] = model
+            return "{}"
+
+        monkeypatch.setattr(crp_provider_adapter, "complete", fake_complete)
+        cfg = runner.make_r8_smoke_provider_config()
+        provider_callable = runner.build_provider_callable(cfg)
+        provider_callable([{"role": "system", "content": "sys"},
+                           {"role": "user", "content": "u"}])
+
+        assert captured["provider"] == "cloud"
+        assert captured["model"] == "deepseek-v4-pro"
+        assert captured["params"]["response_format"] == {"type": "json_object"}
+
     def test_smoke_package_clean_and_non_blocked(self):
         from services.crp_authoring.auditor_checks import AuditPolicy, run_deterministic_audit
         pkg = runner.make_r8_smoke_package()

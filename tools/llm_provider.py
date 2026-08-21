@@ -191,9 +191,27 @@ def _complete_cloud(
     data = _post_json(f"{base_url}/v1/chat/completions", payload, headers=headers, timeout_s=timeout_s)
     choices = data.get("choices")
     if isinstance(choices, list) and choices:
-        message = choices[0].get("message") if isinstance(choices[0], dict) else None
-        if isinstance(message, dict) and isinstance(message.get("content"), str):
-            return message["content"]
+        choice = choices[0] if isinstance(choices[0], dict) else None
+        if isinstance(choice, dict):
+            finish_reason = choice.get("finish_reason")
+            if finish_reason != "stop":
+                # Fail closed: only an explicit "stop" is accepted as a complete,
+                # successful non-streaming answer. Missing or non-success values
+                # (length, content_filter, tool_calls, etc.) must never be treated
+                # as a finished answer. Only terminal metadata is surfaced here;
+                # no reasoning text or credential material is ever included.
+                raise LLMProviderError(
+                    f"cloud provider did not finish successfully (finish_reason={finish_reason!r})"
+                )
+            message = choice.get("message")
+            if isinstance(message, dict) and isinstance(message.get("content"), str):
+                content = message["content"]
+                if not content.strip():
+                    # Never propagate an empty/whitespace assistant answer; this
+                    # would otherwise flow into the R8 parser and be reported as a
+                    # parse-stage empty output rather than a transport failure.
+                    raise LLMProviderError("cloud provider returned empty message content")
+                return content
     raise LLMProviderError("cloud provider returned no message content")
 
 

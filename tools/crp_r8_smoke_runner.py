@@ -155,6 +155,7 @@ def make_r8_smoke_provider_config() -> ProviderConfig:
         credential_env=SMOKE_CREDENTIAL_ENV,
         timeout_s=SMOKE_TIMEOUT_S,
         max_tokens=SMOKE_MAX_TOKENS,
+        json_mode=True,
     )
 
 
