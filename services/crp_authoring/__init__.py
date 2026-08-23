@@ -12,6 +12,17 @@ no canon access, no PAC/Sandbox access.
 from .auditor_checks import compute_package_hash
 from .candidate_package import CandidateCharacterPackage, PackageStatus
 from .compiler import CompileContext, CompilerError, compile_candidate_package
+from .dataset_freeze import (
+    AuthoringProjection,
+    build_a_snapshot,
+    build_freeze_manifest,
+    canonical_json_sha256,
+    load_a_projection,
+    load_manifest,
+    validate_freeze_knowledge_policy,
+    verify_manifest,
+    write_freeze_artifacts,
+)
 from .executor import ExecutorError, execute_role_task
 from .knowledge_profile import KnowledgeProfile, RetrievalPolicy
 from .lifecycle import (
@@ -85,6 +96,15 @@ __all__ = [
     "advance_to_audited",
     "accept_candidate",
     "reject_candidate",
+    "load_manifest",
+    "verify_manifest",
+    "build_a_snapshot",
+    "canonical_json_sha256",
+    "validate_freeze_knowledge_policy",
+    "load_a_projection",
+    "AuthoringProjection",
+    "build_freeze_manifest",
+    "write_freeze_artifacts",
     "reject_unsupported_claim",
     "check_contradiction_integrity",
 ]

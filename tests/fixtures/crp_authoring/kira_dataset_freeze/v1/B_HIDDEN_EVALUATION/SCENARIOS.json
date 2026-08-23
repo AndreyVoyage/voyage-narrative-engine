@@ -1,0 +1,54 @@
+{
+  "partition": "B",
+  "role": "hidden_evaluation",
+  "records": [
+    {
+      "id": "kira-b-001",
+      "title": "Controlling-mother-like client",
+      "scenario": "Kira is already practicing psychology. A female client strongly resembles Kira's mother: she hyper-controls her adult daughter, repeatedly calls, checks who she is with, and describes it as love/care. The client says: \"When you have children, you'll understand. I only love my daughter. If I don't control her, she'll do something stupid.\"",
+      "question": "What does Kira do externally, and what does she feel internally?"
+    },
+    {
+      "id": "kira-b-002",
+      "title": "Strict former coach",
+      "scenario": "At the old sports complex Kira sees her former coach training a young promising athlete. Kira knows that the former coach's strict methods did help Kira herself achieve serious sporting results, so the conflict is not that a strict coach is simply bad. The coach says: \"If you want to win, forget about 'I want'. I know better what you need.\" The athlete is upset but says she wants to win. The coach asks Kira to confirm that discipline is necessary.",
+      "question": "What does Kira tell the coach, what does she tell the athlete, and what does she herself think about whether those strict methods that helped her are right for every athlete?"
+    },
+    {
+      "id": "kira-b-003",
+      "title": "Distressed Andrey",
+      "scenario": "Andrey comes home clearly distressed and says nothing happened and that he is only tired. Kira suspects something may be hidden and that another woman is possible, but she has no proof. As a psychologist she knows she may be seeing confirmation of her own jealousy or bias. At the same time, because she knows Andrey closely, she genuinely feels that something is wrong.",
+      "question": "What does she do externally before directly confronting him, and what is her relevant internal process balancing her suspicion, her psychological awareness of her own bias, and her genuine feeling that something is wrong?"
+    },
+    {
+      "id": "kira-b-004",
+      "title": "Marina's professional success",
+      "scenario": "Marina becomes professionally very successful while Kira is still finding her path. Others praise Marina all evening and barely ask about Kira.",
+      "question": "Could Kira become jealous/competitive?"
+    },
+    {
+      "id": "kira-b-005",
+      "title": "Former controlling partner reappears",
+      "scenario": "Former controlling partner contacts Kira years later. He apologizes, says therapy helped him understand how controlling he was, and asks to meet for coffee only to apologize/close history.",
+      "question": "Will Kira meet him and what may happen emotionally?"
+    },
+    {
+      "id": "kira-b-006",
+      "title": "Client improves elsewhere",
+      "scenario": "A therapy client leaves Kira after months because progress is limited. Later Kira learns the client improved with another psychologist.",
+      "question": "What does Kira feel, what does she say to the client at the moment they separate, and how does she react later after learning that the other specialist helped?"
+    },
+    {
+      "id": "kira-b-007",
+      "title": "Overriding manager",
+      "scenario": "As a manager Kira repeatedly overrides an employee. The employee eventually stops taking initiative and asks Kira permission for every small choice. Kira still believes her original professional decision was correct.",
+      "question": "Can she distinguish being right on substance from having damaged the interaction?"
+    },
+    {
+      "id": "kira-b-008",
+      "title": "Mother's serious illness",
+      "scenario": "Canonical relationship preset: Andrey is Kira's husband, and Kira lives separately from her mother with Andrey. Kira's mother becomes seriously ill and genuinely needs help for months. Along with real need, old hyper-control and guilt-pressure return.",
+      "question": "How does adult, independent Kira, who lives separately with her husband, balance genuinely helping her mother with maintaining her own boundaries?"
+    }
+  ]
+}

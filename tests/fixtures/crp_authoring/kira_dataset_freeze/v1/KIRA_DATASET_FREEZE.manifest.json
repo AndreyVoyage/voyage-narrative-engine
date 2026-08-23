@@ -1,0 +1,76 @@
+{
+  "schema_version": "1",
+  "freeze_id": "kira-dataset-freeze-v1",
+  "freeze_version": "1",
+  "status": "OWNER_RATIFIED_FROZEN",
+  "provenance": "KIRA_OWNER_INTERVIEW_2026-08-22",
+  "repo_commit": "d59437124a7d18bef3bf0b1096b8790a790befdd",
+  "subject_id": "kira",
+  "partitions": {
+    "A": {
+      "role": "reconstruction_evidence",
+      "normalized_payload": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json"
+    },
+    "B": {
+      "role": "hidden_evaluation"
+    },
+    "C": {
+      "role": "legacy_benchmark_metadata"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "A_AUTHORING/OWNER_AUTHORED_KIRA.md",
+      "partition": "A",
+      "sha256": "6af58f37ec6d4d479d65d0f3fed61d63cb37d475235562ba8dac68441f44ffbf",
+      "size_bytes": 16106
+    },
+    {
+      "path": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json",
+      "partition": "A",
+      "sha256": "45ac61bcb052ea8b937a3cbf02d1e89de0f279f0bc67908f665e01bf184a9507",
+      "size_bytes": 21235
+    },
+    {
+      "path": "A_AUTHORING/SOURCE_EVIDENCE_SNAPSHOT.json",
+      "partition": "A",
+      "sha256": "bccc57c22df9e9773d2c7894ffdde2d64d7d1797cda291016d476295c9ab29b2",
+      "size_bytes": 13816
+    },
+    {
+      "path": "B_HIDDEN_EVALUATION/OWNER_REFERENCE_ANSWERS.json",
+      "partition": "B",
+      "sha256": "8a39b27eec16aac202c4b9264be344b91dc0f61596076846228577d064e09d48",
+      "size_bytes": 4409
+    },
+    {
+      "path": "B_HIDDEN_EVALUATION/SCENARIOS.json",
+      "partition": "B",
+      "sha256": "4ed3e5725625f75c006e8013bd15c75c58c37db356667f7e952222a83693dfa9",
+      "size_bytes": 4110
+    },
+    {
+      "path": "C_LEGACY_BENCHMARK/LEGACY_REFERENCES.json",
+      "partition": "C",
+      "sha256": "fd6dcd9d38b2cec12e01a810b6ea269f49fe20799ec9362c8e996eb0cf12dd79",
+      "size_bytes": 698
+    }
+  ],
+  "a_snapshot": {
+    "evidence_snapshot_id": "sha256:88f9c822a9d56f7154472c0192511fdc6402c1379a4cc040df287a99f81d5386"
+  },
+  "integrity": {
+    "a_snapshot_sha256": "88f9c822a9d56f7154472c0192511fdc6402c1379a4cc040df287a99f81d5386",
+    "root_sha256": "1af1a4874337c6d043b0764f0bf4c6dd5a421c2f5f0806e16fe3e91afd8b7d61"
+  },
+  "knowledge_policy": {
+    "allowed_kb_refs": [],
+    "forbidden_refs": [
+      "tests/fixtures/crp_authoring/kira_dataset_freeze/v1/KIRA_DATASET_FREEZE.manifest.json",
+      "tests/fixtures/crp_authoring/kira_dataset_freeze/v1/B_HIDDEN_EVALUATION/**",
+      "tests/fixtures/crp_authoring/kira_dataset_freeze/v1/C_LEGACY_BENCHMARK/**",
+      "personas/kira/**",
+      "personas/KIRA_MODULE_v15.json"
+    ]
+  }
+}
