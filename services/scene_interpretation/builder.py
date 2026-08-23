@@ -21,6 +21,10 @@ from typing import Any, Sequence
 
 from services.ass import ASS
 from services.character_canon_bridge import CharacterCanonSnapshot
+from services.character_canon_bridge.status import (
+    is_known_canon_status,
+    is_production_approved,
+)
 from services.location_canon import LocationCanon
 
 from .errors import CharacterStatusUnknownError, SceneInterpretationValidationError
@@ -33,9 +37,6 @@ from .model import (
 )
 
 ARTIFACT_SCHEMA_VERSION = "scene_interpretation/0.1"
-
-_KNOWN_STATUSES = frozenset({"PENDING_APPROVAL", "APPROVED"})
-_PRODUCTION_ELIGIBLE_STATUSES = frozenset({"APPROVED"})
 
 
 def _require_json_compatible(payload: Any) -> None:
@@ -63,7 +64,8 @@ def build_scene_interpretation_artifact(
     - Each character snapshot must resolve to an exact ASS participant
       (no fuzzy/case-fold guessing) and must be unique per character_id.
     - Snapshot status must be a known value; production eligibility requires
-      every included snapshot to be explicitly APPROVED.
+      every included snapshot to carry the canonical NCC production status
+      ``APPROVED_AS_CANON``.
     """
 
     if ass.location_id != location.location_id:
@@ -79,7 +81,7 @@ def build_scene_interpretation_artifact(
     seen: set[str] = set()
     for snapshot in character_snapshots:
         status = snapshot.status
-        if status not in _KNOWN_STATUSES:
+        if not is_known_canon_status(status):
             raise CharacterStatusUnknownError(
                 f"unknown character Canon status {status!r} for {snapshot.character_id!r}"
             )
@@ -102,9 +104,7 @@ def build_scene_interpretation_artifact(
             )
         )
 
-    production_eligible = all(
-        a.status in _PRODUCTION_ELIGIBLE_STATUSES for a in anchors
-    )
+    production_eligible = all(is_production_approved(a.status) for a in anchors)
 
     ass_anchor = AssAnchor(
         scene_id=ass.scene_id,

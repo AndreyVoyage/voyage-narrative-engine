@@ -24,7 +24,13 @@ from services.character_canon_bridge import (
     read_character_canon,
 )
 
-from .conftest import _write_preset, make_approved, make_pending
+from .conftest import (
+    _write_preset,
+    make_approved,
+    make_bare_approved,
+    make_pending,
+    make_status,
+)
 
 
 def _read(canon_root: Path, character_id: str, usage_context: str):
@@ -72,7 +78,7 @@ def test_missing_root_fails(tmp_path):
 def test_approved_status_resolves(canon_root):
     cid = make_approved(canon_root)
     snap = _read(canon_root, cid, "draft")
-    assert snap.status == "APPROVED"
+    assert snap.status == "APPROVED_AS_CANON"
 
 
 def test_unknown_status_fails_closed(canon_root):
@@ -108,7 +114,7 @@ def test_pending_production_blocked(canon_root, pending_kira):
 def test_approved_production_allowed(canon_root):
     cid = make_approved(canon_root)
     snap = _read(canon_root, cid, "production")
-    assert snap.status == "APPROVED"
+    assert snap.status == "APPROVED_AS_CANON"
 
 
 # ---------------------------------------------------------------------------

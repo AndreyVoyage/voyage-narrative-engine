@@ -50,7 +50,17 @@ def pending_kira(canon_root: Path) -> str:
 
 
 def make_approved(canon_root: Path, character_id: str = "APPROVED_ONE") -> str:
+    _write_preset(canon_root, character_id, _base_preset(character_id, "APPROVED_AS_CANON"))
+    return character_id
+
+
+def make_bare_approved(canon_root: Path, character_id: str = "BARE_APPROVED_ONE") -> str:
     _write_preset(canon_root, character_id, _base_preset(character_id, "APPROVED"))
+    return character_id
+
+
+def make_status(canon_root: Path, character_id: str, status: str) -> str:
+    _write_preset(canon_root, character_id, _base_preset(character_id, status))
     return character_id
 
 

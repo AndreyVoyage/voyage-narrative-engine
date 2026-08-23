@@ -43,7 +43,7 @@ def _ass(scene_id="SC_TEST", location_id="yoga_hall", participants=("KIRA",), co
     )
 
 
-def _snapshot(character_id="KIRA", status="APPROVED"):
+def _snapshot(character_id="KIRA", status="APPROVED_AS_CANON"):
     return CharacterCanonSnapshot(
         schema_version="character_canon/0.1",
         character_id=character_id,
@@ -83,7 +83,7 @@ def test_basic_artifact():
     artifact = build_scene_interpretation_artifact(
         ass=_ass(),
         location=_location(),
-        character_snapshots=[_snapshot("KIRA", "APPROVED")],
+        character_snapshots=[_snapshot("KIRA", "APPROVED_AS_CANON")],
         interpretation_payload=PAYLOAD,
     )
     assert artifact.scene_id == "SC_TEST"
@@ -193,10 +193,31 @@ def test_approved_production_eligible():
     artifact = build_scene_interpretation_artifact(
         ass=_ass(),
         location=_location(),
-        character_snapshots=[_snapshot("KIRA", "APPROVED")],
+        character_snapshots=[_snapshot("KIRA", "APPROVED_AS_CANON")],
         interpretation_payload=PAYLOAD,
     )
     assert artifact.production_eligible is True
+
+
+def test_bare_approved_not_production_eligible():
+    # Legacy bare APPROVED is known (parses) but must NOT grant production.
+    artifact = build_scene_interpretation_artifact(
+        ass=_ass(),
+        location=_location(),
+        character_snapshots=[_snapshot("KIRA", "APPROVED")],
+        interpretation_payload=PAYLOAD,
+    )
+    assert artifact.production_eligible is False
+
+
+def test_approved_as_test_not_production_eligible():
+    artifact = build_scene_interpretation_artifact(
+        ass=_ass(),
+        location=_location(),
+        character_snapshots=[_snapshot("KIRA", "APPROVED_AS_TEST")],
+        interpretation_payload=PAYLOAD,
+    )
+    assert artifact.production_eligible is False
 
 
 def test_mixed_status_not_eligible():

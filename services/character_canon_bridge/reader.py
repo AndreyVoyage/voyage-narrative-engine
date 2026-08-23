@@ -31,19 +31,12 @@ from .errors import (
 )
 from .hashing import compute_content_hash, compute_source_hash
 from .model import CanonReference, CharacterCanonSnapshot, Provenance
+from .status import is_known_canon_status, is_production_approved
 
 SNAPSHOT_SCHEMA_VERSION = "character_canon/0.1"
 
 # Authoritative source layout under the Character Canon root.
 _PRESET_REL_DIR = ("AI_CHARACTERS",)
-
-# Known machine-readable Canon status vocabulary. The pilot only exercises
-# PENDING_APPROVAL; APPROVED is included for the usage gate. Unlisted statuses
-# fail closed for production.
-_KNOWN_STATUSES = frozenset({"PENDING_APPROVAL", "APPROVED"})
-
-# Statuses that permit production use.
-_PRODUCTION_ALLOWED_STATUSES = frozenset({"APPROVED"})
 
 # Supported usage contexts.
 _USAGE_CONTEXTS = frozenset({"draft", "authoring", "production"})
@@ -154,8 +147,8 @@ def read_character_canon(
     hard-coded. The bridge performs zero writes to Character Canon.
 
     ``usage_context`` gates production: ``draft``/``authoring`` are allowed
-    regardless of status; ``production`` requires an explicitly approved
-    status (APPROVED), otherwise it fails closed.
+    regardless of status; ``production`` requires the canonical production
+    status ``APPROVED_AS_CANON``, otherwise it fails closed.
     """
     if usage_context not in _USAGE_CONTEXTS:
         raise UnsupportedUsageContextError(
@@ -175,10 +168,10 @@ def read_character_canon(
         )
 
     status = _non_empty_string(payload.get("status"), "status")
-    if status not in _KNOWN_STATUSES:
+    if not is_known_canon_status(status):
         raise CanonStatusUnknownError(f"unknown Canon status {status!r}")
 
-    if usage_context == "production" and status not in _PRODUCTION_ALLOWED_STATUSES:
+    if usage_context == "production" and not is_production_approved(status):
         raise ProductionNotAllowedError(
             f"production use not allowed for {character_id!r} (status {status!r})"
         )
