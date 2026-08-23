@@ -73,10 +73,13 @@ def test_image_provider_boundary_live_smoke_v0():
         )
 
     # EXACTLY ONE generation. No retry, no fallback, no second image.
+    # quality=low is made explicit per owner-ratified contract OD-C1-IMG-05;
+    # the boundary must NOT rely on the provider default.
     result: GeneratedImage = generate_image(
         OWNER_RATIFIED_FACT,
         model=model,
         api_key=api_key,
+        quality="low",
     )
 
     assert isinstance(result, GeneratedImage)

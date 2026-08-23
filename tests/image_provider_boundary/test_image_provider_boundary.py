@@ -182,6 +182,27 @@ def test_single_call_and_request_shape(monkeypatch):
     assert auth is not None and auth.startswith("Bearer ")
 
 
+def test_live_smoke_request_forces_explicit_low_quality(monkeypatch):
+    """The owner-ratified C1 smoke request must send quality == 'low' exactly."""
+    calls = _patch_transport(monkeypatch, _b64_success())
+
+    generate_image(
+        _PROMPT,
+        model=_MODEL,
+        api_key="sk-test",
+        base_url="https://api.example.invalid",
+        quality="low",
+    )
+
+    assert len(calls) == 1
+    body = json.loads(calls[0].data.decode("utf-8"))
+    assert body["quality"] == "low"
+    assert body["size"] == "1024x1024"
+    assert body["n"] == 1
+    assert body["model"] == _MODEL
+    assert body["prompt"] == _PROMPT
+
+
 def test_url_result_is_refused_no_second_fetch(monkeypatch):
     """A URL result would require a second fetch; the boundary refuses it."""
     raw = json.dumps({"data": [{"url": "https://example.invalid/image.png"}]}).encode("utf-8")
