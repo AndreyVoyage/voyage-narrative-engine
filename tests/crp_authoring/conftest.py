@@ -17,6 +17,7 @@ import pytest
 from services.crp_authoring import (
     CandidateCharacterPackage,
     ClaimStatus,
+    canonical_json_sha256,
     ClaimType,
     CompileContext,
     CompletionStatus,
@@ -45,6 +46,24 @@ def utc_now() -> datetime:
     return datetime.now(timezone.utc).replace(microsecond=0)
 
 
+# Canonical synthetic facts used as the default substantive payload for tests
+# that must exercise the hash-bound provider path. Tests constructing evidence
+# with ``make_source`` (no content_hash override) can bind it to
+# ``make_payload_map(...)`` because the default content_hash below is derived
+# from these exact facts via the SAME canonical hash helper used in production.
+DEFAULT_EVIDENCE_FACTS = [{"fact": "synthetic evidence fact"}]
+
+
+def make_payload_map(*source_ids, facts=None):
+    """Build a synthetic substantive payload map whose facts hash-bind to the
+    default ``make_source`` content_hash (unless explicit facts override)."""
+    facts = list(facts) if facts is not None else DEFAULT_EVIDENCE_FACTS
+    return {
+        sid: {"section_id": "s1", "title": "synthetic section", "facts": facts}
+        for sid in source_ids
+    }
+
+
 def make_source(
     source_id: str = "se-001",
     source_type: SourceType = SourceType.OWNER_DIRECT,
@@ -59,7 +78,7 @@ def make_source(
         content_ref="ref://raw/001",
         provenance="synthetic-fixture",
         intake_timestamp=utc_now(),
-        content_hash="a" * 64,
+        content_hash=canonical_json_sha256(DEFAULT_EVIDENCE_FACTS),
         evidence_snapshot_id="snapshot-1",
     )
     kwargs.update(overrides)

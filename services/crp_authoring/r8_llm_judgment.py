@@ -35,11 +35,12 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Mapping, Optional, Tuple
+from typing import Any, Callable, Mapping, Optional, Tuple
 
 from .auditor_checks import AuditPolicy, run_deterministic_audit
 from .candidate_package import CandidateCharacterPackage
 from .contracts import SourceEvidence
+from .dataset_freeze import canonical_json_sha256
 from .errors import CrpValidationError
 from .reconstruction_audit import (
     AuditCheckClassification,
@@ -282,22 +283,26 @@ def render_r8_messages(
     package: CandidateCharacterPackage,
     evidence: Tuple[SourceEvidence, ...],
     deterministic_audit: ReconstructionAudit,
+    evidence_payloads: Mapping[str, Mapping[str, Any]],
 ) -> list:
     """Render the R8 LLM input as system (prompt file) + user (bounded data).
 
     Exposes every exact-bound field the model must later echo or cite, plus the
-    standalone deterministic audit summary. No hidden benchmark, no raw
+    standalone deterministic audit summary. Each authoritative evidence entry
+    is fail-closed hash-bound to its substantive payload before rendering; a
+    metadata-only rendering mode does not exist. No hidden benchmark, no raw
     RoleResults, no credentials.
     """
     prompt_text = _load_prompt_text()
-    user = _render_data_block(package, evidence, deterministic_audit)
+    user = _render_data_block(package, evidence, deterministic_audit, evidence_payloads)
     return [
         {"role": "system", "content": prompt_text},
         {"role": "user", "content": user},
     ]
 
 
-def _render_data_block(package, evidence, deterministic_audit) -> str:
+def _render_data_block(package, evidence, deterministic_audit,
+                       evidence_payloads) -> str:
     lines: list = []
     lines.append("AUDIT_IDENTITY")
     lines.append(f"- package_id: {package.package_id}")
@@ -325,12 +330,18 @@ def _render_data_block(package, evidence, deterministic_audit) -> str:
         )
 
     lines.append("EVIDENCE_LEDGER")
+    bound_payloads = _bind_authoritative_payloads(evidence, evidence_payloads)
     for ev in evidence:
         if isinstance(ev, SourceEvidence):
             lines.append(
                 f"- {ev.source_id} type={ev.source_type.value} "
                 f"subject={ev.subject_id} content_ref={ev.content_ref}"
             )
+            payload = bound_payloads[ev.source_id]
+            lines.append(f"  source_id: {ev.source_id}")
+            lines.append(f"  content_ref: {ev.content_ref}")
+            lines.append(f"  content_hash: {ev.content_hash}")
+            lines.append(f"  substantive_payload: {_render_payload(payload)}")
 
     lines.append("DETERMINISTIC_AUDIT_SUMMARY")
     lines.append(f"- verdict: {deterministic_audit.verdict.value}")
@@ -340,6 +351,50 @@ def _render_data_block(package, evidence, deterministic_audit) -> str:
             lines.append(f"    - {f.message}")
 
     return "\n".join(lines)
+
+
+def _bind_authoritative_payloads(evidence, evidence_payloads):
+    """Fail-closed hash-binding for the authoritative evidence sequence.
+
+    Always returns a ``source_id -> payload`` mapping for exactly the
+    authoritative evidence sequence (payload-map keys not in the evidence
+    sequence are ignored). Raises ``CrpValidationError`` if ``evidence_payloads``
+    is ``None``/not a mapping, or if an authoritative evidence item is missing
+    its payload or its ``facts`` hash mismatches ``SourceEvidence.content_hash``.
+    """
+    if evidence_payloads is None:
+        raise CrpValidationError("evidence_payloads is required for R8 rendering")
+    if not isinstance(evidence_payloads, Mapping):
+        raise CrpValidationError("evidence_payloads must be a mapping keyed by source_id")
+    bound: dict = {}
+    for ev in evidence:
+        if not isinstance(ev, SourceEvidence):
+            continue
+        payload = evidence_payloads.get(ev.source_id)
+        if not isinstance(payload, Mapping):
+            raise CrpValidationError(
+                f"evidence_payloads has no substantive payload for {ev.source_id!r}"
+            )
+        facts = payload.get("facts")
+        if not isinstance(facts, (list, tuple)):
+            raise CrpValidationError(
+                f"evidence payload {ev.source_id!r} has no valid 'facts' list"
+            )
+        recomputed = canonical_json_sha256(facts)
+        if recomputed != ev.content_hash:
+            raise CrpValidationError(
+                f"evidence payload {ev.source_id!r} facts hash {recomputed!r} "
+                f"!= SourceEvidence.content_hash {ev.content_hash!r}"
+            )
+        bound[ev.source_id] = payload
+    return bound
+
+
+def _render_payload(payload: Mapping) -> str:
+    """Deterministic canonical-JSON serialization of a substantive payload."""
+    return json.dumps(
+        dict(payload), ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    )
 
 
 def _load_prompt_text() -> str:
@@ -412,6 +467,7 @@ def run_r8_analysis(
     provider_callable: ProviderCallable,
     *,
     forbidden_refs: Tuple[str, ...] = (),
+    evidence_payloads: Mapping[str, Mapping[str, Any]],
 ) -> ReconstructionAudit:
     """Offline R8 composition: deterministic audit -> (skip if BLOCKED) -> LLM
     judgment -> parse -> compose. Fail-fast on a deterministic hard blocker.
@@ -431,7 +487,9 @@ def run_r8_analysis(
         # non-overridable.
         return deterministic_audit
 
-    messages = render_r8_messages(package, evidence, deterministic_audit)
+    messages = render_r8_messages(
+        package, evidence, deterministic_audit, evidence_payloads,
+    )
     raw = provider_callable(messages)
     if not isinstance(raw, str):
         raise CrpValidationError("provider_callable must return a string")

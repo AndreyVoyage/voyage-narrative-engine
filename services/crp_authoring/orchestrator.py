@@ -35,7 +35,7 @@ No provider, no network, no canon/PAC/Sandbox access, no registry mutation.
 
 from __future__ import annotations
 
-from typing import Callable, Mapping, Tuple
+from typing import Any, Callable, Mapping, Tuple
 
 from .auditor_checks import AuditPolicy
 from .candidate_package import CandidateCharacterPackage
@@ -67,6 +67,7 @@ def run_reconstruction(
     provider_callable: ProviderCallable,
     compile_context: CompileContext,
     audit_policy: AuditPolicy,
+    evidence_payloads: Mapping[str, Mapping[str, Any]],
 ) -> Tuple[
     CandidateCharacterPackage,
     ReconstructionAudit,
@@ -111,6 +112,7 @@ def run_reconstruction(
             provider_callable,
             evidence,
             tuple(role_results),
+            evidence_payloads=evidence_payloads,
         )
         role_results.append(result)
         all_claims.extend(result.claims)
@@ -141,6 +143,7 @@ def run_reconstruction(
         evidence,
         provider_callable,
         forbidden_refs=audit_policy.forbidden_refs,
+        evidence_payloads=evidence_payloads,
     )
 
     return (

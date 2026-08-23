@@ -32,6 +32,7 @@ from tests.crp_authoring.conftest import (
     make_contradiction,
     make_fake_provider,
     make_knowledge_profile,
+    make_payload_map,
     make_registry_entry,
     make_role_task,
     make_source,
@@ -130,7 +131,10 @@ class TestOfflineE2E:
             "new_source_evidence": [],
         }
         provider = make_fake_provider(json.dumps(payload, ensure_ascii=False))
-        result = execute_role_task(task, registry, profiles, provider, _frozen_evidence())
+        result = execute_role_task(
+            task, registry, profiles, provider, _frozen_evidence(),
+            evidence_payloads=make_payload_map("se-001"),
+        )
 
         assert result.completion_status.value == "INSUFFICIENT_EVIDENCE"
         assert result.claims[0].claim_type is ClaimType.UNKNOWN
@@ -156,6 +160,7 @@ class TestOfflineE2E:
         r2_result = execute_role_task(
             r2_task, r2_registry, r2_profiles,
             make_fake_provider(r2_payload), evidence,
+            evidence_payloads=make_payload_map("se-001"),
         )
 
         # R4 (voice) — same evidence tuple, same snapshot.
@@ -167,6 +172,7 @@ class TestOfflineE2E:
         r4_result = execute_role_task(
             r4_task, r4_registry, r4_profiles,
             make_fake_provider(r4_payload), evidence,
+            evidence_payloads=make_payload_map("se-001"),
         )
 
         # Shared snapshot proof: both tasks pinned the same evidence_snapshot_id.
@@ -198,6 +204,7 @@ class TestOfflineE2E:
                 _claim("r2-psych-1", "R2", "HYPOTHESIS", "psychology.P2",
                        confidence="POSSIBLE"),
             ])), evidence,
+            evidence_payloads=make_payload_map("se-001"),
         )
 
         r4_registry, r4_profiles, r4_task = _role_scope("R4", "task-r4", evidence)
@@ -207,6 +214,7 @@ class TestOfflineE2E:
                 _claim("r4-voice-1", "R4", "OBSERVATION", "voice.lexicon",
                        source_summary=("OWNER_DIRECT",)),
             ])), evidence,
+            evidence_payloads=make_payload_map("se-001"),
         )
 
         # No R3 RoleTask is constructed at all — no activation_authorization_ref.
@@ -232,6 +240,7 @@ class TestOfflineE2E:
         ])
         result = execute_role_task(
             task, registry, profiles, make_fake_provider(payload), evidence,
+            evidence_payloads=make_payload_map("se-001"),
         )
 
         assert result.claims[0].target_module_or_layer == "intimacy.boundaries"
@@ -301,6 +310,7 @@ class TestOfflineE2E:
         result = execute_role_task(
             task, registry, profiles,
             make_fake_provider(json.dumps(payload, ensure_ascii=False)), evidence,
+            evidence_payloads=make_payload_map("se-001"),
         )
 
         assert result.claims[0].claim_type is ClaimType.UNKNOWN

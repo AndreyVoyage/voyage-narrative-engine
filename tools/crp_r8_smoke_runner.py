@@ -63,6 +63,7 @@ from services.crp_authoring.contracts import (  # noqa: E402
     SourceType,
 )
 from services.crp_authoring.errors import CrpValidationError  # noqa: E402
+from services.crp_authoring.dataset_freeze import canonical_json_sha256  # noqa: E402
 from services.crp_authoring.reconstruction_audit import AuditVerdict  # noqa: E402
 from services.crp_authoring.r8_llm_judgment import run_r8_analysis  # noqa: E402
 from crp_provider_adapter import (  # noqa: E402
@@ -82,6 +83,16 @@ SUBJECT_ID = "char-subject-1"
 SOURCE_SNAPSHOT_ID = "snapshot-1"
 EVIDENCE_ID = "se-001"
 CLAIM_ID = "c1"
+
+# Frozen synthetic substantive facts. The smoke SourceEvidence content_hash and
+# the substantive payload map are BOTH derived from the SAME facts via the
+# canonical hash helper, so the hash-binding contract holds deterministically.
+SMOKE_FACTS = [
+    {
+        "fact": "Subject explicitly prefers calm, low-stimulation environments.",
+        "reason": "owner direct statement",
+    },
+]
 
 # Frozen provider configuration (name-only credential reference; no secret).
 SMOKE_PROVIDER_ID = "deepseek"
@@ -131,7 +142,11 @@ def make_r8_smoke_package() -> CandidateCharacterPackage:
 
 
 def make_r8_smoke_evidence() -> Tuple[SourceEvidence, ...]:
-    """Deterministically build the frozen permitted evidence ledger (clean)."""
+    """Deterministically build the frozen permitted evidence ledger (clean).
+
+    ``content_hash`` is derived from ``SMOKE_FACTS`` so the substantive payload
+    (``make_r8_smoke_payloads``) hash-binds exactly.
+    """
     return (
         SourceEvidence(
             source_id=EVIDENCE_ID,
@@ -140,10 +155,25 @@ def make_r8_smoke_evidence() -> Tuple[SourceEvidence, ...]:
             content_ref="ref://raw/001",
             provenance="synthetic-smoke",
             intake_timestamp=datetime.now(timezone.utc).replace(microsecond=0),
-            content_hash="a" * 64,
+            content_hash=canonical_json_sha256(SMOKE_FACTS),
             evidence_snapshot_id=SOURCE_SNAPSHOT_ID,
         ),
     )
+
+
+def make_r8_smoke_payloads() -> dict:
+    """Build the synthetic substantive payload map for the frozen smoke evidence.
+
+    Keyed by ``source_id``; each payload carries the ``section_id``/``title``/
+    ``facts`` shape whose ``facts`` hash equals the smoke ``SourceEvidence.content_hash``.
+    """
+    return {
+        EVIDENCE_ID: {
+            "section_id": "s1",
+            "title": "owner direct statement",
+            "facts": SMOKE_FACTS,
+        },
+    }
 
 
 def make_r8_smoke_provider_config() -> ProviderConfig:
@@ -224,6 +254,7 @@ def run_r8_smoke(
 
     package = make_r8_smoke_package()
     evidence = make_r8_smoke_evidence()
+    evidence_payloads = make_r8_smoke_payloads()
     guard = OneShotGuard(provider_callable)
 
     base = dict(
@@ -247,7 +278,13 @@ def run_r8_smoke(
         return R8SmokeResult(**merged)
 
     try:
-        audit = run_r8_analysis(package, evidence, guard, forbidden_refs=tuple(forbidden_refs))
+        audit = run_r8_analysis(
+            package,
+            evidence,
+            guard,
+            forbidden_refs=tuple(forbidden_refs),
+            evidence_payloads=evidence_payloads,
+        )
     except LLMProviderError as exc:
         # Provider was invoked (guard.attempts == 1) and raised; attempt consumed.
         return _result(

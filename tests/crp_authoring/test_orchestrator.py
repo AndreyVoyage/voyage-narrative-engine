@@ -33,6 +33,7 @@ from services.crp_authoring import (
 )
 from services.crp_authoring.auditor_checks import AuditPolicy
 from services.crp_authoring.candidate_package import CandidateCharacterPackage, PackageStatus
+from services.crp_authoring.dataset_freeze import canonical_json_sha256
 from services.crp_authoring.reconstruction_audit import AuditVerdict, ReconstructionAudit
 from services.crp_authoring.role_task import RoleResult
 from services.crp_authoring.validator import ValidationReport
@@ -41,6 +42,7 @@ from services.crp_authoring import orchestrator as orch
 from tests.crp_authoring.conftest import (
     make_compile_context,
     make_knowledge_profile,
+    make_payload_map,
     make_registry_entry,
     make_role_task,
     make_source,
@@ -196,7 +198,8 @@ def _happy_role_payloads():
 
 
 def _call(role_ids=("R1", "R2", "R4"), *, provider=None, run_id=RUN_ID,
-          snapshot=SNAPSHOT, evidence=None, audit_policy=None, compile_context=None):
+          snapshot=SNAPSHOT, evidence=None, audit_policy=None, compile_context=None,
+          evidence_payloads=None):
     evidence = evidence if evidence is not None else _evidence()
     registry, profiles, tasks = _build_scope(role_ids, evidence, run_id=run_id, snapshot=snapshot)
     return run_reconstruction(
@@ -210,6 +213,7 @@ def _call(role_ids=("R1", "R2", "R4"), *, provider=None, run_id=RUN_ID,
         provider_callable=provider,
         compile_context=compile_context or make_compile_context(subject_id=SUBJECT, package_id=PKG_ID),
         audit_policy=audit_policy or AuditPolicy(),
+        evidence_payloads=evidence_payloads if evidence_payloads is not None else make_payload_map("se-001"),
     )
 
 
@@ -312,6 +316,7 @@ class TestOrchestratorFailClosed:
                 provider_callable=failing_provider,
                 compile_context=make_compile_context(subject_id=SUBJECT, package_id=PKG_ID),
                 audit_policy=AuditPolicy(),
+                evidence_payloads=make_payload_map("se-001"),
             )
         assert reached["compile"] is False
 
@@ -363,6 +368,7 @@ class TestOrchestratorFailClosed:
                 provider_callable=lambda msgs: "{}",
                 compile_context=make_compile_context(subject_id=SUBJECT, package_id=PKG_ID),
                 audit_policy=AuditPolicy(),
+                evidence_payloads=make_payload_map("se-001"),
             )
 
     def test_inactive_role_not_bypassed(self):
@@ -388,6 +394,7 @@ class TestOrchestratorFailClosed:
                 provider_callable=lambda msgs: "{}",
                 compile_context=make_compile_context(subject_id=SUBJECT, package_id=PKG_ID),
                 audit_policy=AuditPolicy(),
+                evidence_payloads=make_payload_map("se-001"),
             )
 
 
@@ -520,6 +527,126 @@ class TestLifecycleAndBoundaries:
             assert forbidden not in text
 
 
+class TestOrchestratorNoneFailClosed:
+    """MAT-02: evidence_payloads is required for run_reconstruction."""
+
+    def test_orch_none_01_omitted_argument_fails_before_provider(self):
+        evidence = _evidence()
+        registry, profiles, tasks = _build_scope(("R1",), evidence)
+        calls = []
+
+        def counted(messages):
+            calls.append(messages)
+            return _r8_judgment_json()
+
+        with pytest.raises(TypeError):
+            run_reconstruction(
+                subject_id=SUBJECT,
+                run_id=RUN_ID,
+                evidence_snapshot_id=SNAPSHOT,
+                evidence=evidence,
+                registry=registry,
+                profiles=profiles,
+                role_tasks=tasks,
+                provider_callable=counted,
+                compile_context=make_compile_context(subject_id=SUBJECT, package_id=PKG_ID),
+                audit_policy=AuditPolicy(),
+            )
+        assert len(calls) == 0
+
+    def test_orch_none_02_explicit_none_fails_before_provider(self):
+        evidence = _evidence()
+        registry, profiles, tasks = _build_scope(("R1",), evidence)
+        calls = []
+
+        def counted(messages):
+            calls.append(messages)
+            return _r8_judgment_json()
+
+        with pytest.raises(ExecutorError):
+            run_reconstruction(
+                subject_id=SUBJECT,
+                run_id=RUN_ID,
+                evidence_snapshot_id=SNAPSHOT,
+                evidence=evidence,
+                registry=registry,
+                profiles=profiles,
+                role_tasks=tasks,
+                provider_callable=counted,
+                compile_context=make_compile_context(subject_id=SUBJECT, package_id=PKG_ID),
+                audit_policy=AuditPolicy(),
+                evidence_payloads=None,
+            )
+        assert len(calls) == 0
+
+
+class TestOrchestratorSubstantiveMaterialization:
+    """CRP R4 pre-provider correction: evidence + evidence_payloads flow through
+    run_reconstruction to every provider-bound authoring role and to R8, without
+    filesystem lookup (synthetic payloads only)."""
+
+    SENTINEL = "OWNER_FACT_SENTINEL_9F3B7"
+
+    def _scope(self):
+        facts = [{"fact": self.SENTINEL, "detail": "owner-authored substantive"}]
+        content_hash = canonical_json_sha256(facts)
+        evidence = (
+            make_source(
+                source_id="se-001", source_type=SourceType.OWNER_DIRECT,
+                subject_id=SUBJECT, evidence_snapshot_id=SNAPSHOT,
+                content_ref="ref://raw/001", content_hash=content_hash,
+            ),
+        )
+        payloads = {"se-001": {"section_id": "s1", "title": "t", "facts": facts}}
+        registry, profiles, tasks = _build_scope(("R1", "R2", "R4"), evidence)
+        return evidence, payloads, registry, profiles, tasks
+
+    def _capturing_provider(self):
+        seen = {"roles": [], "r8": None}
+
+        def provider(messages):
+            user_content = "".join(
+                m["content"] for m in messages if m.get("role") == "user"
+            )
+            if "AUDIT_IDENTITY" in user_content:
+                seen["r8"] = user_content
+                return _r8_judgment_json()
+            seen["roles"].append(user_content)
+            for role_id, payload in _happy_role_payloads().items():
+                if f"- role_id: {role_id}" in user_content:
+                    return payload
+            raise AssertionError("unrecognized provider call")
+
+        return provider, seen
+
+    def test_substantive_facts_reach_roles_and_r8(self):
+        evidence, payloads, registry, profiles, tasks = self._scope()
+        provider, seen = self._capturing_provider()
+
+        run_reconstruction(
+            subject_id=SUBJECT,
+            run_id=RUN_ID,
+            evidence_snapshot_id=SNAPSHOT,
+            evidence=evidence,
+            registry=registry,
+            profiles=profiles,
+            role_tasks=tasks,
+            provider_callable=provider,
+            compile_context=make_compile_context(subject_id=SUBJECT, package_id=PKG_ID),
+            audit_policy=AuditPolicy(),
+            evidence_payloads=payloads,
+        )
+
+        # Each provider-bound authoring role received the substantive sentinel.
+        assert len(seen["roles"]) == 3
+        for user_content in seen["roles"]:
+            assert self.SENTINEL in user_content
+            assert "substantive_payload" in user_content
+        # R8 also received the substantive sentinel.
+        assert self.SENTINEL in seen["r8"]
+        assert "substantive_payload" in seen["r8"]
+
+
 class TestOrderingAndNoNewSchema:
     def test_prior_results_forwarded_in_order(self):
         # R2 allowed_prior_results references R1's task; executor resolves and
@@ -566,6 +693,7 @@ class TestOrderingAndNoNewSchema:
             provider_callable=provider,
             compile_context=make_compile_context(subject_id=SUBJECT, package_id=PKG_ID),
             audit_policy=AuditPolicy(),
+            evidence_payloads=make_payload_map("se-001"),
         )
         assert [r.role_id for r in result[3]] == ["R1", "R2"]
         assert r8_calls["count"] == 1

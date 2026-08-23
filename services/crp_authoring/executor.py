@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Callable, Tuple
+from typing import Any, Callable, Mapping, Optional, Tuple
 
 from .contracts import (
     ClaimStatus,
@@ -35,6 +35,7 @@ from .contracts import (
     SourceType,
     VoicePatternLabel,
 )
+from .dataset_freeze import canonical_json_sha256
 from .errors import CrpError
 from .knowledge_profile import KnowledgeProfile, forbidden_ref_violation
 from .permissions import Permission, permission_violations
@@ -71,14 +72,24 @@ def execute_role_task(
     provider_callable: ProviderCallable,
     evidence: Tuple[SourceEvidence, ...],
     prior_results: Tuple[RoleResult, ...] = (),
+    *,
+    evidence_payloads: Mapping[str, Mapping[str, Any]],
 ) -> RoleResult:
-    """Execute one bounded role task and return one validated RoleResult."""
+    """Execute one bounded role task and return one validated RoleResult.
+
+    ``evidence_payloads`` is a REQUIRED provider-bound input supplying the
+    substantive, owner-authored facts keyed by ``source_id``. Metadata-only
+    provider fallback is forbidden: an explicit ``None`` or a missing payload
+    for any task-authorized evidence item raises BEFORE any provider invocation.
+    """
     if not isinstance(task, RoleTask):
         raise ExecutorError("task must be a RoleTask instance")
     if not isinstance(registry, RoleRegistry):
         raise ExecutorError("registry must be a RoleRegistry instance")
     if not callable(provider_callable):
         raise ExecutorError("provider_callable is a required injected callable")
+    if evidence_payloads is None:
+        raise ExecutorError("evidence_payloads is a required provider-bound input")
 
     # --- revision_round guard (defense in depth; also validated at construction)
     if task.revision_round < 0 or task.revision_round > 2:
@@ -154,9 +165,15 @@ def execute_role_task(
                 f"pattern {matched!r}"
             )
 
+    # --- substantive evidence binding (fail-closed, before provider) --------
+    bound_payloads = _bind_allowed_payloads(allowed_evidence, evidence_payloads)
+
     # --- build context messages and invoke the injected provider ---
     prompt_text = _load_prompt_text(entry.prompt_ref)
-    messages = _assemble_messages(task, allowed_evidence, allowed_prior, prompt_text=prompt_text)
+    messages = _assemble_messages(
+        task, allowed_evidence, allowed_prior,
+        prompt_text=prompt_text, evidence_payloads=bound_payloads,
+    )
     raw = provider_callable(messages)
     if not isinstance(raw, str):
         raise ExecutorError("provider_callable must return a string")
@@ -378,12 +395,15 @@ def _load_prompt_text(prompt_ref: str) -> str:
     return candidate.read_text(encoding="utf-8")
 
 
-def _assemble_messages(task, evidence, prior, *, prompt_text: str) -> list:
+def _assemble_messages(task, evidence, prior, *, prompt_text: str,
+                       evidence_payloads) -> list:
     """Build the provider payload from the exact prompt plus bounded context.
 
     The loaded vNext prompt file text is injected verbatim as a ``system``
     message (never rewritten, never searched/discovered); the bounded
-    task/evidence/prior context remains a single ``user`` message.
+    task/evidence/prior context remains a single ``user`` message. Each visible
+    evidence item renders its substantive, hash-bound payload so the model
+    receives the actual owner-authored facts (metadata-only is never emitted).
     """
     lines = [
         "current_task:",
@@ -396,6 +416,11 @@ def _assemble_messages(task, evidence, prior, *, prompt_text: str) -> list:
     lines.append("allowed_evidence:")
     for ev in evidence:
         lines.append(f"- {ev.source_id}: {ev.content_ref}")
+        payload = evidence_payloads[ev.source_id]
+        lines.append(f"  source_id: {ev.source_id}")
+        lines.append(f"  content_ref: {ev.content_ref}")
+        lines.append(f"  content_hash: {ev.content_hash}")
+        lines.append(f"  substantive_payload: {_render_payload(payload)}")
     lines.append("allowed_prior_results:")
     for r in prior:
         lines.append(f"- {r.task_id}")
@@ -403,6 +428,54 @@ def _assemble_messages(task, evidence, prior, *, prompt_text: str) -> list:
         {"role": "system", "content": prompt_text},
         {"role": "user", "content": "\n".join(lines)},
     ]
+
+
+def _bind_allowed_payloads(allowed_evidence, evidence_payloads):
+    """Fail-closed hash-binding of substantive payloads for allowed evidence.
+
+    Always returns a ``source_id -> payload`` mapping in allowed-evidence order,
+    raising ``ExecutorError`` before any provider invocation if
+    ``evidence_payloads`` is ``None``/not a mapping, or if a payload is missing
+    or its ``facts`` hash does not equal the matching ``SourceEvidence.content_hash``.
+    """
+    if evidence_payloads is None:
+        raise ExecutorError("evidence_payloads is required for provider-bound execution")
+    if not isinstance(evidence_payloads, Mapping):
+        raise ExecutorError("evidence_payloads must be a mapping keyed by source_id")
+    return {ev.source_id: _bound_payload(ev, evidence_payloads) for ev in allowed_evidence}
+
+
+def _bound_payload(ev: SourceEvidence, evidence_payloads: Mapping) -> Mapping:
+    """Fail-closed: bind one substantive payload to its SourceEvidence.
+
+    Rejects a missing payload, a payload without a valid ``facts`` list, or a
+    ``facts`` value whose canonical JSON SHA-256 differs from
+    ``SourceEvidence.content_hash``. No metadata-only fallback, no silent omit.
+    """
+    payload = evidence_payloads.get(ev.source_id)
+    if not isinstance(payload, Mapping):
+        raise ExecutorError(
+            f"evidence_payloads has no substantive payload for {ev.source_id!r}"
+        )
+    facts = payload.get("facts")
+    if not isinstance(facts, (list, tuple)):
+        raise ExecutorError(
+            f"evidence payload {ev.source_id!r} has no valid 'facts' list"
+        )
+    recomputed = canonical_json_sha256(facts)
+    if recomputed != ev.content_hash:
+        raise ExecutorError(
+            f"evidence payload {ev.source_id!r} facts hash {recomputed!r} "
+            f"!= SourceEvidence.content_hash {ev.content_hash!r}"
+        )
+    return payload
+
+
+def _render_payload(payload: Mapping) -> str:
+    """Deterministic canonical-JSON serialization of a substantive payload."""
+    return json.dumps(
+        dict(payload), ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    )
 
 
 def _required_str(data, key: str) -> str:

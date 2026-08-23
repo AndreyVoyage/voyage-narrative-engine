@@ -16,6 +16,7 @@ import pytest
 from services.crp_authoring.auditor_checks import AuditPolicy, run_deterministic_audit
 from services.crp_authoring.candidate_package import CandidateCharacterPackage
 from services.crp_authoring.contracts import ClaimType, SourceType
+from services.crp_authoring.dataset_freeze import canonical_json_sha256
 from services.crp_authoring.errors import CrpValidationError
 from services.crp_authoring.r8_llm_judgment import (
     CHECK_MODULE_PLACEMENT,
@@ -33,7 +34,12 @@ from services.crp_authoring.reconstruction_audit import (
     AuditVerdict,
 )
 
-from tests.crp_authoring.conftest import make_claim, make_package, make_source
+from tests.crp_authoring.conftest import (
+    make_claim,
+    make_package,
+    make_payload_map,
+    make_source,
+)
 
 SUBJECT = "char-subject-1"
 PKG_ID = "pkg-001"
@@ -185,7 +191,7 @@ class TestPromptRendering:
     def test_exposes_all_exact_bound_fields(self) -> None:
         pkg = _clean_package()
         deterministic = run_deterministic_audit(pkg, (), AuditPolicy())
-        msgs = render_r8_messages(pkg, (), deterministic)
+        msgs = render_r8_messages(pkg, (), deterministic, {})
         user = msgs[1]["content"]
         assert f"package_id: {PKG_ID}" in user
         assert f"subject_id: {SUBJECT}" in user
@@ -195,7 +201,7 @@ class TestPromptRendering:
     def test_prompt_contains_no_raw_roleresult_or_hidden_eval(self) -> None:
         pkg = _clean_package()
         deterministic = run_deterministic_audit(pkg, (), AuditPolicy())
-        msgs = render_r8_messages(pkg, (), deterministic)
+        msgs = render_r8_messages(pkg, (), deterministic, {})
         user_data = msgs[1]["content"]
         # The system prompt may name "RoleResult" as a forbidden input; the
         # actual rendered DATA block must not carry any raw RoleResult payload.
@@ -222,7 +228,7 @@ class TestCompositionRunner:
 
     def test_case_a_clean_clean(self) -> None:
         pkg = _clean_package()
-        result = run_r8_analysis(pkg, (), lambda msgs: _clean_llm_json())
+        result = run_r8_analysis(pkg, (), lambda msgs: _clean_llm_json(), evidence_payloads={})
         assert result.verdict is AuditVerdict.PASS
 
     def test_case_b_hard_blocker_not_overrideable(self) -> None:
@@ -234,6 +240,7 @@ class TestCompositionRunner:
             return _clean_llm_json()
         result = run_r8_analysis(
             pkg, (ev,), fake_provider, forbidden_refs=("personas/kira/**",),
+            evidence_payloads=make_payload_map("se-leak"),
         )
         # Fail-fast: deterministic BLOCKED skips the LLM entirely.
         assert calls == []
@@ -242,7 +249,7 @@ class TestCompositionRunner:
     def test_case_c_semantic_finding_survives(self) -> None:
         pkg = _clean_package()
         result = run_r8_analysis(
-            pkg, (), lambda msgs: self._semantic_finding_check(),
+            pkg, (), lambda msgs: self._semantic_finding_check(), evidence_payloads={},
         )
         assert result.verdict is AuditVerdict.FAIL
         assert any(c.check == CHECK_MODULE_PLACEMENT for c in result.checks)
@@ -261,5 +268,133 @@ class TestCompositionRunner:
     def test_inputs_not_mutated(self) -> None:
         pkg = _clean_package()
         claims_before = tuple(pkg.claims)
-        run_r8_analysis(pkg, (), lambda msgs: _clean_llm_json())
+        run_r8_analysis(pkg, (), lambda msgs: _clean_llm_json(), evidence_payloads={})
         assert pkg.claims == claims_before
+
+
+class TestR8NoneFailClosed:
+    """MAT-02: evidence_payloads is required for R8 provider-bound paths."""
+
+    def test_r8_none_01_explicit_none_fails_before_provider(self):
+        pkg = _clean_package()
+        evidence = _evidence("se-001")
+        calls = []
+
+        def counted(msgs):
+            calls.append(msgs)
+            return _clean_llm_json()
+
+        with pytest.raises(CrpValidationError):
+            run_r8_analysis(pkg, evidence, counted, evidence_payloads=None)
+        assert len(calls) == 0
+
+    def test_r8_none_02_omitted_argument_fails_at_api(self):
+        pkg = _clean_package()
+        evidence = _evidence("se-001")
+        with pytest.raises(TypeError):
+            run_r8_analysis(pkg, evidence, lambda msgs: _clean_llm_json())
+
+    def test_r8_none_03_empty_map_with_nonempty_evidence_fails(self):
+        pkg = _clean_package()
+        evidence = _evidence("se-001")
+        calls = []
+
+        def counted(msgs):
+            calls.append(msgs)
+            return _clean_llm_json()
+
+        with pytest.raises(CrpValidationError):
+            run_r8_analysis(pkg, evidence, counted, evidence_payloads={})
+        assert len(calls) == 0
+
+
+class TestR8SubstantiveMaterialization:
+    """CRP R4 pre-provider correction: R8 must receive substantive facts,
+    hash-bound to authoritative evidence before the provider callable runs."""
+
+    SENTINEL = "OWNER_FACT_SENTINEL_9F3B7"
+    UNALLOWED = "UNALLOWED_SENTINEL_B7C21"
+
+    def _facts(self):
+        return [{"fact": self.SENTINEL, "detail": "owner-authored"}]
+
+    def _evidence_with_payloads(self, *, evidence_id="se-001"):
+        facts = self._facts()
+        content_hash = canonical_json_sha256(facts)
+        ev = make_source(source_id=evidence_id, content_ref="ref://raw/001",
+                         content_hash=content_hash)
+        payloads = {evidence_id: {"section_id": "s1", "title": "t", "facts": facts}}
+        return (ev,), payloads
+
+    def test_r8_mat01_substantive_reaches_provider(self):
+        pkg = _clean_package()
+        evidence, payloads = self._evidence_with_payloads()
+        seen = {}
+
+        def capture(msgs):
+            seen["messages"] = msgs
+            return _clean_llm_json()
+
+        run_r8_analysis(pkg, evidence, capture, evidence_payloads=payloads)
+        user = [m["content"] for m in seen["messages"] if m["role"] == "user"][0]
+        assert self.SENTINEL in user
+        assert "substantive_payload" in user
+
+    def test_r8_mat02_identity_metadata_present(self):
+        pkg = _clean_package()
+        evidence, payloads = self._evidence_with_payloads()
+        seen = {}
+
+        def capture(msgs):
+            seen["messages"] = msgs
+            return _clean_llm_json()
+
+        run_r8_analysis(pkg, evidence, capture, evidence_payloads=payloads)
+        user = [m["content"] for m in seen["messages"] if m["role"] == "user"][0]
+        assert "se-001" in user
+        assert "content_ref" in user
+
+    def test_r8_mat03_hash_mismatch_fails_before_provider(self):
+        pkg = _clean_package()
+        evidence, payloads = self._evidence_with_payloads()
+        payloads["se-001"] = {"section_id": "s1", "title": "t",
+                              "facts": [{"fact": "TAMPERED"}]}
+        calls = []
+
+        def counted(msgs):
+            calls.append(msgs)
+            return _clean_llm_json()
+
+        with pytest.raises(CrpValidationError):
+            run_r8_analysis(pkg, evidence, counted, evidence_payloads=payloads)
+        assert len(calls) == 0
+
+    def test_r8_mat04_missing_payload_fails_before_provider(self):
+        pkg = _clean_package()
+        evidence, _payloads = self._evidence_with_payloads()
+        calls = []
+
+        def counted(msgs):
+            calls.append(msgs)
+            return _clean_llm_json()
+
+        with pytest.raises(CrpValidationError):
+            run_r8_analysis(pkg, evidence, counted, evidence_payloads={})
+        assert len(calls) == 0
+
+    def test_r8_mat05_payload_map_only_extra_absent(self):
+        pkg = _clean_package()
+        evidence, payloads = self._evidence_with_payloads()
+        payloads["ghost-id"] = {"section_id": "g", "title": "g",
+                                "facts": [{"fact": self.UNALLOWED}]}
+        seen = {}
+
+        def capture(msgs):
+            seen["messages"] = msgs
+            return _clean_llm_json()
+
+        run_r8_analysis(pkg, evidence, capture, evidence_payloads=payloads)
+        user = [m["content"] for m in seen["messages"] if m["role"] == "user"][0]
+        assert self.SENTINEL in user
+        assert self.UNALLOWED not in user
+        assert "ghost-id" not in user

@@ -17,11 +17,13 @@ from services.crp_authoring import (
     execute_role_task,
 )
 from services.crp_authoring.contracts import VoicePatternLabel
+from services.crp_authoring.dataset_freeze import canonical_json_sha256
 from services.crp_authoring.executor import _assemble_messages, _load_prompt_text
 
 from tests.crp_authoring.conftest import (
     make_fake_provider,
     make_knowledge_profile,
+    make_payload_map,
     make_registry_entry,
     make_role_task,
     make_source,
@@ -122,7 +124,8 @@ class TestExecutor:
     def test_fake_provider_executes_and_returns_result(self) -> None:
         registry, profiles, evidence, task = _r2_registry_scope()
         provider = make_fake_provider(_r2_result_json())
-        result = execute_role_task(task, registry, profiles, provider, evidence)
+        result = execute_role_task(task, registry, profiles, provider, evidence,
+                                   evidence_payloads=make_payload_map("se-001"))
         assert result.task_id == "task-001"
         assert result.claims[0].claim_id == "c1"
 
@@ -133,13 +136,15 @@ class TestExecutor:
         evidence = (make_source(source_id="se-001", source_type=SourceType.OWNER_DIRECT),)
         task = make_role_task(role_id="R2", allowed_evidence_ids=("se-001",))
         with pytest.raises(ExecutorError):
-            execute_role_task(task, registry, profiles, make_fake_provider("{}"), evidence)
+            execute_role_task(task, registry, profiles, make_fake_provider("{}"), evidence,
+                              evidence_payloads=make_payload_map("se-001"))
 
     def test_role_version_mismatch_rejected(self) -> None:
         registry, profiles, evidence, _ = _r2_registry_scope()
         task = make_role_task(role_id="R2", role_version="v9")
         with pytest.raises(ExecutorError):
-            execute_role_task(task, registry, profiles, make_fake_provider("{}"), evidence)
+            execute_role_task(task, registry, profiles, make_fake_provider("{}"), evidence,
+                              evidence_payloads=make_payload_map("se-001"))
 
     def test_absent_role_rejected(self) -> None:
         registry = RoleRegistry((make_registry_entry(role_id="R1"),))
@@ -147,7 +152,8 @@ class TestExecutor:
         evidence = (make_source(source_id="se-001", source_type=SourceType.OWNER_DIRECT),)
         task = make_role_task(role_id="R2")
         with pytest.raises(ExecutorError):
-            execute_role_task(task, registry, profiles, make_fake_provider("{}"), evidence)
+            execute_role_task(task, registry, profiles, make_fake_provider("{}"), evidence,
+                              evidence_payloads=make_payload_map("se-001"))
 
     def test_revision_round_out_of_range_rejected(self) -> None:
         # revision_round > 2 is rejected at RoleTask construction (fail-closed
@@ -158,31 +164,37 @@ class TestExecutor:
     def test_empty_output_rejected(self) -> None:
         registry, profiles, evidence, task = _r2_registry_scope()
         with pytest.raises(ExecutorError):
-            execute_role_task(task, registry, profiles, make_fake_provider("   "), evidence)
+            execute_role_task(task, registry, profiles, make_fake_provider("   "), evidence,
+                              evidence_payloads=make_payload_map("se-001"))
 
     def test_malformed_output_rejected(self) -> None:
         registry, profiles, evidence, task = _r2_registry_scope()
         with pytest.raises(ExecutorError):
-            execute_role_task(task, registry, profiles, make_fake_provider("not json"), evidence)
+            execute_role_task(task, registry, profiles, make_fake_provider("not json"), evidence,
+                              evidence_payloads=make_payload_map("se-001"))
 
     def test_unknown_field_rejected(self) -> None:
         registry, profiles, evidence, task = _r2_registry_scope()
         payload = json.loads(_r2_result_json())
         payload["extra_field"] = "nope"
         with pytest.raises(ExecutorError):
-            execute_role_task(task, registry, profiles, make_fake_provider(json.dumps(payload)), evidence)
+            execute_role_task(task, registry, profiles, make_fake_provider(json.dumps(payload)),
+                              evidence, evidence_payloads=make_payload_map("se-001"))
 
     def test_wrong_role_id_rejected(self) -> None:
         registry, profiles, evidence, task = _r2_registry_scope()
         with pytest.raises(ExecutorError):
-            execute_role_task(task, registry, profiles, make_fake_provider(_r2_result_json(role_id="R4")), evidence)
+            execute_role_task(task, registry, profiles,
+                              make_fake_provider(_r2_result_json(role_id="R4")), evidence,
+                              evidence_payloads=make_payload_map("se-001"))
 
     def test_permission_violation_rejected(self) -> None:
         # R2 emits a voice-targeted claim -> ROLE_PERMISSION_VIOLATION.
         registry, profiles, evidence, task = _r2_registry_scope()
         provider = make_fake_provider(_r2_result_json(target="voice.lexicon"))
         with pytest.raises(ExecutorError, match="PERMISSION_VIOLATION"):
-            execute_role_task(task, registry, profiles, provider, evidence)
+            execute_role_task(task, registry, profiles, provider, evidence,
+                              evidence_payloads=make_payload_map("se-001"))
 
     def test_unsupported_claim_rejected(self) -> None:
         # A FACT claim with only MODEL_INFERENCE evidence is unsupported.
@@ -190,7 +202,8 @@ class TestExecutor:
         provider = make_fake_provider(_r2_result_json(
             claim_type="FACT", source_type="MODEL_INFERENCE", confidence="KNOWN"))
         with pytest.raises(CrpError):
-            execute_role_task(task, registry, profiles, provider, evidence)
+            execute_role_task(task, registry, profiles, provider, evidence,
+                              evidence_payloads=make_payload_map("se-001"))
 
     def test_evidence_outside_allowlist_rejected(self) -> None:
         registry, profiles, evidence, task = _r2_registry_scope()
@@ -198,7 +211,8 @@ class TestExecutor:
         payload = json.loads(_r2_result_json())
         payload["claims"][0]["source_evidence_ids"] = ["se-999"]
         with pytest.raises(ExecutorError):
-            execute_role_task(task, registry, profiles, make_fake_provider(json.dumps(payload)), evidence)
+            execute_role_task(task, registry, profiles, make_fake_provider(json.dumps(payload)),
+                              evidence, evidence_payloads=make_payload_map("se-001"))
 
     def test_no_auto_retry_and_no_chaining(self) -> None:
         registry, profiles, evidence, task = _r2_registry_scope()
@@ -208,14 +222,58 @@ class TestExecutor:
             calls.append(messages)
             return _r2_result_json()
 
-        result = execute_role_task(task, registry, profiles, counted, evidence)
+        result = execute_role_task(task, registry, profiles, counted, evidence,
+                                   evidence_payloads=make_payload_map("se-001"))
         assert len(calls) == 1  # exactly one provider invocation
         assert result.role_id == "R2"
 
     def test_required_provider_injection(self) -> None:
         registry, profiles, evidence, task = _r2_registry_scope()
         with pytest.raises(ExecutorError, match="required injected callable"):
-            execute_role_task(task, registry, profiles, None, evidence)
+            execute_role_task(task, registry, profiles, None, evidence,
+                              evidence_payloads=make_payload_map("se-001"))
+
+
+class TestExecutorNoneFailClosed:
+    """MAT-02: metadata-only fallback and explicit-None must fail before provider."""
+
+    def test_gen_none_01_explicit_none_fails_before_provider(self) -> None:
+        registry, profiles, evidence, task = _r2_registry_scope()
+        calls = []
+
+        def counted(messages):
+            calls.append(messages)
+            return _r2_result_json()
+
+        with pytest.raises(ExecutorError):
+            execute_role_task(task, registry, profiles, counted, evidence,
+                              evidence_payloads=None)
+        assert len(calls) == 0
+
+    def test_gen_none_02_omitted_argument_fails_at_api(self) -> None:
+        registry, profiles, evidence, task = _r2_registry_scope()
+        calls = []
+
+        def counted(messages):
+            calls.append(messages)
+            return _r2_result_json()
+
+        with pytest.raises(TypeError):
+            execute_role_task(task, registry, profiles, counted, evidence)
+        assert len(calls) == 0
+
+    def test_gen_none_03_empty_map_with_nonempty_evidence_fails(self) -> None:
+        registry, profiles, evidence, task = _r2_registry_scope()
+        calls = []
+
+        def counted(messages):
+            calls.append(messages)
+            return _r2_result_json()
+
+        with pytest.raises(ExecutorError):
+            execute_role_task(task, registry, profiles, counted, evidence,
+                              evidence_payloads={})
+        assert len(calls) == 0
 
 
 class TestVoicePatternLabelParsing:
@@ -225,19 +283,22 @@ class TestVoicePatternLabelParsing:
     def test_authorized_label_parses(self, label: str) -> None:
         registry, profiles, evidence, task = _r4_registry_scope()
         provider = make_fake_provider(_r4_result_json(label=label))
-        result = execute_role_task(task, registry, profiles, provider, evidence)
+        result = execute_role_task(task, registry, profiles, provider, evidence,
+                                   evidence_payloads=make_payload_map("se-001"))
         assert result.claims[0].voice_pattern_label is VoicePatternLabel(label)
 
     def test_unknown_label_rejected(self) -> None:
         registry, profiles, evidence, task = _r4_registry_scope()
         provider = make_fake_provider(_r4_result_json(label="FABRICATED"))
         with pytest.raises(ExecutorError):
-            execute_role_task(task, registry, profiles, provider, evidence)
+            execute_role_task(task, registry, profiles, provider, evidence,
+                              evidence_payloads=make_payload_map("se-001"))
 
     def test_missing_label_remains_valid(self) -> None:
         registry, profiles, evidence, task = _r4_registry_scope()
         provider = make_fake_provider(_r4_result_json())
-        result = execute_role_task(task, registry, profiles, provider, evidence)
+        result = execute_role_task(task, registry, profiles, provider, evidence,
+                                   evidence_payloads=make_payload_map("se-001"))
         assert result.claims[0].voice_pattern_label is None
 
     def test_parsed_label_preserves_other_axes(self) -> None:
@@ -245,7 +306,8 @@ class TestVoicePatternLabelParsing:
         # claim_type.
         registry, profiles, evidence, task = _r4_registry_scope()
         provider = make_fake_provider(_r4_result_json(label="OBSERVED"))
-        result = execute_role_task(task, registry, profiles, provider, evidence)
+        result = execute_role_task(task, registry, profiles, provider, evidence,
+                                   evidence_payloads=make_payload_map("se-001"))
         claim = result.claims[0]
         assert claim.source_type_summary == (SourceType.OBSERVATION,)
         assert claim.confidence.value == "KNOWN"
@@ -257,7 +319,8 @@ class TestVoicePatternLabelParsing:
         # voice_pattern_label=None, identical to pre-fix behavior.
         registry, profiles, evidence, task = _r2_registry_scope()
         provider = make_fake_provider(_r2_result_json())
-        result = execute_role_task(task, registry, profiles, provider, evidence)
+        result = execute_role_task(task, registry, profiles, provider, evidence,
+                                   evidence_payloads=make_payload_map("se-001"))
         assert result.claims[0].voice_pattern_label is None
 
 
@@ -279,7 +342,8 @@ class TestPromptAssembly:
             seen["messages"] = messages
             return _r2_result_json()
 
-        execute_role_task(task, registry, profiles, capture, evidence)
+        execute_role_task(task, registry, profiles, capture, evidence,
+                          evidence_payloads=make_payload_map("se-001"))
         messages = seen["messages"]
         assert messages[0]["role"] == "system"
         assert messages[0]["content"] == prompt_text
@@ -294,7 +358,8 @@ class TestPromptAssembly:
             seen["messages"] = messages
             return _r2_result_json()
 
-        execute_role_task(task, registry, profiles, capture, evidence)
+        execute_role_task(task, registry, profiles, capture, evidence,
+                          evidence_payloads=make_payload_map("se-001"))
         user = [m for m in seen["messages"] if m["role"] == "user"]
         assert len(user) == 1
         assert "task_goal" in user[0]["content"]
@@ -327,6 +392,7 @@ class TestPromptAssembly:
         prompt_text = _load_prompt_text(entry.prompt_ref)
         messages = _assemble_messages(
             task, evidence, (), prompt_text=prompt_text,
+            evidence_payloads=make_payload_map("se-001"),
         )
         assert messages[0] == {"role": "system", "content": prompt_text}
         assert messages[1]["role"] == "user"
@@ -360,7 +426,8 @@ class TestTaskMetadataExposure:
                 subject_id="subject-visible-456",
             )
 
-        execute_role_task(task, registry, profiles, capture, evidence)
+        execute_role_task(task, registry, profiles, capture, evidence,
+                          evidence_payloads=make_payload_map("se-001"))
 
         user_content = [m["content"] for m in seen["messages"] if m["role"] == "user"][0]
         assert "- task_id: task-visible-123" in user_content
@@ -374,7 +441,8 @@ class TestTaskMetadataExposure:
         registry, profiles, evidence, task = self._visible_scope()
         entry = registry.get("R2")
         prompt_text = _load_prompt_text(entry.prompt_ref)
-        messages = _assemble_messages(task, evidence, (), prompt_text=prompt_text)
+        messages = _assemble_messages(task, evidence, (), prompt_text=prompt_text,
+                                      evidence_payloads=make_payload_map("se-001"))
         user_content = messages[1]["content"]
         assert "- subject_id: subject-visible-456" in user_content
 
@@ -384,7 +452,8 @@ class TestTaskMetadataExposure:
             task_id="task-visible-123", role_id="R2", role_version="v-test-visible",
             subject_id="subject-visible-456",
         ))
-        result = execute_role_task(task, registry, profiles, provider, evidence)
+        result = execute_role_task(task, registry, profiles, provider, evidence,
+                                   evidence_payloads=make_payload_map("se-001"))
         assert result.task_id == "task-visible-123"
         assert result.role_id == "R2"
         assert result.role_version == "v-test-visible"
@@ -393,7 +462,8 @@ class TestTaskMetadataExposure:
         registry, profiles, evidence, task = self._visible_scope()
         provider = make_fake_provider(_r2_result_json(task_id="some-other-task-id"))
         with pytest.raises(ExecutorError, match="result task_id"):
-            execute_role_task(task, registry, profiles, provider, evidence)
+            execute_role_task(task, registry, profiles, provider, evidence,
+                              evidence_payloads=make_payload_map("se-001"))
 
     def test_wrong_subject_id_fails_closed(self) -> None:
         # Claim subject_id differing from task.subject_id must fail closed.
@@ -403,7 +473,8 @@ class TestTaskMetadataExposure:
             subject_id="some-other-subject",
         ))
         with pytest.raises(ExecutorError, match="subject_id"):
-            execute_role_task(task, registry, profiles, provider, evidence)
+            execute_role_task(task, registry, profiles, provider, evidence,
+                              evidence_payloads=make_payload_map("se-001"))
 
 
 class TestForbiddenRefEnforcement:
@@ -442,7 +513,8 @@ class TestForbiddenRefEnforcement:
             return _r2_result_json()
 
         with pytest.raises(ExecutorError, match="forbidden"):
-            execute_role_task(task, registry, profiles, counted, evidence)
+            execute_role_task(task, registry, profiles, counted, evidence,
+                              evidence_payloads=make_payload_map("se-001"))
         assert len(calls) == 0  # never reached the provider boundary
 
     def test_prefix_descendant_rejected_before_provider(self) -> None:
@@ -457,7 +529,8 @@ class TestForbiddenRefEnforcement:
             return _r2_result_json()
 
         with pytest.raises(ExecutorError, match="forbidden"):
-            execute_role_task(task, registry, profiles, counted, evidence)
+            execute_role_task(task, registry, profiles, counted, evidence,
+                              evidence_payloads=make_payload_map("se-001"))
         assert len(calls) == 0
 
     def test_windows_backslash_rejected_before_provider(self) -> None:
@@ -472,7 +545,8 @@ class TestForbiddenRefEnforcement:
             return _r2_result_json()
 
         with pytest.raises(ExecutorError, match="forbidden"):
-            execute_role_task(task, registry, profiles, counted, evidence)
+            execute_role_task(task, registry, profiles, counted, evidence,
+                              evidence_payloads=make_payload_map("se-001"))
         assert len(calls) == 0
 
     def test_case_variant_rejected_before_provider(self) -> None:
@@ -487,7 +561,8 @@ class TestForbiddenRefEnforcement:
             return _r2_result_json()
 
         with pytest.raises(ExecutorError, match="forbidden"):
-            execute_role_task(task, registry, profiles, counted, evidence)
+            execute_role_task(task, registry, profiles, counted, evidence,
+                              evidence_payloads=make_payload_map("se-001"))
         assert len(calls) == 0
 
     def test_near_miss_is_allowed(self) -> None:
@@ -497,7 +572,8 @@ class TestForbiddenRefEnforcement:
             content_ref="personas/kira2/notes.md",
         )
         provider = make_fake_provider(_r2_result_json())
-        result = execute_role_task(task, registry, profiles, provider, evidence)
+        result = execute_role_task(task, registry, profiles, provider, evidence,
+                                   evidence_payloads=make_payload_map("se-001"))
         assert result.task_id == "task-001"
 
     def test_provenance_only_kira_is_allowed(self) -> None:
@@ -509,7 +585,8 @@ class TestForbiddenRefEnforcement:
             provenance="owner notes mentioning a kira-like reference",
         )
         provider = make_fake_provider(_r2_result_json())
-        result = execute_role_task(task, registry, profiles, provider, evidence)
+        result = execute_role_task(task, registry, profiles, provider, evidence,
+                                   evidence_payloads=make_payload_map("se-001"))
         assert result.task_id == "task-001"
 
     def test_empty_forbidden_refs_preserves_behavior(self) -> None:
@@ -520,7 +597,8 @@ class TestForbiddenRefEnforcement:
             calls.append(messages)
             return _r2_result_json()
 
-        result = execute_role_task(task, registry, profiles, counted, evidence)
+        result = execute_role_task(task, registry, profiles, counted, evidence,
+                                   evidence_payloads=make_payload_map("se-001"))
         assert result.task_id == "task-001"
         assert len(calls) == 1
 
@@ -536,10 +614,143 @@ class TestClaimRoleIdEnforcement:
         payload["claims"][0]["role_id"] = "R4"
         provider = make_fake_provider(json.dumps(payload))
         with pytest.raises(ExecutorError, match="role_id"):
-            execute_role_task(task, registry, profiles, provider, evidence)
+            execute_role_task(task, registry, profiles, provider, evidence,
+                              evidence_payloads=make_payload_map("se-001"))
 
     def test_correct_claim_role_continues_to_pass(self) -> None:
         registry, profiles, evidence, task = _r2_registry_scope()
         provider = make_fake_provider(_r2_result_json(role_id="R2"))
-        result = execute_role_task(task, registry, profiles, provider, evidence)
+        result = execute_role_task(task, registry, profiles, provider, evidence,
+                                   evidence_payloads=make_payload_map("se-001"))
         assert result.claims[0].role_id == "R2"
+
+
+class TestSubstantiveMaterialization:
+    """CRP R4 pre-provider correction: substantive owner-authored facts must be
+    hash-bound and rendered into provider-visible messages (synthetic evidence).
+
+    Sentinel text originates ONLY in the synthetic payload; fail-closed cases
+    must never reach the provider callable.
+    """
+
+    SENTINEL = "OWNER_FACT_SENTINEL_9F3B7"
+    UNALLOWED = "UNALLOWED_SENTINEL_B7C21"
+
+    def _facts(self):
+        return [{"fact": self.SENTINEL, "detail": "owner-authored substantive fact"}]
+
+    def _scope(self, *, allowed=("se-001",), evidence_ids=("se-001",)):
+        facts = self._facts()
+        content_hash = canonical_json_sha256(facts)
+        evidence = tuple(
+            make_source(source_id=eid, source_type=SourceType.OWNER_DIRECT,
+                        content_hash=content_hash)
+            for eid in evidence_ids
+        )
+        entry = make_registry_entry(role_id="R2", version="v1", prompt_ref=_R2_PROMPT_REF)
+        registry = RoleRegistry((entry,))
+        profiles = {"profile-r2": make_knowledge_profile(profile_id="profile-r2", role_id="R2")}
+        task = make_role_task(task_id="task-001", role_id="R2", role_version="v1",
+                              allowed_evidence_ids=allowed)
+        payloads = {
+            eid: {"section_id": "s1", "title": "section title", "facts": facts}
+            for eid in evidence_ids
+        }
+        return registry, profiles, evidence, task, payloads
+
+    def _user_content(self, messages):
+        return [m["content"] for m in messages if m["role"] == "user"][0]
+
+    def test_mat01_substantive_fact_reaches_provider(self) -> None:
+        registry, profiles, evidence, task, payloads = self._scope()
+        seen = {}
+
+        def capture(messages):
+            seen["messages"] = messages
+            return _r2_result_json()
+
+        execute_role_task(task, registry, profiles, capture, evidence,
+                          evidence_payloads=payloads)
+        user = self._user_content(seen["messages"])
+        assert self.SENTINEL in user
+        assert "substantive_payload" in user
+
+    def test_mat02_provenance_preserved(self) -> None:
+        registry, profiles, evidence, task, payloads = self._scope()
+        seen = {}
+
+        def capture(messages):
+            seen["messages"] = messages
+            return _r2_result_json()
+
+        execute_role_task(task, registry, profiles, capture, evidence,
+                          evidence_payloads=payloads)
+        user = self._user_content(seen["messages"])
+        # source_id and content_ref provenance remain present.
+        assert "se-001" in user
+        assert "ref://raw/001" in user
+
+    def test_mat03_unallowed_payload_not_rendered(self) -> None:
+        # Two evidence items exist; the task authorizes only se-001. The
+        # se-002 payload must never be rendered.
+        registry, profiles, evidence, task, payloads = self._scope(
+            allowed=("se-001",), evidence_ids=("se-001", "se-002"),
+        )
+        payloads["se-002"] = {"section_id": "s2", "title": "t2",
+                              "facts": [{"fact": self.UNALLOWED}]}
+        seen = {}
+
+        def capture(messages):
+            seen["messages"] = messages
+            return _r2_result_json()
+
+        execute_role_task(task, registry, profiles, capture, evidence,
+                          evidence_payloads=payloads)
+        user = self._user_content(seen["messages"])
+        assert self.SENTINEL in user
+        assert self.UNALLOWED not in user
+
+    def test_mat04_missing_payload_fails_before_provider(self) -> None:
+        registry, profiles, evidence, task, _payloads = self._scope()
+        calls = []
+
+        def counted(messages):
+            calls.append(messages)
+            return _r2_result_json()
+
+        with pytest.raises(ExecutorError):
+            execute_role_task(task, registry, profiles, counted, evidence,
+                              evidence_payloads={})
+        assert len(calls) == 0
+
+    def test_mat05_hash_mismatch_fails_before_provider(self) -> None:
+        registry, profiles, evidence, task, payloads = self._scope()
+        payloads["se-001"] = {"section_id": "s1", "title": "t",
+                              "facts": [{"fact": "TAMPERED_FACTS"}]}
+        calls = []
+
+        def counted(messages):
+            calls.append(messages)
+            return _r2_result_json()
+
+        with pytest.raises(ExecutorError):
+            execute_role_task(task, registry, profiles, counted, evidence,
+                              evidence_payloads=payloads)
+        assert len(calls) == 0
+
+    def test_mat06_extra_payload_key_does_not_leak(self) -> None:
+        registry, profiles, evidence, task, payloads = self._scope()
+        payloads["ghost-id"] = {"section_id": "g", "title": "g",
+                                "facts": [{"fact": self.UNALLOWED}]}
+        seen = {}
+
+        def capture(messages):
+            seen["messages"] = messages
+            return _r2_result_json()
+
+        execute_role_task(task, registry, profiles, capture, evidence,
+                          evidence_payloads=payloads)
+        user = self._user_content(seen["messages"])
+        assert self.SENTINEL in user
+        assert self.UNALLOWED not in user
+        assert "ghost-id" not in user
