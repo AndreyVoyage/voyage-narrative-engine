@@ -13,8 +13,9 @@ from services.crp_authoring import (
 )
 from services.crp_authoring.registry import load_role_registry
 from services.crp_authoring.errors import CrpValidationError
+from services.crp_authoring.role_task import GATED_OPTIONAL_ROLES
 
-from tests.crp_authoring.conftest import make_registry_entry
+from tests.crp_authoring.conftest import make_registry_entry, make_role_task
 
 
 class TestRegistryEntry:
@@ -122,12 +123,13 @@ class TestDeclarativeRegistryLoad:
         assert entry.status is RoleStatus.ACTIVE
         assert entry.execution_type is ExecutionType.LLM_ROLE
 
-    def test_r3_gated_inactive_by_default(self) -> None:
+    def test_r3_active_with_gate_references(self) -> None:
         registry = load_role_registry()
         entry = registry.get("R3")
         assert entry is not None
-        assert entry.status is RoleStatus.INACTIVE
-        assert entry.activation_gate != ""
+        assert entry.status is RoleStatus.ACTIVE
+        assert "CRP-OD-9" in entry.activation_gate
+        assert "CRP-OD-R4-KIRA-R3-01" in entry.activation_gate
 
     def test_r5_cannot_become_executable_via_registry(self) -> None:
         registry = load_role_registry()
@@ -153,7 +155,29 @@ class TestDeclarativeRegistryLoad:
     def test_defines_expected_orders_canonical_active_set(self) -> None:
         registry = load_role_registry()
         active = {e.role_id for e in registry if e.status is RoleStatus.ACTIVE}
-        assert active == {"R1", "R2", "R4", "R6"}
+        assert active == {"R1", "R2", "R3", "R4", "R6"}
+
+
+class TestR3PerTaskGatePreserved:
+    """Registry ACTIVE must NOT remove the existing per-task R3 gate."""
+
+    def test_r3_remains_in_gated_optional_roles(self) -> None:
+        assert "R3" in GATED_OPTIONAL_ROLES
+
+    def test_r3_task_without_authorization_fails_closed(self) -> None:
+        registry = load_role_registry()
+        r3 = registry.get("R3")
+        assert r3 is not None
+        assert r3.status is RoleStatus.ACTIVE
+        # ACTIVE registry status does not bypass the per-task gate: an R3
+        # RoleTask still requires a non-empty activation_authorization_ref.
+        with pytest.raises(CrpValidationError):
+            make_role_task(role_id="R3", activation_authorization_ref=None)
+
+    def test_r3_task_with_authorization_constructs(self) -> None:
+        task = make_role_task(role_id="R3", activation_authorization_ref="explicit-owner-auth")
+        assert task.role_id == "R3"
+        assert task.activation_authorization_ref == "explicit-owner-auth"
 
 
 class TestDeclarativeRegistryFailClosed:

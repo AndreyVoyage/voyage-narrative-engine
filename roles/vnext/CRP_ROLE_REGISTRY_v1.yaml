@@ -60,13 +60,16 @@ roles:
     predecessor_version: v1
 
   # ---------------------------------------------------------------- R3
-  # Gated-optional (CRP-OD-9). INACTIVE by default. The existing
-  # role_task.py GATED_OPTIONAL_ROLES + non-empty activation_authorization_ref
-  # keeps the gate enforced; the registry must never make R3 ACTIVE on its own.
+  # ACTIVE in the registry (technically executable). R3 remains per-task gated
+  # by CRP-OD-9: every R3 RoleTask still requires a non-empty
+  # activation_authorization_ref (role_task.py GATED_OPTIONAL_ROLES). The first
+  # canonical Kira reconstruction (CRP-OD-R4-KIRA-R3-01) REQUIRES R3. Registry
+  # ACTIVE does NOT auto-insert R3 into reconstruction runs: role selection
+  # stays caller-owned.
   - role_id: R3
     display_name: Optional Intimacy Profile Specialist
     version: v1
-    status: INACTIVE
+    status: ACTIVE
     execution_type: LLM_ROLE
     prompt_ref: roles/vnext/ROLE_3_INTIMACY_PROFILE_SPECIALIST_v1_PROMPT.md
     knowledge_profile_ref: profile-r3
@@ -76,7 +79,7 @@ roles:
       - READ_SOURCE_EVIDENCE
       - READ_PRIOR_ROLE_RESULTS
       - EMIT_CLAIMS_INTIMACY
-    activation_gate: "NOT_YET_AUTHORIZED_gated_optional_CRP-OD-9"
+    activation_gate: "PER_TASK_AUTHORIZATION_REQUIRED_CRP-OD-9_KIRA_REQUIRED_CRP-OD-R4-KIRA-R3-01"
 
   # ---------------------------------------------------------------- R4
   - role_id: R4

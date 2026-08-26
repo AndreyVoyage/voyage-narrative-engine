@@ -264,6 +264,28 @@ mappings · supersedes · does-not-authorize.
 - **Does NOT authorize:** any destructive action on the 37 legacy `knowledge_base/` files, or any KB
   content rewrite.
 
+### CRP-OD-R4-KIRA-R3-01 — R3 mandatory for first canonical Kira reconstruction
+
+- **Status:** OWNER_RATIFIED · **Date:** 2026-08-23
+- **Decision:** For the FIRST canonical Kira reconstruction, R3 — Intimacy / Sexology Specialist — is
+  REQUIRED. The required role set for that reconstruction is **R1 + R2 + R3 + R4**, followed by the R8
+  audit. This is a Kira-specific execution requirement; it does **not** supersede CRP-OD-9 globally.
+  Registry `ACTIVE` status only makes R3 technically executable and does **not** automatically insert R3
+  into reconstruction runs (role selection remains caller-owned); the future canonical Kira runner must
+  explicitly construct R1 + R2 + R3 + R4 and reject an invalid canonical Kira role set.
+- **Rationale/implication:** Authorizes R3's inclusion as a mandatory member of the first canonical Kira
+  role set, overriding (for that specific run only) the default MVP execution subset of CRP-OD-5
+  (R1 + R2 + R4 + R6 + R8). CRP-OD-9's per-task opt-in gate remains fully in force: every R3 `RoleTask`
+  still requires a non-empty `activation_authorization_ref`. This decision does not authorize automatic R3
+  activation for every character, does not authorize any live provider call, and does not by itself create
+  the Kira runner.
+- **Historical mappings:** CRP-OD-5 (MVP role subset — Kira-specific override on the role-set half only),
+  CRP-OD-9 (R3 gate — preserved, not superseded).
+- **Supersedes:** nothing (no prior ratified Kira-specific role set existed); does not supersede
+  CRP-OD-9's per-task gate.
+- **Does NOT authorize:** creating the Kira live runner, any live provider call, automatic R3 insertion
+  into reconstruction runs, or removal of the per-task `activation_authorization_ref` requirement.
+
 ---
 
 ## B. §37 historical decision map (18/18)
