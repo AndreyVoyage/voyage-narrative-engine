@@ -30,12 +30,16 @@ acceptance return values are the boundary for this slice.
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import json
+import math
 import sys
+from collections.abc import Mapping as MappingABC
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from enum import Enum
 from pathlib import Path
-from typing import Callable, Dict, Mapping, Tuple
+from typing import Any, Callable, Dict, Mapping, Tuple
 
 # Tool bootstrap: resolve both the repo root (services.crp_authoring) and the
 # tools directory (crp_provider_adapter / llm_provider) regardless of how this
@@ -59,6 +63,7 @@ from services.crp_authoring import (  # noqa: E402
     RoleStatus,
     RoleTask,
     ValidationReport,
+    compute_package_hash,
     load_a_projection,
     load_manifest,
     run_reconstruction,
@@ -380,6 +385,68 @@ def execute_kira_r4_reconstruction(
 
 
 # ---------------------------------------------------------------------------
+# Full result capture (JSON transport/report envelope, not a new persistence
+# domain model). A successful --live run must be fully recoverable from stdout
+# alone -- everything a Python process holds only in memory disappears when it
+# exits, and nothing here is written to the repository.
+# ---------------------------------------------------------------------------
+
+RESULT_ARTIFACT_TYPE = "CRP_KIRA_R4_LIVE_RECONSTRUCTION_RESULT"
+RESULT_SCHEMA_VERSION = "1"
+
+
+def _to_jsonable(value: Any) -> Any:
+    """Deterministically convert a CRP result value into plain JSON-safe data.
+
+    Reflection-based (``dataclasses.fields``), not a hand-enumerated field
+    list, so no current or future public dataclass field can silently vanish
+    from the capture. Handles exactly the shapes the result contracts
+    actually use (dataclasses, Enums, datetimes, tuples/lists, mappings,
+    JSON primitives, ``None``) and fails closed -- never ``repr(...)``, never
+    ``str(...)`` -- on anything else, so an unserializable field or an
+    ambiguous mapping key is caught here rather than silently dropped,
+    collapsed, or corrupted.
+
+    Two fail-closed boundaries, both required for a transport artifact that
+    must survive process exit and external-file capture unambiguously:
+
+    - a ``Mapping`` key that is not already a ``str`` is rejected (never
+      coerced via ``str(k)``): ``{1: ...}`` and ``{"1": ...}`` must never
+      silently collapse onto the same JSON key;
+    - a ``float`` that is not finite (``NaN``/``Infinity``/``-Infinity``) is
+      rejected: those are not valid interoperable strict JSON despite being
+      accepted by ``json.dumps`` defaults.
+    """
+    if value is None or isinstance(value, bool):
+        return value
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            raise ValueError(f"non-finite float {value!r} cannot be serialized to strict JSON")
+        return value
+    if isinstance(value, (str, int)):
+        return value
+    if isinstance(value, Enum):
+        return value.value
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if dataclasses.is_dataclass(value) and not isinstance(value, type):
+        return {f.name: _to_jsonable(getattr(value, f.name)) for f in dataclasses.fields(value)}
+    if isinstance(value, MappingABC):
+        converted: Dict[str, Any] = {}
+        for k, v in value.items():
+            if not isinstance(k, str):
+                raise TypeError(
+                    f"mapping key {k!r} of type {type(k)!r} is not a str; "
+                    "refusing to coerce it (no str(k) fallback)"
+                )
+            converted[k] = _to_jsonable(v)
+        return converted
+    if isinstance(value, (tuple, list)):
+        return [_to_jsonable(v) for v in value]
+    raise TypeError(f"cannot serialize value of type {type(value)!r} to JSON-safe form")
+
+
+# ---------------------------------------------------------------------------
 # CLI (safe default: no --live => no provider construction, no credential read)
 # ---------------------------------------------------------------------------
 
@@ -397,14 +464,37 @@ def _dry_run_summary(plan: KiraR4Plan) -> dict:
     }
 
 
-def _result_summary(result: KiraR4RunResult) -> dict:
+def build_result_envelope(plan: KiraR4Plan, result: KiraR4RunResult) -> dict:
+    """Build the full, self-contained, JSON-safe recoverable result envelope.
+
+    Contains the complete current public contract content of the returned
+    ``CandidateCharacterPackage`` / ``ReconstructionAudit`` / ``ValidationReport``
+    / ``RoleResult`` tuple, plus the canonical ``compute_package_hash`` and
+    non-secret run/provider identification metadata. Never includes a
+    credential value, an HTTP header, or raw provider transport internals --
+    only the existing CRP result contracts.
+    """
     return {
+        "artifact_type": RESULT_ARTIFACT_TYPE,
+        "schema_version": RESULT_SCHEMA_VERSION,
         "status": "RECONSTRUCTION_COMPLETE_PRE_ACCEPTANCE",
-        "package_id": result.package.package_id,
-        "package_status": result.package.status.value,
-        "validation_valid": result.validation_report.valid,
-        "audit_verdict": result.audit.verdict.value,
-        "role_result_count": len(result.role_results),
+        "run_metadata": {
+            "run_id": plan.run_id,
+            "subject_id": plan.projection.subject_id,
+            "evidence_snapshot_id": plan.projection.evidence_snapshot_id,
+            "role_order": list(ROLE_ORDER),
+            "role_versions": dict(ROLE_VERSIONS),
+            "provider_id": LIVE_PROVIDER_ID,
+            "model": LIVE_MODEL,
+            "max_tokens": LIVE_MAX_TOKENS,
+            "timeout_s": LIVE_TIMEOUT_S,
+            "credential_env_name": LIVE_CREDENTIAL_ENV,
+        },
+        "candidate_package": _to_jsonable(result.package),
+        "candidate_package_hash": compute_package_hash(result.package),
+        "reconstruction_audit": _to_jsonable(result.audit),
+        "validation_report": _to_jsonable(result.validation_report),
+        "role_results": [_to_jsonable(r) for r in result.role_results],
         "provider_attempts": result.provider_attempts,
         "provider_call_budget": result.provider_call_budget,
     }
@@ -430,7 +520,7 @@ def main(argv=None) -> int:
     plan = build_kira_r4_plan()
 
     if not args.live:
-        print(json.dumps(_dry_run_summary(plan), ensure_ascii=False, indent=2))
+        print(json.dumps(_dry_run_summary(plan), ensure_ascii=False, indent=2, allow_nan=False))
         return 0
 
     config = ProviderConfig(
@@ -444,7 +534,8 @@ def main(argv=None) -> int:
     )
     provider_callable = build_provider_callable(config)
     result = execute_kira_r4_reconstruction(provider_callable, plan)
-    print(json.dumps(_result_summary(result), ensure_ascii=False, indent=2))
+    envelope = build_result_envelope(plan, result)
+    print(json.dumps(envelope, ensure_ascii=False, indent=2, allow_nan=False))
     return 0
 
 

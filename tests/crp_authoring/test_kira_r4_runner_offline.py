@@ -22,6 +22,7 @@ import os
 import re
 import subprocess
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -34,9 +35,19 @@ for _p in (_PROJECT_ROOT, _TOOLS_DIR):
 
 import crp_kira_r4_runner as runner  # noqa: E402
 
-from services.crp_authoring import CrpValidationError, RoleTask  # noqa: E402
-from services.crp_authoring.candidate_package import PackageStatus  # noqa: E402
-from services.crp_authoring.reconstruction_audit import AuditVerdict  # noqa: E402
+from services.crp_authoring import (  # noqa: E402
+    ClaimStatus,
+    ClaimType,
+    Confidence,
+    CrpValidationError,
+    RoleClaim,
+    RoleResult,
+    SourceType,
+    compute_package_hash,
+)
+from services.crp_authoring.candidate_package import CandidateCharacterPackage, PackageStatus  # noqa: E402
+from services.crp_authoring.reconstruction_audit import AuditVerdict, ReconstructionAudit  # noqa: E402
+from services.crp_authoring.validator import ValidationReport  # noqa: E402
 # Reused verbatim (not reimplemented) so the evidence-exactness assertions
 # below compare against the SAME canonical rendering production uses.
 from services.crp_authoring.executor import _render_payload as _prod_render_payload  # noqa: E402
@@ -667,6 +678,496 @@ class TestNoAcceptNoPersistence:
         assert "compile_candidate_package" not in self._SOURCE
         assert "validate_package(" not in self._SOURCE
         assert "run_r8_analysis" not in self._SOURCE
+
+
+# ---------------------------------------------------------------------------
+# Full live-result capture: a successful run must be fully recoverable as
+# structured JSON on stdout (result-loss-risk correction). No repository
+# writes -- the runner's only job is FULL JSON -> stdout; external capture is
+# proven here only via pytest's own out-of-repo tmp_path fixture.
+# ---------------------------------------------------------------------------
+
+def _run_happy(plan):
+    provider, _, _ = _dispatch_provider(
+        _happy_payloads(plan), _r8_judgment_json(plan.compile_context.package_id),
+    )
+    result = runner.execute_kira_r4_reconstruction(provider, plan)
+    envelope = runner.build_result_envelope(plan, result)
+    return result, envelope
+
+
+class TestFullResultCapture:
+    # TEST 1 -- full CandidateCharacterPackage field coverage, reflection-based
+    # (never a hand-duplicated field list) so a future field addition that the
+    # capture forgets to serialize is caught automatically.
+    def test_serialized_candidate_package_has_every_current_public_field(self, plan):
+        _result, envelope = _run_happy(plan)
+        expected_fields = {f.name for f in dataclasses.fields(CandidateCharacterPackage)}
+        actual_fields = set(envelope["candidate_package"].keys())
+        assert actual_fields == expected_fields
+
+    # TEST 2 -- canonical package hash, no alternate implementation.
+    def test_candidate_package_hash_matches_canonical_compute_package_hash(self, plan):
+        result, envelope = _run_happy(plan)
+        assert envelope["candidate_package_hash"] == compute_package_hash(result.package)
+
+    # TEST 3 -- role results complete, not reduced to counts/IDs.
+    def test_role_results_fully_structured_not_reduced_to_ids(self, plan):
+        result, envelope = _run_happy(plan)
+        assert len(envelope["role_results"]) == 4
+        assert [rr["role_id"] for rr in envelope["role_results"]] == ["R1", "R2", "R3", "R4"]
+
+        expected_fields = {f.name for f in dataclasses.fields(RoleResult)}
+        for role_result, serialized in zip(result.role_results, envelope["role_results"]):
+            assert set(serialized.keys()) == expected_fields
+            assert serialized["task_id"] == role_result.task_id
+            assert serialized["role_version"] == role_result.role_version
+            assert len(serialized["claims"]) == len(role_result.claims)
+            assert serialized["claims"][0]["claim_id"] == role_result.claims[0].claim_id
+
+    # TEST 4 -- complete ReconstructionAudit, not merely audit_verdict.
+    def test_reconstruction_audit_fully_structured(self, plan):
+        result, envelope = _run_happy(plan)
+        expected_fields = {f.name for f in dataclasses.fields(ReconstructionAudit)}
+        serialized = envelope["reconstruction_audit"]
+        assert set(serialized.keys()) == expected_fields
+        assert serialized["verdict"] == result.audit.verdict.value
+        assert serialized["audit_id"] == result.audit.audit_id
+        assert serialized["package_hash"] == result.audit.package_hash
+        assert len(serialized["checks"]) == len(result.audit.checks)
+
+    # TEST 5 -- complete ValidationReport, not merely validation_valid.
+    def test_validation_report_fully_structured(self, plan):
+        result, envelope = _run_happy(plan)
+        expected_fields = {f.name for f in dataclasses.fields(ValidationReport)}
+        serialized = envelope["validation_report"]
+        assert set(serialized.keys()) == expected_fields
+        assert serialized["valid"] == result.validation_report.valid
+        assert len(serialized["findings"]) == len(result.validation_report.findings)
+
+    # TEST 6 -- valid, re-parseable JSON; Unicode survives unescaped.
+    def test_envelope_is_valid_json_and_unicode_safe(self, plan):
+        sentinel = "café résumé — офлайн-тест"
+        unicode_payloads = _happy_payloads(plan)
+        task_ids = {t.role_id: t.task_id for t in plan.role_tasks}
+        unicode_payloads["R1"] = _role_result_json(
+            task_ids["R1"], "R1", "v2",
+            [_claim("c-r1", "R1", "FACT", "identity_biography.birthplace",
+                    plan.projection.evidence[0].source_id, confidence="KNOWN",
+                    claim_text=sentinel)],
+        )
+        provider, _, _ = _dispatch_provider(
+            unicode_payloads, _r8_judgment_json(plan.compile_context.package_id),
+        )
+        result = runner.execute_kira_r4_reconstruction(provider, plan)
+        envelope = runner.build_result_envelope(plan, result)
+
+        text = json.dumps(envelope, ensure_ascii=False, indent=2)
+        assert sentinel in text  # not escaped as \uXXXX
+        reparsed = json.loads(text)
+        assert reparsed == envelope
+
+    # TEST 7 -- determinism: serializing the SAME immutable result twice
+    # produces byte-identical JSON (dict/tuple iteration order is stable for
+    # the same in-memory object across calls).
+    def test_serializing_same_result_twice_is_byte_identical(self, plan):
+        result, envelope1 = _run_happy(plan)
+        envelope2 = runner.build_result_envelope(plan, result)
+        assert envelope1 == envelope2
+        text1 = json.dumps(envelope1, ensure_ascii=False, indent=2)
+        text2 = json.dumps(envelope2, ensure_ascii=False, indent=2)
+        assert text1 == text2
+
+    # TEST 8 -- secret exclusion: a synthetic credential sentinel never
+    # appears in the envelope; only the non-secret credential_env NAME does.
+    def test_no_secret_or_credential_value_leaks_into_envelope(self, plan, monkeypatch):
+        monkeypatch.setenv("DEEPSEEK_API_KEY", "DO_NOT_LEAK_SYNTHETIC_SECRET")
+        _result, envelope = _run_happy(plan)
+        text = json.dumps(envelope, ensure_ascii=False)
+
+        assert "DO_NOT_LEAK_SYNTHETIC_SECRET" not in text
+        assert envelope["run_metadata"]["credential_env_name"] == "DEEPSEEK_API_KEY"
+        for forbidden_key in ("api_key", "authorization", "credential_value", "credential_env"):
+            assert forbidden_key not in envelope["run_metadata"]
+
+    # TEST 9 -- CLI success layer: exactly one parseable JSON document on
+    # stdout, all provider/network dependencies faked, zero real --live.
+    def test_live_stdout_emits_exactly_one_parseable_json_result_document(self, monkeypatch, capsys):
+        real_plan = runner.build_kira_r4_plan()
+
+        def fake_build_provider_callable(config):
+            provider, _, _ = _dispatch_provider(
+                _happy_payloads(real_plan),
+                _r8_judgment_json(real_plan.compile_context.package_id),
+            )
+            return provider
+
+        monkeypatch.setattr(runner, "build_provider_callable", fake_build_provider_callable)
+        exit_code = runner.main(["--live"])
+        assert exit_code == 0
+
+        out = capsys.readouterr().out
+        parsed = json.loads(out)  # fails if stdout is not exactly one JSON document
+        assert parsed["artifact_type"] == runner.RESULT_ARTIFACT_TYPE
+        assert parsed["schema_version"] == runner.RESULT_SCHEMA_VERSION
+        assert "candidate_package" in parsed
+        assert "candidate_package_hash" in parsed
+        assert "reconstruction_audit" in parsed
+        assert "validation_report" in parsed
+        assert len(parsed["role_results"]) == 4
+
+    # TEST 10 moved to TestRealProcessStdoutCapture below: proving the real
+    # transport boundary (child process stdout -> external file -> UTF-8 ->
+    # strict JSON) requires an actual child process, not json.dumps(envelope)
+    # dumped directly by the parent test.
+
+
+# ---------------------------------------------------------------------------
+# Mapping-key and non-finite-float safety (Codex CORE_SERIALIZATION_GAP_FOUND
+# corrections 1-2). Behavioral: exercises the real ``_to_jsonable`` function
+# with concrete inputs, never a source-substring check or a duplicated
+# expected-value reconstruction of the same logic.
+# ---------------------------------------------------------------------------
+
+class TestMappingKeySafety:
+    def test_string_keyed_mapping_serializes_normally(self):
+        assert runner._to_jsonable({"valid": "ok"}) == {"valid": "ok"}
+
+    def test_integer_key_fails_closed(self):
+        with pytest.raises(TypeError):
+            runner._to_jsonable({1: "integer-key"})
+
+    def test_integer_and_string_key_collision_fails_closed_not_silently_collapsed(self):
+        # If str(k) coercion were still present, {1: ..., "1": ...} would
+        # silently collapse onto one JSON key (whichever dict.items() yields
+        # last). It must instead raise before any such collapse can occur.
+        with pytest.raises(TypeError):
+            runner._to_jsonable({1: "integer-key", "1": "string-key"})
+
+    def test_nested_mapping_with_non_string_key_fails_closed(self):
+        with pytest.raises(TypeError):
+            runner._to_jsonable({"outer": {2: "nested-int-key"}})
+
+    def test_non_string_key_inside_a_dataclass_field_fails_closed(self):
+        @dataclasses.dataclass(frozen=True)
+        class _SyntheticMappingHolder:
+            data: dict
+
+        with pytest.raises(TypeError):
+            runner._to_jsonable(_SyntheticMappingHolder(data={7: "bad-key"}))
+
+
+class TestNonFiniteFloatSafety:
+    def test_finite_float_serializes_normally(self):
+        assert runner._to_jsonable(3.14) == 3.14
+
+    def test_nan_fails_closed(self):
+        with pytest.raises(ValueError):
+            runner._to_jsonable(float("nan"))
+
+    def test_positive_infinity_fails_closed(self):
+        with pytest.raises(ValueError):
+            runner._to_jsonable(float("inf"))
+
+    def test_negative_infinity_fails_closed(self):
+        with pytest.raises(ValueError):
+            runner._to_jsonable(float("-inf"))
+
+    def test_nan_nested_inside_mapping_and_list_fails_closed(self):
+        with pytest.raises(ValueError):
+            runner._to_jsonable({"scores": [1.0, 2.0, float("nan")]})
+
+    def test_nan_nested_inside_a_dataclass_field_fails_closed(self):
+        @dataclasses.dataclass(frozen=True)
+        class _SyntheticFloatHolder:
+            value: float
+
+        with pytest.raises(ValueError):
+            runner._to_jsonable(_SyntheticFloatHolder(value=float("inf")))
+
+
+class TestUnsupportedTypesFailClosed:
+    def test_arbitrary_unsupported_object_fails_closed_without_repr_or_str_fallback(self):
+        class _NotJsonable:
+            def __repr__(self):
+                return "<should never appear in output>"
+
+        with pytest.raises(TypeError):
+            runner._to_jsonable(_NotJsonable())
+
+
+def _strict_json_loads(text: str):
+    """Stdlib-only strict JSON parse: reject the permissive NaN/Infinity/
+    -Infinity constant tokens that Python's ``json.loads`` accepts by default
+    but that are not valid interoperable strict JSON."""
+
+    def _reject_constant(constant: str):
+        raise ValueError(f"non-finite constant {constant!r} is not valid strict JSON")
+
+    return json.loads(text, parse_constant=_reject_constant)
+
+
+class TestStrictJsonRoundtrip:
+    def test_strict_loader_rejects_permissive_nan_token(self):
+        with pytest.raises(ValueError):
+            _strict_json_loads('{"x": NaN}')
+
+    def test_strict_loader_rejects_permissive_infinity_token(self):
+        with pytest.raises(ValueError):
+            _strict_json_loads('{"x": Infinity}')
+
+    def test_successful_envelope_is_strict_json(self, plan):
+        _result, envelope = _run_happy(plan)
+        text = json.dumps(envelope, ensure_ascii=False, indent=2, allow_nan=False)
+        parsed = _strict_json_loads(text)
+        assert parsed == envelope
+
+
+# ---------------------------------------------------------------------------
+# Real process stdout -> external file capture (Codex correction 3). Proves
+# the actual transport boundary a future --live run would rely on:
+#     real child Python process -> runner CLI stdout -> external temp file
+#     -> strict UTF-8 decode -> strict JSON parse -> full-envelope structure.
+# The child process replaces build_provider_callable with an in-process
+# synthetic fake BEFORE calling runner.main(["--live"]) -- no production
+# --test-mode flag, no real provider, no real credential read, no network.
+# ---------------------------------------------------------------------------
+
+_CHILD_SCRIPT_TEMPLATE = r'''
+import json
+import sys
+from pathlib import Path
+
+_REPO_ROOT = Path({repo_root!r})
+_TOOLS_DIR = _REPO_ROOT / "tools"
+for _p in (str(_REPO_ROOT), str(_TOOLS_DIR)):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
+import crp_kira_r4_runner as runner
+
+_UNICODE = {unicode_sentinel!r}
+_FIRST_EVIDENCE_ID = {first_evidence_id!r}
+_TARGETS = {{
+    "R1": "identity_biography.birthplace",
+    "R2": "behavior.conflict_style",
+    "R3": "intimacy.communication_style",
+    "R4": "voice.lexicon",
+}}
+
+
+def _role_result_json(task_id, role_id, role_version, target):
+    return json.dumps({{
+        "task_id": task_id,
+        "role_id": role_id,
+        "role_version": role_version,
+        "completion_status": "COMPLETE",
+        "claims": [{{
+            "claim_id": "c-" + role_id.lower(),
+            "subject_id": "kira",
+            "role_id": role_id,
+            "claim": _UNICODE,
+            "claim_type": "FACT" if role_id == "R1" else "OBSERVATION",
+            "source_evidence_ids": [_FIRST_EVIDENCE_ID],
+            "source_type_summary": ["OWNER_DIRECT"],
+            "confidence": "KNOWN" if role_id == "R1" else "POSSIBLE",
+            "rationale_summary": "subprocess capture test (synthetic)",
+            "status": "PROPOSED",
+            "target_module_or_layer": target,
+        }}],
+        "unknowns": [],
+        "contradictions": [],
+        "provenance_summary": {{"used_evidence": [_FIRST_EVIDENCE_ID]}},
+        "requests_for_more_evidence": [],
+        "warnings": [],
+        "questions_for_r1": [],
+        "new_source_evidence": [],
+    }}, ensure_ascii=False)
+
+
+_plan = runner.build_kira_r4_plan()
+_task_ids = {{t.role_id: t.task_id for t in _plan.role_tasks}}
+_role_payloads = {{
+    rid: _role_result_json(_task_ids[rid], rid, runner.ROLE_VERSIONS[rid], _TARGETS[rid])
+    for rid in runner.ROLE_ORDER
+}}
+_r8_json = json.dumps({{
+    "package_id": _plan.compile_context.package_id,
+    "subject_id": "kira",
+    "role_id": "R8",
+    "role_version": "v1",
+    "checks": [
+        {{"check_id": "R8_ROLE_BOUNDARY_SEMANTIC", "outcome": "PASS", "findings": []}},
+        {{"check_id": "R8_MODULE_PLACEMENT", "outcome": "PASS", "findings": []}},
+        {{"check_id": "R8_UNKNOWN_COVERAGE", "outcome": "PASS", "findings": []}},
+    ],
+    "narrative": "clean",
+}}, ensure_ascii=False)
+
+
+def _fake_provider(messages):
+    user_content = "".join(m["content"] for m in messages if m.get("role") == "user")
+    if "AUDIT_IDENTITY" in user_content:
+        return _r8_json
+    for role_id, payload in _role_payloads.items():
+        if "- role_id: " + role_id in user_content:
+            return payload
+    raise AssertionError("subprocess fake provider received an unrecognized call")
+
+
+def _fake_build_provider_callable(config):
+    return _fake_provider
+
+
+# In-process, test-only replacement -- no production --test-mode flag, no
+# real DeepSeek construction, no network, no credential value read.
+runner.build_provider_callable = _fake_build_provider_callable
+
+sys.exit(runner.main(["--live"]))
+'''
+
+
+class TestRealProcessStdoutCapture:
+    # Deterministic synthetic claim identities the child script's fake role
+    # payloads use (kept in sync with _CHILD_SCRIPT_TEMPLATE's _TARGETS /
+    # claim_id construction). Used by the parent ONLY to build an
+    # independently-derived expected CandidateCharacterPackage for the
+    # canonical package-hash check -- never to weaken the strict field-set
+    # checks, which compare against dataclasses.fields(...) instead.
+    _EXPECTED_TARGETS = {
+        "R1": "identity_biography.birthplace",
+        "R2": "behavior.conflict_style",
+        "R3": "intimacy.communication_style",
+        "R4": "voice.lexicon",
+    }
+
+    def test_real_child_process_stdout_to_external_file_roundtrip(self, plan, tmp_path):
+        sentinel_secret = "DO_NOT_LEAK_SYNTHETIC_SECRET"
+        unicode_sentinel = "café résumé — офлайн-тест"
+        first_evidence_id = plan.projection.evidence[0].source_id
+
+        child_script = _CHILD_SCRIPT_TEMPLATE.format(
+            repo_root=_PROJECT_ROOT,
+            unicode_sentinel=unicode_sentinel,
+            first_evidence_id=first_evidence_id,
+        )
+
+        # Minimal, from-scratch child environment -- exactly these three
+        # variables, nothing else. NEVER dict(os.environ) / os.environ.copy()
+        # / {**os.environ} / any full-environment materialization: that would
+        # read every parent variable, including a possible real
+        # DEEPSEEK_API_KEY, before any sanitization could happen.
+        # DEEPSEEK_API_KEY below is a synthetic sentinel constructed here,
+        # never read from the parent's environment. sys.executable is an
+        # absolute path (PATH is not needed to locate Python) and cwd is
+        # explicit (PYTHONPATH is not needed either). Verified empirically on
+        # this host: no additional OS variable (SYSTEMROOT/WINDIR/TEMP/TMP)
+        # is required for python.exe to launch with this exact environment.
+        child_env = {
+            "PYTHONIOENCODING": "utf-8",
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "DEEPSEEK_API_KEY": sentinel_secret,
+        }
+
+        capture_file = tmp_path / "kira_r4_live_run_capture.json"
+        with capture_file.open("wb") as capture:
+            proc = subprocess.run(
+                [sys.executable, "-c", child_script],
+                stdout=capture,
+                stderr=subprocess.PIPE,
+                env=child_env,
+                cwd=_PROJECT_ROOT,
+                check=False,
+            )
+
+        assert proc.returncode == 0, proc.stderr.decode("utf-8", errors="replace")
+
+        captured_bytes = capture_file.read_bytes()
+        assert captured_bytes  # 2. non-empty
+
+        text = captured_bytes.decode("utf-8", errors="strict")  # 3. strict UTF-8 decode
+        assert text.strip().startswith("{") and text.strip().endswith("}")  # 16. no decorative wrapper
+
+        # 4+5. exactly one JSON document, and the ACTUAL captured artifact
+        # itself (not a separately-dumped copy) must pass STRICT JSON parsing
+        # (no permissive NaN/Infinity/-Infinity constants).
+        parsed = _strict_json_loads(text)
+
+        assert parsed["artifact_type"] == runner.RESULT_ARTIFACT_TYPE  # 6
+        assert parsed["schema_version"] == runner.RESULT_SCHEMA_VERSION  # 7
+
+        # 8. Full CandidateCharacterPackage field coverage in the CAPTURED
+        # artifact, reflection-based against the real contract (never a
+        # hand-duplicated list, never derived from the captured data itself).
+        assert set(parsed["candidate_package"].keys()) == {
+            f.name for f in dataclasses.fields(CandidateCharacterPackage)
+        }
+        # 10. Full ReconstructionAudit field coverage in the captured artifact.
+        assert set(parsed["reconstruction_audit"].keys()) == {
+            f.name for f in dataclasses.fields(ReconstructionAudit)
+        }
+        # 11. Full ValidationReport field coverage in the captured artifact.
+        assert set(parsed["validation_report"].keys()) == {
+            f.name for f in dataclasses.fields(ValidationReport)
+        }
+        # 12. Exactly four RoleResults, correct identity/order, each with
+        # full RoleResult field coverage in the captured artifact.
+        assert len(parsed["role_results"]) == 4
+        assert [rr["role_id"] for rr in parsed["role_results"]] == ["R1", "R2", "R3", "R4"]
+        expected_role_result_fields = {f.name for f in dataclasses.fields(RoleResult)}
+        for serialized in parsed["role_results"]:
+            assert set(serialized.keys()) == expected_role_result_fields
+
+        # 9. Canonical package hash: the expected value is derived using the
+        # REAL compute_package_hash over an independently-constructed
+        # CandidateCharacterPackage built from the same deterministic
+        # synthetic claim/target identities the child script uses -- never
+        # from the captured JSON, and never a duplicated hashing algorithm.
+        # compute_package_hash only depends on package_id / package_version /
+        # subject_id / claim_ids / provenance_manifest, so the remaining
+        # fields below only need to satisfy the dataclass's own validation.
+        expected_claims = tuple(
+            RoleClaim(
+                claim_id=f"c-{role_id.lower()}",
+                subject_id=plan.projection.subject_id,
+                role_id=role_id,
+                claim=unicode_sentinel,
+                claim_type=ClaimType.FACT if role_id == "R1" else ClaimType.OBSERVATION,
+                source_evidence_ids=(first_evidence_id,),
+                source_type_summary=(SourceType.OWNER_DIRECT,),
+                confidence=Confidence.KNOWN if role_id == "R1" else Confidence.POSSIBLE,
+                rationale_summary="subprocess capture test (synthetic)",
+                status=ClaimStatus.PROPOSED,
+                target_module_or_layer=self._EXPECTED_TARGETS[role_id],
+            )
+            for role_id in runner.ROLE_ORDER
+        )
+        expected_package = CandidateCharacterPackage(
+            package_id=f"{runner.KIRA_RUN_ID}-package",
+            subject_id=plan.projection.subject_id,
+            package_version=0,
+            source_snapshot_id=plan.projection.evidence_snapshot_id,
+            role_result_refs=(),
+            claims=expected_claims,
+            contradictions=(),
+            unknowns=(),
+            psychology_candidate={},
+            voice_candidate={},
+            validation_results={},
+            audit_result=None,
+            provenance_manifest={c.target_module_or_layer: (c.claim_id,) for c in expected_claims},
+            created_at=datetime.now(timezone.utc),
+            status=PackageStatus.DRAFT,
+        )
+        assert parsed["candidate_package_hash"] == compute_package_hash(expected_package)
+
+        # 13. provider attempt metadata present.
+        assert "provider_attempts" in parsed and "provider_call_budget" in parsed
+
+        # 14. Unicode survives the real process + external-file roundtrip.
+        assert unicode_sentinel in text
+        # 15. synthetic secret is absent from the ACTUAL captured bytes.
+        assert sentinel_secret not in text
 
 
 # ---------------------------------------------------------------------------
