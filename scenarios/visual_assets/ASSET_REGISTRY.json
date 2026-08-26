@@ -1,3 +1,18 @@
 {
-  "assets": []
+  "assets": [
+    {
+      "asset_id": "kira_yoga_hall_pilot_image_01",
+      "type": "character",
+      "relative_path": "novel/game/images/story/characters/kira/kira_yoga_hall_pilot_image_01.png",
+      "source_kind": "character_canon",
+      "source_character_id": "kira",
+      "source_original_name": "kira_yoga_hall_pilot_image_01_conditioned_v1.png",
+      "source_hash": "d7a61dc42ecf9af97fcbe073e5e30dce1518b2810c04e03da7bac43929ea6fb3",
+      "imported_hash": "d7a61dc42ecf9af97fcbe073e5e30dce1518b2810c04e03da7bac43929ea6fb3",
+      "format": "png",
+      "mime_type": "image/png",
+      "created": "2026-08-26T18:16:56Z",
+      "notes": ""
+    }
+  ]
 }
