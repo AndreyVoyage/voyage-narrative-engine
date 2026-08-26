@@ -9,7 +9,9 @@ Import / Asset Registry).
 
 Invariants:
 - Human APPROVED is necessary but NOT sufficient for production import.
-- The candidate's ``production_eligible`` is read verbatim and NEVER promoted.
+- Current upstream production eligibility is supplied independently at gate
+  time and is read verbatim; the candidate's historical ``production_eligible``
+  provenance is NEVER promoted or used as the current decision source.
 - The gate never mutates the candidate or review, never writes Canon, never
   writes the Asset Registry, and never copies/imports image bytes.
 - The gate performs no provider, LLM, or media generation.

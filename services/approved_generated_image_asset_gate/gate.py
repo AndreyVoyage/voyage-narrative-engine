@@ -13,7 +13,7 @@ gate evaluates, in deterministic order:
   2. review must be bound to the candidate's exact content hash
   3. candidate image format must be supported (PNG/JPEG/WEBP)
   4. the actual source binary SHA-256 must match the candidate image SHA-256
-  5. candidate.production_eligible must be True (never promoted here)
+  5. current upstream production eligibility must be True (never promoted here)
 
 The gate performs NO mutation, NO provider/LLM/media I/O, NO Canon write,
 and NO import/registry write. It returns a deterministic AssetGateResult.
@@ -49,6 +49,7 @@ def evaluate_asset_gate(
     candidate: GeneratedImageCandidate,
     review: GeneratedImageReview,
     *,
+    current_upstream_production_eligible: bool,
     actual_source_sha256: str | None = None,
     actual_source_path: Path | None = None,
 ) -> AssetGateResult:
@@ -58,9 +59,10 @@ def evaluate_asset_gate(
     provided to prove the real source binary matches the candidate. The source
     is only READ for hashing; it is never modified, copied, or imported.
 
-    ``production_eligible`` is read from the candidate verbatim and NEVER
-    promoted. Human APPROVED alone can never satisfy this gate when upstream
-    production eligibility is False.
+    ``current_upstream_production_eligible`` is the CURRENT upstream production
+    eligibility, passed independently at gate time (required, fail-closed). The
+    candidate's own ``production_eligible`` field is historical generation-time
+    provenance and is neither used as the current decision source nor promoted.
     """
     verdict = GateVerdict.ELIGIBLE
     reason: BlockReason | None = None
@@ -91,7 +93,7 @@ def evaluate_asset_gate(
             verdict = GateVerdict.BLOCKED
             reason = BlockReason.SOURCE_BINARY_MISMATCH
 
-        elif candidate.production_eligible is not True:
+        elif current_upstream_production_eligible is not True:
             verdict = GateVerdict.BLOCKED
             reason = BlockReason.UPSTREAM_PRODUCTION_INELIGIBLE
 
