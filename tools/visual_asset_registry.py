@@ -201,6 +201,32 @@ def load_registry(registry_path: Path) -> list[dict[str, Any]]:
     return data["assets"]
 
 
+def lookup_asset(records: list[dict[str, Any]], asset_id: str) -> dict[str, Any]:
+    """Read-only lookup of exactly one Registry record by ``asset_id``.
+
+    Accepts already-loaded records and never loads, writes, or mutates the
+    registry. Fails closed:
+
+    - invalid asset_id per the v0 asset-id contract -> ValueError
+    - zero matches -> ValueError (missing)
+    - multiple matches -> ValueError (ambiguous)
+
+    This is the generic Registry-side lookup helper used by integration-layer
+    callers; the pure domain resolver performs its own selection with domain
+    errors.
+    """
+    if not ASSET_ID_RE.match(asset_id or ""):
+        raise ValueError("invalid asset_id {!r}".format(asset_id))
+    matches = [r for r in records if r.get("asset_id") == asset_id]
+    if not matches:
+        raise ValueError("asset_id {} not found in registry".format(asset_id))
+    if len(matches) > 1:
+        raise ValueError(
+            "asset_id {} has {} registry records (ambiguous)".format(asset_id, len(matches))
+        )
+    return matches[0]
+
+
 def _atomic_write_text(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp = tempfile.mkstemp(dir=str(path.parent), prefix=".reg_", suffix=".tmp")

@@ -487,3 +487,46 @@ def test_validate_detects_orphaned_file(env):
     # Read-only: file still present, registry unchanged.
     assert orphan.exists()
     assert env["registry"].read_text(encoding="utf-8") == registry_text
+
+
+# ---------------------------------------------------------------------------
+# Read-only lookup helper (lookup_asset)
+# ---------------------------------------------------------------------------
+
+
+def _record(asset_id, rel):
+    return {"asset_id": asset_id, "relative_path": rel}
+
+
+def test_lookup_asset_returns_exact_record():
+    records = [
+        _record("asset_a", "novel/game/images/story/cg/a.png"),
+        _record("asset_b", "novel/game/images/story/cg/b.png"),
+    ]
+    assert var.lookup_asset(records, "asset_b")["relative_path"] == "novel/game/images/story/cg/b.png"
+
+
+def test_lookup_asset_missing_fails_closed():
+    with pytest.raises(ValueError):
+        var.lookup_asset([_record("asset_a", "novel/game/images/story/cg/a.png")], "asset_nope")
+
+
+def test_lookup_asset_duplicate_fails_closed():
+    records = [
+        _record("asset_dup", "novel/game/images/story/cg/a.png"),
+        _record("asset_dup", "novel/game/images/story/cg/b.png"),
+    ]
+    with pytest.raises(ValueError):
+        var.lookup_asset(records, "asset_dup")
+
+
+def test_lookup_asset_invalid_id_fails_closed():
+    with pytest.raises(ValueError):
+        var.lookup_asset([], "UPPER_CASE")
+
+
+def test_lookup_asset_does_not_mutate_input():
+    records = [_record("asset_a", "novel/game/images/story/cg/a.png")]
+    before = json.dumps(records, sort_keys=True)
+    var.lookup_asset(records, "asset_a")
+    assert json.dumps(records, sort_keys=True) == before
