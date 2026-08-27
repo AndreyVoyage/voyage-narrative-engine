@@ -179,7 +179,18 @@ def execute_role_task(
         raise ExecutorError("provider_callable must return a string")
 
     # --- parse + validate the structured RoleResult (fail-closed, strict) ---
-    result = _parse_role_result(raw)
+    # Fail-closed observability seam: the provider already returned a string,
+    # but strict parsing of it can still fail (unknown enum value, unknown
+    # field, wrong type, ...). When it does, attach the EXACT original raw
+    # string to the SAME ExecutorError instance under a stable attribute and
+    # re-raise it unchanged -- no repair, no reinterpretation, no RoleResult,
+    # no retry, no fallback. All existing validation semantics are preserved.
+    try:
+        result = _parse_role_result(raw)
+    except ExecutorError as exc:
+        if not hasattr(exc, "raw_provider_output"):
+            exc.raw_provider_output = raw
+        raise
 
     if result.task_id != task.task_id:
         raise ExecutorError(f"result task_id {result.task_id!r} != task.task_id {task.task_id!r}")

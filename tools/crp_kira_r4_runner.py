@@ -55,6 +55,7 @@ from services.crp_authoring import (  # noqa: E402
     CandidateCharacterPackage,
     CompileContext,
     CrpValidationError,
+    ExecutorError,
     KnowledgeProfile,
     PERMISSIONS_BY_ROLE,
     RetrievalPolicy,
@@ -728,6 +729,60 @@ def _emit_provider_failure_diagnostic(exc: LLMProviderError, stream=None) -> boo
     return True
 
 
+# ---------------------------------------------------------------------------
+# Provider-output parse-failure observability (diagnostic only).
+#
+# A --live provider call can return a well-formed string that still fails
+# inside the executor's strict ``_parse_role_result`` (e.g. an unknown enum
+# value). The executor attaches the EXACT original raw string to the SAME
+# ``ExecutorError`` under ``raw_provider_output`` and re-raises it unchanged.
+# The canonical runner records that raw output as exactly one structured JSON
+# line on stderr (the existing stderr capture is the only mechanism -- no
+# sidecar files) and then RE-RAISES the same exception unchanged. Pure
+# observability: the raw output is never JSON-parsed for acceptance, repaired,
+# turned into a RoleResult, returned, retried, or accepted as a Candidate.
+# Provider RESPONSE data only -- no environment variable, HTTP header,
+# Authorization value, or credential is read here.
+# ---------------------------------------------------------------------------
+
+PARSE_FAILURE_DIAGNOSTIC_ARTIFACT_TYPE = "CRP_PARSE_FAILURE_DIAGNOSTIC"
+PARSE_FAILURE_DIAGNOSTIC_SCHEMA_VERSION = "1"
+PARSE_FAILURE_DIAGNOSTIC_PREFIX = "CRP_PARSE_FAILURE_DIAGNOSTIC "
+
+
+def _emit_parse_failure_diagnostic(exc: ExecutorError, stream=None) -> bool:
+    """Write one structured parse-failure diagnostic line to stderr.
+
+    Returns ``True`` when ``exc`` carried a preserved ``raw_provider_output``
+    string and a record was emitted, ``False`` (no output) otherwise. Strict
+    JSON serialization: ``ensure_ascii=False``, ``allow_nan=False``, no
+    repr/str fallback for the raw output, and no truncation of
+    ``raw_provider_output`` or ``error_message``. The raw provider output is
+    never JSON-parsed, repaired, or turned into a RoleResult. The caller
+    re-raises ``exc`` unchanged.
+    """
+    if not hasattr(exc, "raw_provider_output"):
+        return False
+
+    record = {
+        "artifact_type": PARSE_FAILURE_DIAGNOSTIC_ARTIFACT_TYPE,
+        "schema_version": PARSE_FAILURE_DIAGNOSTIC_SCHEMA_VERSION,
+        "error_type": "ExecutorError",
+        "error_message": str(exc),
+        "raw_provider_output": exc.raw_provider_output,
+    }
+
+    if stream is None:
+        stream = sys.stderr
+    stream.write(
+        PARSE_FAILURE_DIAGNOSTIC_PREFIX
+        + json.dumps(record, ensure_ascii=False, allow_nan=False)
+        + "\n"
+    )
+    stream.flush()
+    return True
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
         prog="crp_kira_r4_runner",
@@ -760,6 +815,15 @@ def main(argv=None) -> int:
         # SAME fail-closed exception. No RoleResult, no R2, no retry, no
         # fallback, no partial-output recovery, no Candidate acceptance.
         _emit_provider_failure_diagnostic(exc)
+        raise
+    except ExecutorError as exc:
+        # Provider-output parse-failure observability only: the provider
+        # returned a string that failed the executor's strict
+        # ``_parse_role_result``. If the EXACT raw string was preserved on the
+        # exception, record it as one structured stderr line, then re-raise the
+        # SAME fail-closed exception. No RoleResult, no R2, no retry, no
+        # fallback, no repair, no partial-output recovery, no Candidate.
+        _emit_parse_failure_diagnostic(exc)
         raise
     envelope = build_result_envelope(plan, result)
     print(json.dumps(envelope, ensure_ascii=False, indent=2, allow_nan=False))

@@ -905,3 +905,58 @@ class TestR1V3QualityGate:
                                    evidence_payloads=make_payload_map("se-001"))
         assert result.role_id == "R2"
         assert "sources_used" not in result.provenance_summary
+
+
+class TestParseFailureRawOutputObservability:
+    """Fail-closed observability for a provider string that was returned
+    successfully but fails inside ``_parse_role_result`` (e.g. an unknown enum
+    value). The SAME ExecutorError must carry the EXACT original raw string on
+    a stable ``raw_provider_output`` attribute -- no repair, no RoleResult."""
+
+    def _bad_enum_raw(self):
+        # Structurally valid RoleResult JSON whose only defect is a claim
+        # ``claim_type`` of "OWNER_DIRECT" -- a SourceType value that is NOT a
+        # member of ClaimType. The real strict parser reaches
+        # ``_enum(ClaimType, "OWNER_DIRECT", "claim_type")`` and fails closed.
+        return _r2_result_json(claim_type="OWNER_DIRECT")
+
+    def test_schema_failure_still_raises_executor_error(self) -> None:
+        registry, profiles, evidence, task = _r2_registry_scope()
+        raw = self._bad_enum_raw()
+        with pytest.raises(ExecutorError) as ei:
+            execute_role_task(task, registry, profiles, make_fake_provider(raw),
+                              evidence, evidence_payloads=make_payload_map("se-001"))
+        # the real enum-failure class was reached (no earlier rejection)
+        assert "OWNER_DIRECT" in str(ei.value)
+        assert "ClaimType" in str(ei.value)
+
+    def test_same_exception_carries_exact_unmodified_raw_provider_output(self) -> None:
+        registry, profiles, evidence, task = _r2_registry_scope()
+        raw = self._bad_enum_raw()
+        with pytest.raises(ExecutorError) as ei:
+            execute_role_task(task, registry, profiles, make_fake_provider(raw),
+                              evidence, evidence_payloads=make_payload_map("se-001"))
+        exc = ei.value
+        assert hasattr(exc, "raw_provider_output")
+        # exact, byte-for-string identical, and not copied/rewritten
+        assert exc.raw_provider_output == raw
+        assert exc.raw_provider_output is raw
+
+    def test_no_repair_and_no_roleresult_produced(self) -> None:
+        registry, profiles, evidence, task = _r2_registry_scope()
+        raw = self._bad_enum_raw()
+        produced = []
+
+        def capture(messages):
+            return raw
+
+        with pytest.raises(ExecutorError) as ei:
+            produced.append(execute_role_task(
+                task, registry, profiles, capture, evidence,
+                evidence_payloads=make_payload_map("se-001"),
+            ))
+        assert produced == []  # no RoleResult ever returned
+        # raw was neither parsed-and-repaired nor mutated: it still round-trips
+        # to the exact original object content, still carrying the bad enum.
+        assert ei.value.raw_provider_output == raw
+        assert json.loads(ei.value.raw_provider_output)["claims"][0]["claim_type"] == "OWNER_DIRECT"

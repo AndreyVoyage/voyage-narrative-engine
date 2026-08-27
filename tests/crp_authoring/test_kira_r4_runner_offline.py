@@ -2276,3 +2276,245 @@ class TestProviderFailureDiagnostic:
         captured = capsys.readouterr()
         assert "CRP_PROVIDER_FAILURE_DIAGNOSTIC" not in captured.err
         assert "CRP_PROVIDER_FAILURE_DIAGNOSTIC" not in captured.out
+
+
+# ---------------------------------------------------------------------------
+# Provider-output parse-failure observability (diagnostic only). A --live
+# provider call that returns a well-formed string which then fails the
+# executor's strict ``_parse_role_result`` (unknown enum value) now carries the
+# EXACT original raw string on the SAME ``ExecutorError`` under
+# ``raw_provider_output``. The canonical runner records it as exactly one
+# structured stderr line (prefix ``CRP_PARSE_FAILURE_DIAGNOSTIC``) and then
+# re-raises the SAME exception. No RoleResult, no R2, no retry, no fallback, no
+# repair, no Candidate, no sidecar file, no stdout output. Fully offline.
+# ---------------------------------------------------------------------------
+
+_PARSE_FAILURE_ERROR_MESSAGE = "'claim_type' has unknown value 'OWNER_DIRECT' for ClaimType"
+
+
+def _synthetic_parse_failure_executor_error(raw=None):
+    """A synthetic offline ExecutorError shaped exactly like the one the
+    executor's ``_parse_role_result`` seam raises for an unknown ``claim_type``
+    enum, carrying the EXACT preserved raw provider string under
+    ``raw_provider_output``."""
+    if raw is None:
+        raw = json.dumps({
+            "task_id": "kira-r4-canonical-run-1-r1",
+            "role_id": "R1",
+            "role_version": "v3",
+            "completion_status": "COMPLETE",
+            "claims": [{
+                "claim_id": "c-r1",
+                "subject_id": "kira",
+                "role_id": "R1",
+                "claim": "synthetic — café résumé — офлайн-тест",
+                "claim_type": "OWNER_DIRECT",
+                "source_evidence_ids": ["ev-1"],
+                "source_type_summary": ["OWNER_DIRECT"],
+                "confidence": "KNOWN",
+                "rationale_summary": "synthetic parse-failure fixture",
+                "status": "PROPOSED",
+                "target_module_or_layer": "identity_biography.birthplace",
+            }],
+            "unknowns": [],
+            "contradictions": [],
+            "provenance_summary": {"sources_used": ["ev-1"]},
+            "requests_for_more_evidence": [],
+            "warnings": [],
+            "questions_for_r1": [],
+            "new_source_evidence": [],
+        }, ensure_ascii=False)
+    exc = ExecutorError(_PARSE_FAILURE_ERROR_MESSAGE)
+    exc.raw_provider_output = raw
+    return exc, raw
+
+
+def _parse_failure_lines(stderr_text):
+    return [
+        ln for ln in stderr_text.splitlines()
+        if ln.startswith(runner.PARSE_FAILURE_DIAGNOSTIC_PREFIX)
+    ]
+
+
+def _parse_parse_failure_line(line):
+    return _strict_json_loads(line[len(runner.PARSE_FAILURE_DIAGNOSTIC_PREFIX):])
+
+
+def _r1_parse_failure_json(plan_):
+    """A structurally-valid R1 v3 payload whose only defect is a claim
+    ``claim_type`` of "OWNER_DIRECT" (a SourceType value, NOT a ClaimType
+    member): the real executor parser reaches the same enum-failure class."""
+    r1 = _r1_task(plan_)
+    all_ids = list(r1.allowed_evidence_ids)
+    claim = _claim(
+        "c-r1", "R1", "OWNER_DIRECT", "identity_biography.birthplace", all_ids,
+        confidence="KNOWN",
+    )
+    return _role_result_json(
+        r1.task_id, "R1", "v3", [claim],
+        provenance_summary={"sources_used": all_ids},
+    )
+
+
+class TestParseFailureDiagnostic:
+    def test_emit_writes_one_strict_json_record_preserving_raw(self, capsys):
+        exc, raw = _synthetic_parse_failure_executor_error()
+
+        emitted = runner._emit_parse_failure_diagnostic(exc)
+        assert emitted is True
+
+        captured = capsys.readouterr()
+        assert captured.out == ""  # stderr only
+        lines = _parse_failure_lines(captured.err)
+        assert len(lines) == 1  # exactly ONE structured record
+
+        payload = _parse_parse_failure_line(lines[0])  # strict JSON (no NaN/Infinity)
+        assert payload == {
+            "artifact_type": "CRP_PARSE_FAILURE_DIAGNOSTIC",
+            "schema_version": "1",
+            "error_type": "ExecutorError",
+            "error_message": _PARSE_FAILURE_ERROR_MESSAGE,
+            "raw_provider_output": raw,
+        }
+        # byte-for-string identical, untruncated, unrepaired
+        assert payload["raw_provider_output"] == raw
+        assert json.loads(payload["raw_provider_output"])["claims"][0]["claim_type"] == "OWNER_DIRECT"
+
+    def test_emit_is_noop_without_raw_provider_output(self, capsys):
+        emitted = runner._emit_parse_failure_diagnostic(ExecutorError("plain executor error"))
+        assert emitted is False
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        assert captured.out == ""
+        assert "CRP_PARSE_FAILURE_DIAGNOSTIC" not in captured.err
+
+    def test_emit_preserves_unicode_and_does_not_truncate_large_raw(self, capsys):
+        big_fragment = "Д" * 5000
+        exc, base_raw = _synthetic_parse_failure_executor_error()
+        exc.raw_provider_output = base_raw + big_fragment
+        raw2 = exc.raw_provider_output
+
+        runner._emit_parse_failure_diagnostic(exc)
+
+        err = capsys.readouterr().err
+        line = _parse_failure_lines(err)[0]
+        payload = _parse_parse_failure_line(line)
+        assert payload["raw_provider_output"] == raw2  # nothing dropped
+        assert big_fragment in payload["raw_provider_output"]
+        assert "Д" in err  # ensure_ascii=False: not escaped as \uXXXX
+
+    def test_emit_does_not_serialize_secrets_or_headers(self, capsys, monkeypatch):
+        monkeypatch.setenv("DEEPSEEK_API_KEY", "DO_NOT_LEAK_SYNTHETIC_SECRET")
+        exc, _raw = _synthetic_parse_failure_executor_error()
+
+        runner._emit_parse_failure_diagnostic(exc)
+
+        err = capsys.readouterr().err
+        payload = _parse_parse_failure_line(_parse_failure_lines(err)[0])
+        assert "DO_NOT_LEAK_SYNTHETIC_SECRET" not in err
+        for forbidden in ("Authorization", "Bearer ", "api_key", "credential_env", "headers"):
+            assert forbidden not in err
+        assert set(payload) == {
+            "artifact_type", "schema_version", "error_type", "error_message",
+            "raw_provider_output",
+        }
+
+    def test_main_live_emits_parse_diagnostic_then_reraises_same_executor_error(
+        self, monkeypatch, capsys,
+    ):
+        exc, raw = _synthetic_parse_failure_executor_error()
+        envelope_built = {"value": False}
+
+        def boom(provider_callable, plan):
+            raise exc
+
+        monkeypatch.setattr(
+            runner, "build_live_provider_callable", lambda: (lambda messages: "unused"),
+        )
+        monkeypatch.setattr(runner, "execute_kira_r4_reconstruction", boom)
+        monkeypatch.setattr(
+            runner, "build_result_envelope",
+            lambda *a, **k: envelope_built.__setitem__("value", True),
+        )
+
+        with pytest.raises(ExecutorError) as excinfo:
+            runner.main(["--live"])
+
+        # the SAME exception object propagates -- unchanged, still fail-closed
+        assert excinfo.value is exc
+        assert excinfo.value.raw_provider_output == raw  # raw unchanged
+        # no success artifact: no envelope, no RoleResult, no R2, no Candidate,
+        # no retry, no fallback
+        assert envelope_built["value"] is False
+
+        captured = capsys.readouterr()
+        assert captured.out == ""  # no success / diagnostic on stdout
+
+        lines = _parse_failure_lines(captured.err)
+        assert len(lines) == 1  # emitted exactly once
+        payload = _parse_parse_failure_line(lines[0])
+        assert payload["error_type"] == "ExecutorError"
+        assert payload["error_message"] == str(exc)
+        assert payload["raw_provider_output"] == raw
+
+    def test_main_live_executor_error_without_raw_reraises_with_no_diagnostic(
+        self, monkeypatch, capsys,
+    ):
+        """An ExecutorError that never reached the parse seam (no
+        ``raw_provider_output``) still propagates normally and MUST NOT cause a
+        fabricated diagnostic to be invented."""
+        bare = ExecutorError("R1_V3_CLAIM_COVERAGE_INCOMPLETE: synthetic (no raw)")
+
+        def boom(provider_callable, plan):
+            raise bare
+
+        monkeypatch.setattr(
+            runner, "build_live_provider_callable", lambda: (lambda messages: "unused"),
+        )
+        monkeypatch.setattr(runner, "execute_kira_r4_reconstruction", boom)
+
+        with pytest.raises(ExecutorError) as excinfo:
+            runner.main(["--live"])
+
+        assert excinfo.value is bare
+        captured = capsys.readouterr()
+        assert captured.out == ""
+        assert "CRP_PARSE_FAILURE_DIAGNOSTIC" not in captured.err
+
+    def test_real_r1_parse_failure_propagates_executor_error_with_raw_and_no_r2(self, plan):
+        """End-to-end through the real executor seam: a bad R1 payload fails
+        strict parsing; the ExecutorError carries the exact raw string; R2 is
+        never started and no Candidate/R8 work occurs."""
+        payloads = _happy_payloads(plan)
+        bad_r1 = _r1_parse_failure_json(plan)
+        payloads["R1"] = bad_r1
+        provider, calls, r8_calls = _dispatch_provider(
+            payloads, _r8_judgment_json(plan.compile_context.package_id),
+        )
+
+        with pytest.raises(ExecutorError) as excinfo:
+            runner.execute_kira_r4_reconstruction(provider, plan)
+
+        exc = excinfo.value
+        assert hasattr(exc, "raw_provider_output")
+        assert exc.raw_provider_output == bad_r1  # exact, unmodified
+        assert "OWNER_DIRECT" in str(exc) and "ClaimType" in str(exc)
+        assert calls["count"] == 1     # only R1 attempted: no R2, no retry, no fallback
+        assert r8_calls["count"] == 0  # no compile, no R8, no Candidate
+
+    def test_happy_live_run_emits_no_parse_failure_diagnostic(self, monkeypatch, capsys):
+        real_plan = runner.build_kira_r4_plan()
+
+        def fake_build_provider_callable(config):
+            provider, _, _ = _dispatch_provider(
+                _happy_payloads(real_plan),
+                _r8_judgment_json(real_plan.compile_context.package_id),
+            )
+            return provider
+
+        monkeypatch.setattr(runner, "build_provider_callable", fake_build_provider_callable)
+        assert runner.main(["--live"]) == 0
+
+        captured = capsys.readouterr()
+        assert "CRP_PARSE_FAILURE_DIAGNOSTIC" not in captured.err
+        assert "CRP_PARSE_FAILURE_DIAGNOSTIC" not in captured.out
