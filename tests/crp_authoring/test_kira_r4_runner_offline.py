@@ -658,10 +658,11 @@ class TestLiveGate:
         passes to ``build_provider_callable`` -- not module constants that
         merely happen to match by construction.
 
-        Owner-approved CRP R4 R1-only correction: ``main()`` now builds exactly
-        two configs -- an unchanged default (8192, no extra_params) and an R1
-        override (65536, thinking disabled). Every other transport field is
-        identical between them.
+        Owner-approved CRP R4 role-scoped corrections: ``main()`` now builds
+        exactly three configs -- an unchanged default (8192, no extra_params),
+        an R1 override (65536, thinking disabled), and an R2 override (8192 --
+        NOT raised -- thinking disabled). Every other transport field is
+        identical across all three.
         """
         captured = []
         real_plan = runner.build_kira_r4_plan()
@@ -677,14 +678,27 @@ class TestLiveGate:
         monkeypatch.setattr(runner, "build_provider_callable", fake_build_provider_callable)
         exit_code = runner.main(["--live"])
         assert exit_code == 0
-        assert len(captured) == 2  # exactly one default + one R1 override config
+        assert len(captured) == 3  # one default + one R1 override + one R2 override
 
-        by_max_tokens = {c.max_tokens: c for c in captured}
-        assert set(by_max_tokens) == {8192, 65536}
-        default_config = by_max_tokens[8192]
-        r1_config = by_max_tokens[65536]
+        # Classify by transport shape (default and R2 share max_tokens 8192, so
+        # ``extra_params`` is what separates them).
+        default_configs = [
+            c for c in captured if c.max_tokens == 8192 and dict(c.extra_params) == {}
+        ]
+        r1_configs = [c for c in captured if c.max_tokens == 65536]
+        r2_configs = [
+            c for c in captured
+            if c.max_tokens == 8192
+            and dict(c.extra_params) == {"thinking": {"type": "disabled"}}
+        ]
+        assert len(default_configs) == 1
+        assert len(r1_configs) == 1
+        assert len(r2_configs) == 1
+        default_config = default_configs[0]
+        r1_config = r1_configs[0]
+        r2_config = r2_configs[0]
 
-        # Every non-overridden transport field is identical across both configs.
+        # Every non-overridden transport field is identical across all configs.
         for config in captured:
             assert config.provider_id == "deepseek"
             assert config.model == "deepseek-v4-pro"
@@ -698,11 +712,14 @@ class TestLiveGate:
             assert not hasattr(config, "retry")
             assert not hasattr(config, "fallback")
 
-        # Default transport carries NO thinking override; R1 disables thinking.
+        # Default transport carries NO thinking override; R1 and R2 disable it.
         assert dict(default_config.extra_params) == {}
         assert dict(r1_config.extra_params) == {"thinking": {"type": "disabled"}}
+        assert dict(r2_config.extra_params) == {"thinking": {"type": "disabled"}}
         assert default_config.max_tokens == runner.LIVE_MAX_TOKENS == 8192
         assert r1_config.max_tokens == runner.LIVE_R1_MAX_TOKENS == 65536
+        # R2's max_tokens is the default 8192 -- deliberately NOT raised.
+        assert r2_config.max_tokens == runner.LIVE_R2_MAX_TOKENS == 8192
 
 
 # ---------------------------------------------------------------------------
@@ -1483,9 +1500,10 @@ def _canonical_user_content(role_id, user_text):
     ) == role_id
 
 
-class TestR1OnlyProviderOptionsOutbound:
-    """R1 (v3) alone gets max_tokens=65536 + thinking disabled; R2/R3/R4/R8 keep
-    the unchanged default transport (8192, no thinking)."""
+class TestRoleScopedProviderOptionsOutbound:
+    """R1 (v3) gets max_tokens=65536 + thinking disabled; R2 (v2) gets the
+    default max_tokens=8192 (NOT raised) + thinking disabled; R3/R4/R8 keep the
+    unchanged default transport (8192, no thinking)."""
 
     def _capture(self, monkeypatch, plan):
         calls = []
@@ -1535,11 +1553,11 @@ class TestR1OnlyProviderOptionsOutbound:
         assert params["max_tokens"] == 65536
         assert params["thinking"] == {"type": "disabled"}
 
-    def test_r2_outbound_uses_default_8192_no_thinking(self, monkeypatch, plan):
+    def test_r2_outbound_uses_8192_and_thinking_disabled(self, monkeypatch, plan):
         _result, calls = self._capture(monkeypatch, plan)
         params = self._role_params(calls, "R2")
-        assert params["max_tokens"] == 8192
-        assert "thinking" not in params
+        assert params["max_tokens"] == 8192  # default budget, deliberately NOT raised
+        assert params["thinking"] == {"type": "disabled"}
 
     def test_r3_outbound_uses_default_8192_no_thinking(self, monkeypatch, plan):
         _result, calls = self._capture(monkeypatch, plan)
@@ -1559,12 +1577,24 @@ class TestR1OnlyProviderOptionsOutbound:
         assert params["max_tokens"] == 8192
         assert "thinking" not in params
 
-    def test_exactly_one_provider_bound_role_uses_thinking_override(self, monkeypatch, plan):
+    def test_exactly_two_provider_bound_roles_use_thinking_override(self, monkeypatch, plan):
         _result, calls = self._capture(monkeypatch, plan)
         with_thinking = [c for c in calls if "thinking" in c["params"]]
-        assert len(with_thinking) == 1
-        assert _canonical_user_content("R1", with_thinking[0]["user"])
-        assert with_thinking[0]["params"]["thinking"] == {"type": "disabled"}
+        assert len(with_thinking) == 2
+        roles = sorted(
+            next(r for r in ("R1", "R2", "R3", "R4") if _canonical_user_content(r, c["user"]))
+            for c in with_thinking
+        )
+        assert roles == ["R1", "R2"]
+        params_by_role = {
+            next(r for r in ("R1", "R2") if _canonical_user_content(r, c["user"])): c["params"]
+            for c in with_thinking
+        }
+        assert params_by_role["R1"]["thinking"] == {"type": "disabled"}
+        assert params_by_role["R2"]["thinking"] == {"type": "disabled"}
+        # R1's budget is raised; R2's stays at the default 8192.
+        assert params_by_role["R1"]["max_tokens"] == 65536
+        assert params_by_role["R2"]["max_tokens"] == 8192
 
     def test_exactly_five_outbound_calls_single_shared_budget(self, monkeypatch, plan):
         result, calls = self._capture(monkeypatch, plan)
@@ -1629,19 +1659,24 @@ class TestR1OnlyProviderOptionsOutbound:
         monkeypatch.setattr(crp_provider_adapter, "complete", fake_complete)
 
         r1_callable_hits = {"n": 0}
+        r2_callable_hits = {"n": 0}
         default_callable_hits = {"n": 0}
         real_dispatch_factory = runner._role_dispatch_provider_callable
 
-        def instrumented_factory(r1_cb, default_cb):
+        def instrumented_factory(r1_cb, r2_cb, default_cb):
             def wrapped_r1(messages):
                 r1_callable_hits["n"] += 1
                 return r1_cb(messages)
+
+            def wrapped_r2(messages):
+                r2_callable_hits["n"] += 1
+                return r2_cb(messages)
 
             def wrapped_default(messages):
                 default_callable_hits["n"] += 1
                 return default_cb(messages)
 
-            return real_dispatch_factory(wrapped_r1, wrapped_default)
+            return real_dispatch_factory(wrapped_r1, wrapped_r2, wrapped_default)
 
         monkeypatch.setattr(runner, "_role_dispatch_provider_callable", instrumented_factory)
 
@@ -1659,10 +1694,12 @@ class TestR1OnlyProviderOptionsOutbound:
             runner.build_live_provider_callable(), plan
         )
         assert result.provider_attempts == 5
-        # Exactly the real R1 role task reached the R1 override transport; the
-        # injected lookalikes in R2/R3/R4/R8 bodies did not.
+        # Exactly the real R1 role task reached the R1 override transport and the
+        # real R2 role task the R2 override transport; the injected lookalikes in
+        # R2/R3/R4/R8 bodies did not re-route anything.
         assert r1_callable_hits["n"] == 1
-        assert default_callable_hits["n"] == 4
+        assert r2_callable_hits["n"] == 1
+        assert default_callable_hits["n"] == 3
         r1_params = [p for p in captured if p.get("max_tokens") == 65536]
         assert len(r1_params) == 1
         assert r1_params[0]["thinking"] == {"type": "disabled"}
@@ -1712,10 +1749,11 @@ class TestCurrentTaskRoleIdExtraction:
             [{"role": "user", "content": None}]
         ) is None
 
-    def test_dispatch_routes_r1_only_from_canonical_block(self):
-        seen = {"r1": 0, "default": 0}
+    def test_dispatch_routes_r1_and_r2_from_canonical_block(self):
+        seen = {"r1": 0, "r2": 0, "default": 0}
         dispatch = runner._role_dispatch_provider_callable(
             lambda m: seen.__setitem__("r1", seen["r1"] + 1) or "{}",
+            lambda m: seen.__setitem__("r2", seen["r2"] + 1) or "{}",
             lambda m: seen.__setitem__("default", seen["default"] + 1) or "{}",
         )
         dispatch([{"role": "user", "content":
@@ -1725,13 +1763,15 @@ class TestCurrentTaskRoleIdExtraction:
                    "current_task:\n- task_id: t\n- role_id: R2\n- role_version: v2\n"
                    "- subject_id: kira\ntask_goal: g\nnote: - role_id: R1 lookalike\n"}])
         dispatch([{"role": "user", "content": "AUDIT_IDENTITY\n- role_id: R1 (prose)\n"}])
-        assert seen == {"r1": 1, "default": 2}
+        assert seen == {"r1": 1, "r2": 1, "default": 1}
 
     def test_dispatch_rejects_non_callables(self):
         with pytest.raises(TypeError):
-            runner._role_dispatch_provider_callable(None, lambda m: "{}")
+            runner._role_dispatch_provider_callable(None, lambda m: "{}", lambda m: "{}")
         with pytest.raises(TypeError):
-            runner._role_dispatch_provider_callable(lambda m: "{}", "not-callable")
+            runner._role_dispatch_provider_callable(lambda m: "{}", None, lambda m: "{}")
+        with pytest.raises(TypeError):
+            runner._role_dispatch_provider_callable(lambda m: "{}", lambda m: "{}", "not-callable")
 
 
 # ---------------------------------------------------------------------------
@@ -1797,6 +1837,29 @@ class TestRoleDispatchFailsClosed:
         ]
         base[1]["content"] = "\n".join(kept)
         assert runner._extract_current_task_role_id(base) is None
+
+    @pytest.mark.parametrize("drop", _MANDATORY_CURRENT_TASK_FIELDS + ("task_goal",))
+    def test_incomplete_r2_identity_never_selects_the_r2_override(self, drop):
+        """Spec req 6, R2 arm: a malformed / incomplete canonical R2 block must
+        fail closed to the DEFAULT callable, never the R2 thinking-disabled
+        override."""
+        base = _canonical_current_task_messages("R2", tail="")
+        lines = base[1]["content"].split("\n")
+        kept = [
+            ln for ln in lines
+            if not (ln.startswith(f"- {drop}: ") or (drop == "task_goal" and ln.startswith("task_goal:")))
+        ]
+        base[1]["content"] = "\n".join(kept)
+        assert runner._extract_current_task_role_id(base) is None
+
+        seen = {"r1": 0, "r2": 0, "default": 0}
+        dispatch = runner._role_dispatch_provider_callable(
+            lambda m: seen.__setitem__("r1", seen["r1"] + 1) or "{}",
+            lambda m: seen.__setitem__("r2", seen["r2"] + 1) or "{}",
+            lambda m: seen.__setitem__("default", seen["default"] + 1) or "{}",
+        )
+        dispatch(base)
+        assert seen == {"r1": 0, "r2": 0, "default": 1}
 
     def test_duplicate_role_id_is_default(self):
         msgs = _canonical_current_task_messages("R1", tail="")
@@ -1880,19 +1943,33 @@ class TestRoleDispatchFailsClosed:
         msgs = _canonical_current_task_messages("R2", tail=poisoned_tail)
         assert runner._extract_current_task_role_id(msgs) == "R2"
 
-    @pytest.mark.parametrize("role_id", ["R2", "R3", "R4"])
-    def test_canonical_r2_r3_r4_are_default(self, role_id):
+    def test_canonical_r2_selects_the_r2_override_never_r1_or_default(self):
+        assert runner._extract_current_task_role_id(
+            _canonical_current_task_messages("R2")
+        ) == "R2"
+        seen = {"r1": 0, "r2": 0, "default": 0}
+        dispatch = runner._role_dispatch_provider_callable(
+            lambda m: seen.__setitem__("r1", seen["r1"] + 1) or "{}",
+            lambda m: seen.__setitem__("r2", seen["r2"] + 1) or "{}",
+            lambda m: seen.__setitem__("default", seen["default"] + 1) or "{}",
+        )
+        dispatch(_canonical_current_task_messages("R2"))
+        assert seen == {"r1": 0, "r2": 1, "default": 0}
+
+    @pytest.mark.parametrize("role_id", ["R3", "R4"])
+    def test_canonical_r3_r4_are_default(self, role_id):
         assert runner._extract_current_task_role_id(
             _canonical_current_task_messages(role_id)
         ) == role_id
-        # ...and route to the default callable, never the R1 one.
-        seen = {"r1": 0, "default": 0}
+        # ...and route to the default callable, never the R1 or R2 override.
+        seen = {"r1": 0, "r2": 0, "default": 0}
         dispatch = runner._role_dispatch_provider_callable(
             lambda m: seen.__setitem__("r1", seen["r1"] + 1) or "{}",
+            lambda m: seen.__setitem__("r2", seen["r2"] + 1) or "{}",
             lambda m: seen.__setitem__("default", seen["default"] + 1) or "{}",
         )
         dispatch(_canonical_current_task_messages(role_id))
-        assert seen == {"r1": 0, "default": 1}
+        assert seen == {"r1": 0, "r2": 0, "default": 1}
 
     def test_r8_style_message_is_default(self):
         r8_like = [
@@ -1905,6 +1982,7 @@ class TestRoleDispatchFailsClosed:
         default_hits = {"n": 0}
         dispatch = runner._role_dispatch_provider_callable(
             lambda m: (_ for _ in ()).throw(AssertionError("R1 callable must not run")),
+            lambda m: (_ for _ in ()).throw(AssertionError("R2 callable must not run")),
             lambda m: default_hits.__setitem__("n", default_hits["n"] + 1) or "{}",
         )
         malformed_inputs = [
@@ -1921,24 +1999,31 @@ class TestRoleDispatchFailsClosed:
 
 
 class TestRunMetadataRecordsRoleProviderOverrides:
-    def test_run_metadata_truthfully_records_default_and_r1_override(self, plan):
+    def test_run_metadata_truthfully_records_default_r1_and_r2_overrides(self, plan):
         _result, envelope = _run_happy(plan)
         rm = envelope["run_metadata"]
         assert rm["max_tokens"] == 8192
         assert rm["max_tokens_scope"] == "default"
         assert rm["role_provider_overrides"] == {
-            "R1": {"max_tokens": 65536, "thinking": {"type": "disabled"}}
+            "R1": {"max_tokens": 65536, "thinking": {"type": "disabled"}},
+            "R2": {"max_tokens": 8192, "thinking": {"type": "disabled"}},
         }
 
-    def test_r1_override_metadata_derives_from_live_constants(self, plan):
+    def test_role_override_metadata_derives_from_live_constants(self, plan):
         _result, envelope = _run_happy(plan)
-        override = envelope["run_metadata"]["role_provider_overrides"]["R1"]
-        assert override == dict(
+        overrides = envelope["run_metadata"]["role_provider_overrides"]
+        assert overrides["R1"] == dict(
             max_tokens=runner.LIVE_R1_MAX_TOKENS, **runner.LIVE_R1_EXTRA_PARAMS
+        )
+        assert overrides["R2"] == dict(
+            max_tokens=runner.LIVE_R2_MAX_TOKENS, **runner.LIVE_R2_EXTRA_PARAMS
         )
         assert runner.LIVE_MAX_TOKENS == 8192
         assert runner.LIVE_R1_MAX_TOKENS == 65536
         assert runner.LIVE_R1_EXTRA_PARAMS == {"thinking": {"type": "disabled"}}
+        # R2's override keeps the default 8192 budget -- only thinking is disabled.
+        assert runner.LIVE_R2_MAX_TOKENS == 8192
+        assert runner.LIVE_R2_EXTRA_PARAMS == {"thinking": {"type": "disabled"}}
 
     def test_unrelated_run_metadata_keys_and_schema_version_unchanged(self, plan):
         _result, envelope = _run_happy(plan)
@@ -1963,6 +2048,7 @@ class TestRunMetadataRecordsRoleProviderOverrides:
         for forbidden_key in ("api_key", "authorization", "credential_value", "credential_env"):
             assert forbidden_key not in envelope["run_metadata"]
             assert forbidden_key not in envelope["run_metadata"]["role_provider_overrides"]["R1"]
+            assert forbidden_key not in envelope["run_metadata"]["role_provider_overrides"]["R2"]
 
 
 class TestBehavioralNoPersistence:

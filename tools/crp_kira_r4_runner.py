@@ -101,16 +101,28 @@ LIVE_CREDENTIAL_ENV = "DEEPSEEK_API_KEY"
 LIVE_TIMEOUT_S = 180.0
 LIVE_MAX_TOKENS = 8192
 
-# Owner-approved R1-only provider-options correction (CRP R4). R1 v3's
-# reconstruction output is legitimately larger than the shared 8192 completion
-# budget and must run with provider "thinking" disabled; R2 v2 / R3 v1 / R4 v1
-# and R8 keep the default transport unchanged (max_tokens 8192, thinking
-# omitted). These are provider-facing transport knobs only -- they never touch
-# the R1 prompt/schema, the RoleTask schema, the executor/orchestrator, or any
-# result contract. (CRP-OD-R4-KIRA-R1-V3-01 raised the R1 budget 32768 -> 65536
-# alongside the v3 quality correction.)
+# Owner-approved role-scoped provider-options corrections (CRP R4). Two roles
+# diverge from the shared default transport; every knob here is provider-facing
+# only -- none of them touch a role prompt/schema, the RoleTask schema, the
+# executor/orchestrator, or any result contract.
+#
+#   R1 v3: reconstruction output is legitimately larger than the shared 8192
+#   completion budget, so R1 runs with a RAISED max_tokens AND provider
+#   "thinking" disabled. (CRP-OD-R4-KIRA-R1-V3-01 raised the R1 budget
+#   32768 -> 65536 alongside the v3 quality correction.)
+#
+#   R2 v2: the visible R2 JSON was legitimate, coherent, and non-repetitive but
+#   truncated (finish_reason "length") only because provider reasoning consumed
+#   most of the 8192 completion budget. R2 therefore runs with "thinking"
+#   disabled and its max_tokens UNCHANGED at the default 8192 -- the R2 budget
+#   is deliberately NOT raised.
+#
+# R3 v1 / R4 v1 and R8 keep the default transport unchanged (max_tokens 8192,
+# thinking omitted).
 LIVE_R1_MAX_TOKENS = 65536
 LIVE_R1_EXTRA_PARAMS = {"thinking": {"type": "disabled"}}
+LIVE_R2_MAX_TOKENS = 8192
+LIVE_R2_EXTRA_PARAMS = {"thinking": {"type": "disabled"}}
 
 
 # ---------------------------------------------------------------------------
@@ -340,12 +352,13 @@ class CountingGuard:
 
 
 # ---------------------------------------------------------------------------
-# Role-scoped provider options (owner-approved R1-only CRP R4 correction)
+# Role-scoped provider options (owner-approved CRP R4 corrections: R1 + R2)
 #
-# A single runner-local dispatcher routes each provider call to one of two
-# already-built provider callables: the R1 override transport (larger
-# max_tokens, thinking disabled) for R1 (v3), and the unchanged default
-# transport for R2 v2 / R3 v1 / R4 v1 and R8. The dispatcher is PURE routing:
+# A single runner-local dispatcher routes each provider call to one of three
+# already-built provider callables: the R1 override transport (raised
+# max_tokens, thinking disabled) for R1 (v3), the R2 override transport
+# (default max_tokens, thinking disabled) for R2 (v2), and the unchanged
+# default transport for R3 v1 / R4 v1 and R8. The dispatcher is PURE routing:
 # no counting, no retry, no fallback, no exception recovery. The one
 # ``CountingGuard`` in ``execute_kira_r4_reconstruction`` still wraps this
 # single dispatcher, so the global 5-call budget is unchanged and every
@@ -436,22 +449,28 @@ def _extract_current_task_role_id(messages) -> str | None:
 
 def _role_dispatch_provider_callable(
     r1_callable: Callable[[list], str],
+    r2_callable: Callable[[list], str],
     default_callable: Callable[[list], str],
 ) -> Callable[[list], str]:
-    """Wrap two already-built provider callables in ONE routing callable.
+    """Wrap three already-built provider callables in ONE routing callable.
 
     Pure routing only -- no counting, no retry, no fallback, no exception
-    handling. R1 (recognised solely from the canonical ``current_task`` role
-    field, independent of role_version) is sent to ``r1_callable``; every other
-    call (R2/R3/R4 and R8, which carry no R1 current-task identity) is sent to
-    ``default_callable``.
+    handling. The role is recognised solely from the canonical ``current_task``
+    identity block (independent of role_version): ``R1`` -> ``r1_callable`` and
+    ``R2`` -> ``r2_callable``; every other call (R3/R4 and R8, which carry no
+    R1/R2 current-task identity, plus any malformed / ambiguous / incomplete
+    identity that yields no role) is sent to ``default_callable``.
     """
-    if not callable(r1_callable) or not callable(default_callable):
-        raise TypeError("both provider callables must be callable")
+    if not (
+        callable(r1_callable) and callable(r2_callable) and callable(default_callable)
+    ):
+        raise TypeError("all three provider callables must be callable")
+
+    role_callables = {ROLE_ORDER[0]: r1_callable, ROLE_ORDER[1]: r2_callable}
 
     def dispatch(messages: list) -> str:
         role_id = _extract_current_task_role_id(messages)
-        target = r1_callable if role_id == ROLE_ORDER[0] else default_callable
+        target = role_callables.get(role_id, default_callable)
         return target(messages)
 
     return dispatch
@@ -460,13 +479,18 @@ def _role_dispatch_provider_callable(
 def build_live_provider_callable() -> Callable[[list], str]:
     """Build the ONE role-dispatching provider callable for a ``--live`` run.
 
-    Two ``ProviderConfig`` objects are constructed through the existing
+    Three ``ProviderConfig`` objects are constructed through the existing
     ``build_provider_callable`` transport adapter; they are identical on every
-    field except R1's ``max_tokens`` (65536 vs 8192) and its
-    ``extra_params={"thinking": {"type": "disabled"}}``. No secret value is
-    stored on either config (``credential_env`` is a NAME only). ``crp_provider_
-    adapter`` / ``llm_provider`` are not modified: ``extra_params`` already
-    forwards ``thinking`` into the outbound request.
+    field except:
+
+    * R1's ``max_tokens`` (65536 vs the default 8192) and its
+      ``extra_params={"thinking": {"type": "disabled"}}``;
+    * R2's ``extra_params={"thinking": {"type": "disabled"}}`` -- R2's
+      ``max_tokens`` stays at the default 8192 and is NOT raised.
+
+    No secret value is stored on any config (``credential_env`` is a NAME
+    only). ``crp_provider_adapter`` / ``llm_provider`` are not modified:
+    ``extra_params`` already forwards ``thinking`` into the outbound request.
     """
     default_config = ProviderConfig(
         provider_id=LIVE_PROVIDER_ID,
@@ -487,8 +511,19 @@ def build_live_provider_callable() -> Callable[[list], str]:
         json_mode=True,
         extra_params=LIVE_R1_EXTRA_PARAMS,
     )
+    r2_config = ProviderConfig(
+        provider_id=LIVE_PROVIDER_ID,
+        model=LIVE_MODEL,
+        base_url=LIVE_BASE_URL,
+        credential_env=LIVE_CREDENTIAL_ENV,
+        timeout_s=LIVE_TIMEOUT_S,
+        max_tokens=LIVE_R2_MAX_TOKENS,
+        json_mode=True,
+        extra_params=LIVE_R2_EXTRA_PARAMS,
+    )
     return _role_dispatch_provider_callable(
         build_provider_callable(r1_config),
+        build_provider_callable(r2_config),
         build_provider_callable(default_config),
     )
 
@@ -659,6 +694,7 @@ def build_result_envelope(plan: KiraR4Plan, result: KiraR4RunResult) -> dict:
             "max_tokens_scope": "default",
             "role_provider_overrides": {
                 "R1": dict(max_tokens=LIVE_R1_MAX_TOKENS, **LIVE_R1_EXTRA_PARAMS),
+                "R2": dict(max_tokens=LIVE_R2_MAX_TOKENS, **LIVE_R2_EXTRA_PARAMS),
             },
             "timeout_s": LIVE_TIMEOUT_S,
             "credential_env_name": LIVE_CREDENTIAL_ENV,
