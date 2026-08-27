@@ -101,28 +101,19 @@ LIVE_CREDENTIAL_ENV = "DEEPSEEK_API_KEY"
 LIVE_TIMEOUT_S = 180.0
 LIVE_MAX_TOKENS = 8192
 
-# Owner-approved role-scoped provider-options corrections (CRP R4). Two roles
-# diverge from the shared default transport; every knob here is provider-facing
-# only -- none of them touch a role prompt/schema, the RoleTask schema, the
-# executor/orchestrator, or any result contract.
-#
-#   R1 v3: reconstruction output is legitimately larger than the shared 8192
-#   completion budget, so R1 runs with a RAISED max_tokens AND provider
-#   "thinking" disabled. (CRP-OD-R4-KIRA-R1-V3-01 raised the R1 budget
-#   32768 -> 65536 alongside the v3 quality correction.)
-#
-#   R2 v2: the visible R2 JSON was legitimate, coherent, and non-repetitive but
-#   truncated (finish_reason "length") only because provider reasoning consumed
-#   most of the 8192 completion budget. R2 therefore runs with "thinking"
-#   disabled and its max_tokens UNCHANGED at the default 8192 -- the R2 budget
-#   is deliberately NOT raised.
-#
-# R3 v1 / R4 v1 and R8 keep the default transport unchanged (max_tokens 8192,
-# thinking omitted).
-LIVE_R1_MAX_TOKENS = 65536
-LIVE_R1_EXTRA_PARAMS = {"thinking": {"type": "disabled"}}
-LIVE_R2_MAX_TOKENS = 8192
-LIVE_R2_EXTRA_PARAMS = {"thinking": {"type": "disabled"}}
+# Canonical reconstruction-wide output policy (CRP R4 output-budget
+# correction). The canonical Kira reconstruction is a bounded one-time
+# high-fidelity authoring operation; every canonical role (R1 v3, R2 v2,
+# R3 v1, R4 v1, R8) therefore runs with a RAISED completion CEILING and
+# provider "thinking" disabled. 65536 is a CEILING only -- no artificial
+# minimum output requirement. The prior small per-role ceilings were the
+# actual cause of the R3 truncation (finish_reason "length" at 8192), so this
+# is applied reconstruction-wide instead of role-by-role. The default transport
+# is unchanged (8192, no thinking) and remains the fail-safe for malformed /
+# ambiguous / incomplete / unknown routing.
+LIVE_CANONICAL_MAX_TOKENS = 65536
+LIVE_CANONICAL_EXTRA_PARAMS = {"thinking": {"type": "disabled"}}
+CANONICAL_RECONSTRUCTION_ROLE_IDS = ("R1", "R2", "R3", "R4", "R8")
 
 
 # ---------------------------------------------------------------------------
@@ -352,18 +343,21 @@ class CountingGuard:
 
 
 # ---------------------------------------------------------------------------
-# Role-scoped provider options (owner-approved CRP R4 corrections: R1 + R2)
+# Role-scoped provider options (CRP R4 canonical reconstruction output-budget
+# correction)
 #
-# A single runner-local dispatcher routes each provider call to one of three
-# already-built provider callables: the R1 override transport (raised
-# max_tokens, thinking disabled) for R1 (v3), the R2 override transport
-# (default max_tokens, thinking disabled) for R2 (v2), and the unchanged
-# default transport for R3 v1 / R4 v1 and R8. The dispatcher is PURE routing:
-# no counting, no retry, no fallback, no exception recovery. The one
-# ``CountingGuard`` in ``execute_kira_r4_reconstruction`` still wraps this
-# single dispatcher, so the global 5-call budget is unchanged and every
-# provider call is counted exactly once regardless of which transport served
-# it. RoleTask, the executor, and the orchestrator are untouched.
+# A single runner-local dispatcher routes each provider call to one of two
+# already-built provider callables: the canonical transport (max_tokens 65536
+# -- a ceiling only -- and provider "thinking" disabled) for the canonical
+# reconstruction roles R1 v3 / R2 v2 / R3 v1 / R4 v1 / R8, and the unchanged
+# default transport (8192, no thinking) for any malformed / ambiguous /
+# incomplete / unknown call, which therefore never gains the canonical
+# override. The dispatcher is PURE routing: no counting, no retry, no
+# fallback, no exception recovery. The one ``CountingGuard`` in
+# ``execute_kira_r4_reconstruction`` still wraps this single dispatcher, so
+# the global 5-call budget is unchanged and every provider call is counted
+# exactly once regardless of which transport served it. RoleTask, the
+# executor, and the orchestrator are untouched.
 # ---------------------------------------------------------------------------
 
 # The mandatory canonical ``current_task`` identity fields, in the exact order
@@ -398,9 +392,9 @@ def _extract_current_task_role_id(messages) -> str | None:
     Duplicate / missing / reordered / conflicting / malformed identity fields,
     an un-terminated block, an ``current_task:`` / ``- role_id: R1`` fragment
     inside evidence or prose, additional/ambiguous user messages, or any
-    non-canonical message structure all yield ``None``. Only ``role_id == "R1"``
-    from a fully valid block selects the R1 override; R2/R3/R4 and R8 route to
-    the default transport.
+    non-canonical message structure all yield ``None``. A fully valid block
+    yields its ``role_id`` (R1/R2/R3/R4); the dispatcher then routes a
+    canonical role to the canonical transport and anything else to the default.
     """
     if not isinstance(messages, list) or not messages:
         return None
@@ -447,30 +441,112 @@ def _extract_current_task_role_id(messages) -> str | None:
     return values["role_id"]
 
 
+_R8_AUDIT_IDENTITY_FIELDS = (
+    "package_id", "subject_id", "package_version",
+    "source_snapshot_id", "role_id", "role_version",
+)
+
+
+def _extract_r8_role_id(messages) -> str | None:
+    """Return ``"R8"`` for ONE complete, unambiguous canonical R8
+    ``AUDIT_IDENTITY`` block -- exactly the structure
+    ``r8_llm_judgment._render_data_block`` emits -- or ``None`` (fail closed to
+    the default transport) for anything else. Mirrors
+    ``_extract_current_task_role_id`` strictness so R8 gains the canonical
+    provider options ONLY from a fully valid block.
+
+    All of the following must hold; any deviation yields ``None``:
+
+    * ``messages`` is a non-empty list whose every element is a dict whose
+      ``role`` is ``"system"`` or ``"user"``;
+    * exactly one element has ``role == "user"`` and its ``content`` is a
+      ``str``;
+    * that content's first line is exactly ``AUDIT_IDENTITY``;
+    * the lines immediately after it are ``- <key>: <value>`` entries whose
+      keys are EXACTLY ``_R8_AUDIT_IDENTITY_FIELDS`` in that order, each once,
+      each with a non-empty value;
+    * that entry block is closed by a line that does not start with ``"- "``
+      (the canonical ``PACKAGE_CLAIMS`` terminator).
+
+    Only ``role_id == "R8"`` from such a block returns ``"R8"``. A bare
+    ``AUDIT_IDENTITY`` marker, a prose ``- role_id: R8`` fragment, a wrong
+    ``role_id``, or a missing/reordered/duplicate identity field all yield
+    ``None``.
+    """
+    if not isinstance(messages, list) or not messages:
+        return None
+
+    user_contents = []
+    for m in messages:
+        if not isinstance(m, dict):
+            return None
+        role = m.get("role")
+        if role == "user":
+            user_contents.append(m.get("content"))
+        elif role != "system":
+            return None  # non-canonical message role -> fail closed
+    if len(user_contents) != 1:
+        return None
+    content = user_contents[0]
+    if not isinstance(content, str):
+        return None
+
+    lines = content.split("\n")
+    if lines[0] != "AUDIT_IDENTITY":
+        return None  # R8 identity block not in its canonical leading location
+
+    keys: list[str] = []
+    values: dict[str, str] = {}
+    terminated = False
+    for raw in lines[1:]:
+        if not raw.startswith("- "):
+            terminated = True
+            break
+        key, sep, value = raw[2:].partition(": ")
+        if sep != ": " or not key or not value:
+            return None  # malformed identity line -> fail closed
+        if key in values:
+            return None  # duplicate / conflicting identity field -> fail closed
+        keys.append(key)
+        values[key] = value
+
+    if not terminated:
+        return None  # block never closed by a canonical PACKAGE_CLAIMS line
+    if tuple(keys) != _R8_AUDIT_IDENTITY_FIELDS:
+        return None  # missing / extra / reordered identity fields -> fail closed
+    if values.get("role_id") != "R8":
+        return None  # not the canonical R8 audit identity -> fail closed
+
+    return "R8"
+
+
 def _role_dispatch_provider_callable(
-    r1_callable: Callable[[list], str],
-    r2_callable: Callable[[list], str],
+    canonical_callable: Callable[[list], str],
     default_callable: Callable[[list], str],
 ) -> Callable[[list], str]:
-    """Wrap three already-built provider callables in ONE routing callable.
+    """Wrap two already-built provider callables in ONE routing callable.
 
     Pure routing only -- no counting, no retry, no fallback, no exception
-    handling. The role is recognised solely from the canonical ``current_task``
-    identity block (independent of role_version): ``R1`` -> ``r1_callable`` and
-    ``R2`` -> ``r2_callable``; every other call (R3/R4 and R8, which carry no
-    R1/R2 current-task identity, plus any malformed / ambiguous / incomplete
-    identity that yields no role) is sent to ``default_callable``.
+    handling. The role is recognised solely from a complete, unambiguous
+    canonical identity block: ``_extract_current_task_role_id`` resolves
+    R1/R2/R3/R4 from the executor's ``current_task:`` block, and
+    ``_extract_r8_role_id`` resolves R8 from the ``AUDIT_IDENTITY`` block. A
+    recognised canonical role routes to ``canonical_callable``; any malformed /
+    ambiguous / incomplete / unknown identity routes to ``default_callable``
+    and never gains the canonical override.
     """
-    if not (
-        callable(r1_callable) and callable(r2_callable) and callable(default_callable)
-    ):
-        raise TypeError("all three provider callables must be callable")
-
-    role_callables = {ROLE_ORDER[0]: r1_callable, ROLE_ORDER[1]: r2_callable}
+    if not (callable(canonical_callable) and callable(default_callable)):
+        raise TypeError("both provider callables must be callable")
 
     def dispatch(messages: list) -> str:
         role_id = _extract_current_task_role_id(messages)
-        target = role_callables.get(role_id, default_callable)
+        if role_id is None:
+            role_id = _extract_r8_role_id(messages)
+        target = (
+            canonical_callable
+            if role_id in CANONICAL_RECONSTRUCTION_ROLE_IDS
+            else default_callable
+        )
         return target(messages)
 
     return dispatch
@@ -479,14 +555,14 @@ def _role_dispatch_provider_callable(
 def build_live_provider_callable() -> Callable[[list], str]:
     """Build the ONE role-dispatching provider callable for a ``--live`` run.
 
-    Three ``ProviderConfig`` objects are constructed through the existing
+    Two ``ProviderConfig`` objects are constructed through the existing
     ``build_provider_callable`` transport adapter; they are identical on every
-    field except:
+    field except the canonical reconstruction output policy:
 
-    * R1's ``max_tokens`` (65536 vs the default 8192) and its
-      ``extra_params={"thinking": {"type": "disabled"}}``;
-    * R2's ``extra_params={"thinking": {"type": "disabled"}}`` -- R2's
-      ``max_tokens`` stays at the default 8192 and is NOT raised.
+    * the canonical transport (R1/R2/R3/R4/R8) carries ``max_tokens=65536``
+      (a CEILING only) and ``extra_params={"thinking": {"type": "disabled"}}``;
+    * the default transport (any malformed / ambiguous / incomplete / unknown
+      call) stays unchanged at ``max_tokens=8192`` with no ``extra_params``.
 
     No secret value is stored on any config (``credential_env`` is a NAME
     only). ``crp_provider_adapter`` / ``llm_provider`` are not modified:
@@ -501,29 +577,18 @@ def build_live_provider_callable() -> Callable[[list], str]:
         max_tokens=LIVE_MAX_TOKENS,
         json_mode=True,
     )
-    r1_config = ProviderConfig(
+    canonical_config = ProviderConfig(
         provider_id=LIVE_PROVIDER_ID,
         model=LIVE_MODEL,
         base_url=LIVE_BASE_URL,
         credential_env=LIVE_CREDENTIAL_ENV,
         timeout_s=LIVE_TIMEOUT_S,
-        max_tokens=LIVE_R1_MAX_TOKENS,
+        max_tokens=LIVE_CANONICAL_MAX_TOKENS,
         json_mode=True,
-        extra_params=LIVE_R1_EXTRA_PARAMS,
-    )
-    r2_config = ProviderConfig(
-        provider_id=LIVE_PROVIDER_ID,
-        model=LIVE_MODEL,
-        base_url=LIVE_BASE_URL,
-        credential_env=LIVE_CREDENTIAL_ENV,
-        timeout_s=LIVE_TIMEOUT_S,
-        max_tokens=LIVE_R2_MAX_TOKENS,
-        json_mode=True,
-        extra_params=LIVE_R2_EXTRA_PARAMS,
+        extra_params=LIVE_CANONICAL_EXTRA_PARAMS,
     )
     return _role_dispatch_provider_callable(
-        build_provider_callable(r1_config),
-        build_provider_callable(r2_config),
+        build_provider_callable(canonical_config),
         build_provider_callable(default_config),
     )
 
@@ -693,8 +758,8 @@ def build_result_envelope(plan: KiraR4Plan, result: KiraR4RunResult) -> dict:
             "max_tokens": LIVE_MAX_TOKENS,
             "max_tokens_scope": "default",
             "role_provider_overrides": {
-                "R1": dict(max_tokens=LIVE_R1_MAX_TOKENS, **LIVE_R1_EXTRA_PARAMS),
-                "R2": dict(max_tokens=LIVE_R2_MAX_TOKENS, **LIVE_R2_EXTRA_PARAMS),
+                role_id: dict(max_tokens=LIVE_CANONICAL_MAX_TOKENS, **LIVE_CANONICAL_EXTRA_PARAMS)
+                for role_id in CANONICAL_RECONSTRUCTION_ROLE_IDS
             },
             "timeout_s": LIVE_TIMEOUT_S,
             "credential_env_name": LIVE_CREDENTIAL_ENV,
