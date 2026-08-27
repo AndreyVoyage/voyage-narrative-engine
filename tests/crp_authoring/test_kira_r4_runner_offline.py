@@ -2110,3 +2110,169 @@ class TestR1V3QualityGateEndToEnd:
             assert "used_evidence" in rr.provenance_summary
             for c in rr.claims:
                 assert len(c.source_evidence_ids) == 1
+
+
+# ---------------------------------------------------------------------------
+# Provider transport observability (R3 HIGH -- diagnostic only). A --live
+# provider call that fails closed on a non-"stop" finish_reason now carries the
+# COMPLETE parsed provider response on the LLMProviderError; the canonical
+# runner records it as exactly one structured stderr line and then re-raises
+# the SAME exception. No RoleResult, no R2, no retry, no fallback, no partial-
+# output recovery, no Candidate, no sidecar file. Fully offline: the synthetic
+# LLMProviderError is constructed in-process; no provider/network call is made.
+# ---------------------------------------------------------------------------
+
+def _synthetic_length_provider_error():
+    """A synthetic offline LLMProviderError shaped exactly like the one
+    ``llm_provider._complete_cloud`` raises for ``finish_reason == "length"``,
+    carrying a full preserved ``provider_diagnostic`` response."""
+    data = {
+        "id": "chatcmpl-synthetic-len-1",
+        "model": "deepseek-v4-pro",
+        "created": 1735689600,
+        "system_fingerprint": "fp_synthetic_0001",
+        "choices": [
+            {
+                "index": 0,
+                "finish_reason": "length",
+                "message": {
+                    "role": "assistant",
+                    "content": '{"partial": "this JSON answer was cut off mid-',
+                    "reasoning_content": "SENTINEL_REASONING_TRACE_KEEP_ME",
+                },
+            }
+        ],
+        "usage": {
+            "prompt_tokens": 1234,
+            "completion_tokens": 8192,
+            "total_tokens": 9426,
+            "completion_tokens_details": {"reasoning_tokens": 4096, "accepted_prediction_tokens": 0},
+            "prompt_cache_hit_tokens": 128,
+        },
+    }
+    from llm_provider import LLMProviderError
+
+    exc = LLMProviderError(
+        "cloud provider did not finish successfully (finish_reason='length')"
+    )
+    exc.provider_diagnostic = data
+    return exc, data
+
+
+def _diagnostic_lines(stderr_text):
+    return [
+        ln for ln in stderr_text.splitlines()
+        if ln.startswith(runner.PROVIDER_FAILURE_DIAGNOSTIC_PREFIX)
+    ]
+
+
+def _parse_diagnostic_line(line):
+    return _strict_json_loads(line[len(runner.PROVIDER_FAILURE_DIAGNOSTIC_PREFIX):])
+
+
+class TestProviderFailureDiagnostic:
+    def test_emit_writes_one_strict_json_record_preserving_everything(self, capsys):
+        exc, data = _synthetic_length_provider_error()
+
+        emitted = runner._emit_provider_failure_diagnostic(exc)
+        assert emitted is True
+
+        lines = _diagnostic_lines(capsys.readouterr().err)
+        assert len(lines) == 1  # exactly ONE structured record
+
+        payload = _parse_diagnostic_line(lines[0])  # strict JSON (no NaN/Infinity)
+        assert payload["artifact_type"] == "CRP_PROVIDER_FAILURE_DIAGNOSTIC"
+        assert payload["schema_version"] == "1"
+        assert payload["finish_reason"] == "length"
+
+        # FULL parsed response, untruncated, byte-for-byte
+        assert payload["provider_response"] == data
+        pr = payload["provider_response"]
+        assert pr["id"] == "chatcmpl-synthetic-len-1"
+        assert pr["model"] == "deepseek-v4-pro"
+        assert pr["system_fingerprint"] == "fp_synthetic_0001"
+        assert pr["usage"] == data["usage"]  # ENTIRE usage object
+        assert pr["usage"]["completion_tokens_details"]["reasoning_tokens"] == 4096
+        msg = pr["choices"][0]["message"]
+        assert msg["content"] == data["choices"][0]["message"]["content"]  # not truncated
+        assert msg["reasoning_content"] == "SENTINEL_REASONING_TRACE_KEEP_ME"  # not truncated
+
+    def test_emit_is_noop_without_preserved_response(self, capsys):
+        from llm_provider import LLMProviderError
+
+        emitted = runner._emit_provider_failure_diagnostic(LLMProviderError("plain transport error"))
+        assert emitted is False
+        assert _diagnostic_lines(capsys.readouterr().err) == []
+
+    def test_emit_does_not_serialize_secrets_or_request_headers(self, capsys, monkeypatch):
+        monkeypatch.setenv("DEEPSEEK_API_KEY", "DO_NOT_LEAK_SYNTHETIC_SECRET")
+        exc, _data = _synthetic_length_provider_error()
+
+        runner._emit_provider_failure_diagnostic(exc)
+
+        err = capsys.readouterr().err
+        payload = _parse_diagnostic_line(_diagnostic_lines(err)[0])
+        assert "DO_NOT_LEAK_SYNTHETIC_SECRET" not in err
+        for forbidden in ("Authorization", "Bearer ", "api_key", "credential_env", "headers"):
+            assert forbidden not in err
+        # only provider-response keys are present in the record
+        assert set(payload) == {
+            "artifact_type", "schema_version", "finish_reason", "provider_response",
+        }
+
+    def test_main_live_emits_diagnostic_then_reraises_same_failure(self, monkeypatch, capsys):
+        from llm_provider import LLMProviderError
+
+        exc, data = _synthetic_length_provider_error()
+        envelope_built = {"value": False}
+
+        def boom(provider_callable, plan):
+            raise exc
+
+        monkeypatch.setattr(runner, "build_live_provider_callable", lambda: (lambda messages: "unused"))
+        monkeypatch.setattr(runner, "execute_kira_r4_reconstruction", boom)
+        monkeypatch.setattr(
+            runner, "build_result_envelope",
+            lambda *a, **k: envelope_built.__setitem__("value", True),
+        )
+
+        with pytest.raises(LLMProviderError) as excinfo:
+            runner.main(["--live"])
+
+        # the SAME exception object propagates -- unchanged, still fail-closed
+        assert excinfo.value is exc
+        # no success artifact was produced: no envelope, no RoleResult, no
+        # R2/candidate, no retry, no fallback
+        assert envelope_built["value"] is False
+
+        captured = capsys.readouterr()
+        assert captured.out == ""  # no success document on stdout
+
+        lines = _diagnostic_lines(captured.err)
+        assert len(lines) == 1
+        payload = _parse_diagnostic_line(lines[0])
+        assert payload["finish_reason"] == "length"
+        assert payload["provider_response"] == data
+        assert payload["provider_response"]["usage"] == data["usage"]
+        assert (
+            payload["provider_response"]["choices"][0]["message"]["reasoning_content"]
+            == "SENTINEL_REASONING_TRACE_KEEP_ME"
+        )
+
+    def test_happy_live_run_emits_no_failure_diagnostic(self, monkeypatch, capsys):
+        real_plan = runner.build_kira_r4_plan()
+
+        def fake_build_provider_callable(config):
+            provider, _, _ = _dispatch_provider(
+                _happy_payloads(real_plan),
+                _r8_judgment_json(real_plan.compile_context.package_id),
+            )
+            return provider
+
+        monkeypatch.setattr(runner, "build_provider_callable", fake_build_provider_callable)
+        exit_code = runner.main(["--live"])
+        assert exit_code == 0
+
+        captured = capsys.readouterr()
+        assert "CRP_PROVIDER_FAILURE_DIAGNOSTIC" not in captured.err
+        assert "CRP_PROVIDER_FAILURE_DIAGNOSTIC" not in captured.out

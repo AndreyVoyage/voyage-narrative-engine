@@ -198,11 +198,19 @@ def _complete_cloud(
                 # Fail closed: only an explicit "stop" is accepted as a complete,
                 # successful non-streaming answer. Missing or non-success values
                 # (length, content_filter, tool_calls, etc.) must never be treated
-                # as a finished answer. Only terminal metadata is surfaced here;
-                # no reasoning text or credential material is ever included.
-                raise LLMProviderError(
+                # as a finished answer. The human-readable message still surfaces
+                # only terminal metadata and no credential material.
+                #
+                # The COMPLETE parsed provider response is preserved on the
+                # exception (out-of-band diagnostic attribute only) so an outer
+                # boundary can record it before the fail-closed error propagates.
+                # ``data`` is never mutated; this truncated response is never
+                # returned as success, never repaired, never retried.
+                error = LLMProviderError(
                     f"cloud provider did not finish successfully (finish_reason={finish_reason!r})"
                 )
+                error.provider_diagnostic = data
+                raise error
             message = choice.get("message")
             if isinstance(message, dict) and isinstance(message.get("content"), str):
                 content = message["content"]

@@ -11,6 +11,7 @@ no retry/fallback. No real HTTP request, no real credential read.
 
 from __future__ import annotations
 
+import copy
 import os
 import sys
 
@@ -296,6 +297,96 @@ class TestCloudExtractionBoundary:
                 monkeypatch,
                 {"choices": [{"message": {"content": "partial"}, "finish_reason": "length"}]},
             )
+
+    # --- provider transport observability (R3): the fail-closed exception on a
+    # non-"stop" finish_reason must preserve the COMPLETE parsed provider
+    # response, unmodified, without changing the human-readable message or the
+    # fail-closed behaviour itself.
+
+    _SYNTHETIC_LENGTH_RESPONSE = {
+        "id": "chatcmpl-synthetic-len-1",
+        "model": "deepseek-v4-pro",
+        "created": 1735689600,
+        "system_fingerprint": "fp_synthetic_0001",
+        "choices": [
+            {
+                "index": 0,
+                "finish_reason": "length",
+                "message": {
+                    "role": "assistant",
+                    "content": '{"partial": "this JSON answer was cut off mid-',
+                    "reasoning_content": "SENTINEL_REASONING_TRACE_KEEP_ME",
+                },
+            }
+        ],
+        "usage": {
+            "prompt_tokens": 1234,
+            "completion_tokens": 8192,
+            "total_tokens": 9426,
+            "completion_tokens_details": {"reasoning_tokens": 4096, "accepted_prediction_tokens": 0},
+            "prompt_cache_hit_tokens": 128,
+        },
+    }
+
+    def test_non_stop_preserves_complete_parsed_response_on_exception(self, monkeypatch):
+        expected = self._SYNTHETIC_LENGTH_RESPONSE
+        body = copy.deepcopy(expected)
+        monkeypatch.setattr(llm_provider, "_post_json", lambda *a, **k: body)
+
+        with pytest.raises(llm_provider.LLMProviderError) as excinfo:
+            llm_provider._complete_cloud(
+                [{"role": "user", "content": "hi"}],
+                model="m",
+                params={"api_key": "synthetic-test-value", "base_url": "https://fake.invalid"},
+            )
+
+        exc = excinfo.value
+        # exception message semantics unchanged (still terminal metadata only)
+        assert str(exc) == (
+            "cloud provider did not finish successfully (finish_reason='length')"
+        )
+        # complete parsed response preserved, unmodified, same object (not copied)
+        diag = exc.provider_diagnostic
+        assert diag is body
+        assert diag == expected
+
+        # every required field/value survives exactly
+        assert diag["id"] == "chatcmpl-synthetic-len-1"
+        assert diag["model"] == "deepseek-v4-pro"
+        assert diag["created"] == 1735689600
+        assert diag["system_fingerprint"] == "fp_synthetic_0001"
+        choice = diag["choices"][0]
+        assert choice["finish_reason"] == "length"
+        assert choice["message"]["content"] == expected["choices"][0]["message"]["content"]
+        assert choice["message"]["content"].strip() != ""
+        assert choice["message"]["reasoning_content"] == "SENTINEL_REASONING_TRACE_KEEP_ME"
+        usage = diag["usage"]
+        assert usage == expected["usage"]
+        assert usage["prompt_tokens"] == 1234
+        assert usage["completion_tokens"] == 8192
+        assert usage["total_tokens"] == 9426
+        assert usage["completion_tokens_details"]["reasoning_tokens"] == 4096
+        assert usage["completion_tokens_details"]["accepted_prediction_tokens"] == 0
+        assert usage["prompt_cache_hit_tokens"] == 128
+
+    def test_non_stop_does_not_mutate_the_parsed_response(self, monkeypatch):
+        expected = copy.deepcopy(self._SYNTHETIC_LENGTH_RESPONSE)
+        body = copy.deepcopy(expected)
+        monkeypatch.setattr(llm_provider, "_post_json", lambda *a, **k: body)
+        with pytest.raises(llm_provider.LLMProviderError):
+            llm_provider._complete_cloud(
+                [{"role": "user", "content": "hi"}],
+                model="m",
+                params={"api_key": "synthetic-test-value", "base_url": "https://fake.invalid"},
+            )
+        assert body == expected  # untouched
+
+    def test_stop_success_path_has_no_provider_diagnostic(self, monkeypatch):
+        out = self._run(
+            monkeypatch,
+            {"choices": [{"message": {"content": "the-answer"}, "finish_reason": "stop"}]},
+        )
+        assert out == "the-answer"  # unchanged success behaviour, nothing preserved
 
     def test_missing_finish_reason_fails_closed(self, monkeypatch):
         with pytest.raises(llm_provider.LLMProviderError):

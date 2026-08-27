@@ -72,6 +72,7 @@ from services.crp_authoring.auditor_checks import AuditPolicy  # noqa: E402
 from services.crp_authoring.reconstruction_audit import ReconstructionAudit  # noqa: E402
 from services.crp_authoring.registry import load_role_registry  # noqa: E402
 from crp_provider_adapter import ProviderConfig, build_provider_callable  # noqa: E402
+from llm_provider import LLMProviderError  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -671,6 +672,62 @@ def build_result_envelope(plan: KiraR4Plan, result: KiraR4RunResult) -> dict:
     }
 
 
+# ---------------------------------------------------------------------------
+# Provider transport observability (R3 HIGH -- diagnostic only).
+#
+# When a --live provider call fails closed with a non-"stop" finish_reason,
+# llm_provider preserves the COMPLETE parsed provider response on the
+# LLMProviderError as ``provider_diagnostic``. The canonical runner records it
+# as exactly one structured JSON line on stderr (the existing stderr capture is
+# the only capture mechanism -- no sidecar files) and then RE-RAISES the same
+# exception unchanged. This is pure observability: the truncated response never
+# becomes a RoleResult, is never parsed, repaired, returned, retried, or
+# accepted as a Candidate. Provider RESPONSE data only -- no environment
+# variable, HTTP header, Authorization value, or credential is read here.
+# ---------------------------------------------------------------------------
+
+PROVIDER_FAILURE_DIAGNOSTIC_ARTIFACT_TYPE = "CRP_PROVIDER_FAILURE_DIAGNOSTIC"
+PROVIDER_FAILURE_DIAGNOSTIC_SCHEMA_VERSION = "1"
+PROVIDER_FAILURE_DIAGNOSTIC_PREFIX = "CRP_PROVIDER_FAILURE_DIAGNOSTIC "
+
+
+def _emit_provider_failure_diagnostic(exc: LLMProviderError, stream=None) -> bool:
+    """Write one structured provider-failure diagnostic line to stderr.
+
+    Returns ``True`` when ``exc`` carried a preserved provider response and a
+    record was emitted, ``False`` (no output) otherwise. Strict JSON
+    serialization: ``ensure_ascii=False``, ``allow_nan=False``, no repr/str
+    fallback, and no truncation of ``message.content``, ``usage``, or
+    ``reasoning_content``. The caller re-raises ``exc`` unchanged.
+    """
+    data = getattr(exc, "provider_diagnostic", None)
+    if data is None:
+        return False
+
+    finish_reason = None
+    if isinstance(data, MappingABC):
+        choices = data.get("choices")
+        if isinstance(choices, (list, tuple)) and choices and isinstance(choices[0], MappingABC):
+            finish_reason = choices[0].get("finish_reason")
+
+    record = {
+        "artifact_type": PROVIDER_FAILURE_DIAGNOSTIC_ARTIFACT_TYPE,
+        "schema_version": PROVIDER_FAILURE_DIAGNOSTIC_SCHEMA_VERSION,
+        "finish_reason": finish_reason,
+        "provider_response": data,
+    }
+
+    if stream is None:
+        stream = sys.stderr
+    stream.write(
+        PROVIDER_FAILURE_DIAGNOSTIC_PREFIX
+        + json.dumps(record, ensure_ascii=False, allow_nan=False)
+        + "\n"
+    )
+    stream.flush()
+    return True
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
         prog="crp_kira_r4_runner",
@@ -695,7 +752,15 @@ def main(argv=None) -> int:
         return 0
 
     provider_callable = build_live_provider_callable()
-    result = execute_kira_r4_reconstruction(provider_callable, plan)
+    try:
+        result = execute_kira_r4_reconstruction(provider_callable, plan)
+    except LLMProviderError as exc:
+        # Provider transport observability only: record the preserved provider
+        # response (if any) as one structured stderr line, then re-raise the
+        # SAME fail-closed exception. No RoleResult, no R2, no retry, no
+        # fallback, no partial-output recovery, no Candidate acceptance.
+        _emit_provider_failure_diagnostic(exc)
+        raise
     envelope = build_result_envelope(plan, result)
     print(json.dumps(envelope, ensure_ascii=False, indent=2, allow_nan=False))
     return 0
