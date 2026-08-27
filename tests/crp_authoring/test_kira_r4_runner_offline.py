@@ -642,7 +642,7 @@ class TestLiveGate:
         assert config.model == "deepseek-v4-pro"
         assert config.base_url == "https://api.deepseek.com"
         assert config.max_tokens == 8192
-        assert config.timeout_s == 60.0
+        assert config.timeout_s == 180.0
         assert config.credential_env == "DEEPSEEK_API_KEY"
         assert config.json_mode is True
         # No secret value is ever stored on the config, and no retry/fallback

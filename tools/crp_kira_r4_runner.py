@@ -94,7 +94,7 @@ LIVE_PROVIDER_ID = "deepseek"
 LIVE_MODEL = "deepseek-v4-pro"
 LIVE_BASE_URL = "https://api.deepseek.com"
 LIVE_CREDENTIAL_ENV = "DEEPSEEK_API_KEY"
-LIVE_TIMEOUT_S = 60.0
+LIVE_TIMEOUT_S = 180.0
 LIVE_MAX_TOKENS = 8192
 
 
