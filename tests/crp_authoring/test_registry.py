@@ -8,6 +8,8 @@ import pytest
 
 from services.crp_authoring import (
     ExecutionType,
+    PERMISSIONS_BY_ROLE,
+    Permission,
     RoleRegistry,
     RoleStatus,
 )
@@ -94,9 +96,10 @@ class TestDeclarativeRegistryLoad:
 
     def test_r2_resolves_exact_version(self) -> None:
         registry = load_role_registry()
-        entry = registry.resolve("R2", "v2")
+        entry = registry.resolve("R2", "v3")
         assert entry.status is RoleStatus.ACTIVE
         assert entry.execution_type is ExecutionType.LLM_ROLE
+        assert entry.prompt_ref.endswith("ROLE_2_PSYCHOLOGICAL_HYPOTHESIS_ANALYST_v3_PROMPT.md")
 
     def test_r1_old_version_not_resolvable(self) -> None:
         # The registry stores only the current authoritative pin (no full
@@ -112,6 +115,8 @@ class TestDeclarativeRegistryLoad:
         registry = load_role_registry()
         with pytest.raises(CrpValidationError):
             registry.resolve("R2", "v1")
+        with pytest.raises(CrpValidationError):
+            registry.resolve("R2", "v2")
 
     def test_r1_predecessor_version_recorded(self) -> None:
         registry = load_role_registry()
@@ -119,7 +124,13 @@ class TestDeclarativeRegistryLoad:
 
     def test_r2_predecessor_version_recorded(self) -> None:
         registry = load_role_registry()
-        assert registry.get("R2").predecessor_version == "v1"
+        assert registry.get("R2").predecessor_version == "v2"
+
+    def test_r2_permissions_unchanged_and_still_lacks_unknown(self) -> None:
+        registry = load_role_registry()
+        entry = registry.get("R2")
+        assert entry.permissions == PERMISSIONS_BY_ROLE["R2"]
+        assert Permission.EMIT_CLAIMS_UNKNOWN not in entry.permissions
 
     def test_r4_resolves_exact_version(self) -> None:
         registry = load_role_registry()

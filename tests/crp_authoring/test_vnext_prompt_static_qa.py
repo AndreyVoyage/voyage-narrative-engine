@@ -349,3 +349,58 @@ class TestR3Prompt:
         low = _lower(_load()["R3"])
         assert "claim_type=unknown" in low.replace(" ", "")
         assert "insufficient_evidence" in low
+
+
+_R2_V2_PATH = _REPO_ROOT / "roles" / "vnext" / "ROLE_2_PSYCHOLOGICAL_HYPOTHESIS_ANALYST_v2_PROMPT.md"
+_R2_V3_PATH = _REPO_ROOT / "roles" / "vnext" / "ROLE_2_PSYCHOLOGICAL_HYPOTHESIS_ANALYST_v3_PROMPT.md"
+
+_NO_UNKNOWN_CLAIM_TYPE_ENUM = (
+    '"claim_type": "HYPOTHESIS | INFERENCE | OBSERVATION | SELF_REPORT | '
+    'THIRD_PARTY_REPORT | BEHAVIORAL_EVIDENCE | FACT | CONTRADICTION"'
+)
+_UNKNOWN_CLAIM_TYPE_ENUM = (
+    '"claim_type": "HYPOTHESIS | INFERENCE | OBSERVATION | SELF_REPORT | '
+    'THIRD_PARTY_REPORT | BEHAVIORAL_EVIDENCE | FACT | CONTRADICTION | UNKNOWN"'
+)
+
+
+class TestR2V3ContractCorrection:
+    """Static QA for the R2 v3 prompt-contract correction (RUN_010):
+    claim_type=UNKNOWN is not emittable by R2; insufficient evidence routes to
+    top-level ``unknowns`` instead of a UNKNOWN claim. v2 remains unchanged."""
+
+    def _text(self) -> str:
+        assert _R2_V3_PATH.exists(), f"missing v3 prompt: {_R2_V3_PATH}"
+        return _R2_V3_PATH.read_text(encoding="utf-8")
+
+    def test_v3_metadata_and_predecessor(self) -> None:
+        text = self._text()
+        assert "prompt_version: v3" in text
+        assert "predecessor_version: v2" in text
+        assert "role_id: R2" in text
+        assert "prompt_id: ROLE_2_PSYCHOLOGICAL_HYPOTHESIS_ANALYST" in text
+
+    def test_v3_claim_type_enum_excludes_unknown(self) -> None:
+        text = self._text()
+        assert _NO_UNKNOWN_CLAIM_TYPE_ENUM in text
+        assert _UNKNOWN_CLAIM_TYPE_ENUM not in text
+
+    def test_v3_unknown_not_emittable_stated(self) -> None:
+        low = self._text().lower()
+        assert "claim_type=unknown" in low.replace(" ", "")
+        assert "not emittable" in low
+
+    def test_v3_routes_insufficient_evidence_to_unknowns(self) -> None:
+        low = " ".join(self._text().lower().split())
+        assert "insufficient evidence" in low
+        assert "top-level" in low
+        assert "unknowns" in low
+        assert "completion_status" in low
+        assert "requests_for_more_evidence" in low
+        assert "questions_for_r1" in low
+
+    def test_v2_remains_unchanged_and_present(self) -> None:
+        assert _R2_V2_PATH.exists(), "v2 prompt must remain on disk"
+        text = _R2_V2_PATH.read_text(encoding="utf-8")
+        assert "prompt_version: v2" in text
+        assert _UNKNOWN_CLAIM_TYPE_ENUM in text

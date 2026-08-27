@@ -49,12 +49,21 @@ roles:
     predecessor_version: v2
 
   # ---------------------------------------------------------------- R2
+  # v3 (RUN_010): owner-approved prompt-contract correction of v2. R2 v2
+  # emitted claim_type=UNKNOWN, but R2 correctly lacks EMIT_CLAIMS_UNKNOWN and
+  # the executor rejected it fail-closed. The permission model is correct; the
+  # fix is prompt-only: claim_type=UNKNOWN is no longer in R2's output enum,
+  # and insufficient evidence routes to top-level `unknowns`. Permissions and
+  # downstream contract are preserved from v2. Under the single-entry registry
+  # contract (exact version pin, no latest-wins), v2 is no longer a resolvable
+  # active R2 version; the v2 prompt file is retained on disk as the immutable
+  # predecessor artifact.
   - role_id: R2
     display_name: Psychological Hypothesis Analyst
-    version: v2
+    version: v3
     status: ACTIVE
     execution_type: LLM_ROLE
-    prompt_ref: roles/vnext/ROLE_2_PSYCHOLOGICAL_HYPOTHESIS_ANALYST_v2_PROMPT.md
+    prompt_ref: roles/vnext/ROLE_2_PSYCHOLOGICAL_HYPOTHESIS_ANALYST_v3_PROMPT.md
     knowledge_profile_ref: profile-r2
     input_contract_ref: role_task_v1
     output_contract_ref: role_result_v1
@@ -65,7 +74,7 @@ roles:
       - EMIT_CLAIMS_BEHAVIOR
       - EMIT_CLAIMS_RELATIONSHIPS
     activation_gate: "CRP_MVP_SPEC_v1@2026-08-16:OWNER_RATIFIED_SPECIFICATION"
-    predecessor_version: v1
+    predecessor_version: v2
 
   # ---------------------------------------------------------------- R3
   # ACTIVE in the registry (technically executable). R3 remains per-task gated
