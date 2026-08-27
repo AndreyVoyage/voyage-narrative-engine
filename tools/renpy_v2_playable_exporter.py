@@ -415,7 +415,13 @@ def render_branch(scene: dict[str, Any], choice_point: dict[str, Any], branch: d
     return lines
 
 
-def render_scene(scene: dict[str, Any], scene_path: Path) -> str:
+def render_scene(
+    scene: dict[str, Any],
+    scene_path: Path,
+    *,
+    visual_asset: Any | None = None,
+    visual_statement_kind: str | None = None,
+) -> str:
     scene_id = scene.get("id")
     scene_name = scene.get("name", "")
     label = safe_label_id(scene_id)
@@ -446,6 +452,21 @@ def render_scene(scene: dict[str, Any], scene_path: Path) -> str:
         f"label {label}_start:",
         "",
     ]
+
+    # C4-U-EMIT v0: at most one explicit, scene-level visual statement,
+    # emitted immediately after the scene label and before any position hook
+    # or narrative/beat content. The visual semantics (scene vs show) are
+    # supplied explicitly by the caller; this exporter never infers them from
+    # scene JSON, Registry category, asset_id, media_item_id, character_id,
+    # relative_path, or filename. No Registry lookup, no binding construction,
+    # and no resolution happen here.
+    if visual_asset is not None or visual_statement_kind is not None:
+        from tools.vne_to_renpy.visual_statement_emitter import emit_visual_statement
+
+        for _visual_line in emit_visual_statement(
+            visual_asset, statement_kind=visual_statement_kind
+        ):
+            lines.append(f"    {_visual_line}")
 
     # Set scene-level position at the start label.
     lines.append(f"    {emit_set_scene_beat(str(scene_id), 'start')}")
