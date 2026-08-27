@@ -23,22 +23,24 @@ from .errors import (
 from .model import ProductionMediaAssetBinding, ResolvedAsset
 
 # Repo-root-relative prefix of the Ren'Py game images directory. Ren'Py's
-# ``config.automatic_images`` auto-defines images relative to ``game/images/``;
-# in this repository ``game`` lives at ``novel/game``, so the repo-relative
-# images root is ``novel/game/images/``.
+# automatic image discovery scans ``game/images/``; in this repository ``game``
+# lives at ``novel/game``, so the repo-relative images root is
+# ``novel/game/images/``.
 _GAME_IMAGES_PREFIX = "novel/game/images/"
 
 _SUPPORTED_EXTS = ("png", "webp", "jpg")
 
 
 def renpy_image_name_from_relative_path(relative_path: str) -> str:
-    """Derive the Ren'Py automatic image name from a Registry relative_path.
+    """Derive the Ren'Py 8.5 automatic image name from a Registry relative_path.
 
-    Generic and pure: strips the committed game-images root prefix, removes a
-    supported image extension, then joins the remaining directory components
-    with single spaces (Ren'Py's automatic-image naming rule). Fails closed for
-    absolute/traversal paths, unsupported extensions, and paths outside the
-    game images root. No special-casing of character/category/asset.
+    Generic and pure: validates the committed game-images root prefix, removes
+    a supported image extension, then returns the lowercase basename stem
+    (dropping any ``@`` oversampling suffix). Ren'Py 8.5 automatic-image naming
+    is directory-independent (``renpy/common/00images.rpy`` registers the
+    basename stem). Fails closed for absolute/traversal paths, unsupported
+    extensions, and paths outside the game images root. No special-casing of
+    character/category/asset.
     """
     if not isinstance(relative_path, str) or relative_path.strip() == "":
         raise AssetResolutionError("relative_path must be a non-empty string")
@@ -70,7 +72,14 @@ def renpy_image_name_from_relative_path(relative_path: str) -> str:
     if any(c in ("", ".") for c in components):
         raise AssetResolutionError(f"relative_path has an empty path component: {relative_path!r}")
 
-    return " ".join(components)
+    # Ren'Py 8.5 automatic-image naming is directory-independent: the image
+    # name is the lowercase basename stem with any @ oversampling suffix
+    # removed. Parent directory components are never part of the name.
+    stem = components[-1].lower().partition("@")[0]
+    if not stem:
+        raise AssetResolutionError("relative_path yields an empty image name")
+
+    return stem
 
 
 def resolve_bound_asset(

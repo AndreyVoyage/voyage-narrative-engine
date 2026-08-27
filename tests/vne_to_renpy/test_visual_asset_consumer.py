@@ -38,7 +38,7 @@ KIRA_ASSET_ID = "kira_yoga_hall_pilot_image_01"
 KIRA_RELATIVE_PATH = (
     "novel/game/images/story/characters/kira/kira_yoga_hall_pilot_image_01.png"
 )
-KIRA_RENPY_NAME = "story characters kira kira_yoga_hall_pilot_image_01"
+KIRA_RENPY_NAME = "kira_yoga_hall_pilot_image_01"
 
 _KIRA_REGISTRY_PATH = (
     _REPO_ROOT / "scenarios" / "visual_assets" / "ASSET_REGISTRY.json"
@@ -96,7 +96,7 @@ def test_unequal_ids_resolve_keyed_on_asset_id(tmp_path):
     )
     assert result.asset_id == "production_asset_abc"
     assert result.relative_path == "novel/game/images/story/cg/abc.png"
-    assert result.renpy_image_name == "story cg abc"
+    assert result.renpy_image_name == "abc"
 
 
 # ---------------------------------------------------------------------------

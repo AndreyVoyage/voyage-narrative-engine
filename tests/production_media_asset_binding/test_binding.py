@@ -32,7 +32,7 @@ from services.production_media_asset_binding import (  # noqa: E402
 )
 
 KIRA_RELATIVE_PATH = "novel/game/images/story/characters/kira/kira_yoga_hall_pilot_image_01.png"
-KIRA_RENPY_NAME = "story characters kira kira_yoga_hall_pilot_image_01"
+KIRA_RENPY_NAME = "kira_yoga_hall_pilot_image_01"
 
 
 def _record(asset_id: str, relative_path: str) -> dict:
@@ -161,7 +161,37 @@ def test_generic_renpy_name_transform():
         renpy_image_name_from_relative_path(
             "novel/game/images/story/characters/marina/marina_pose_01.png"
         )
-        == "story characters marina marina_pose_01"
+        == "marina_pose_01"
+    )
+
+
+def test_generic_cg_basename():
+    assert (
+        renpy_image_name_from_relative_path("novel/game/images/story/cg/abc.png")
+        == "abc"
+    )
+
+
+def test_generic_background_webp_basename():
+    assert (
+        renpy_image_name_from_relative_path(
+            "novel/game/images/story/backgrounds/hall.webp"
+        )
+        == "hall"
+    )
+
+
+def test_lowercase_normalization():
+    assert (
+        renpy_image_name_from_relative_path("novel/game/images/story/cg/KIRA_ABC.png")
+        == "kira_abc"
+    )
+
+
+def test_oversampling_suffix_stripped():
+    assert (
+        renpy_image_name_from_relative_path("novel/game/images/story/cg/abc@2x.png")
+        == "abc"
     )
 
 

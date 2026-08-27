@@ -48,8 +48,8 @@ _KIRA_ID = "kira_yoga_hall_pilot_image_01"
 _KIRA_RELATIVE = (
     "novel/game/images/story/characters/kira/kira_yoga_hall_pilot_image_01.png"
 )
-_KIRA_IMAGE_NAME = "story characters kira kira_yoga_hall_pilot_image_01"
-_KIRA_LINE = "scene story characters kira kira_yoga_hall_pilot_image_01"
+_KIRA_IMAGE_NAME = "kira_yoga_hall_pilot_image_01"
+_KIRA_LINE = "scene kira_yoga_hall_pilot_image_01"
 
 _ACTIVE_TMP_DIRS: list = []
 
@@ -267,7 +267,7 @@ def test_distinct_ids_passed_through_to_adapter(monkeypatch):
         return ResolvedAsset(
             asset_id=asset_id,
             relative_path="novel/game/images/story/cg/x.png",
-            renpy_image_name="story cg x",
+            renpy_image_name="x",
         )
 
     import tools.vne_to_renpy as adapter_pkg
@@ -302,7 +302,7 @@ def test_unequal_ids_resolve_keyed_on_asset_id_via_tmp_registry(tmp_path):
     )
     assert resolved.asset_id == "generic_cg_01"
     assert resolved.relative_path == "novel/game/images/story/cg/abc.png"
-    assert resolved.renpy_image_name == "story cg abc"
+    assert resolved.renpy_image_name == "abc"
     assert kind == "show"
 
 
@@ -376,8 +376,8 @@ def test_generic_show_via_build_wiring(tmp_path):
     text = exporter.render_scene(
         scene, path, visual_asset=resolved, visual_statement_kind=kind
     )
-    assert "\n    show story cg abc\n" in text
-    assert "\n    scene story cg abc\n" not in text
+    assert "\n    show abc\n" in text
+    assert "\n    scene abc\n" not in text
 
 
 def test_statement_kind_not_inferred_from_registry_category(tmp_path):

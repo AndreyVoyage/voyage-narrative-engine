@@ -83,7 +83,7 @@ _KIRA = ResolvedAsset(
     relative_path=(
         "novel/game/images/story/characters/kira/kira_yoga_hall_pilot_image_01.png"
     ),
-    renpy_image_name="story characters kira kira_yoga_hall_pilot_image_01",
+    renpy_image_name="kira_yoga_hall_pilot_image_01",
 )
 
 
@@ -110,7 +110,7 @@ def test_visual_line_inserted_after_label_before_story_content():
 
     label_idx = text.find("label sc_017_v2_start:")
     visual_idx = text.find(
-        "    scene story characters kira kira_yoga_hall_pilot_image_01"
+        "    scene kira_yoga_hall_pilot_image_01"
     )
     set_beat_idx = text.find("_vne_aside_set_scene_beat")
     first_narrator_idx = text.find("narrator ")
@@ -122,9 +122,9 @@ def test_visual_line_inserted_after_label_before_story_content():
     assert label_idx < visual_idx < set_beat_idx < first_narrator_idx
 
     # exactly one visual line, on its own line, with no extra modifiers
-    assert text.count("scene story characters kira kira_yoga_hall_pilot_image_01") == 1
+    assert text.count("scene kira_yoga_hall_pilot_image_01") == 1
     visual_line = text.splitlines()[text[:visual_idx].count("\n")]
-    assert visual_line == "    scene story characters kira kira_yoga_hall_pilot_image_01"
+    assert visual_line == "    scene kira_yoga_hall_pilot_image_01"
     for forbidden in (" with ", " at ", " onlayer ", " zorder ", " behind "):
         assert forbidden not in visual_line
     assert "hide " not in text
@@ -136,13 +136,13 @@ def test_generic_show_via_exporter_hook():
     bg = ResolvedAsset(
         asset_id="some_bg",
         relative_path="novel/game/images/story/cg/abc.png",
-        renpy_image_name="story cg abc",
+        renpy_image_name="abc",
     )
     text = exporter.render_scene(
         _SCENE, path, visual_asset=bg, visual_statement_kind="show"
     )
-    assert "\n    show story cg abc\n" in text
-    assert "\n    scene story cg abc\n" not in text
+    assert "\n    show abc\n" in text
+    assert "\n    scene abc\n" not in text
 
 
 def test_exporter_hook_fails_closed_on_bad_kind():

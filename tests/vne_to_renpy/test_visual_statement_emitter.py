@@ -42,14 +42,14 @@ def _resolved(
 
 # 1. GENERIC_SCENE
 def test_generic_scene_statement():
-    out = emit_visual_statement(_resolved("story backgrounds hall"), statement_kind="scene")
-    assert out == ["scene story backgrounds hall"]
+    out = emit_visual_statement(_resolved("hall"), statement_kind="scene")
+    assert out == ["scene hall"]
 
 
 # 2. GENERIC_SHOW
 def test_generic_show_statement():
-    out = emit_visual_statement(_resolved("story cg abc"), statement_kind="show")
-    assert out == ["show story cg abc"]
+    out = emit_visual_statement(_resolved("abc"), statement_kind="show")
+    assert out == ["show abc"]
 
 
 # 3. REAL_KIRA
@@ -60,17 +60,17 @@ def test_real_kira_scene_statement():
             "novel/game/images/story/characters/kira/"
             "kira_yoga_hall_pilot_image_01.png"
         ),
-        renpy_image_name="story characters kira kira_yoga_hall_pilot_image_01",
+        renpy_image_name="kira_yoga_hall_pilot_image_01",
     )
     out = emit_visual_statement(kira, statement_kind="scene")
-    assert out == ["scene story characters kira kira_yoga_hall_pilot_image_01"]
+    assert out == ["scene kira_yoga_hall_pilot_image_01"]
 
 
 # 4. UNSUPPORTED_KIND_FAILS
 @pytest.mark.parametrize("kind", ["", "SCENE", "image", "scene ", None])
 def test_unsupported_kind_fails_closed(kind):
     with pytest.raises(VisualStatementError):
-        emit_visual_statement(_resolved("story cg abc"), statement_kind=kind)
+        emit_visual_statement(_resolved("abc"), statement_kind=kind)
 
 
 # 5 + 6. EMPTY_NAME_FAILS / WHITESPACE_NAME_FAILS
@@ -106,7 +106,7 @@ def test_extension_in_image_name_fails_closed(name):
 # 10. NO_KIRA_SPECIFIC_LOGIC — same image name, same line, regardless of
 #     asset_id / relative_path; the verb is driven ONLY by statement_kind.
 def test_no_identity_specific_branching():
-    name = "story characters kira kira_yoga_hall_pilot_image_01"
+    name = "kira_yoga_hall_pilot_image_01"
     as_scene = emit_visual_statement(
         _resolved(
             name,
@@ -132,8 +132,8 @@ def test_no_identity_specific_branching():
 # 13. NO_EXTRA_VISUAL_MODIFIERS
 @pytest.mark.parametrize("kind", list(SUPPORTED_STATEMENT_KINDS))
 def test_no_extra_visual_modifiers(kind):
-    out = emit_visual_statement(_resolved("story cg abc"), statement_kind=kind)
-    assert out == [f"{kind} story cg abc"]
+    out = emit_visual_statement(_resolved("abc"), statement_kind=kind)
+    assert out == [f"{kind} abc"]
     padded = f" {out[0]} "
     for forbidden in (" with ", " at ", " onlayer ", " zorder ", " behind ", " hide "):
         assert forbidden not in padded
@@ -142,8 +142,8 @@ def test_no_extra_visual_modifiers(kind):
 # 14. NO_PERSISTENCE / NO REPO FILE WRITE FROM PURE EMITTER
 def test_no_persistence_side_effects(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    result = emit_visual_statement(_resolved("story cg abc"), statement_kind="scene")
-    assert result == ["scene story cg abc"]
+    result = emit_visual_statement(_resolved("abc"), statement_kind="scene")
+    assert result == ["scene abc"]
     assert sorted(p.name for p in tmp_path.iterdir()) == []
     # deterministic, no mutation between calls
-    assert emit_visual_statement(_resolved("story cg abc"), statement_kind="scene") == result
+    assert emit_visual_statement(_resolved("abc"), statement_kind="scene") == result
