@@ -12,11 +12,27 @@ import sys
 from pathlib import Path
 from typing import Any
 
+# Bare-CLI execution (`python tools/renpy_v2_playable_exporter.py ...`) puts
+# `tools/` on sys.path, not the repository root, so the already-public
+# `tools.vne_to_renpy` adapter used for optional `--visual-*` builds cannot be
+# imported. Add the repo root defensively; a no-op under pytest / `-m`.
+_REPO_ROOT_STR = str(Path(__file__).resolve().parents[1])
+if _REPO_ROOT_STR not in sys.path:
+    sys.path.insert(0, _REPO_ROOT_STR)
+
+from services.production_media_asset_binding import (  # noqa: E402
+    ProductionMediaAssetBindingError,
+)
 
 KNOWN_RENPY_CHARACTERS = {"kira", "yakov", "sergey"}
 
 # N5A: only this explicit output path inside novel/game is allowed.
 ALLOWED_PLAYABLE_OUTPUT = Path("novel/game/scenes_v2_generated.rpy")
+
+# Canonical Visual Asset Registry, repo-root-relative. Made explicit at
+# resolution time when a full --visual-* triplet is supplied without an
+# explicit --visual-registry override.
+DEFAULT_VISUAL_REGISTRY = Path("scenarios/visual_assets/ASSET_REGISTRY.json")
 
 
 def configure_encoding() -> None:
@@ -519,6 +535,60 @@ def collect_generated_labels(scene: dict[str, Any]) -> set[str]:
     return labels
 
 
+def resolve_build_visual(
+    *,
+    visual_media_item_id: str | None,
+    visual_asset_id: str | None,
+    visual_statement_kind: str | None,
+    visual_registry: str | None,
+) -> tuple[Any | None, str | None]:
+    """Resolve optional build-time visual inputs to ``(ResolvedAsset, kind)``.
+
+    All-or-nothing on the core triplet (``media_item_id``, ``asset_id``,
+    ``statement_kind``): returns ``(None, None)`` only when the triplet is
+    entirely absent AND no ``--visual-registry`` was given. Any partial
+    combination, or ``--visual-registry`` supplied without the triplet, fails
+    closed with ``ValueError``. Resolution reuses the existing public adapter
+    ``tools.vne_to_renpy.resolve_media_asset_for_renpy``; its own fail-closed
+    errors propagate unchanged. ``media_item_id`` and ``asset_id`` are passed
+    through as distinct values and never derived from one another. The
+    statement kind is passed through verbatim and never inferred.
+    """
+    triplet = (visual_media_item_id, visual_asset_id, visual_statement_kind)
+    present = [value for value in triplet if value is not None]
+
+    if not present and visual_registry is None:
+        return None, None
+
+    if len(present) != 3:
+        raise ValueError(
+            "visual build inputs are all-or-nothing: --visual-media-item-id, "
+            "--visual-asset-id and --visual-statement-kind must be supplied "
+            "together (got media_item_id={!r}, asset_id={!r}, "
+            "statement_kind={!r}, registry={!r})".format(
+                visual_media_item_id,
+                visual_asset_id,
+                visual_statement_kind,
+                visual_registry,
+            )
+        )
+
+    registry_path = (
+        Path(visual_registry) if visual_registry is not None else DEFAULT_VISUAL_REGISTRY
+    )
+    if not registry_path.is_absolute():
+        registry_path = repo_root() / registry_path
+
+    from tools.vne_to_renpy import resolve_media_asset_for_renpy
+
+    resolved_asset = resolve_media_asset_for_renpy(
+        media_item_id=visual_media_item_id,
+        asset_id=visual_asset_id,
+        registry_path=registry_path,
+    )
+    return resolved_asset, visual_statement_kind
+
+
 def cmd_build(args: argparse.Namespace) -> int:
     if not args.output:
         return fail("build requires explicit --output")
@@ -526,16 +596,30 @@ def cmd_build(args: argparse.Namespace) -> int:
     output = Path(args.output)
     try:
         assert_safe_output_path(output)
+        visual_asset, visual_statement_kind = resolve_build_visual(
+            visual_media_item_id=getattr(args, "visual_media_item_id", None),
+            visual_asset_id=getattr(args, "visual_asset_id", None),
+            visual_statement_kind=getattr(args, "visual_statement_kind", None),
+            visual_registry=getattr(args, "visual_registry", None),
+        )
         scene_path, scene = load_scene(args.scene)
         generated_labels = collect_generated_labels(scene)
         assert_no_label_collision(generated_labels)
-        text = render_scene(scene, scene_path)
+        if visual_asset is None:
+            text = render_scene(scene, scene_path)
+        else:
+            text = render_scene(
+                scene,
+                scene_path,
+                visual_asset=visual_asset,
+                visual_statement_kind=visual_statement_kind,
+            )
         resolved = output if output.is_absolute() else repo_root() / output
         resolved.parent.mkdir(parents=True, exist_ok=True)
         resolved.write_text(text, encoding="utf-8", newline="\n")
         print(f"PASS: wrote playable RenPy V2 scene to {resolved}")
         return 0
-    except ValueError as exc:
+    except (ValueError, ProductionMediaAssetBindingError) as exc:
         return fail(str(exc))
 
 
@@ -548,6 +632,30 @@ def build_parser() -> argparse.ArgumentParser:
     p_build = sub.add_parser("build", help="Build a playable RenPy scene from V2 JSON")
     p_build.add_argument("scene")
     p_build.add_argument("--output", required=True, help="Output .rpy path")
+    # Optional, all-or-nothing build-time visual inputs. When the triplet is
+    # supplied the scene-level image is resolved via the existing adapter and
+    # forwarded to render_scene's visual hook; absent -> unchanged text-only
+    # build. The statement kind is always explicit (never inferred).
+    p_build.add_argument(
+        "--visual-media-item-id", dest="visual_media_item_id", default=None
+    )
+    p_build.add_argument("--visual-asset-id", dest="visual_asset_id", default=None)
+    p_build.add_argument(
+        "--visual-statement-kind",
+        dest="visual_statement_kind",
+        choices=("scene", "show"),
+        default=None,
+    )
+    p_build.add_argument(
+        "--visual-registry",
+        dest="visual_registry",
+        default=None,
+        help=(
+            "Visual Asset Registry JSON path; defaults to "
+            "scenarios/visual_assets/ASSET_REGISTRY.json when a full "
+            "--visual-* triplet is supplied"
+        ),
+    )
     p_build.set_defaults(func=cmd_build)
 
     return parser
