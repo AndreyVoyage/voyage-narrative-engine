@@ -19,12 +19,20 @@
 
 roles:
   # ---------------------------------------------------------------- R1
+  # v3 (CRP-OD-R4-KIRA-R1-V3-01): owner-approved quality correction of v2 --
+  # corroboration merge, self-contained claims, no semantic-duplicate
+  # restatements, non-mechanical rationale, exact claim-level evidence
+  # accounting, and provenance_summary consistency. Prompt/schema shape,
+  # permissions, and downstream contract are preserved from v2. Under the
+  # single-entry RoleRegistry contract (exact version pin, no latest-wins),
+  # v2 is no longer a resolvable active R1 version; the v2 prompt file is
+  # retained on disk as the immutable predecessor artifact.
   - role_id: R1
     display_name: Evidence Interviewer
-    version: v2
+    version: v3
     status: ACTIVE
     execution_type: LLM_ROLE
-    prompt_ref: roles/vnext/ROLE_1_EVIDENCE_INTERVIEWER_v2_PROMPT.md
+    prompt_ref: roles/vnext/ROLE_1_EVIDENCE_INTERVIEWER_v3_PROMPT.md
     knowledge_profile_ref: profile-r1
     input_contract_ref: role_task_v1
     output_contract_ref: role_result_v1
@@ -37,8 +45,8 @@ roles:
       - EMIT_CLAIMS_RELATIONSHIPS
       - EMIT_CLAIMS_BOUNDARIES
       - EMIT_CLAIMS_SEED_MEMORY
-    activation_gate: "CRP_MVP_SPEC_v1@2026-08-16:OWNER_RATIFIED_SPECIFICATION"
-    predecessor_version: v1
+    activation_gate: "CRP-OD-R4-KIRA-R1-V3-01"
+    predecessor_version: v2
 
   # ---------------------------------------------------------------- R2
   - role_id: R2

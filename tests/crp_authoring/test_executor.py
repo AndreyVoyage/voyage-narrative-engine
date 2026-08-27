@@ -754,3 +754,154 @@ class TestSubstantiveMaterialization:
         assert self.SENTINEL in user
         assert self.UNALLOWED not in user
         assert "ghost-id" not in user
+
+
+# ---------------------------------------------------------------------------
+# R1 v3 canonical post-parse quality gate (CRP-OD-R4-KIRA-R1-V3-01).
+#
+# The gate runs at the exact seam AFTER _parse_role_result and all existing
+# canonical executor checks, BEFORE execute_role_task returns, and ONLY when
+# task.role_id == "R1" and task.role_version == "v3". It never fires for R1
+# v2, R2, R3, R4, or R8. It verifies (A) union(claim.source_evidence_ids) ==
+# set(task.allowed_evidence_ids) and (B) provenance_summary.sources_used ==
+# that same actual claim-evidence set -- deterministic ExecutorError, no
+# retry / fallback / mutation / repair / synthesis on any violation.
+# ---------------------------------------------------------------------------
+
+_R1_V3_PROMPT_REF = "roles/vnext/ROLE_1_EVIDENCE_INTERVIEWER_v3_PROMPT.md"
+_R1_V2_PROMPT_REF = "roles/vnext/ROLE_1_EVIDENCE_INTERVIEWER_v2_PROMPT.md"
+
+
+def _r1_result_json(*, task_id="task-r1", role_version="v3",
+                    claim_evidence_ids=("se-001", "se-002"),
+                    provenance_summary=None, subject_id="char-subject-1"):
+    if provenance_summary is None:
+        provenance_summary = {"sources_used": list(claim_evidence_ids)}
+    return json.dumps({
+        "task_id": task_id,
+        "role_id": "R1",
+        "role_version": role_version,
+        "completion_status": "COMPLETE",
+        "claims": [{
+            "claim_id": "r1-c1",
+            "subject_id": subject_id,
+            "role_id": "R1",
+            "claim": "the subject's stated birthplace is a named coastal city",
+            "claim_type": "FACT",
+            "source_evidence_ids": list(claim_evidence_ids),
+            "source_type_summary": ["OWNER_DIRECT"],
+            "confidence": "KNOWN",
+            "rationale_summary": "owner stated the birthplace directly; both cited sources agree",
+            "status": "PROPOSED",
+            "target_module_or_layer": "identity_biography.birthplace",
+        }],
+        "unknowns": [],
+        "contradictions": [],
+        "provenance_summary": provenance_summary,
+        "requests_for_more_evidence": [],
+        "warnings": [],
+        "questions_for_r1": [],
+        "new_source_evidence": [],
+    }, ensure_ascii=False)
+
+
+def _r1_registry_scope(*, role_version="v3", prompt_ref=_R1_V3_PROMPT_REF,
+                       allowed_evidence_ids=("se-001", "se-002")):
+    entry = make_registry_entry(role_id="R1", version=role_version, prompt_ref=prompt_ref)
+    registry = RoleRegistry((entry,))
+    profiles = {"profile-r1": make_knowledge_profile(profile_id="profile-r1", role_id="R1")}
+    evidence = tuple(
+        make_source(source_id=sid, source_type=SourceType.OWNER_DIRECT)
+        for sid in allowed_evidence_ids
+    )
+    task = make_role_task(task_id="task-r1", role_id="R1", role_version=role_version,
+                          allowed_evidence_ids=tuple(allowed_evidence_ids))
+    return registry, profiles, evidence, task
+
+
+class TestR1V3QualityGate:
+    def test_full_coverage_and_consistent_summary_passes(self) -> None:
+        registry, profiles, evidence, task = _r1_registry_scope()
+        provider = make_fake_provider(_r1_result_json(
+            claim_evidence_ids=("se-001", "se-002"),
+            provenance_summary={"sources_used": ["se-001", "se-002"]},
+        ))
+        result = execute_role_task(task, registry, profiles, provider, evidence,
+                                   evidence_payloads=make_payload_map("se-001", "se-002"))
+        assert result.role_id == "R1" and result.role_version == "v3"
+        union: set = set()
+        for c in result.claims:
+            union.update(c.source_evidence_ids)
+        assert union == set(task.allowed_evidence_ids)
+        assert set(result.provenance_summary["sources_used"]) == union
+
+    def test_missing_allowed_evidence_id_fails_closed(self) -> None:
+        registry, profiles, evidence, task = _r1_registry_scope()
+        provider = make_fake_provider(_r1_result_json(
+            claim_evidence_ids=("se-001",),
+            provenance_summary={"sources_used": ["se-001"]},
+        ))
+        with pytest.raises(ExecutorError) as ei:
+            execute_role_task(task, registry, profiles, provider, evidence,
+                              evidence_payloads=make_payload_map("se-001", "se-002"))
+        assert "R1_V3_CLAIM_COVERAGE_INCOMPLETE" in str(ei.value)
+
+    def test_provenance_summary_extra_id_absent_from_claims_fails_closed(self) -> None:
+        registry, profiles, evidence, task = _r1_registry_scope()
+        provider = make_fake_provider(_r1_result_json(
+            claim_evidence_ids=("se-001", "se-002"),
+            provenance_summary={"sources_used": ["se-001", "se-002", "se-003"]},
+        ))
+        with pytest.raises(ExecutorError) as ei:
+            execute_role_task(task, registry, profiles, provider, evidence,
+                              evidence_payloads=make_payload_map("se-001", "se-002"))
+        assert "R1_V3_PROVENANCE_SUMMARY_MISMATCH" in str(ei.value)
+
+    def test_claim_evidence_id_absent_from_provenance_summary_fails_closed(self) -> None:
+        registry, profiles, evidence, task = _r1_registry_scope()
+        provider = make_fake_provider(_r1_result_json(
+            claim_evidence_ids=("se-001", "se-002"),
+            provenance_summary={"sources_used": ["se-001"]},
+        ))
+        with pytest.raises(ExecutorError) as ei:
+            execute_role_task(task, registry, profiles, provider, evidence,
+                              evidence_payloads=make_payload_map("se-001", "se-002"))
+        assert "R1_V3_PROVENANCE_SUMMARY_MISMATCH" in str(ei.value)
+
+    def test_provenance_summary_without_sources_used_fails_closed(self) -> None:
+        registry, profiles, evidence, task = _r1_registry_scope()
+        provider = make_fake_provider(_r1_result_json(
+            claim_evidence_ids=("se-001", "se-002"),
+            provenance_summary={"used_evidence": ["se-001", "se-002"]},
+        ))
+        with pytest.raises(ExecutorError) as ei:
+            execute_role_task(task, registry, profiles, provider, evidence,
+                              evidence_payloads=make_payload_map("se-001", "se-002"))
+        assert "R1_V3_PROVENANCE_SUMMARY_INVALID" in str(ei.value)
+
+    def test_r1_v2_is_not_subjected_to_the_v3_gate(self) -> None:
+        # Same payload shape that would FAIL the v3 gate (one source id, two
+        # authorized) executes cleanly for an R1 v2 task: the gate is
+        # version-scoped and never runs for v2.
+        registry, profiles, evidence, task = _r1_registry_scope(
+            role_version="v2", prompt_ref=_R1_V2_PROMPT_REF,
+        )
+        provider = make_fake_provider(_r1_result_json(
+            role_version="v2",
+            claim_evidence_ids=("se-001",),
+            provenance_summary={"used_evidence": ["se-001"]},
+        ))
+        result = execute_role_task(task, registry, profiles, provider, evidence,
+                                   evidence_payloads=make_payload_map("se-001", "se-002"))
+        assert result.role_id == "R1" and result.role_version == "v2"
+        assert len(result.claims) == 1
+
+    def test_r2_is_not_subjected_to_the_v3_gate(self) -> None:
+        # A non-R1 role with a provenance_summary that lacks 'sources_used'
+        # (and a single-source claim) is unaffected by the R1 v3 gate.
+        registry, profiles, evidence, task = _r2_registry_scope()
+        provider = make_fake_provider(_r2_result_json())
+        result = execute_role_task(task, registry, profiles, provider, evidence,
+                                   evidence_payloads=make_payload_map("se-001"))
+        assert result.role_id == "R2"
+        assert "sources_used" not in result.provenance_summary

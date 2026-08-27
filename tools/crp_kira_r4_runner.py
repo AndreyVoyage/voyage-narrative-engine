@@ -82,7 +82,9 @@ FIXTURE_ROOT = _REPO_ROOT / "tests" / "fixtures" / "crp_authoring" / "kira_datas
 MANIFEST_REL = "KIRA_DATASET_FREEZE.manifest.json"
 
 ROLE_ORDER: Tuple[str, ...] = ("R1", "R2", "R3", "R4")
-ROLE_VERSIONS: Mapping[str, str] = {"R1": "v2", "R2": "v2", "R3": "v1", "R4": "v1"}
+# R1 is pinned to v3 (CRP-OD-R4-KIRA-R1-V3-01, owner-approved quality
+# correction). R2 v2 / R3 v1 / R4 v1 are unchanged.
+ROLE_VERSIONS: Mapping[str, str] = {"R1": "v3", "R2": "v2", "R3": "v1", "R4": "v1"}
 R3_ACTIVATION_AUTHORIZATION_REF = "CRP-OD-R4-KIRA-R3-01"
 KIRA_RUN_ID = "kira-r4-canonical-run-1"
 PROVIDER_CALL_BUDGET = 5
@@ -97,14 +99,15 @@ LIVE_CREDENTIAL_ENV = "DEEPSEEK_API_KEY"
 LIVE_TIMEOUT_S = 180.0
 LIVE_MAX_TOKENS = 8192
 
-# Owner-approved R1-only provider-options correction (CRP R4). R1 v2's
+# Owner-approved R1-only provider-options correction (CRP R4). R1 v3's
 # reconstruction output is legitimately larger than the shared 8192 completion
 # budget and must run with provider "thinking" disabled; R2 v2 / R3 v1 / R4 v1
 # and R8 keep the default transport unchanged (max_tokens 8192, thinking
 # omitted). These are provider-facing transport knobs only -- they never touch
 # the R1 prompt/schema, the RoleTask schema, the executor/orchestrator, or any
-# result contract.
-LIVE_R1_MAX_TOKENS = 32768
+# result contract. (CRP-OD-R4-KIRA-R1-V3-01 raised the R1 budget 32768 -> 65536
+# alongside the v3 quality correction.)
+LIVE_R1_MAX_TOKENS = 65536
 LIVE_R1_EXTRA_PARAMS = {"thinking": {"type": "disabled"}}
 
 
@@ -339,7 +342,7 @@ class CountingGuard:
 #
 # A single runner-local dispatcher routes each provider call to one of two
 # already-built provider callables: the R1 override transport (larger
-# max_tokens, thinking disabled) for R1 v2, and the unchanged default
+# max_tokens, thinking disabled) for R1 (v3), and the unchanged default
 # transport for R2 v2 / R3 v1 / R4 v1 and R8. The dispatcher is PURE routing:
 # no counting, no retry, no fallback, no exception recovery. The one
 # ``CountingGuard`` in ``execute_kira_r4_reconstruction`` still wraps this
@@ -436,9 +439,10 @@ def _role_dispatch_provider_callable(
     """Wrap two already-built provider callables in ONE routing callable.
 
     Pure routing only -- no counting, no retry, no fallback, no exception
-    handling. R1 v2 (recognised solely from the canonical ``current_task``
-    role field) is sent to ``r1_callable``; every other call (R2/R3/R4 and R8,
-    which carry no R1 current-task identity) is sent to ``default_callable``.
+    handling. R1 (recognised solely from the canonical ``current_task`` role
+    field, independent of role_version) is sent to ``r1_callable``; every other
+    call (R2/R3/R4 and R8, which carry no R1 current-task identity) is sent to
+    ``default_callable``.
     """
     if not callable(r1_callable) or not callable(default_callable):
         raise TypeError("both provider callables must be callable")
@@ -456,7 +460,7 @@ def build_live_provider_callable() -> Callable[[list], str]:
 
     Two ``ProviderConfig`` objects are constructed through the existing
     ``build_provider_callable`` transport adapter; they are identical on every
-    field except R1's ``max_tokens`` (32768 vs 8192) and its
+    field except R1's ``max_tokens`` (65536 vs 8192) and its
     ``extra_params={"thinking": {"type": "disabled"}}``. No secret value is
     stored on either config (``credential_env`` is a NAME only). ``crp_provider_
     adapter`` / ``llm_provider`` are not modified: ``extra_params`` already

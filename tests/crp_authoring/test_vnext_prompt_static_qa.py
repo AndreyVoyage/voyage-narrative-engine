@@ -161,6 +161,79 @@ class TestR1Prompt:
         assert "unknown" in low
 
 
+_R1_V3_PATH = _REPO_ROOT / "roles" / "vnext" / "ROLE_1_EVIDENCE_INTERVIEWER_v3_PROMPT.md"
+
+
+class TestR1V3QualityCorrection:
+    """Static QA for the owner-approved R1 v3 quality correction
+    (CRP-OD-R4-KIRA-R1-V3-01). The v1-based common-contract checks above are
+    unchanged; these read the new v3 prompt file directly."""
+
+    def _text(self) -> str:
+        assert _R1_V3_PATH.exists(), f"missing v3 prompt: {_R1_V3_PATH}"
+        return _R1_V3_PATH.read_text(encoding="utf-8")
+
+    def test_v3_metadata_and_predecessor(self) -> None:
+        text = self._text()
+        assert "prompt_version: v3" in text
+        assert "predecessor_version: v2" in text
+        assert "role_id: R1" in text
+        assert "prompt_id: ROLE_1_EVIDENCE_INTERVIEWER" in text
+
+    def test_v3_requires_corroborating_multi_source_merge(self) -> None:
+        low = self._text().lower()
+        assert "corroboration" in low
+        assert "union of every supporting" in low or "union of all supporting" in low
+        assert "one self-contained claim" in low
+        assert "do not merge materially different propositions" in low
+
+    def test_v3_requires_self_contained_claims(self) -> None:
+        low = self._text().lower()
+        assert "self-contained" in low
+        assert "understandable independently" in low
+        assert "must not depend on a previous claim" in low
+
+    def test_v3_forbids_semantic_duplicate_restatements(self) -> None:
+        low = self._text().lower()
+        assert "semantic_duplicates" in low
+        assert "same substantive proposition" in low
+        assert "minor wording differences" in low
+        assert "keep distinct propositions distinct" in low
+
+    def test_v3_requires_non_mechanical_rationale(self) -> None:
+        low = " ".join(self._text().lower().split())
+        assert "rationale_summary" in low
+        assert "must not mechanically paraphrase the" in low
+        assert "evidence states" in low  # named forbidden boilerplate
+        assert "never a reasoning trace" in low
+
+    def test_v3_requires_exact_claim_level_evidence_accounting(self) -> None:
+        text = self._text()
+        low = text.lower()
+        assert "union(claim.source_evidence_ids)" in text
+        assert "allowed_evidence_ids" in text
+        assert "must equal" in low and "exactly" in low
+        assert "hollow" in low  # do not invent a hollow UNKNOWN just for coverage
+
+    def test_v3_requires_provenance_summary_consistency(self) -> None:
+        text = self._text()
+        low = text.lower()
+        assert "provenance_summary" in text
+        assert "sources_used" in text
+        assert "union of every" in low
+        assert "no missing id" in low and "no extra id" in low
+
+    def test_v3_preserves_v2_output_shape_and_a_only_boundary(self) -> None:
+        text = self._text()
+        for key in ("target_module_or_layer", "source_type_summary",
+                    "completion_status", "claim_type", "provenance_summary"):
+            assert key in text, f"v3 dropped output key {key!r}"
+        low = text.lower()
+        assert "infer psychology" in low
+        assert "claim_type=UNKNOWN" in text.replace(" ", "")
+        assert "contradictions are preserved" in low
+
+
 class TestR2Prompt:
     def test_psychology_only_target(self) -> None:
         text = _load()["R2"]

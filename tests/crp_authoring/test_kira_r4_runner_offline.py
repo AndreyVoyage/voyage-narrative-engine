@@ -40,7 +40,9 @@ from services.crp_authoring import (  # noqa: E402
     ClaimStatus,
     ClaimType,
     Confidence,
+    CrpError,
     CrpValidationError,
+    ExecutorError,
     RoleClaim,
     RoleResult,
     SourceType,
@@ -80,13 +82,19 @@ def plan():
 
 def _claim(claim_id, role_id, claim_type, target, evidence_id, *,
            confidence="POSSIBLE", claim_text="synthetic offline test claim"):
+    # ``evidence_id`` may be a single id (str) or an iterable of ids (a merged /
+    # corroborated claim citing the union of every supporting source).
+    ids = (
+        [evidence_id] if isinstance(evidence_id, str)
+        else list(evidence_id)
+    )
     return {
         "claim_id": claim_id,
         "subject_id": "kira",
         "role_id": role_id,
         "claim": claim_text,
         "claim_type": claim_type,
-        "source_evidence_ids": [evidence_id],
+        "source_evidence_ids": ids,
         "source_type_summary": ["OWNER_DIRECT"],
         "confidence": confidence,
         "rationale_summary": "synthetic offline R4 runner test",
@@ -95,7 +103,13 @@ def _claim(claim_id, role_id, claim_type, target, evidence_id, *,
     }
 
 
-def _role_result_json(task_id, role_id, role_version, claims):
+def _role_result_json(task_id, role_id, role_version, claims, *, provenance_summary=None):
+    # ``provenance_summary`` defaults to the v2-style ``used_evidence`` mirror
+    # (unchanged for R2/R3/R4/R8). R1 v3 callers pass an explicit
+    # ``{"sources_used": [...]}`` object so the executor's R1-v3 gate can check
+    # it against the claim-level evidence union.
+    if provenance_summary is None:
+        provenance_summary = {"used_evidence": [c["source_evidence_ids"][0] for c in claims]}
     return json.dumps({
         "task_id": task_id,
         "role_id": role_id,
@@ -104,12 +118,39 @@ def _role_result_json(task_id, role_id, role_version, claims):
         "claims": claims,
         "unknowns": [],
         "contradictions": [],
-        "provenance_summary": {"used_evidence": [c["source_evidence_ids"][0] for c in claims]},
+        "provenance_summary": provenance_summary,
         "requests_for_more_evidence": [],
         "warnings": [],
         "questions_for_r1": [],
         "new_source_evidence": [],
     }, ensure_ascii=False)
+
+
+def _r1_task(plan_):
+    return next(t for t in plan_.role_tasks if t.role_id == "R1")
+
+
+def _r1_v3_full_coverage_json(plan_, *, claim_text=None, provenance_ids=None):
+    """A gate-passing R1 v3 payload: one self-contained, corroboration-merged
+    claim whose ``source_evidence_ids`` is the full union of the task's
+    ``allowed_evidence_ids``, with ``provenance_summary.sources_used`` mirroring
+    that union exactly. ``provenance_ids`` overrides only the summary (used by
+    the negative gate tests)."""
+    r1 = _r1_task(plan_)
+    all_ids = list(r1.allowed_evidence_ids)
+    claim = _claim(
+        "c-r1", "R1", "FACT", "identity_biography.birthplace", all_ids,
+        confidence="KNOWN",
+        claim_text=claim_text or (
+            "Kira's core identity facts are corroborated across the full "
+            "authorized A evidence set."
+        ),
+    )
+    summary_ids = all_ids if provenance_ids is None else list(provenance_ids)
+    return _role_result_json(
+        r1.task_id, "R1", "v3", [claim],
+        provenance_summary={"sources_used": summary_ids},
+    )
 
 
 def _r8_judgment_json(package_id, subject_id="kira"):
@@ -131,10 +172,7 @@ def _happy_payloads(plan_):
     ev_id = plan_.projection.evidence[0].source_id
     task_ids = {t.role_id: t.task_id for t in plan_.role_tasks}
     return {
-        "R1": _role_result_json(task_ids["R1"], "R1", "v2", [
-            _claim("c-r1", "R1", "FACT", "identity_biography.birthplace", ev_id,
-                   confidence="KNOWN"),
-        ]),
+        "R1": _r1_v3_full_coverage_json(plan_),
         "R2": _role_result_json(task_ids["R2"], "R2", "v2", [
             _claim("c-r2", "R2", "HYPOTHESIS", "behavior.conflict_style", ev_id),
         ]),
@@ -178,7 +216,7 @@ class TestPlanShape:
 
     def test_role_versions(self, plan):
         assert {t.role_id: t.role_version for t in plan.role_tasks} == {
-            "R1": "v2", "R2": "v2", "R3": "v1", "R4": "v1",
+            "R1": "v3", "R2": "v2", "R3": "v1", "R4": "v1",
         }
 
     def test_r3_activation_authorization_ref(self, plan):
@@ -622,7 +660,7 @@ class TestLiveGate:
 
         Owner-approved CRP R4 R1-only correction: ``main()`` now builds exactly
         two configs -- an unchanged default (8192, no extra_params) and an R1
-        override (32768, thinking disabled). Every other transport field is
+        override (65536, thinking disabled). Every other transport field is
         identical between them.
         """
         captured = []
@@ -642,9 +680,9 @@ class TestLiveGate:
         assert len(captured) == 2  # exactly one default + one R1 override config
 
         by_max_tokens = {c.max_tokens: c for c in captured}
-        assert set(by_max_tokens) == {8192, 32768}
+        assert set(by_max_tokens) == {8192, 65536}
         default_config = by_max_tokens[8192]
-        r1_config = by_max_tokens[32768]
+        r1_config = by_max_tokens[65536]
 
         # Every non-overridden transport field is identical across both configs.
         for config in captured:
@@ -664,7 +702,7 @@ class TestLiveGate:
         assert dict(default_config.extra_params) == {}
         assert dict(r1_config.extra_params) == {"thinking": {"type": "disabled"}}
         assert default_config.max_tokens == runner.LIVE_MAX_TOKENS == 8192
-        assert r1_config.max_tokens == runner.LIVE_R1_MAX_TOKENS == 32768
+        assert r1_config.max_tokens == runner.LIVE_R1_MAX_TOKENS == 65536
 
 
 # ---------------------------------------------------------------------------
@@ -764,13 +802,9 @@ class TestFullResultCapture:
     def test_envelope_is_valid_json_and_unicode_safe(self, plan):
         sentinel = "café résumé — офлайн-тест"
         unicode_payloads = _happy_payloads(plan)
-        task_ids = {t.role_id: t.task_id for t in plan.role_tasks}
-        unicode_payloads["R1"] = _role_result_json(
-            task_ids["R1"], "R1", "v2",
-            [_claim("c-r1", "R1", "FACT", "identity_biography.birthplace",
-                    plan.projection.evidence[0].source_id, confidence="KNOWN",
-                    claim_text=sentinel)],
-        )
+        # Keep the R1 v3 gate satisfied (full-coverage claim + matching
+        # sources_used); only the claim text carries the Unicode sentinel.
+        unicode_payloads["R1"] = _r1_v3_full_coverage_json(plan, claim_text=sentinel)
         provider, _, _ = _dispatch_provider(
             unicode_payloads, _r8_judgment_json(plan.compile_context.package_id),
         )
@@ -963,6 +997,7 @@ import crp_kira_r4_runner as runner
 
 _UNICODE = {unicode_sentinel!r}
 _FIRST_EVIDENCE_ID = {first_evidence_id!r}
+_ALL_EVIDENCE_IDS = {all_evidence_ids!r}
 _TARGETS = {{
     "R1": "identity_biography.birthplace",
     "R2": "behavior.conflict_style",
@@ -972,6 +1007,16 @@ _TARGETS = {{
 
 
 def _role_result_json(task_id, role_id, role_version, target):
+    # R1 v3 must satisfy the executor's R1-v3 quality gate: one corroboration-
+    # merged claim citing the full allowed-evidence union, and a
+    # provenance_summary.sources_used mirroring that union exactly. R2/R3/R4
+    # keep the single-source shape and the v2-style used_evidence mirror.
+    is_r1 = role_id == "R1"
+    ev_ids = list(_ALL_EVIDENCE_IDS) if is_r1 else [_FIRST_EVIDENCE_ID]
+    provenance_summary = (
+        {{"sources_used": list(_ALL_EVIDENCE_IDS)}} if is_r1
+        else {{"used_evidence": [_FIRST_EVIDENCE_ID]}}
+    )
     return json.dumps({{
         "task_id": task_id,
         "role_id": role_id,
@@ -982,17 +1027,17 @@ def _role_result_json(task_id, role_id, role_version, target):
             "subject_id": "kira",
             "role_id": role_id,
             "claim": _UNICODE,
-            "claim_type": "FACT" if role_id == "R1" else "OBSERVATION",
-            "source_evidence_ids": [_FIRST_EVIDENCE_ID],
+            "claim_type": "FACT" if is_r1 else "OBSERVATION",
+            "source_evidence_ids": ev_ids,
             "source_type_summary": ["OWNER_DIRECT"],
-            "confidence": "KNOWN" if role_id == "R1" else "POSSIBLE",
+            "confidence": "KNOWN" if is_r1 else "POSSIBLE",
             "rationale_summary": "subprocess capture test (synthetic)",
             "status": "PROPOSED",
             "target_module_or_layer": target,
         }}],
         "unknowns": [],
         "contradictions": [],
-        "provenance_summary": {{"used_evidence": [_FIRST_EVIDENCE_ID]}},
+        "provenance_summary": provenance_summary,
         "requests_for_more_evidence": [],
         "warnings": [],
         "questions_for_r1": [],
@@ -1060,11 +1105,13 @@ class TestRealProcessStdoutCapture:
         sentinel_secret = "DO_NOT_LEAK_SYNTHETIC_SECRET"
         unicode_sentinel = "café résumé — офлайн-тест"
         first_evidence_id = plan.projection.evidence[0].source_id
+        all_evidence_ids = [ev.source_id for ev in plan.projection.evidence]
 
         child_script = _CHILD_SCRIPT_TEMPLATE.format(
             repo_root=_PROJECT_ROOT,
             unicode_sentinel=unicode_sentinel,
             first_evidence_id=first_evidence_id,
+            all_evidence_ids=all_evidence_ids,
         )
 
         # Minimal, from-scratch child environment -- exactly these three
@@ -1437,7 +1484,7 @@ def _canonical_user_content(role_id, user_text):
 
 
 class TestR1OnlyProviderOptionsOutbound:
-    """R1 v2 alone gets max_tokens=32768 + thinking disabled; R2/R3/R4/R8 keep
+    """R1 (v3) alone gets max_tokens=65536 + thinking disabled; R2/R3/R4/R8 keep
     the unchanged default transport (8192, no thinking)."""
 
     def _capture(self, monkeypatch, plan):
@@ -1482,10 +1529,10 @@ class TestR1OnlyProviderOptionsOutbound:
         assert len(hits) == 1
         return hits[0]["params"]
 
-    def test_r1_outbound_uses_32768_and_thinking_disabled(self, monkeypatch, plan):
+    def test_r1_outbound_uses_65536_and_thinking_disabled(self, monkeypatch, plan):
         _result, calls = self._capture(monkeypatch, plan)
         params = self._role_params(calls, "R1")
-        assert params["max_tokens"] == 32768
+        assert params["max_tokens"] == 65536
         assert params["thinking"] == {"type": "disabled"}
 
     def test_r2_outbound_uses_default_8192_no_thinking(self, monkeypatch, plan):
@@ -1560,7 +1607,7 @@ class TestR1OnlyProviderOptionsOutbound:
                 runner.build_live_provider_callable(), plan
             )
         assert len(calls) == 1  # single R1 attempt only
-        assert calls[0]["max_tokens"] == 32768
+        assert calls[0]["max_tokens"] == 65536
         assert calls[0]["thinking"] == {"type": "disabled"}
 
     def test_r1_lookalike_string_in_evidence_cannot_select_r1_override(self, monkeypatch, plan):
@@ -1616,7 +1663,7 @@ class TestR1OnlyProviderOptionsOutbound:
         # injected lookalikes in R2/R3/R4/R8 bodies did not.
         assert r1_callable_hits["n"] == 1
         assert default_callable_hits["n"] == 4
-        r1_params = [p for p in captured if p.get("max_tokens") == 32768]
+        r1_params = [p for p in captured if p.get("max_tokens") == 65536]
         assert len(r1_params) == 1
         assert r1_params[0]["thinking"] == {"type": "disabled"}
 
@@ -1880,7 +1927,7 @@ class TestRunMetadataRecordsRoleProviderOverrides:
         assert rm["max_tokens"] == 8192
         assert rm["max_tokens_scope"] == "default"
         assert rm["role_provider_overrides"] == {
-            "R1": {"max_tokens": 32768, "thinking": {"type": "disabled"}}
+            "R1": {"max_tokens": 65536, "thinking": {"type": "disabled"}}
         }
 
     def test_r1_override_metadata_derives_from_live_constants(self, plan):
@@ -1890,7 +1937,7 @@ class TestRunMetadataRecordsRoleProviderOverrides:
             max_tokens=runner.LIVE_R1_MAX_TOKENS, **runner.LIVE_R1_EXTRA_PARAMS
         )
         assert runner.LIVE_MAX_TOKENS == 8192
-        assert runner.LIVE_R1_MAX_TOKENS == 32768
+        assert runner.LIVE_R1_MAX_TOKENS == 65536
         assert runner.LIVE_R1_EXTRA_PARAMS == {"thinking": {"type": "disabled"}}
 
     def test_unrelated_run_metadata_keys_and_schema_version_unchanged(self, plan):
@@ -1943,3 +1990,123 @@ class TestBehavioralNoPersistence:
         )
         result = runner.execute_kira_r4_reconstruction(provider, plan)
         assert result.package.status is PackageStatus.DRAFT
+
+
+# ---------------------------------------------------------------------------
+# R1 v3 canonical post-parse quality gate -- end-to-end through the runner.
+#
+# The gate lives in ``executor.execute_role_task`` (role- and version-scoped
+# to R1 v3). Because ``execute_role_task`` returns R1 before the orchestrator
+# starts R2, an R1 v3 gate violation must abort the whole reconstruction on
+# the FIRST provider call, with no retry and no fallback, so R2/R3/R4/R8 are
+# never invoked.
+# ---------------------------------------------------------------------------
+
+def _r1_gate_dispatch(plan_, r1_json):
+    """Provider that serves ``r1_json`` for R1 and the happy payloads for every
+    other role/R8, tracking per-role provider-call counts."""
+    happy = _happy_payloads(plan_)
+    r8_json = _r8_judgment_json(plan_.compile_context.package_id)
+    counts = {"R1": 0, "R2": 0, "R3": 0, "R4": 0, "R8": 0}
+
+    def provider(messages):
+        user = "".join(m["content"] for m in messages if m.get("role") == "user")
+        if "AUDIT_IDENTITY" in user:
+            counts["R8"] += 1
+            return r8_json
+        for rid in ("R1", "R2", "R3", "R4"):
+            if f"- role_id: {rid}" in user:
+                counts[rid] += 1
+                return r1_json if rid == "R1" else happy[rid]
+        raise AssertionError("provider received an unrecognized call")
+
+    return provider, counts
+
+
+class TestR1V3QualityGateEndToEnd:
+    def test_full_coverage_r1_v3_completes_and_accounts_for_every_a_source(self, plan):
+        provider, counts = _r1_gate_dispatch(plan, _r1_v3_full_coverage_json(plan))
+        result = runner.execute_kira_r4_reconstruction(provider, plan)
+
+        assert [r.role_id for r in result.role_results] == ["R1", "R2", "R3", "R4"]
+        assert counts == {"R1": 1, "R2": 1, "R3": 1, "R4": 1, "R8": 1}
+
+        r1 = result.role_results[0]
+        union: set = set()
+        for c in r1.claims:
+            union.update(c.source_evidence_ids)
+        assert union == set(_r1_task(plan).allowed_evidence_ids)
+        assert set(r1.provenance_summary["sources_used"]) == union
+
+    def test_missing_one_allowed_evidence_id_aborts_before_r2(self, plan):
+        r1 = _r1_task(plan)
+        covered = list(r1.allowed_evidence_ids)[1:]  # drop exactly one authorized id
+        claim = _claim("c-r1", "R1", "FACT", "identity_biography.birthplace",
+                       covered, confidence="KNOWN")
+        bad = _role_result_json(r1.task_id, "R1", "v3", [claim],
+                                provenance_summary={"sources_used": covered})
+        provider, counts = _r1_gate_dispatch(plan, bad)
+
+        with pytest.raises(CrpError) as ei:
+            runner.execute_kira_r4_reconstruction(provider, plan)
+        assert "R1_V3_CLAIM_COVERAGE_INCOMPLETE" in str(ei.value)
+        assert counts["R1"] == 1
+        assert counts["R2"] == 0 and counts["R3"] == 0 and counts["R4"] == 0
+        assert counts["R8"] == 0
+
+    def test_provenance_summary_claiming_uncited_id_aborts_before_r2(self, plan):
+        r1 = _r1_task(plan)
+        all_ids = list(r1.allowed_evidence_ids)
+        bad = _r1_v3_full_coverage_json(
+            plan, provenance_ids=all_ids + ["kira-a-not-a-real-source"],
+        )
+        provider, counts = _r1_gate_dispatch(plan, bad)
+
+        with pytest.raises(CrpError) as ei:
+            runner.execute_kira_r4_reconstruction(provider, plan)
+        assert "R1_V3_PROVENANCE_SUMMARY_MISMATCH" in str(ei.value)
+        assert counts["R1"] == 1
+        assert counts["R2"] == 0 and counts["R3"] == 0 and counts["R4"] == 0
+
+    def test_claims_covering_id_absent_from_provenance_summary_aborts_before_r2(self, plan):
+        r1 = _r1_task(plan)
+        all_ids = list(r1.allowed_evidence_ids)
+        bad = _r1_v3_full_coverage_json(plan, provenance_ids=all_ids[:-1])  # summary misses one
+        provider, counts = _r1_gate_dispatch(plan, bad)
+
+        with pytest.raises(CrpError) as ei:
+            runner.execute_kira_r4_reconstruction(provider, plan)
+        assert "R1_V3_PROVENANCE_SUMMARY_MISMATCH" in str(ei.value)
+        assert counts["R1"] == 1
+        assert counts["R2"] == 0 and counts["R3"] == 0 and counts["R4"] == 0
+
+    def test_failing_r1_gate_makes_exactly_one_provider_call_no_retry_no_fallback(self, plan):
+        r1 = _r1_task(plan)
+        covered = list(r1.allowed_evidence_ids)[1:]
+        claim = _claim("c-r1", "R1", "FACT", "identity_biography.birthplace",
+                       covered, confidence="KNOWN")
+        bad = _role_result_json(r1.task_id, "R1", "v3", [claim],
+                                provenance_summary={"sources_used": covered})
+        provider, counts = _r1_gate_dispatch(plan, bad)
+
+        with pytest.raises(ExecutorError):
+            runner.execute_kira_r4_reconstruction(provider, plan)
+
+        # provider_attempts == 1 (a single R1 call), R2 calls == 0,
+        # retry == NO, fallback == NO.
+        assert sum(counts.values()) == 1
+        assert counts["R1"] == 1
+        assert counts["R2"] == 0
+
+    def test_r2_r3_r4_semantics_unaffected_by_the_r1_v3_gate(self, plan):
+        provider, _counts = _r1_gate_dispatch(plan, _r1_v3_full_coverage_json(plan))
+        result = runner.execute_kira_r4_reconstruction(provider, plan)
+
+        for rr in result.role_results[1:]:
+            assert rr.role_id in ("R2", "R3", "R4")
+            # non-R1 roles keep the v2-style provenance mirror and single-source
+            # claims; the R1 v3 gate never touched them.
+            assert "sources_used" not in rr.provenance_summary
+            assert "used_evidence" in rr.provenance_summary
+            for c in rr.claims:
+                assert len(c.source_evidence_ids) == 1

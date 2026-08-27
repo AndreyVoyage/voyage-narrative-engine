@@ -227,7 +227,94 @@ def execute_role_task(
     if violations:
         raise ExecutorError("ROLE_PERMISSION_VIOLATION: " + "; ".join(violations))
 
+    # --- R1 v3 canonical post-parse quality gate (role- AND version-scoped) ---
+    # Owner-approved CRP R4 correction (CRP-OD-R4-KIRA-R1-V3-01). Runs only for
+    # an R1 v3 RoleTask, at the exact seam AFTER _parse_role_result and all
+    # existing canonical executor checks and BEFORE returning the RoleResult.
+    # It never touches R1 v2, R2, R3, R4, or R8 semantics; it never retries,
+    # falls back, mutates the RoleResult, repairs provider output, or
+    # synthesizes provenance -- a violation raises a deterministic
+    # ``ExecutorError`` before this call returns (so, in the orchestrator, an
+    # R1 v3 violation aborts before R2 ever starts).
+    if task.role_id == "R1" and task.role_version == "v3":
+        _enforce_r1_v3_quality_gate(task, result)
+
     return result
+
+
+# ---------------------------------------------------------------------------
+# R1 v3 canonical post-parse quality gate (CRP-OD-R4-KIRA-R1-V3-01)
+# ---------------------------------------------------------------------------
+
+
+def _enforce_r1_v3_quality_gate(task: RoleTask, result: RoleResult) -> None:
+    """Fail-closed truthful-evidence-accounting gate for R1 v3 ONLY.
+
+    The caller invokes this solely when ``task.role_id == 'R1'`` and
+    ``task.role_version == 'v3'``; it must never be reached for R1 v2, R2, R3,
+    R4, or R8. It verifies exactly two properties and raises ``ExecutorError``
+    (deterministic, no retry, no fallback, no mutation, no repair, no
+    synthesis) on any violation:
+
+    A. CLAIM COVERAGE -- the union of ``claim.source_evidence_ids`` across every
+       parsed claim must equal ``set(task.allowed_evidence_ids)`` exactly. A
+       missing authorized source id fails closed here. An id *outside*
+       ``allowed_evidence_ids`` is already rejected by the canonical per-claim
+       check in ``execute_role_task``; the equality assertion below only
+       re-confirms it and never weakens that upstream rule.
+
+    B. PROVENANCE SUMMARY CONSISTENCY -- the existing ``provenance_summary``
+       object must carry a ``sources_used`` id list whose set equals that same
+       actual claim-level evidence set exactly. A missing / extra / non-string
+       / malformed ``sources_used`` fails closed.
+    """
+    allowed_ids = set(task.allowed_evidence_ids)
+
+    actual_claim_evidence_ids: set = set()
+    for claim in result.claims:
+        actual_claim_evidence_ids.update(claim.source_evidence_ids)
+
+    missing = allowed_ids - actual_claim_evidence_ids
+    if missing:
+        raise ExecutorError(
+            "R1_V3_CLAIM_COVERAGE_INCOMPLETE: authorized evidence "
+            f"{sorted(missing)} is not cited by any R1 v3 claim "
+            "(union of claims[].source_evidence_ids must equal allowed_evidence_ids)"
+        )
+    if actual_claim_evidence_ids != allowed_ids:
+        # Defense in depth: an id outside allowed_evidence_ids should already
+        # have failed the canonical per-claim allowed-evidence check above.
+        raise ExecutorError(
+            "R1_V3_CLAIM_COVERAGE_MISMATCH: claim-level evidence set "
+            f"{sorted(actual_claim_evidence_ids)} != allowed_evidence_ids "
+            f"{sorted(allowed_ids)}"
+        )
+
+    prov = result.provenance_summary
+    if not isinstance(prov, Mapping):
+        raise ExecutorError(
+            "R1_V3_PROVENANCE_SUMMARY_INVALID: provenance_summary must be a JSON "
+            "object carrying a 'sources_used' id list"
+        )
+    represented = prov.get("sources_used")
+    if not isinstance(represented, (list, tuple)):
+        raise ExecutorError(
+            "R1_V3_PROVENANCE_SUMMARY_INVALID: provenance_summary.sources_used "
+            "must be a list of authorized source ids"
+        )
+    for sid in represented:
+        if not isinstance(sid, str) or not sid.strip():
+            raise ExecutorError(
+                "R1_V3_PROVENANCE_SUMMARY_INVALID: provenance_summary.sources_used "
+                f"contains a non-string id {sid!r}"
+            )
+    represented_set = set(represented)
+    if represented_set != actual_claim_evidence_ids:
+        raise ExecutorError(
+            "R1_V3_PROVENANCE_SUMMARY_MISMATCH: provenance_summary.sources_used "
+            f"{sorted(represented_set)} != actual claim-level evidence set "
+            f"{sorted(actual_claim_evidence_ids)}"
+        )
 
 
 # ---------------------------------------------------------------------------

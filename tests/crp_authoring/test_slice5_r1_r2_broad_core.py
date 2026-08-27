@@ -116,19 +116,21 @@ class TestR2V2PromptContract:
 
 
 class TestSlice5RegistryVersions:
-    def test_r1_authoritative_version_v2(self) -> None:
+    def test_r1_authoritative_version_v3(self) -> None:
+        # R1 advanced v2 -> v3 (CRP-OD-R4-KIRA-R1-V3-01 quality correction);
+        # the single-entry registry pins exactly v3, predecessor v2.
         registry = load_role_registry()
-        assert registry.get("R1").version == "v2"
-        assert registry.get("R1").predecessor_version == "v1"
+        assert registry.get("R1").version == "v3"
+        assert registry.get("R1").predecessor_version == "v2"
 
     def test_r2_authoritative_version_v2(self) -> None:
         registry = load_role_registry()
         assert registry.get("R2").version == "v2"
         assert registry.get("R2").predecessor_version == "v1"
 
-    def test_r1_prompt_ref_resolves_to_v2_file(self) -> None:
+    def test_r1_prompt_ref_resolves_to_v3_file(self) -> None:
         registry = load_role_registry()
-        assert registry.get("R1").prompt_ref.endswith("v2_PROMPT.md")
+        assert registry.get("R1").prompt_ref.endswith("v3_PROMPT.md")
 
     def test_r2_prompt_ref_resolves_to_v2_file(self) -> None:
         registry = load_role_registry()
