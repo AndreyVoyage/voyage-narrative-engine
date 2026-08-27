@@ -173,7 +173,7 @@ def _happy_payloads(plan_):
     task_ids = {t.role_id: t.task_id for t in plan_.role_tasks}
     return {
         "R1": _r1_v3_full_coverage_json(plan_),
-        "R2": _role_result_json(task_ids["R2"], "R2", "v2", [
+        "R2": _role_result_json(task_ids["R2"], "R2", "v3", [
             _claim("c-r2", "R2", "HYPOTHESIS", "behavior.conflict_style", ev_id),
         ]),
         "R3": _role_result_json(task_ids["R3"], "R3", "v1", [
@@ -216,7 +216,7 @@ class TestPlanShape:
 
     def test_role_versions(self, plan):
         assert {t.role_id: t.role_version for t in plan.role_tasks} == {
-            "R1": "v3", "R2": "v2", "R3": "v1", "R4": "v1",
+            "R1": "v3", "R2": "v3", "R3": "v1", "R4": "v1",
         }
 
     def test_r3_activation_authorization_ref(self, plan):
@@ -1494,7 +1494,7 @@ def _canonical_user_content(role_id, user_text):
 
 
 class TestRoleScopedProviderOptionsOutbound:
-    """Every canonical reconstruction role (R1 v3, R2 v2, R3 v1, R4 v1, R8)
+    """Every canonical reconstruction role (R1 v3, R2 v3, R3 v1, R4 v1, R8)
     receives max_tokens=65536 (a ceiling only) + thinking disabled. Malformed /
     unknown routing stays on the unchanged default transport (8192, no
     thinking)."""
