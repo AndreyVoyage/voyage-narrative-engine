@@ -97,6 +97,16 @@ LIVE_CREDENTIAL_ENV = "DEEPSEEK_API_KEY"
 LIVE_TIMEOUT_S = 180.0
 LIVE_MAX_TOKENS = 8192
 
+# Owner-approved R1-only provider-options correction (CRP R4). R1 v2's
+# reconstruction output is legitimately larger than the shared 8192 completion
+# budget and must run with provider "thinking" disabled; R2 v2 / R3 v1 / R4 v1
+# and R8 keep the default transport unchanged (max_tokens 8192, thinking
+# omitted). These are provider-facing transport knobs only -- they never touch
+# the R1 prompt/schema, the RoleTask schema, the executor/orchestrator, or any
+# result contract.
+LIVE_R1_MAX_TOKENS = 32768
+LIVE_R1_EXTRA_PARAMS = {"thinking": {"type": "disabled"}}
+
 
 # ---------------------------------------------------------------------------
 # Plan assembly
@@ -325,6 +335,159 @@ class CountingGuard:
 
 
 # ---------------------------------------------------------------------------
+# Role-scoped provider options (owner-approved R1-only CRP R4 correction)
+#
+# A single runner-local dispatcher routes each provider call to one of two
+# already-built provider callables: the R1 override transport (larger
+# max_tokens, thinking disabled) for R1 v2, and the unchanged default
+# transport for R2 v2 / R3 v1 / R4 v1 and R8. The dispatcher is PURE routing:
+# no counting, no retry, no fallback, no exception recovery. The one
+# ``CountingGuard`` in ``execute_kira_r4_reconstruction`` still wraps this
+# single dispatcher, so the global 5-call budget is unchanged and every
+# provider call is counted exactly once regardless of which transport served
+# it. RoleTask, the executor, and the orchestrator are untouched.
+# ---------------------------------------------------------------------------
+
+# The mandatory canonical ``current_task`` identity fields, in the exact order
+# ``executor._assemble_messages`` emits them (READ-ONLY reference; the executor
+# is never modified). The dispatcher accepts a ``current_task`` block only when
+# its ``- <key>: <value>`` lines are EXACTLY these keys, in this order, each
+# once, each with a non-empty value, and the block is closed by a ``task_goal:``
+# terminator line.
+_CANONICAL_CURRENT_TASK_FIELDS = ("task_id", "role_id", "role_version", "subject_id")
+
+
+def _extract_current_task_role_id(messages) -> str | None:
+    """Return the ``role_id`` of ONE complete, unambiguous canonical
+    ``current_task:`` identity block -- exactly the structure
+    ``executor._assemble_messages`` emits -- or ``None`` (fail closed to the
+    default transport) for anything else.
+
+    All of the following must hold; any deviation yields ``None``:
+
+    * ``messages`` is a non-empty list whose every element is a dict whose
+      ``role`` is ``"system"`` or ``"user"``;
+    * exactly one element has ``role == "user"`` (a second/extra user message --
+      even one whose ``content`` is not a string -- fails closed), and its
+      ``content`` is a ``str``;
+    * that content's first line is exactly ``current_task:``;
+    * the lines immediately after it are ``- <key>: <value>`` entries whose
+      keys are EXACTLY ``task_id, role_id, role_version, subject_id`` in that
+      order, each once, each with a non-empty value;
+    * that entry block is closed by a line starting ``task_goal:`` (the
+      canonical terminator ``_assemble_messages`` writes).
+
+    Duplicate / missing / reordered / conflicting / malformed identity fields,
+    an un-terminated block, an ``current_task:`` / ``- role_id: R1`` fragment
+    inside evidence or prose, additional/ambiguous user messages, or any
+    non-canonical message structure all yield ``None``. Only ``role_id == "R1"``
+    from a fully valid block selects the R1 override; R2/R3/R4 and R8 route to
+    the default transport.
+    """
+    if not isinstance(messages, list) or not messages:
+        return None
+
+    user_contents = []
+    for m in messages:
+        if not isinstance(m, dict):
+            return None
+        role = m.get("role")
+        if role == "user":
+            user_contents.append(m.get("content"))
+        elif role != "system":
+            return None  # non-canonical message role -> fail closed
+    if len(user_contents) != 1:
+        return None  # zero, or additional/ambiguous, user messages -> fail closed
+    content = user_contents[0]
+    if not isinstance(content, str):
+        return None  # non-string user content -> fail closed
+
+    lines = content.split("\n")
+    if lines[0] != "current_task:":
+        return None  # current_task block not in its canonical leading location
+
+    keys: list[str] = []
+    values: dict[str, str] = {}
+    terminated = False
+    for raw in lines[1:]:
+        if not raw.startswith("- "):
+            terminated = raw.startswith("task_goal:")
+            break
+        key, sep, value = raw[2:].partition(": ")
+        if sep != ": " or not key or not value:
+            return None  # malformed identity line -> fail closed
+        if key in values:
+            return None  # duplicate / conflicting identity field -> fail closed
+        keys.append(key)
+        values[key] = value
+
+    if not terminated:
+        return None  # block never closed by a canonical task_goal: line
+    if tuple(keys) != _CANONICAL_CURRENT_TASK_FIELDS:
+        return None  # missing / extra / reordered identity fields -> fail closed
+
+    return values["role_id"]
+
+
+def _role_dispatch_provider_callable(
+    r1_callable: Callable[[list], str],
+    default_callable: Callable[[list], str],
+) -> Callable[[list], str]:
+    """Wrap two already-built provider callables in ONE routing callable.
+
+    Pure routing only -- no counting, no retry, no fallback, no exception
+    handling. R1 v2 (recognised solely from the canonical ``current_task``
+    role field) is sent to ``r1_callable``; every other call (R2/R3/R4 and R8,
+    which carry no R1 current-task identity) is sent to ``default_callable``.
+    """
+    if not callable(r1_callable) or not callable(default_callable):
+        raise TypeError("both provider callables must be callable")
+
+    def dispatch(messages: list) -> str:
+        role_id = _extract_current_task_role_id(messages)
+        target = r1_callable if role_id == ROLE_ORDER[0] else default_callable
+        return target(messages)
+
+    return dispatch
+
+
+def build_live_provider_callable() -> Callable[[list], str]:
+    """Build the ONE role-dispatching provider callable for a ``--live`` run.
+
+    Two ``ProviderConfig`` objects are constructed through the existing
+    ``build_provider_callable`` transport adapter; they are identical on every
+    field except R1's ``max_tokens`` (32768 vs 8192) and its
+    ``extra_params={"thinking": {"type": "disabled"}}``. No secret value is
+    stored on either config (``credential_env`` is a NAME only). ``crp_provider_
+    adapter`` / ``llm_provider`` are not modified: ``extra_params`` already
+    forwards ``thinking`` into the outbound request.
+    """
+    default_config = ProviderConfig(
+        provider_id=LIVE_PROVIDER_ID,
+        model=LIVE_MODEL,
+        base_url=LIVE_BASE_URL,
+        credential_env=LIVE_CREDENTIAL_ENV,
+        timeout_s=LIVE_TIMEOUT_S,
+        max_tokens=LIVE_MAX_TOKENS,
+        json_mode=True,
+    )
+    r1_config = ProviderConfig(
+        provider_id=LIVE_PROVIDER_ID,
+        model=LIVE_MODEL,
+        base_url=LIVE_BASE_URL,
+        credential_env=LIVE_CREDENTIAL_ENV,
+        timeout_s=LIVE_TIMEOUT_S,
+        max_tokens=LIVE_R1_MAX_TOKENS,
+        json_mode=True,
+        extra_params=LIVE_R1_EXTRA_PARAMS,
+    )
+    return _role_dispatch_provider_callable(
+        build_provider_callable(r1_config),
+        build_provider_callable(default_config),
+    )
+
+
+# ---------------------------------------------------------------------------
 # Execution (single run_reconstruction entrypoint)
 # ---------------------------------------------------------------------------
 
@@ -487,6 +650,10 @@ def build_result_envelope(plan: KiraR4Plan, result: KiraR4RunResult) -> dict:
             "provider_id": LIVE_PROVIDER_ID,
             "model": LIVE_MODEL,
             "max_tokens": LIVE_MAX_TOKENS,
+            "max_tokens_scope": "default",
+            "role_provider_overrides": {
+                "R1": dict(max_tokens=LIVE_R1_MAX_TOKENS, **LIVE_R1_EXTRA_PARAMS),
+            },
             "timeout_s": LIVE_TIMEOUT_S,
             "credential_env_name": LIVE_CREDENTIAL_ENV,
         },
@@ -523,16 +690,7 @@ def main(argv=None) -> int:
         print(json.dumps(_dry_run_summary(plan), ensure_ascii=False, indent=2, allow_nan=False))
         return 0
 
-    config = ProviderConfig(
-        provider_id=LIVE_PROVIDER_ID,
-        model=LIVE_MODEL,
-        base_url=LIVE_BASE_URL,
-        credential_env=LIVE_CREDENTIAL_ENV,
-        timeout_s=LIVE_TIMEOUT_S,
-        max_tokens=LIVE_MAX_TOKENS,
-        json_mode=True,
-    )
-    provider_callable = build_provider_callable(config)
+    provider_callable = build_live_provider_callable()
     result = execute_kira_r4_reconstruction(provider_callable, plan)
     envelope = build_result_envelope(plan, result)
     print(json.dumps(envelope, ensure_ascii=False, indent=2, allow_nan=False))
