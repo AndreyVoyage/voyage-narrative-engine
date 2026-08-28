@@ -22,3 +22,9 @@ def repo_root() -> Path:
 def yoga_hall(repo_root: Path):
     """The committed yoga_hall pilot LocationCanon."""
     return load_location(repo_root, "yoga_hall")
+
+
+@pytest.fixture
+def gym(repo_root: Path):
+    """The committed gym LocationCanon."""
+    return load_location(repo_root, "gym")

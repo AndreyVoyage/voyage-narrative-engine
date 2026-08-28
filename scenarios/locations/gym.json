@@ -1,0 +1,17 @@
+{
+  "schema_version": "location/0.1",
+  "location_id": "gym",
+  "tier": "standard",
+  "scale": ["medium"],
+  "identity": [
+    "gym",
+    "strength_training",
+    "cardio",
+    "stretching"
+  ],
+  "palette": ["neutral"],
+  "fixed_features": [
+    {"feature_id": "mirrored_wall", "label": "mirrored wall"},
+    {"feature_id": "treadmill", "label": "treadmill"}
+  ]
+}

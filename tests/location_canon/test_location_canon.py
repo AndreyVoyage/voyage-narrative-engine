@@ -239,3 +239,66 @@ def test_ass_location_id_compatibility(repo_root, yoga_hall):
     assert ass.location_id == "yoga_hall"
     assert yoga_hall.location_id == "yoga_hall"
     assert ass.location_id == yoga_hall.location_id
+
+
+# ---------------------------------------------------------------------------
+# H. Gym location canon (B4-L2)
+# ---------------------------------------------------------------------------
+
+
+def test_gym_loads(gym):
+    assert gym.location_id == "gym"
+    assert gym.schema_version == "location/0.1"
+    assert len(gym.content_hash) == 64
+
+
+def test_gym_owner_facts(gym):
+    assert gym.tier == "standard"
+    assert set(gym.scale) == {"medium"}
+    assert set(gym.identity) == {"gym", "strength_training", "cardio", "stretching"}
+    assert set(gym.palette) == {"neutral"}
+    assert {f.feature_id for f in gym.fixed_features} == {"mirrored_wall", "treadmill"}
+
+
+def test_gym_treadmill_has_no_count(gym):
+    treadmill = next(f for f in gym.fixed_features if f.feature_id == "treadmill")
+    assert treadmill.count is None
+
+
+def test_gym_no_invented_facts(gym):
+    forbidden = {
+        "rack", "free_weight_zone", "strength_machines", "floor_material",
+        "windows", "room_dimensions", "brand", "model", "lighting_fixtures",
+        "equipment_counts", "barbell", "red_mat", "phone", "mirrors_count",
+        "machines", "furniture", "plants", "city", "country", "dimensions",
+        "rgb", "hex", "sergey", "kira",
+    }
+    feature_ids = {f.feature_id for f in gym.fixed_features}
+    assert feature_ids.isdisjoint(forbidden)
+    assert "sergey" not in json.dumps(gym.to_dict()).lower()
+    assert "kira" not in json.dumps(gym.to_dict()).lower()
+    assert "barbell" not in json.dumps(gym.to_dict()).lower()
+    assert "red mat" not in json.dumps(gym.to_dict()).lower()
+
+
+def test_gym_distinct_from_yoga_hall(gym, yoga_hall):
+    assert gym.location_id != yoga_hall.location_id
+    assert gym.content_hash != yoga_hall.content_hash
+    assert set(gym.identity) != set(yoga_hall.identity)
+
+
+def test_gym_ass_location_id_compatibility(repo_root, gym):
+    from services.ass import import_scene
+
+    fixture = repo_root / "tests" / "fixtures" / "ass" / "SC_029_SYNTHETIC.v2.json"
+    source = json.loads(fixture.read_text(encoding="utf-8"))
+    ass = import_scene(
+        source,
+        ass_id="ass_test_gym",
+        version=1,
+        location_id="gym",
+        source_ref="scenarios/SC_029_SYNTHETIC.v2.json",
+    )
+    assert ass.location_id == "gym"
+    assert gym.location_id == "gym"
+    assert ass.location_id == gym.location_id
