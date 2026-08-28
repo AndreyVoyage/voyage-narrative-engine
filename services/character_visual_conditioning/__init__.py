@@ -23,10 +23,19 @@ from .errors import (
     ReferenceBinaryError,
     ReferenceSelectionError,
 )
+from .bundle import (
+    build_reference_bundle,
+    snapshot_from_serialized,
+    validate_reference_bundle_integrity,
+)
 from .hashing import compute_content_hash
 from .model import (
+    REFERENCE_BUNDLE_SCHEMA_VERSION,
     SET_SCHEMA_VERSION,
     ConditionedImage,
+    ReferenceBundle,
+    ReferenceCharacterGroup,
+    ReferenceEntry,
     VisualReference,
     VisualReferenceSet,
 )
@@ -44,14 +53,21 @@ from .selection import (
 __all__ = [
     "build_visual_reference_set",
     "validate_reference_set_integrity",
+    "build_reference_bundle",
+    "validate_reference_bundle_integrity",
+    "snapshot_from_serialized",
     "generate_conditioned_image",
     "reference_inputs_from_set",
     "compute_content_hash",
+    "REFERENCE_BUNDLE_SCHEMA_VERSION",
     "SET_SCHEMA_VERSION",
     "EDIT_ENDPOINT_PATH",
     "VisualReference",
     "VisualReferenceSet",
     "ConditionedImage",
+    "ReferenceBundle",
+    "ReferenceCharacterGroup",
+    "ReferenceEntry",
     "ReferenceImageInput",
     "CharacterVisualConditioningError",
     "ReferenceSelectionError",
