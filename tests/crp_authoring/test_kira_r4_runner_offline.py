@@ -179,7 +179,7 @@ def _happy_payloads(plan_):
         "R3": _role_result_json(task_ids["R3"], "R3", runner.ROLE_VERSIONS["R3"], [
             _claim("c-r3", "R3", "OBSERVATION", "intimacy.communication_style", ev_id),
         ]),
-        "R4": _role_result_json(task_ids["R4"], "R4", "v2", [
+        "R4": _role_result_json(task_ids["R4"], "R4", runner.ROLE_VERSIONS["R4"], [
             _claim("c-r4", "R4", "OBSERVATION", "voice.lexicon", ev_id),
         ]),
     }
@@ -1492,7 +1492,7 @@ def _canonical_user_content(role_id, user_text):
 
 
 class TestRoleScopedProviderOptionsOutbound:
-    """Every canonical reconstruction role (R1 v4, R2 v4, R3 v2, R4 v2, R8)
+    """Every canonical reconstruction role (R1 v4, R2 v4, R3 v2, R4 v3, R8)
     receives max_tokens=65536 (a ceiling only) + thinking disabled. Malformed /
     unknown routing stays on the unchanged default transport (8192, no
     thinking)."""

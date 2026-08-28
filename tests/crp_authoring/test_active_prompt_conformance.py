@@ -82,7 +82,7 @@ class TestCanonicalTopology:
 
 
 class TestActiveVersionPath:
-    EXPECTED = {"R1": "v4", "R2": "v4", "R3": "v2", "R4": "v2"}
+    EXPECTED = {"R1": "v4", "R2": "v4", "R3": "v2", "R4": "v3"}
 
     def test_active_registry_versions(self) -> None:
         reg = _registry()
@@ -280,3 +280,36 @@ class TestHistoricalPromptImmutability:
             text = (_REPO_ROOT / path).read_text(encoding="utf-8")
             assert f"prompt_version: {ver}" in text
             assert _registry().get(rid).prompt_ref != path
+
+
+class TestR4CrossFieldClauses:
+    """The ACTIVE R4 prompt (resolved via registry) must carry enforceable
+    cross-field pre-output self-validation, not merely enum definitions."""
+
+    def _validation(self) -> str:
+        return _sections(_prompt_text("R4")).get("FINAL_PRE_OUTPUT_VALIDATION", "")
+
+    def test_final_pre_output_validation_sections_present(self) -> None:
+        sections = _sections(_prompt_text("R4"))
+        assert "FINAL_PRE_OUTPUT_VALIDATION" in sections
+        assert "FINAL_SELF_CHECK_CHECKLIST" in sections
+
+    def test_inferred_confidence_clause(self) -> None:
+        body = self._validation()
+        assert "`confidence` MUST be exactly `POSSIBLE` or `UNKNOWN`" in body
+        assert "`PROBABLE` is INVALID here" in body
+        assert "with `confidence = PROBABLE`" in body
+
+    def test_generated_rule_clause(self) -> None:
+        body = self._validation()
+        assert "MUST include `MODEL_EXAMPLE`" in body
+        assert "`confidence` MUST be exactly `POSSIBLE` or `UNKNOWN`" in body
+
+    def test_negative_example_clause(self) -> None:
+        body = self._validation()
+        assert "`claim_type` MUST NOT be `FACT`" in body
+
+    def test_r4_only_and_voice_target_clause(self) -> None:
+        body = self._validation()
+        assert "`role_id` MUST be `R4`" in body
+        assert "start with `voice.`" in body

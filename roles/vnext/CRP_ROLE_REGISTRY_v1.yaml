@@ -117,26 +117,25 @@ roles:
     predecessor_version: v1
 
   # ---------------------------------------------------------------- R4
-  # v2 (RUN_012): owner-approved prompt-contract / evidence-boundary correction
-  # of v1. R4 v1's OUTPUT_CONTRACT told the model NOT to emit
-  # `voice_pattern_label` because of an executor gap that no longer exists; the
-  # model compensated by inventing `claim_type=NEGATIVE_EXAMPLE`, which is not a
-  # ClaimType value, and the executor rejected it fail-closed. The fix is
-  # prompt-only: `voice_pattern_label` is an executor-supported first-class
-  # field (OBSERVED / INFERRED / GENERATED_RULE / NEGATIVE_EXAMPLE), independent
-  # of `claim_type`; `claim_type=NEGATIVE_EXAMPLE` is never legal; and OBSERVED
-  # voice claims now require actual attributed speech evidence rather than
-  # owner-authored descriptive prose. Permissions, activation gate, role
-  # identity, and downstream contract are preserved from v1. Under the
-  # single-entry registry contract (exact version pin, no latest-wins), v1 is no
-  # longer a resolvable active R4 version; the v1 prompt file is retained on
-  # disk as the immutable predecessor artifact.
+  # v3 (CRP_R4_CROSS_FIELD_ROBUSTNESS_V1): robustness successor to v2. R4 v2
+  # already stated the cross-field rule (INFERRED -> confidence in {POSSIBLE,
+  # UNKNOWN}), but RUN_014 showed the provider emitting INFERRED with
+  # confidence=PROBABLE anyway, and the executor rejected it fail-closed via the
+  # wired voice_label_violations seam. The fix is prompt-only: v3 preserves all
+  # v2 semantics and adds a FINAL_PRE_OUTPUT_VALIDATION matrix plus a
+  # FINAL_SELF_CHECK_CHECKLIST immediately before the output contract, forcing
+  # pre-output cross-field self-validation. The VoicePatternLabel contract,
+  # permissions, activation gate, role identity, provider policy, and downstream
+  # contract are unchanged from v2. Under the single-entry registry contract
+  # (exact version pin, no latest-wins), v2 is no longer a resolvable active R4
+  # version; the v2 prompt file is retained on disk as the immutable predecessor
+  # artifact.
   - role_id: R4
     display_name: Voice Reconstruction Analyst
-    version: v2
+    version: v3
     status: ACTIVE
     execution_type: LLM_ROLE
-    prompt_ref: roles/vnext/ROLE_4_VOICE_RECONSTRUCTION_ANALYST_v2_PROMPT.md
+    prompt_ref: roles/vnext/ROLE_4_VOICE_RECONSTRUCTION_ANALYST_v3_PROMPT.md
     knowledge_profile_ref: profile-r4
     input_contract_ref: role_task_v1
     output_contract_ref: role_result_v1
@@ -145,7 +144,7 @@ roles:
       - READ_PRIOR_ROLE_RESULTS
       - EMIT_CLAIMS_VOICE
     activation_gate: "CRP_MVP_SPEC_v1@2026-08-16:OWNER_RATIFIED_SPECIFICATION"
-    predecessor_version: v1
+    predecessor_version: v2
 
   # ---------------------------------------------------------------- R5
   # Not implemented, out of MVP scope (CRP-OD-11). INACTIVE; no prompt file.

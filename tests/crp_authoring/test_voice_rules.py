@@ -118,6 +118,15 @@ class TestInferredFidelity:
         )
         assert voice_label_violations((bad,))
 
+    def test_inferred_rejected_when_probable(self) -> None:
+        # RUN_014 regression: INFERRED + PROBABLE must be rejected by the
+        # existing voice_label_violations seam (no voice_rules.py change).
+        bad = _r4_voice_claim(
+            voice_pattern_label=VoicePatternLabel.INFERRED,
+            confidence=Confidence.PROBABLE,
+        )
+        assert voice_label_violations((bad,))
+
 
 class TestGeneratedRuleFidelity:
     def test_generated_rule_requires_model_example_and_lower_confidence(self) -> None:

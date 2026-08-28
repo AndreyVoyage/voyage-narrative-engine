@@ -86,9 +86,10 @@ MANIFEST_REL = "KIRA_DATASET_FREEZE.manifest.json"
 ROLE_ORDER: Tuple[str, ...] = ("R1", "R2", "R3", "R4")
 # R1 is pinned to v4 (CRP_ROLE_CONTRACT_CONVERGENCE_V1 contract-convergence
 # correction over v3). R2 is pinned to v4 (same convergence slice over v3).
-# R3 is pinned to v2 (same convergence slice over v1). R4 stays v2 (RUN_012
-# voice_pattern_label contract / voice evidence-boundary correction).
-ROLE_VERSIONS: Mapping[str, str] = {"R1": "v4", "R2": "v4", "R3": "v2", "R4": "v2"}
+# R3 is pinned to v2 (same convergence slice over v1). R4 is pinned to v3
+# (CRP_R4_CROSS_FIELD_ROBUSTNESS_V1: FINAL_PRE_OUTPUT_VALIDATION self-check
+# against the RUN_014 INFERRED+PROBABLE violation).
+ROLE_VERSIONS: Mapping[str, str] = {"R1": "v4", "R2": "v4", "R3": "v2", "R4": "v3"}
 R3_ACTIVATION_AUTHORIZATION_REF = "CRP-OD-R4-KIRA-R3-01"
 KIRA_RUN_ID = "kira-r4-canonical-run-1"
 PROVIDER_CALL_BUDGET = 5
