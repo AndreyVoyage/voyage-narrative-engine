@@ -42,7 +42,10 @@ from .model import (
 from .provider import (
     EDIT_ENDPOINT_PATH,
     ReferenceImageInput,
+    build_reference_map,
     generate_conditioned_image,
+    generate_conditioned_image_from_bundle,
+    reference_inputs_from_bundle,
     reference_inputs_from_set,
 )
 from .selection import (
@@ -57,7 +60,10 @@ __all__ = [
     "validate_reference_bundle_integrity",
     "snapshot_from_serialized",
     "generate_conditioned_image",
+    "generate_conditioned_image_from_bundle",
     "reference_inputs_from_set",
+    "reference_inputs_from_bundle",
+    "build_reference_map",
     "compute_content_hash",
     "REFERENCE_BUNDLE_SCHEMA_VERSION",
     "SET_SCHEMA_VERSION",

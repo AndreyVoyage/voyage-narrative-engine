@@ -37,12 +37,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Sequence
 
+from .bundle import validate_reference_bundle_integrity
 from .errors import (
     ProviderInputConfigurationError,
     ProviderInputResultError,
     ProviderInputTransportError,
 )
-from .model import ConditionedImage, VisualReferenceSet
+from .model import ConditionedImage, ReferenceBundle, VisualReferenceSet
 
 DEFAULT_BASE_URL = "https://api.openai.com"
 DEFAULT_TIMEOUT_S = 300.0
@@ -52,6 +53,12 @@ _FORMAT_TO_CONTENT_TYPE = {
     "PNG": "image/png",
     "JPEG": "image/jpeg",
     "WEBP": "image/webp",
+}
+
+_CONTENT_TYPE_TO_EXTENSION = {
+    "image/png": "png",
+    "image/jpeg": "jpg",
+    "image/webp": "webp",
 }
 
 
@@ -313,3 +320,149 @@ def reference_inputs_from_set(
             )
         )
     return inputs
+
+
+# ---------------------------------------------------------------------------
+# Generic bundle attachment (RC3): consume ReferenceBundle directly.
+# ---------------------------------------------------------------------------
+
+REFERENCE_MAP_HEADER = "[REFERENCE MAP]"
+
+
+def _sanitize_filename_token(value: str) -> str:
+    """Return a deterministic, filename-safe token for a character id."""
+    chars: list[str] = []
+    for ch in value:
+        if ch.isascii() and (ch.isalnum() or ch in "_-"):
+            chars.append(ch)
+        else:
+            chars.append("_")
+    token = "".join(chars)
+    return token or "char"
+
+
+def _content_type_to_extension(content_type: str) -> str:
+    return _CONTENT_TYPE_TO_EXTENSION.get(content_type, "bin")
+
+
+def _build_provider_filename(index: int, character_id: str, content_type: str) -> str:
+    """Deterministic, generic multipart filename bound to index + character."""
+    ext = _content_type_to_extension(content_type)
+    return f"ref_{index:03d}_{_sanitize_filename_token(character_id)}.{ext}"
+
+
+def _iter_bundle_attachments(reference_bundle: ReferenceBundle):
+    """Yield ``(attachment_index, character_id, entry)`` in bundle order."""
+    index = 0
+    for group in reference_bundle.character_groups:
+        for entry in group.references:
+            yield index, group.character_id, entry
+            index += 1
+
+
+def _validate_bundle_has_attachments(reference_bundle: ReferenceBundle) -> None:
+    """Fail closed before any request construction on an unusable bundle."""
+    validate_reference_bundle_integrity(reference_bundle)
+    groups = list(reference_bundle.character_groups)
+    if not groups:
+        raise ProviderInputConfigurationError(
+            "reference bundle has no character groups"
+        )
+    for group in groups:
+        if not group.references:
+            raise ProviderInputConfigurationError(
+                f"character group {group.character_id!r} has no reference entries"
+            )
+
+
+def _flatten_bundle(
+    reference_bundle: ReferenceBundle,
+) -> tuple[list[ReferenceImageInput], str]:
+    """Flatten a ReferenceBundle into ordered inputs + a deterministic reference map.
+
+    Returns ``(inputs, reference_map_text)``. Flattening is transport-only; it
+    never loses character ownership or role metadata.
+    """
+    _validate_bundle_has_attachments(reference_bundle)
+
+    inputs: list[ReferenceImageInput] = []
+    map_lines: list[str] = [REFERENCE_MAP_HEADER]
+
+    for index, character_id, entry in _iter_bundle_attachments(reference_bundle):
+        filename = _build_provider_filename(index, character_id, entry.content_type)
+        inputs.append(
+            ReferenceImageInput(
+                filename=filename,
+                content_type=entry.content_type,
+                payload=entry.payload,
+            )
+        )
+        map_lines.append(f"image[{index}]:")
+        map_lines.append(f"character_id={character_id}")
+        map_lines.append(f"roles={','.join(entry.roles)}")
+        map_lines.append(f"source={entry.path}")
+        map_lines.append("")
+
+    reference_map = "\n".join(map_lines).rstrip("\n")
+    return inputs, reference_map
+
+
+def reference_inputs_from_bundle(
+    reference_bundle: ReferenceBundle,
+) -> list[ReferenceImageInput]:
+    """Return ordered provider image inputs from a ReferenceBundle.
+
+    Uses ``entry.payload`` bytes directly; never reopens Canon files.
+    """
+    inputs, _ = _flatten_bundle(reference_bundle)
+    return inputs
+
+
+def build_reference_map(reference_bundle: ReferenceBundle) -> str:
+    """Return the deterministic reference map for a ReferenceBundle."""
+    _, reference_map = _flatten_bundle(reference_bundle)
+    return reference_map
+
+
+def _compose_effective_prompt(original_prompt: str, reference_map: str) -> str:
+    """Append the provider reference map to the original prompt.
+
+    The original prompt is never mutated (Python strings are immutable).
+    """
+    return f"{original_prompt}\n\n{reference_map}"
+
+
+def generate_conditioned_image_from_bundle(
+    *,
+    prompt: str,
+    reference_bundle: ReferenceBundle,
+    model: str,
+    api_key: str | None = None,
+    base_url: str | None = None,
+    size: str = "1024x1024",
+    quality: str = "low",
+    timeout_s: float = DEFAULT_TIMEOUT_S,
+) -> ConditionedImage:
+    """Perform one reference-conditioned image edit from a ReferenceBundle.
+
+    The ReferenceBundle is authoritative for all attached character refs.
+    Actual bundle payload bytes are attached (no file reopen, no Canon reread).
+    A deterministic reference map is appended to the provider-bound effective
+    prompt only; the upstream prompt is untouched.
+    """
+    if not prompt or not prompt.strip():
+        raise ProviderInputConfigurationError("prompt must be a non-empty string")
+
+    inputs, reference_map = _flatten_bundle(reference_bundle)
+    effective_prompt = _compose_effective_prompt(prompt, reference_map)
+
+    return generate_conditioned_image(
+        effective_prompt,
+        model=model,
+        reference_images=inputs,
+        api_key=api_key,
+        base_url=base_url,
+        size=size,
+        quality=quality,
+        timeout_s=timeout_s,
+    )
