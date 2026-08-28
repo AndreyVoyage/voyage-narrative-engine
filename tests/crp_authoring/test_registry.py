@@ -87,29 +87,38 @@ class TestDeclarativeRegistryLoad:
         }
 
     def test_r1_resolves_exact_version(self) -> None:
-        # R1 is pinned to v3 (CRP-OD-R4-KIRA-R1-V3-01 quality correction).
+        # R1 is pinned to v4 (CRP_ROLE_CONTRACT_CONVERGENCE_V1 correction).
         registry = load_role_registry()
-        entry = registry.resolve("R1", "v3")
+        entry = registry.resolve("R1", "v4")
         assert entry.status is RoleStatus.ACTIVE
         assert entry.execution_type is ExecutionType.LLM_ROLE
-        assert entry.prompt_ref.endswith("ROLE_1_EVIDENCE_INTERVIEWER_v3_PROMPT.md")
+        assert entry.prompt_ref.endswith("ROLE_1_EVIDENCE_INTERVIEWER_v4_PROMPT.md")
 
     def test_r2_resolves_exact_version(self) -> None:
         registry = load_role_registry()
-        entry = registry.resolve("R2", "v3")
+        entry = registry.resolve("R2", "v4")
         assert entry.status is RoleStatus.ACTIVE
         assert entry.execution_type is ExecutionType.LLM_ROLE
-        assert entry.prompt_ref.endswith("ROLE_2_PSYCHOLOGICAL_HYPOTHESIS_ANALYST_v3_PROMPT.md")
+        assert entry.prompt_ref.endswith("ROLE_2_PSYCHOLOGICAL_HYPOTHESIS_ANALYST_v4_PROMPT.md")
+
+    def test_r3_resolves_exact_version(self) -> None:
+        registry = load_role_registry()
+        entry = registry.resolve("R3", "v2")
+        assert entry.status is RoleStatus.ACTIVE
+        assert entry.execution_type is ExecutionType.LLM_ROLE
+        assert entry.prompt_ref.endswith("ROLE_3_INTIMACY_PROFILE_SPECIALIST_v2_PROMPT.md")
 
     def test_r1_old_version_not_resolvable(self) -> None:
         # The registry stores only the current authoritative pin (no full
-        # history); the old v1 and v2 prompt files remain on disk but neither
+        # history); the old v1, v2, and v3 prompt files remain on disk but none
         # is a resolvable registry entry. No latest-wins, no fallback.
         registry = load_role_registry()
         with pytest.raises(CrpValidationError):
             registry.resolve("R1", "v1")
         with pytest.raises(CrpValidationError):
             registry.resolve("R1", "v2")
+        with pytest.raises(CrpValidationError):
+            registry.resolve("R1", "v3")
 
     def test_r2_old_version_not_resolvable(self) -> None:
         registry = load_role_registry()
@@ -117,14 +126,25 @@ class TestDeclarativeRegistryLoad:
             registry.resolve("R2", "v1")
         with pytest.raises(CrpValidationError):
             registry.resolve("R2", "v2")
+        with pytest.raises(CrpValidationError):
+            registry.resolve("R2", "v3")
+
+    def test_r3_old_version_not_resolvable(self) -> None:
+        registry = load_role_registry()
+        with pytest.raises(CrpValidationError):
+            registry.resolve("R3", "v1")
 
     def test_r1_predecessor_version_recorded(self) -> None:
         registry = load_role_registry()
-        assert registry.get("R1").predecessor_version == "v2"
+        assert registry.get("R1").predecessor_version == "v3"
 
     def test_r2_predecessor_version_recorded(self) -> None:
         registry = load_role_registry()
-        assert registry.get("R2").predecessor_version == "v2"
+        assert registry.get("R2").predecessor_version == "v3"
+
+    def test_r3_predecessor_version_recorded(self) -> None:
+        registry = load_role_registry()
+        assert registry.get("R3").predecessor_version == "v1"
 
     def test_r2_permissions_unchanged_and_still_lacks_unknown(self) -> None:
         registry = load_role_registry()

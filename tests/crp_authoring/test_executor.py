@@ -18,7 +18,7 @@ from services.crp_authoring import (
 )
 from services.crp_authoring.contracts import VoicePatternLabel
 from services.crp_authoring.dataset_freeze import canonical_json_sha256
-from services.crp_authoring.executor import _assemble_messages, _load_prompt_text
+from services.crp_authoring.executor import _assemble_messages, _load_prompt_text, _parse_role_result
 
 from tests.crp_authoring.conftest import (
     make_fake_provider,
@@ -76,17 +76,18 @@ def _r2_registry_scope():
     return registry, profiles, evidence, task
 
 
-def _r4_result_json(label=None):
+def _r4_result_json(label=None, *, claim_type="OBSERVATION",
+                    source_type="OBSERVATION", confidence="KNOWN"):
     """R4 voice result JSON, with an optional voice_pattern_label."""
     claim = {
         "claim_id": "v1",
         "subject_id": "char-subject-1",
         "role_id": "R4",
         "claim": "uses clipped sentences",
-        "claim_type": "OBSERVATION",
+        "claim_type": claim_type,
         "source_evidence_ids": ["se-001"],
-        "source_type_summary": ["OBSERVATION"],
-        "confidence": "KNOWN",
+        "source_type_summary": [source_type],
+        "confidence": confidence,
         "rationale_summary": "observed in corpus",
         "status": "PROPOSED",
         "target_module_or_layer": "voice.lexicon",
@@ -281,10 +282,11 @@ class TestVoicePatternLabelParsing:
         "OBSERVED", "INFERRED", "GENERATED_RULE", "NEGATIVE_EXAMPLE",
     ])
     def test_authorized_label_parses(self, label: str) -> None:
-        registry, profiles, evidence, task = _r4_registry_scope()
-        provider = make_fake_provider(_r4_result_json(label=label))
-        result = execute_role_task(task, registry, profiles, provider, evidence,
-                                   evidence_payloads=make_payload_map("se-001"))
+        # Parsing-only check: every authorized VoicePatternLabel value is a
+        # legal enum value for the strict parser. Label-fidelity (cross-field)
+        # enforcement is wired separately in ``execute_role_task`` and covered
+        # by ``TestVoiceLabelViolationsWired`` / ``test_voice_rules.py``.
+        result = _parse_role_result(_r4_result_json(label=label))
         assert result.claims[0].voice_pattern_label is VoicePatternLabel(label)
 
     def test_unknown_label_rejected(self) -> None:
@@ -769,6 +771,7 @@ class TestSubstantiveMaterialization:
 # ---------------------------------------------------------------------------
 
 _R1_V3_PROMPT_REF = "roles/vnext/ROLE_1_EVIDENCE_INTERVIEWER_v3_PROMPT.md"
+_R1_V4_PROMPT_REF = "roles/vnext/ROLE_1_EVIDENCE_INTERVIEWER_v4_PROMPT.md"
 _R1_V2_PROMPT_REF = "roles/vnext/ROLE_1_EVIDENCE_INTERVIEWER_v2_PROMPT.md"
 
 
@@ -905,6 +908,120 @@ class TestR1V3QualityGate:
                                    evidence_payloads=make_payload_map("se-001"))
         assert result.role_id == "R2"
         assert "sources_used" not in result.provenance_summary
+
+
+class TestR1V4QualityGate:
+    """R1 v4 receives the SAME quality/provenance gate as R1 v3 (no bypass)."""
+
+    def test_full_coverage_and_consistent_summary_passes(self) -> None:
+        registry, profiles, evidence, task = _r1_registry_scope(
+            role_version="v4", prompt_ref=_R1_V4_PROMPT_REF,
+        )
+        provider = make_fake_provider(_r1_result_json(
+            role_version="v4",
+            claim_evidence_ids=("se-001", "se-002"),
+            provenance_summary={"sources_used": ["se-001", "se-002"]},
+        ))
+        result = execute_role_task(task, registry, profiles, provider, evidence,
+                                   evidence_payloads=make_payload_map("se-001", "se-002"))
+        assert result.role_id == "R1" and result.role_version == "v4"
+
+    def test_missing_allowed_evidence_id_fails_closed(self) -> None:
+        registry, profiles, evidence, task = _r1_registry_scope(
+            role_version="v4", prompt_ref=_R1_V4_PROMPT_REF,
+        )
+        provider = make_fake_provider(_r1_result_json(
+            role_version="v4",
+            claim_evidence_ids=("se-001",),
+            provenance_summary={"sources_used": ["se-001"]},
+        ))
+        with pytest.raises(ExecutorError) as ei:
+            execute_role_task(task, registry, profiles, provider, evidence,
+                              evidence_payloads=make_payload_map("se-001", "se-002"))
+        assert "R1_V3_CLAIM_COVERAGE_INCOMPLETE" in str(ei.value)
+
+    def test_provenance_summary_mismatch_fails_closed(self) -> None:
+        registry, profiles, evidence, task = _r1_registry_scope(
+            role_version="v4", prompt_ref=_R1_V4_PROMPT_REF,
+        )
+        provider = make_fake_provider(_r1_result_json(
+            role_version="v4",
+            claim_evidence_ids=("se-001", "se-002"),
+            provenance_summary={"sources_used": ["se-001"]},
+        ))
+        with pytest.raises(ExecutorError) as ei:
+            execute_role_task(task, registry, profiles, provider, evidence,
+                              evidence_payloads=make_payload_map("se-001", "se-002"))
+        assert "R1_V3_PROVENANCE_SUMMARY_MISMATCH" in str(ei.value)
+
+
+class TestVoiceLabelViolationsWired:
+    """The executor wires ``voice_label_violations`` fail-closed for EVERY
+    RoleResult (not just R4)."""
+
+    def _run_r4(self, *, label, claim_type="OBSERVATION",
+                confidence="KNOWN", source_type="OBSERVATION") -> None:
+        registry, profiles, evidence, task = _r4_registry_scope()
+        raw = _r4_result_json(label=label, claim_type=claim_type,
+                              confidence=confidence, source_type=source_type)
+        return execute_role_task(task, registry, profiles, make_fake_provider(raw),
+                                 evidence, evidence_payloads=make_payload_map("se-001"))
+
+    def test_valid_r4_negative_example_passes_voice_seam(self) -> None:
+        result = self._run_r4(label="NEGATIVE_EXAMPLE", claim_type="INFERENCE")
+        assert result.claims[0].voice_pattern_label is VoicePatternLabel.NEGATIVE_EXAMPLE
+
+    def test_invalid_r4_negative_example_with_fact_rejected(self) -> None:
+        with pytest.raises(ExecutorError) as ei:
+            self._run_r4(label="NEGATIVE_EXAMPLE", claim_type="FACT")
+        assert "VOICE_LABEL_VIOLATION" in str(ei.value)
+
+    def test_invalid_r4_inferred_with_known_confidence_rejected(self) -> None:
+        with pytest.raises(ExecutorError) as ei:
+            self._run_r4(label="INFERRED", confidence="KNOWN")
+        assert "VOICE_LABEL_VIOLATION" in str(ei.value)
+
+    def test_non_r4_claim_with_voice_label_rejected(self) -> None:
+        registry, profiles, evidence, task = _r2_registry_scope()
+        raw = json.dumps({
+            "task_id": "task-001",
+            "role_id": "R2",
+            "role_version": "v1",
+            "completion_status": "COMPLETE",
+            "claims": [{
+                "claim_id": "c1",
+                "subject_id": "char-subject-1",
+                "role_id": "R2",
+                "claim": "subject is guarded",
+                "claim_type": "HYPOTHESIS",
+                "source_evidence_ids": ["se-001"],
+                "source_type_summary": ["OWNER_DIRECT"],
+                "confidence": "POSSIBLE",
+                "rationale_summary": "from evidence",
+                "status": "PROPOSED",
+                "target_module_or_layer": "psychology.P2",
+                "voice_pattern_label": "OBSERVED",
+            }],
+            "unknowns": [],
+            "contradictions": [],
+            "provenance_summary": {"used_evidence": ["se-001"]},
+            "requests_for_more_evidence": [],
+            "warnings": [],
+            "questions_for_r1": [],
+            "new_source_evidence": [],
+        }, ensure_ascii=False)
+        with pytest.raises(ExecutorError) as ei:
+            execute_role_task(task, registry, profiles, make_fake_provider(raw),
+                              evidence, evidence_payloads=make_payload_map("se-001"))
+        assert "VOICE_LABEL_VIOLATION" in str(ei.value)
+
+    def test_valid_non_r4_result_without_label_unchanged(self) -> None:
+        registry, profiles, evidence, task = _r2_registry_scope()
+        result = execute_role_task(task, registry, profiles,
+                                   make_fake_provider(_r2_result_json()),
+                                   evidence, evidence_payloads=make_payload_map("se-001"))
+        assert result.role_id == "R2"
+        assert result.claims[0].voice_pattern_label is None
 
 
 class TestParseFailureRawOutputObservability:

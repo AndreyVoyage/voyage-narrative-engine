@@ -148,7 +148,7 @@ def _r1_v3_full_coverage_json(plan_, *, claim_text=None, provenance_ids=None):
     )
     summary_ids = all_ids if provenance_ids is None else list(provenance_ids)
     return _role_result_json(
-        r1.task_id, "R1", "v3", [claim],
+        r1.task_id, "R1", runner.ROLE_VERSIONS["R1"], [claim],
         provenance_summary={"sources_used": summary_ids},
     )
 
@@ -173,10 +173,10 @@ def _happy_payloads(plan_):
     task_ids = {t.role_id: t.task_id for t in plan_.role_tasks}
     return {
         "R1": _r1_v3_full_coverage_json(plan_),
-        "R2": _role_result_json(task_ids["R2"], "R2", "v3", [
+        "R2": _role_result_json(task_ids["R2"], "R2", runner.ROLE_VERSIONS["R2"], [
             _claim("c-r2", "R2", "HYPOTHESIS", "behavior.conflict_style", ev_id),
         ]),
-        "R3": _role_result_json(task_ids["R3"], "R3", "v1", [
+        "R3": _role_result_json(task_ids["R3"], "R3", runner.ROLE_VERSIONS["R3"], [
             _claim("c-r3", "R3", "OBSERVATION", "intimacy.communication_style", ev_id),
         ]),
         "R4": _role_result_json(task_ids["R4"], "R4", "v2", [
@@ -215,9 +215,7 @@ class TestPlanShape:
         assert [t.role_id for t in plan.role_tasks] == ["R1", "R2", "R3", "R4"]
 
     def test_role_versions(self, plan):
-        assert {t.role_id: t.role_version for t in plan.role_tasks} == {
-            "R1": "v3", "R2": "v3", "R3": "v1", "R4": "v2",
-        }
+        assert {t.role_id: t.role_version for t in plan.role_tasks} == dict(runner.ROLE_VERSIONS)
 
     def test_r3_activation_authorization_ref(self, plan):
         r3 = next(t for t in plan.role_tasks if t.role_id == "R3")
@@ -1494,7 +1492,7 @@ def _canonical_user_content(role_id, user_text):
 
 
 class TestRoleScopedProviderOptionsOutbound:
-    """Every canonical reconstruction role (R1 v3, R2 v3, R3 v1, R4 v2, R8)
+    """Every canonical reconstruction role (R1 v4, R2 v4, R3 v2, R4 v2, R8)
     receives max_tokens=65536 (a ceiling only) + thinking disabled. Malformed /
     unknown routing stays on the unchanged default transport (8192, no
     thinking)."""
@@ -2178,7 +2176,7 @@ class TestR1V3QualityGateEndToEnd:
         covered = list(r1.allowed_evidence_ids)[1:]  # drop exactly one authorized id
         claim = _claim("c-r1", "R1", "FACT", "identity_biography.birthplace",
                        covered, confidence="KNOWN")
-        bad = _role_result_json(r1.task_id, "R1", "v3", [claim],
+        bad = _role_result_json(r1.task_id, "R1", runner.ROLE_VERSIONS["R1"], [claim],
                                 provenance_summary={"sources_used": covered})
         provider, counts = _r1_gate_dispatch(plan, bad)
 
@@ -2220,7 +2218,7 @@ class TestR1V3QualityGateEndToEnd:
         covered = list(r1.allowed_evidence_ids)[1:]
         claim = _claim("c-r1", "R1", "FACT", "identity_biography.birthplace",
                        covered, confidence="KNOWN")
-        bad = _role_result_json(r1.task_id, "R1", "v3", [claim],
+        bad = _role_result_json(r1.task_id, "R1", runner.ROLE_VERSIONS["R1"], [claim],
                                 provenance_summary={"sources_used": covered})
         provider, counts = _r1_gate_dispatch(plan, bad)
 
@@ -2486,7 +2484,7 @@ def _r1_parse_failure_json(plan_):
         confidence="KNOWN",
     )
     return _role_result_json(
-        r1.task_id, "R1", "v3", [claim],
+        r1.task_id, "R1", runner.ROLE_VERSIONS["R1"], [claim],
         provenance_summary={"sources_used": all_ids},
     )
 

@@ -150,10 +150,85 @@ numeric scores). Composite conclusions inherit the weakest necessary
 evidentiary link. Confidence is independent of provenance and of the
 voice-pattern label.
 
+## AXIS_SEPARATION
+`claim_type`, `confidence`, `source_type_summary`, and `voice_pattern_label`
+are INDEPENDENT semantic axes. A value from one axis appears ONLY in that
+axis's field; never import a value from one axis into a different axis's field.
+
+- `claim_type` accepts ONLY ClaimType values.
+- `confidence` accepts ONLY Confidence values.
+- `source_type_summary` accepts ONLY SourceType values.
+- `voice_pattern_label` accepts ONLY VoicePatternLabel values (OBSERVED /
+  INFERRED / GENERATED_RULE / NEGATIVE_EXAMPLE).
+
+Forbidden (rejected fail-closed by the executor):
+- `claim_type = PROBABLE`, `POSSIBLE`, `KNOWN`, `CONTRADICTORY` — these are
+  Confidence values, NEVER ClaimType values.
+- `claim_type = OWNER_DIRECT`, `DIRECT_QUOTE`, `SCENARIO_EVIDENCE`,
+  `MODEL_INFERENCE`, `MODEL_EXAMPLE`, `PAC_EXPORTED`, `SANDBOX_SNAPSHOT`,
+  `OTHER` — these are SourceType values, NEVER ClaimType values.
+- `claim_type = NEGATIVE_EXAMPLE`, `OBSERVED`, `GENERATED_RULE` — these are
+  VoicePatternLabel values, NEVER ClaimType values. (`INFERRED` is legal as BOTH
+  a ClaimType and a VoicePatternLabel — use each only in its own field.)
+
+Some literals exist in more than one enum. Use each only in its own field with
+its own meaning; do not ban a value that is legal in that field:
+- `OBSERVATION`, `SELF_REPORT`, `THIRD_PARTY_REPORT` are legal in BOTH
+  `claim_type` (the claim's semantic type) and `source_type_summary`
+  (provenance/origin). They mean different things in each field.
+- `INFERRED` is legal in BOTH `claim_type` (semantic type) and
+  `voice_pattern_label` (voice-pattern label).
+- `UNKNOWN` is legal in BOTH `claim_type` (an explicit gap claim, which R4 is
+  NOT permitted to emit) and `confidence` (epistemic strength). R4 must NOT
+  emit `claim_type = UNKNOWN`; route insufficient evidence to the top-level
+  `unknowns` array and `completion_status` instead.
+
+## PROBABILITY_LANGUAGE
+Words such as `may`, `might`, `possibly`, `possible`, `probably`, `probable`,
+`likely`, `can` describe uncertainty. They do NOT determine `claim_type`.
+
+- They affect `confidence` where appropriate (e.g. a hedged pattern lowers
+  confidence to PROBABLE / POSSIBLE / UNKNOWN).
+- `claim_type` is still selected ONLY from R4's legal ClaimType values, based
+  on the nature and source of the claim (OBSERVATION / INFERENCE /
+  BEHAVIORAL_EVIDENCE / HYPOTHESIS / CONTRADICTION), never on a probability
+  word.
+- Never set `claim_type = PROBABLE` (or any other Confidence value) because a
+  claim is hedged; put the hedging in `confidence`.
+
+## EXACT_BINDING
+Certain identity fields are verified for EXACT equality by the executor and
+downstream pipeline. Copy them EXACTLY from the values supplied in
+`current_task` / the current subject / role metadata — do not invent,
+normalize, abbreviate, or substitute.
+
+- top-level `task_id` == `current_task.task_id` exactly.
+- top-level `role_id` == `R4` exactly.
+- top-level `role_version` == `current_task.role_version` exactly.
+- `claims[].subject_id` == `current_task.subject_id` exactly.
+- `claims[].role_id` == `R4` exactly.
+- `contradictions[].subject_id` == `current_task.subject_id` exactly.
+
+## CLAIM_ID_RULES
+`claim_id` must be globally unique across the whole reconstruction (R7 requires
+it). Use a deterministic, role-namespaced convention and never reuse an id:
+
+- `r4-claim-0001`, `r4-claim-0002`, ... (zero-padded, sequential, no gaps, no
+  reordering, never reused across rounds).
+
+## TARGET_FAMILY_CONTRACT
+`target_module_or_layer` MUST be `voice.<dimension>` only. You must NOT emit
+`psychology.*`, `behavior.*`, `relationships.*`, `identity_biography.*`,
+`seed_memory.*`, `boundaries.*`, `intimacy.*`, or `development_model.*`. Any
+target outside `voice.*` fails deterministic target-family validation
+fail-closed.
+
 ## CONTRADICTION_RULES
-Contradictions are preserved, never silently resolved. If evidence conflicts
-on a speech pattern, emit both sides explicitly; never pick a winner and never
-unilaterally close a `ContradictionRecord`.
+Contradictions are preserved, never silently resolved. A `ContradictionRecord`
+MUST carry at least TWO `claim_ids` (both sides of the conflict); never emit a
+one-item `claim_ids` array. If evidence conflicts on a speech pattern, emit
+both sides explicitly; never pick a winner and never unilaterally close a
+`ContradictionRecord` (emit only `OPEN` or `UNRESOLVED`).
 
 ## OUTPUT_CONTRACT
 Emit EXACTLY one strict JSON object — no Markdown wrapper, no prose before or
@@ -191,7 +266,7 @@ first-class executor-parsed field, independent of `claim_type`.
     {
       "contradiction_id": "<string>",
       "subject_id": "<string>",
-      "claim_ids": ["<string>"],
+      "claim_ids": ["<string>", "<string>"],
       "source_evidence_ids": ["<string>"],
       "description": "<plain statement of the conflict with both sides preserved>",
       "severity": "COSMETIC | MATERIAL | IDENTITY_CRITICAL",

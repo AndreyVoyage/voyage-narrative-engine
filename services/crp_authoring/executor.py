@@ -42,6 +42,7 @@ from .permissions import Permission, permission_violations
 from .registry import RoleRegistry, RoleStatus
 from .role_task import CompletionStatus, RoleResult, RoleTask
 from .validation import reject_unsupported_claim
+from .voice_rules import voice_label_violations
 
 # Provider callable shape: takes assembled messages, returns a string (the
 # model's raw output to parse). A future CLI adapter will forward this to
@@ -238,16 +239,30 @@ def execute_role_task(
     if violations:
         raise ExecutorError("ROLE_PERMISSION_VIOLATION: " + "; ".join(violations))
 
-    # --- R1 v3 canonical post-parse quality gate (role- AND version-scoped) ---
+    # --- R4 voice-pattern label fidelity (wired fail-closed for EVERY result) ---
+    # ``voice_label_violations`` is the single source of truth for the R4
+    # ``voice_pattern_label`` invariants (OBSERVED / INFERRED / GENERATED_RULE /
+    # NEGATIVE_EXAMPLE fidelity) and for the R4-scoping rule that a non-R4 role
+    # must not silently carry a voice_pattern_label. It runs for every
+    # RoleResult (not just R4) AFTER parsing and BEFORE the result is returned
+    # downstream toward the Candidate; a violation raises a deterministic
+    # ``ExecutorError`` with zero retry, fallback, auto-correction, or label
+    # rewriting.
+    voice_violations = voice_label_violations(result.claims)
+    if voice_violations:
+        raise ExecutorError("VOICE_LABEL_VIOLATION: " + "; ".join(voice_violations))
+
+    # --- R1 canonical post-parse quality gate (role- AND version-scoped) ---
     # Owner-approved CRP R4 correction (CRP-OD-R4-KIRA-R1-V3-01). Runs only for
-    # an R1 v3 RoleTask, at the exact seam AFTER _parse_role_result and all
-    # existing canonical executor checks and BEFORE returning the RoleResult.
-    # It never touches R1 v2, R2, R3, R4, or R8 semantics; it never retries,
-    # falls back, mutates the RoleResult, repairs provider output, or
-    # synthesizes provenance -- a violation raises a deterministic
-    # ``ExecutorError`` before this call returns (so, in the orchestrator, an
-    # R1 v3 violation aborts before R2 ever starts).
-    if task.role_id == "R1" and task.role_version == "v3":
+    # an R1 RoleTask at version v3 OR v4 (v4 receives the SAME quality/
+    # provenance gate as v3 -- no bypass, no weakening), at the exact seam
+    # AFTER _parse_role_result and all existing canonical executor checks and
+    # BEFORE returning the RoleResult. It never touches R1 v2, R2, R3, R4, or
+    # R8 semantics; it never retries, falls back, mutates the RoleResult,
+    # repairs provider output, or synthesizes provenance -- a violation raises a
+    # deterministic ``ExecutorError`` before this call returns (so, in the
+    # orchestrator, an R1 violation aborts before R2 ever starts).
+    if task.role_id == "R1" and task.role_version in ("v3", "v4"):
         _enforce_r1_v3_quality_gate(task, result)
 
     return result
@@ -259,11 +274,11 @@ def execute_role_task(
 
 
 def _enforce_r1_v3_quality_gate(task: RoleTask, result: RoleResult) -> None:
-    """Fail-closed truthful-evidence-accounting gate for R1 v3 ONLY.
+    """Fail-closed truthful-evidence-accounting gate for R1 v3 and v4.
 
     The caller invokes this solely when ``task.role_id == 'R1'`` and
-    ``task.role_version == 'v3'``; it must never be reached for R1 v2, R2, R3,
-    R4, or R8. It verifies exactly two properties and raises ``ExecutorError``
+    ``task.role_version in ('v3', 'v4')``; it must never be reached for R1 v2,
+    R2, R3, R4, or R8. It verifies exactly two properties and raises ``ExecutorError``
     (deterministic, no retry, no fallback, no mutation, no repair, no
     synthesis) on any violation:
 

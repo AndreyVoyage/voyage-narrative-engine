@@ -19,20 +19,26 @@
 
 roles:
   # ---------------------------------------------------------------- R1
-  # v3 (CRP-OD-R4-KIRA-R1-V3-01): owner-approved quality correction of v2 --
-  # corroboration merge, self-contained claims, no semantic-duplicate
-  # restatements, non-mechanical rationale, exact claim-level evidence
-  # accounting, and provenance_summary consistency. Prompt/schema shape,
-  # permissions, and downstream contract are preserved from v2. Under the
-  # single-entry RoleRegistry contract (exact version pin, no latest-wins),
-  # v2 is no longer a resolvable active R1 version; the v2 prompt file is
-  # retained on disk as the immutable predecessor artifact.
+  # v4 (CRP_ROLE_CONTRACT_CONVERGENCE_V1): contract-convergence correction of
+  # v3 -- explicit axis separation (ClaimType/Confidence/SourceType),
+  # probability-language guard (RUN_013 claim_type=PROBABLE), exact-bound
+  # identity copying, role-namespaced unique claim ids, >=2 claim_ids for
+  # contradiction records, parser-survivable contradiction outcomes only, and
+  # an explicit target-family contract. All R1 v3 quality rules (corroboration
+  # merge, self-contained claims, no semantic duplicates, non-mechanical
+  # rationale, exact claim-level evidence accounting, provenance_summary
+  # consistency) and the v3 quality/provenance gate are PRESERVED and applied
+  # to v4 as well. Permissions, activation gate, role identity, and downstream
+  # contract are preserved from v3. Under the single-entry RoleRegistry
+  # contract (exact version pin, no latest-wins), v3 is no longer a resolvable
+  # active R1 version; the v3 prompt file is retained on disk as the immutable
+  # predecessor artifact.
   - role_id: R1
     display_name: Evidence Interviewer
-    version: v3
+    version: v4
     status: ACTIVE
     execution_type: LLM_ROLE
-    prompt_ref: roles/vnext/ROLE_1_EVIDENCE_INTERVIEWER_v3_PROMPT.md
+    prompt_ref: roles/vnext/ROLE_1_EVIDENCE_INTERVIEWER_v4_PROMPT.md
     knowledge_profile_ref: profile-r1
     input_contract_ref: role_task_v1
     output_contract_ref: role_result_v1
@@ -46,24 +52,27 @@ roles:
       - EMIT_CLAIMS_BOUNDARIES
       - EMIT_CLAIMS_SEED_MEMORY
     activation_gate: "CRP-OD-R4-KIRA-R1-V3-01"
-    predecessor_version: v2
+    predecessor_version: v3
 
   # ---------------------------------------------------------------- R2
-  # v3 (RUN_010): owner-approved prompt-contract correction of v2. R2 v2
-  # emitted claim_type=UNKNOWN, but R2 correctly lacks EMIT_CLAIMS_UNKNOWN and
-  # the executor rejected it fail-closed. The permission model is correct; the
-  # fix is prompt-only: claim_type=UNKNOWN is no longer in R2's output enum,
-  # and insufficient evidence routes to top-level `unknowns`. Permissions and
-  # downstream contract are preserved from v2. Under the single-entry registry
-  # contract (exact version pin, no latest-wins), v2 is no longer a resolvable
-  # active R2 version; the v2 prompt file is retained on disk as the immutable
-  # predecessor artifact.
+  # v4 (CRP_ROLE_CONTRACT_CONVERGENCE_V1): contract-convergence correction of
+  # v3 -- explicit axis separation (ClaimType/Confidence/SourceType),
+  # probability-language guard, exact-bound identity copying, role-namespaced
+  # unique claim ids, >=2 claim_ids for contradiction records, parser-
+  # survivable contradiction outcomes only, and an explicit target-family
+  # contract. The already-correct v3 UNKNOWN routing is PRESERVED: R2 does NOT
+  # emit claim_type=UNKNOWN (R2 lacks EMIT_CLAIMS_UNKNOWN); insufficient
+  # evidence routes through the top-level mechanisms. Permissions, activation
+  # gate, role identity, and downstream contract are preserved from v3. Under
+  # the single-entry registry contract (exact version pin, no latest-wins), v3
+  # is no longer a resolvable active R2 version; the v3 prompt file is retained
+  # on disk as the immutable predecessor artifact.
   - role_id: R2
     display_name: Psychological Hypothesis Analyst
-    version: v3
+    version: v4
     status: ACTIVE
     execution_type: LLM_ROLE
-    prompt_ref: roles/vnext/ROLE_2_PSYCHOLOGICAL_HYPOTHESIS_ANALYST_v3_PROMPT.md
+    prompt_ref: roles/vnext/ROLE_2_PSYCHOLOGICAL_HYPOTHESIS_ANALYST_v4_PROMPT.md
     knowledge_profile_ref: profile-r2
     input_contract_ref: role_task_v1
     output_contract_ref: role_result_v1
@@ -74,21 +83,29 @@ roles:
       - EMIT_CLAIMS_BEHAVIOR
       - EMIT_CLAIMS_RELATIONSHIPS
     activation_gate: "CRP_MVP_SPEC_v1@2026-08-16:OWNER_RATIFIED_SPECIFICATION"
-    predecessor_version: v2
+    predecessor_version: v3
 
   # ---------------------------------------------------------------- R3
-  # ACTIVE in the registry (technically executable). R3 remains per-task gated
-  # by CRP-OD-9: every R3 RoleTask still requires a non-empty
-  # activation_authorization_ref (role_task.py GATED_OPTIONAL_ROLES). The first
-  # canonical Kira reconstruction (CRP-OD-R4-KIRA-R3-01) REQUIRES R3. Registry
-  # ACTIVE does NOT auto-insert R3 into reconstruction runs: role selection
-  # stays caller-owned.
+  # v2 (CRP_ROLE_CONTRACT_CONVERGENCE_V1): contract-convergence correction of
+  # v1 -- explicit axis separation (ClaimType/Confidence/SourceType),
+  # probability-language guard, exact-bound identity copying, role-namespaced
+  # unique claim ids, >=2 claim_ids for contradiction records, parser-
+  # survivable contradiction outcomes only, and an explicit target-family
+  # contract. R3 remains per-task gated by CRP-OD-9: every R3 RoleTask still
+  # requires a non-empty activation_authorization_ref (role_task.py
+  # GATED_OPTIONAL_ROLES). The first canonical Kira reconstruction
+  # (CRP-OD-R4-KIRA-R3-01) REQUIRES R3. Registry ACTIVE does NOT auto-insert R3
+  # into reconstruction runs: role selection stays caller-owned. Permissions,
+  # activation gate, role identity, and domain semantics are preserved from v1.
+  # Under the single-entry registry contract (exact version pin, no
+  # latest-wins), v1 is no longer a resolvable active R3 version; the v1 prompt
+  # file is retained on disk as the immutable predecessor artifact.
   - role_id: R3
     display_name: Optional Intimacy Profile Specialist
-    version: v1
+    version: v2
     status: ACTIVE
     execution_type: LLM_ROLE
-    prompt_ref: roles/vnext/ROLE_3_INTIMACY_PROFILE_SPECIALIST_v1_PROMPT.md
+    prompt_ref: roles/vnext/ROLE_3_INTIMACY_PROFILE_SPECIALIST_v2_PROMPT.md
     knowledge_profile_ref: profile-r3
     input_contract_ref: role_task_v1
     output_contract_ref: role_result_v1
@@ -97,6 +114,7 @@ roles:
       - READ_PRIOR_ROLE_RESULTS
       - EMIT_CLAIMS_INTIMACY
     activation_gate: "PER_TASK_AUTHORIZATION_REQUIRED_CRP-OD-9_KIRA_REQUIRED_CRP-OD-R4-KIRA-R3-01"
+    predecessor_version: v1
 
   # ---------------------------------------------------------------- R4
   # v2 (RUN_012): owner-approved prompt-contract / evidence-boundary correction

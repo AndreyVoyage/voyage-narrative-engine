@@ -116,25 +116,25 @@ class TestR2V2PromptContract:
 
 
 class TestSlice5RegistryVersions:
-    def test_r1_authoritative_version_v3(self) -> None:
-        # R1 advanced v2 -> v3 (CRP-OD-R4-KIRA-R1-V3-01 quality correction);
-        # the single-entry registry pins exactly v3, predecessor v2.
+    def test_r1_authoritative_version_v4(self) -> None:
+        # R1 advanced v3 -> v4 (CRP_ROLE_CONTRACT_CONVERGENCE_V1 correction);
+        # the single-entry registry pins exactly v4, predecessor v3.
         registry = load_role_registry()
-        assert registry.get("R1").version == "v3"
-        assert registry.get("R1").predecessor_version == "v2"
+        assert registry.get("R1").version == "v4"
+        assert registry.get("R1").predecessor_version == "v3"
 
-    def test_r2_authoritative_version_v3(self) -> None:
+    def test_r2_authoritative_version_v4(self) -> None:
         registry = load_role_registry()
-        assert registry.get("R2").version == "v3"
-        assert registry.get("R2").predecessor_version == "v2"
+        assert registry.get("R2").version == "v4"
+        assert registry.get("R2").predecessor_version == "v3"
 
-    def test_r1_prompt_ref_resolves_to_v3_file(self) -> None:
+    def test_r1_prompt_ref_resolves_to_v4_file(self) -> None:
         registry = load_role_registry()
-        assert registry.get("R1").prompt_ref.endswith("v3_PROMPT.md")
+        assert registry.get("R1").prompt_ref.endswith("v4_PROMPT.md")
 
-    def test_r2_prompt_ref_resolves_to_v3_file(self) -> None:
+    def test_r2_prompt_ref_resolves_to_v4_file(self) -> None:
         registry = load_role_registry()
-        assert registry.get("R2").prompt_ref.endswith("v3_PROMPT.md")
+        assert registry.get("R2").prompt_ref.endswith("v4_PROMPT.md")
 
 
 class TestSlice5PermissionSurface:
