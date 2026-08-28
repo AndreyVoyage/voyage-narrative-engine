@@ -199,6 +199,100 @@
 
 ---
 
+## 10. Manual Scene Reference Input (SVA-MR1) — OD-SVA-MR-01
+
+> **Трек:** SVA — Scenario Visual Authoring (scene image authoring).
+> **Milestone:** SVA-MR1 — `MANUAL_SCENE_REFERENCE_INPUT_V0`.
+> **Owner decision:** `OD-SVA-MR-01 = A` — Manual Scene Reference Input is a **required** authoring capability.
+> **Дата записи (addendum к v1.1):** 2026-08-28.
+
+**Decision.** During scene image authoring, the application must let a user manually attach visual
+references to a specific character and/or to the scene (current authoring item), alongside the
+automatically derived Character Canon references. Manual reference upload is a planned, ratified product
+capability — not an optional prototype.
+
+**Rationale.** Scene image authoring needs author-controllable visual input (per-character and
+scene-level) that does **not** require mutating Character Canon. Manual references are an additional
+*input* to reference selection / `ReferenceBundle` construction — not a second provider pipeline.
+
+**Status:** `PLANNED / RATIFIED_REQUIREMENT`. The requirement is ratified by the owner; implementation
+is **NOT** authorized in this task and must occur **after** the generic multi-character reference
+conditioning foundation is proven.
+
+### Required semantics (OD-SVA-MR-01 = A)
+
+1. The application derives visible character sections from the scene's `characters_in_frame`.
+2. A user may manually attach a reference to a specific character.
+3. Every character-specific manual reference must have explicit `character_id`, `role`, and `scope`.
+4. Manual references may also be scene-level (no character ownership), for example: interaction/pose
+   composition, camera/composition, location/environment.
+5. Default `scope` = `THIS_SCENE_ONLY` / current authoring item.
+6. Manual upload MUST NOT automatically mutate Character Canon.
+7. Required conceptual modes:
+   - **A. `ADD_TO_CURRENT_GENERATION`** — add a manual ref alongside Canon refs for the current
+     scene/media item.
+   - **B. `OVERRIDE_FOR_CURRENT_GENERATION`** — replace/disable a selected automatic ref only for the
+     current generation/media item.
+   - **C. `PROPOSE_FOR_CANON`** — a separate explicit workflow; a manual ref may be proposed to
+     Character Canon but requires the normal review/approval process before becoming canonical.
+8. The authoring UI should preview the references that will actually be sent before generation.
+9. The user should be able to enable/disable individual refs before generation, subject to fail-closed
+   minimum identity/reference requirements defined by the implementation contract.
+10. Manual references must integrate with the same generic `ReferenceBundle` architecture.
+11. No character-specific code.
+12. Future correctly registered characters must automatically receive the same manual-reference UI and
+    pipeline behavior.
+
+### Architectural position (conceptual flow)
+
+```text
+Scene / MediaItem
++
+Character Canon automatic refs
++
+Manual scene references
+        ↓
+reference selection / ownership
+        ↓
+generic ReferenceBundle
+        ↓
+conditioned provider attachment
+        ↓
+image provider
+```
+
+Manual refs are an **input** to bundle construction/selection. They are **NOT** a second independent
+provider pipeline.
+
+### Ownership model (planning level)
+
+- **Character-specific reference:** `character_id` = explicit owner; `role` = explicit; `scope` =
+  scene/media-local by default.
+- **Scene-level reference:** no false character ownership; `role` = interaction / composition /
+  location / equivalent supported role; `scope` = scene/media-local.
+
+A low-level storage schema is **not** finalized here — that belongs to the later SVA-MR1 contract
+implementation.
+
+### Planned authoring UX (semantics only)
+
+Before image generation, the UI should expose, per visible character (e.g. KIRA, SERGEY): automatic
+Canon refs, manual refs, and enable/disable controls; plus a SCENE section for
+interaction/composition/location refs. The actual UI framework/layout is **not** decided in this task.
+
+### Non-goals (SVA-MR1 v0 does NOT mean)
+
+- arbitrary automatic Canon mutation
+- implicit identity reassignment
+- hidden mixing of all uploaded files
+- unordered anonymous reference pool
+- character-ID hardcodes
+- bypassing approval/status gates
+- bypassing `ReferenceBundle`
+- using local path text instead of real image attachment
+
+---
+
 ## Сводка решений (быстрый справочник)
 
 | # | Вопрос | Решение |
@@ -212,6 +306,7 @@
 | 7 | Documentation | Набор канонических docs в `docs/narrative/` |
 | 8 | Framework boundary | Framework = workflow/guardrails; Narrative = продукт/runtime |
 | 9 | Out of scope | SC_028 нет; качество SC_020–027 не трогаем; миграция позже; массовый export персон в RenPy — N6+ |
+| 10 | Manual Scene Reference Input (SVA-MR1) | OD-SVA-MR-01 = A: ручной scene-reference обязателен; character_id/role/scope; scene-local по умолчанию; НЕ мутирует Canon; через ReferenceBundle; UI preview + enable/disable |
 |---|---|---|
 | 1 | Product identity | Гибрид: RenPy VN + LLM director/character layer |
 | 2 | Source of truth | **JSON-first** (переходный гибрид разрешён) |

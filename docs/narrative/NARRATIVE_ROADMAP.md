@@ -417,3 +417,28 @@ Character Aside / Voice Layer — N6 / future tracks (см. NARRATIVE_FUTURE_TRA
 
 > Коммит этого документа — через стандартный Narrative workflow (Claude Code).
 > Это завершает набор N0-документов: DECISIONS, ARCHITECTURE, SCHEMA_V2, RUNTIME_CONTRACT, PLAYER_EXPERIENCE, ROADMAP.
+
+---
+
+## 11. SVA — Scenario Visual Authoring: reference conditioning + manual reference input (2026-08-28)
+
+**Reference-conditioning foundation sequence (B4):**
+
+| Milestone | Status |
+|---|---|
+| B4-RC2 — Generic `ReferenceBundle` | CLOSED |
+| B4-RC3 — Conditioned Provider Attachment | CLOSED |
+| B4-RC4 — Offline independent audit | NEXT |
+| B4-RC5 — Corrected live multi-character retry | PLANNED |
+
+**After the reference-conditioning foundation is proven:**
+
+| Milestone | Status |
+|---|---|
+| SVA-MR1 — `MANUAL_SCENE_REFERENCE_INPUT_V0` | PLANNED / RATIFIED_REQUIREMENT |
+
+- **Dependency:** generic multi-character reference conditioning foundation (B4-RC2 → B4-RC5).
+- **SVA-MR1 does NOT block B4-RC4/RC5.** RC4/RC5 proceed independently of SVA-MR1.
+- **Owner decision:** `OD-SVA-MR-01 = A` (Manual Scene Reference Input is required) — recorded in
+  `NARRATIVE_DECISIONS_v1.md` §10.
+- **Placement:** implementation only after the reference-conditioning foundation is proven; not before.
