@@ -404,3 +404,156 @@ class TestR2V3ContractCorrection:
         text = _R2_V2_PATH.read_text(encoding="utf-8")
         assert "prompt_version: v2" in text
         assert _UNKNOWN_CLAIM_TYPE_ENUM in text
+
+
+_R4_V1_PATH = _REPO_ROOT / "roles" / "vnext" / "ROLE_4_VOICE_RECONSTRUCTION_ANALYST_v1_PROMPT.md"
+_R4_V2_PATH = _REPO_ROOT / "roles" / "vnext" / "ROLE_4_VOICE_RECONSTRUCTION_ANALYST_v2_PROMPT.md"
+
+# Stale v1 instructions the RUN_012 correction removes from v2 (matched against
+# whitespace-collapsed prompt text so line wrapping is irrelevant).
+_STALE_V1_MARKERS = (
+    "FOLLOW_UP_REQUIRED_BEFORE_REAL_R4_EXECUTION",
+    "not yet part of the executor's",
+    "do not add a `voice_pattern_label` key yet",
+    "executor gap",
+)
+
+
+def _collapsed(text: str) -> str:
+    return " ".join(text.split())
+
+
+class TestR4V2ContractCorrection:
+    """Static QA for the R4 v2 prompt-contract / evidence-boundary correction
+    (RUN_012): `voice_pattern_label` is an executor-supported first-class field
+    independent of `claim_type`; `claim_type=NEGATIVE_EXAMPLE` is never legal;
+    `claim_type=UNKNOWN` is not emittable by R4 (R4 lacks EMIT_CLAIMS_UNKNOWN)
+    and insufficient evidence routes to top-level mechanisms; OBSERVED voice
+    claims require actual attributed speech, not owner-authored descriptive
+    prose. v1 remains unchanged on disk."""
+
+    def _text(self) -> str:
+        assert _R4_V2_PATH.exists(), f"missing v2 prompt: {_R4_V2_PATH}"
+        return _R4_V2_PATH.read_text(encoding="utf-8")
+
+    def test_v2_metadata_and_predecessor(self) -> None:
+        text = self._text()
+        assert "prompt_version: v2" in text
+        assert "predecessor_version: v1" in text
+        assert "role_id: R4" in text
+        assert "prompt_id: ROLE_4_VOICE_RECONSTRUCTION_ANALYST" in text
+
+    def test_v2_output_contract_includes_voice_pattern_label(self) -> None:
+        text = self._text()
+        # The OUTPUT_CONTRACT JSON example carries the key with the exact
+        # executor-supported enum, not a parallel invented structure.
+        assert (
+            '"voice_pattern_label": "OBSERVED | INFERRED | GENERATED_RULE | NEGATIVE_EXAMPLE"'
+            in text
+        )
+        assert "voice_pattern_label" in _sections(text)["OUTPUT_CONTRACT"]
+
+    def test_v2_states_executor_supports_voice_pattern_label(self) -> None:
+        low = _collapsed(self._text()).lower()
+        assert "executor supports the `voice_pattern_label` key" in low
+        assert "first-class executor-parsed field" in low
+
+    def test_v2_legal_voice_pattern_label_values(self) -> None:
+        text = self._text()
+        for label in ("OBSERVED", "INFERRED", "GENERATED_RULE", "NEGATIVE_EXAMPLE"):
+            assert label in text, f"R4 v2: missing voice_pattern_label value {label}"
+
+    def test_v2_label_axis_independent_of_claim_type(self) -> None:
+        low = _collapsed(self._text()).lower()
+        assert "independent of `claim_type`" in low
+
+    def test_v2_forbids_claim_type_negative_example(self) -> None:
+        low = _collapsed(self._text()).lower()
+        assert "`claim_type = negative_example` is never legal" in low
+        assert "`negative_example` is not a `claimtype` value at all" in low
+        # The anti-pattern is encoded on the label axis instead.
+        assert "encode an anti-pattern as `voice_pattern_label = negative_example`" in low
+        # And a NEGATIVE_EXAMPLE claim_type must not be FACT.
+        assert "the `claim_type` must not be `fact`" in low
+
+    def test_v2_claim_type_enum_excludes_unknown(self) -> None:
+        text = self._text()
+        # OUTPUT_CONTRACT JSON claim_type enum: exactly the values R4 may emit,
+        # no UNKNOWN (R4 lacks EMIT_CLAIMS_UNKNOWN; executor rejects it).
+        assert (
+            '"claim_type": "OBSERVATION | INFERENCE | BEHAVIORAL_EVIDENCE | HYPOTHESIS | CONTRADICTION"'
+            in text
+        )
+        assert (
+            '"claim_type": "OBSERVATION | INFERENCE | BEHAVIORAL_EVIDENCE | HYPOTHESIS | CONTRADICTION | UNKNOWN"'
+            not in text
+        )
+        low = _collapsed(text).lower()
+        assert (
+            "the legal `claim_type` values r4 may emit are "
+            "`observation | inference | behavioral_evidence | hypothesis | contradiction`"
+            in low
+        )
+        assert "| contradiction | unknown`" not in low
+
+    def test_v2_prohibits_claim_type_unknown(self) -> None:
+        low = _collapsed(self._text()).lower()
+        assert "`claim_type = unknown` is not emittable by r4" in low
+        assert "r4 lacks `emit_claims_unknown`" in low
+        assert "do not emit a claim with `claim_type = unknown`" in low
+
+    def test_v2_routes_insufficient_evidence_to_top_level_mechanisms(self) -> None:
+        low = _collapsed(_sections(self._text())["STOP_CONDITIONS"]).lower()
+        assert "top-level `unknowns` array" in low
+        assert "completion_status` to `insufficient_evidence`" in low
+        assert "requests_for_more_evidence" in low
+        assert "questions_for_r1" in low
+
+    def test_v2_stale_not_supported_instruction_is_gone(self) -> None:
+        collapsed = _collapsed(self._text())
+        for marker in _STALE_V1_MARKERS:
+            assert marker not in collapsed, (
+                f"R4 v2 still carries stale v1 marker: {marker!r}"
+            )
+
+    def test_v2_evidence_boundary_distinguishes_speech_from_prose(self) -> None:
+        text = self._text()
+        assert "VOICE_EVIDENCE_BOUNDARY" in _sections(text)
+        low = _collapsed(text).lower()
+        assert "actual character speech evidence" in low
+        assert "owner-authored descriptive prose about the character" in low
+        assert "actual attributed speech vs description about speech" in low
+
+    def test_v2_observed_voice_claims_require_actual_speech_evidence(self) -> None:
+        body = _sections(self._text())["VOICE_EVIDENCE_BOUNDARY"]
+        low = _collapsed(body).lower()
+        assert "requires actual speech evidence" in low
+        assert "`direct_quote` attributable to kira" in low
+        assert "speaker-attributed dialogue" in low
+        for dim in ("voice.lexicon", "voice.syntax", "voice.register",
+                    "voice.address_forms", "voice.taboo_avoidance"):
+            assert dim in body
+        # Owner-authored prose does not by itself prove literal speech.
+        assert "stop is absolute at every state" in low
+        assert "does not automatically prove" in low
+
+    def test_v2_prose_only_supports_bounded_inference_not_fake_observed(self) -> None:
+        low = _collapsed(_sections(self._text())["VOICE_EVIDENCE_BOUNDARY"]).lower()
+        assert "may support a bounded `inferred` or `generated_rule` voice pattern" in low
+        assert "it must not be mislabeled `observed`" in low
+        assert "no quote or exact wording may be invented" in low
+        assert "use `unknowns` / `requests_for_more_evidence`" in low
+
+    def test_v1_remains_unchanged_and_present(self) -> None:
+        assert _R4_V1_PATH.exists(), "v1 prompt must remain on disk"
+        collapsed = _collapsed(_R4_V1_PATH.read_text(encoding="utf-8"))
+        assert "prompt_version: v1" in collapsed
+        # The stale instructions the correction targets are still in v1,
+        # proving v1 was not edited by this change.
+        assert "FOLLOW_UP_REQUIRED_BEFORE_REAL_R4_EXECUTION" in collapsed
+        assert "do not add a `voice_pattern_label` key yet" in collapsed
+        # v1's claim_type enum still carries UNKNOWN (removed only in v2).
+        assert (
+            '"claim_type": "OBSERVATION | INFERENCE | BEHAVIORAL_EVIDENCE | HYPOTHESIS | CONTRADICTION | UNKNOWN"'
+            in _R4_V1_PATH.read_text(encoding="utf-8")
+        )

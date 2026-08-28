@@ -133,10 +133,32 @@ class TestDeclarativeRegistryLoad:
         assert Permission.EMIT_CLAIMS_UNKNOWN not in entry.permissions
 
     def test_r4_resolves_exact_version(self) -> None:
+        # R4 is pinned to v2 (RUN_012 voice_pattern_label contract / voice
+        # evidence-boundary correction).
         registry = load_role_registry()
-        entry = registry.resolve("R4", "v1")
+        entry = registry.resolve("R4", "v2")
         assert entry.status is RoleStatus.ACTIVE
         assert entry.execution_type is ExecutionType.LLM_ROLE
+        assert entry.prompt_ref.endswith("ROLE_4_VOICE_RECONSTRUCTION_ANALYST_v2_PROMPT.md")
+
+    def test_r4_predecessor_version_recorded(self) -> None:
+        registry = load_role_registry()
+        assert registry.get("R4").predecessor_version == "v1"
+
+    def test_r4_old_version_not_resolvable(self) -> None:
+        # The v1 prompt file remains on disk but v1 is no longer a resolvable
+        # registry entry (single-entry pin, no latest-wins, no fallback).
+        registry = load_role_registry()
+        with pytest.raises(CrpValidationError):
+            registry.resolve("R4", "v1")
+
+    def test_r4_permissions_unchanged(self) -> None:
+        registry = load_role_registry()
+        entry = registry.get("R4")
+        assert entry.permissions == PERMISSIONS_BY_ROLE["R4"]
+        assert Permission.EMIT_CLAIMS_VOICE in entry.permissions
+        # R4 has no EMIT_CLAIMS_UNKNOWN, so R4 v2 must not offer claim_type=UNKNOWN.
+        assert Permission.EMIT_CLAIMS_UNKNOWN not in entry.permissions
 
     def test_r3_active_with_gate_references(self) -> None:
         registry = load_role_registry()

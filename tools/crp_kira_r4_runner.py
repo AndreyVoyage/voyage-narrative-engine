@@ -85,9 +85,10 @@ MANIFEST_REL = "KIRA_DATASET_FREEZE.manifest.json"
 
 ROLE_ORDER: Tuple[str, ...] = ("R1", "R2", "R3", "R4")
 # R1 is pinned to v3 (CRP-OD-R4-KIRA-R1-V3-01, owner-approved quality
-# correction). R2 is pinned to v3 (canonical R2 task-version correction);
-# R3 v1 / R4 v1 are unchanged.
-ROLE_VERSIONS: Mapping[str, str] = {"R1": "v3", "R2": "v3", "R3": "v1", "R4": "v1"}
+# correction). R2 is pinned to v3 (canonical R2 task-version correction).
+# R4 is pinned to v2 (RUN_012 voice_pattern_label contract / voice
+# evidence-boundary correction); R3 v1 is unchanged.
+ROLE_VERSIONS: Mapping[str, str] = {"R1": "v3", "R2": "v3", "R3": "v1", "R4": "v2"}
 R3_ACTIVATION_AUTHORIZATION_REF = "CRP-OD-R4-KIRA-R3-01"
 KIRA_RUN_ID = "kira-r4-canonical-run-1"
 PROVIDER_CALL_BUDGET = 5
@@ -105,7 +106,7 @@ LIVE_MAX_TOKENS = 8192
 # Canonical reconstruction-wide output policy (CRP R4 output-budget
 # correction). The canonical Kira reconstruction is a bounded one-time
 # high-fidelity authoring operation; every canonical role (R1 v3, R2 v3,
-# R3 v1, R4 v1, R8) therefore runs with a RAISED completion CEILING and
+# R3 v1, R4 v2, R8) therefore runs with a RAISED completion CEILING and
 # provider "thinking" disabled. 65536 is a CEILING only -- no artificial
 # minimum output requirement. The prior small per-role ceilings were the
 # actual cause of the R3 truncation (finish_reason "length" at 8192), so this
@@ -350,7 +351,7 @@ class CountingGuard:
 # A single runner-local dispatcher routes each provider call to one of two
 # already-built provider callables: the canonical transport (max_tokens 65536
 # -- a ceiling only -- and provider "thinking" disabled) for the canonical
-# reconstruction roles R1 v3 / R2 v3 / R3 v1 / R4 v1 / R8, and the unchanged
+# reconstruction roles R1 v3 / R2 v3 / R3 v1 / R4 v2 / R8, and the unchanged
 # default transport (8192, no thinking) for any malformed / ambiguous /
 # incomplete / unknown call, which therefore never gains the canonical
 # override. The dispatcher is PURE routing: no counting, no retry, no

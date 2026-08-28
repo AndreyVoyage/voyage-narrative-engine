@@ -179,7 +179,7 @@ def _happy_payloads(plan_):
         "R3": _role_result_json(task_ids["R3"], "R3", "v1", [
             _claim("c-r3", "R3", "OBSERVATION", "intimacy.communication_style", ev_id),
         ]),
-        "R4": _role_result_json(task_ids["R4"], "R4", "v1", [
+        "R4": _role_result_json(task_ids["R4"], "R4", "v2", [
             _claim("c-r4", "R4", "OBSERVATION", "voice.lexicon", ev_id),
         ]),
     }
@@ -216,7 +216,7 @@ class TestPlanShape:
 
     def test_role_versions(self, plan):
         assert {t.role_id: t.role_version for t in plan.role_tasks} == {
-            "R1": "v3", "R2": "v3", "R3": "v1", "R4": "v1",
+            "R1": "v3", "R2": "v3", "R3": "v1", "R4": "v2",
         }
 
     def test_r3_activation_authorization_ref(self, plan):
@@ -290,7 +290,7 @@ class TestPreProviderPlanValidationFailsClosed:
 
     def test_wrong_version_fails(self, plan):
         r1, r2, r3, r4 = plan.role_tasks
-        bad_r4 = dataclasses.replace(r4, role_version="v2")
+        bad_r4 = dataclasses.replace(r4, role_version="v1")
         with pytest.raises(CrpValidationError):
             self._validate(plan, (r1, r2, r3, bad_r4))
 
@@ -327,7 +327,7 @@ class TestPreProviderPlanValidationFailsClosed:
     def test_wrong_r4_version_caught_before_any_provider_call(self, plan, monkeypatch):
         """Detect a bad R4 version BEFORE spending calls on R1/R2/R3."""
         r1, r2, r3, r4 = plan.role_tasks
-        bad_r4 = dataclasses.replace(r4, role_version="v2")
+        bad_r4 = dataclasses.replace(r4, role_version="v1")
         poisoned = dataclasses.replace(plan, role_tasks=(r1, r2, r3, bad_r4))
 
         def never_called(messages):
@@ -383,7 +383,7 @@ def _wrong_order(r1, r2, r3, r4):
 
 
 def _wrong_version(r1, r2, r3, r4):
-    return (r1, r2, r3, dataclasses.replace(r4, role_version="v2"))
+    return (r1, r2, r3, dataclasses.replace(r4, role_version="v1"))
 
 
 def _subject_mismatch(r1, r2, r3, r4):
@@ -1494,7 +1494,7 @@ def _canonical_user_content(role_id, user_text):
 
 
 class TestRoleScopedProviderOptionsOutbound:
-    """Every canonical reconstruction role (R1 v3, R2 v3, R3 v1, R4 v1, R8)
+    """Every canonical reconstruction role (R1 v3, R2 v3, R3 v1, R4 v2, R8)
     receives max_tokens=65536 (a ceiling only) + thinking disabled. Malformed /
     unknown routing stays on the unchanged default transport (8192, no
     thinking)."""
