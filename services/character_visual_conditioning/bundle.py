@@ -136,6 +136,85 @@ def _select_character_references(
     return selected
 
 
+def _validate_explicit_selection(
+    reference_keys_by_character: Optional[Mapping[str, Sequence[str]]],
+) -> dict[str, tuple[str, ...]]:
+    """Normalize an optional explicit per-character reference-key selection.
+
+    Returns an empty mapping when no explicit selection is supplied. Each value
+    must be a non-empty sequence of non-empty strings; an empty explicit
+    selection for a frame character would produce zero usable refs, so it fails
+    closed up front.
+    """
+    if reference_keys_by_character is None:
+        return {}
+
+    normalized: dict[str, tuple[str, ...]] = {}
+    for character_id, keys in reference_keys_by_character.items():
+        if not isinstance(character_id, str) or not character_id:
+            raise ReferenceSelectionError(
+                "explicit reference selection keys must use a non-empty string "
+                "character_id"
+            )
+        if isinstance(keys, (str, bytes)):
+            raise ReferenceSelectionError(
+                f"explicit reference selection for {character_id!r} must be a "
+                "sequence of reference keys, not a single string"
+            )
+        try:
+            key_list = list(keys)
+        except TypeError as exc:
+            raise ReferenceSelectionError(
+                f"explicit reference selection for {character_id!r} must be "
+                "an iterable of reference keys"
+            ) from exc
+        if not key_list:
+            raise ReferenceSelectionError(
+                f"explicit reference selection for {character_id!r} is empty"
+            )
+        for key in key_list:
+            if not isinstance(key, str) or not key:
+                raise ReferenceSelectionError(
+                    f"explicit reference selection for {character_id!r} "
+                    "contains a non-string reference key"
+                )
+        normalized[character_id] = tuple(key_list)
+    return normalized
+
+
+def _select_explicit_references(
+    snapshot: CharacterCanonSnapshot,
+    requested_keys: Sequence[str],
+) -> list[CanonReference]:
+    """Resolve a caller-selected reference-key subset from one frozen snapshot.
+
+    Only the exact requested frozen keys are included, resolved strictly from
+    ``snapshot`` (never another character's snapshot and never a live Canon
+    re-read). Caller order is preserved; a key requested more than once keeps
+    only its first occurrence. A requested key that is not present in this
+    snapshot fails closed (no silent fallback to the full bundle, no silent
+    substitution with another role).
+    """
+    refs_by_key: dict[str, CanonReference] = {}
+    for ref in snapshot.references:
+        refs_by_key.setdefault(ref.key, ref)
+
+    selected: list[CanonReference] = []
+    seen_keys: set[str] = set()
+    for key in requested_keys:
+        if key in seen_keys:
+            continue
+        seen_keys.add(key)
+        ref = refs_by_key.get(key)
+        if ref is None:
+            raise ReferenceSelectionError(
+                f"requested reference key {key!r} is not present in the frozen "
+                f"snapshot for {snapshot.character_id!r}"
+            )
+        selected.append(ref)
+    return selected
+
+
 def _read_reference_bytes(
     canon_root: Path,
     character_id: str,
@@ -221,24 +300,36 @@ def build_reference_bundle(
     characters_in_frame: Sequence[str],
     canon_root: Path,
     scene_preset_by_character: Optional[Mapping[str, str]] = None,
+    reference_keys_by_character: Optional[Mapping[str, Sequence[str]]] = None,
 ) -> ReferenceBundle:
     """Build the immutable provider-neutral N-character ReferenceBundle.
 
-    Ordering is deterministic and semantic:
+    Default ordering (no explicit selection) is deterministic and semantic:
 
     1. character groups follow ``characters_in_frame`` order (never re-sorted);
     2. within each character, core references keep frozen canonical order;
     3. then requested scene-preset references keep frozen order.
 
+    Optional explicit selection: when ``reference_keys_by_character`` has an
+    entry for a frame character, only those exact frozen reference keys are
+    included, resolved strictly from that character's snapshot, in caller
+    order (a duplicated key keeps only its first occurrence; a key requested
+    multiple times that resolves to the same path collapses to one binary entry
+    carrying all associated roles in caller order). The ``scene_preset`` entry
+    for that character is ignored. A character with no explicit selection keeps
+    the exact RC2 default behavior above.
+
     Fail-closed guarantees: any missing snapshot, duplicate frame character,
-    missing scene preset, zero usable references, or unsafe/missing/empty/
-    bad-format file raises immediately and NO partial bundle is returned.
+    missing scene preset, unknown requested reference key, zero usable
+    references, or unsafe/missing/empty/bad-format file raises immediately and
+    NO partial bundle is returned.
     """
     frame = list(characters_in_frame)
     if not frame:
         raise ReferenceSelectionError("characters_in_frame must be non-empty")
 
     presets = dict(scene_preset_by_character or {})
+    explicit = _validate_explicit_selection(reference_keys_by_character)
 
     snapshots_by_id: dict[str, CharacterCanonSnapshot] = {}
     for snapshot in character_snapshots:
@@ -260,8 +351,11 @@ def build_reference_bundle(
                 f"no frozen snapshot for frame character {cid!r}"
             )
 
-        scene_preset = presets.get(cid)
-        selected = _select_character_references(snapshot, scene_preset)
+        if cid in explicit:
+            selected = _select_explicit_references(snapshot, explicit[cid])
+        else:
+            scene_preset = presets.get(cid)
+            selected = _select_character_references(snapshot, scene_preset)
         if not selected:
             raise ReferenceSelectionError(
                 f"no usable visual references for {cid!r}"
