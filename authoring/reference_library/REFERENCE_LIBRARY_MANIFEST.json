@@ -1,4 +1,197 @@
 {
   "schema_version": "vne_reference_library/0.1",
-  "references": []
+  "references": [
+    {
+      "asset_id": "andrey_junior_body_01",
+      "character_id": "ANDREY_JUNIOR",
+      "collection": "scene_image_test_app",
+      "relative_path": "authoring/reference_library/assets/characters/ANDREY_JUNIOR/andrey_junior_body_01.png",
+      "filename": "andrey_junior_body_01.png",
+      "sha256": "d4eb483cf45afedb949a529562d220d83a13ffba77929e43c190c3dacd46942a",
+      "file_type": "PNG",
+      "mime_type": "image/png",
+      "source_filename": "ANDREY_JUNIOR_body_canon_v2_sheet_A_front_side_back_APPROVED.png",
+      "created": "2026-08-29T13:44:20Z"
+    },
+    {
+      "asset_id": "andrey_junior_face_01",
+      "character_id": "ANDREY_JUNIOR",
+      "collection": "scene_image_test_app",
+      "relative_path": "authoring/reference_library/assets/characters/ANDREY_JUNIOR/andrey_junior_face_01.png",
+      "filename": "andrey_junior_face_01.png",
+      "sha256": "a25ec83ecbc289c5059e4663dda4b250796d8339658924a990d893bee7870d0e",
+      "file_type": "PNG",
+      "mime_type": "image/png",
+      "source_filename": "ANDREY_JUNIOR_face_canon_v1_sheet_A_APPROVED.png",
+      "created": "2026-08-29T13:44:20Z"
+    },
+    {
+      "asset_id": "andrey_junior_face_support_01",
+      "character_id": "ANDREY_JUNIOR",
+      "collection": "scene_image_test_app",
+      "relative_path": "authoring/reference_library/assets/characters/ANDREY_JUNIOR/andrey_junior_face_support_01.png",
+      "filename": "andrey_junior_face_support_01.png",
+      "sha256": "6f4ddcfb702aa536b5211eb48af9894078092b0e73525c23d4ba443da41b9ef7",
+      "file_type": "PNG",
+      "mime_type": "image/png",
+      "source_filename": "ANDREY_JUNIOR_test01_neutral_studio_portrait_v1_APPROVED.png",
+      "created": "2026-08-29T13:44:20Z"
+    },
+    {
+      "asset_id": "andrey_junior_gym_01",
+      "character_id": "ANDREY_JUNIOR",
+      "collection": "scene_image_test_app",
+      "relative_path": "authoring/reference_library/assets/characters/ANDREY_JUNIOR/andrey_junior_gym_01.png",
+      "filename": "andrey_junior_gym_01.png",
+      "sha256": "a2ec1895cbd1a62fc55cc8446f81bbf06c273074a3d4f6882de40d9e605ea9ff",
+      "file_type": "PNG",
+      "mime_type": "image/png",
+      "source_filename": "ANDREY_JUNIOR_test03_athletic_gym_identity_v1_APPROVED.png",
+      "created": "2026-08-29T13:44:20Z"
+    },
+    {
+      "asset_id": "maksim_body_01",
+      "character_id": "MAKSIM",
+      "collection": "scene_image_test_app",
+      "relative_path": "authoring/reference_library/assets/characters/MAKSIM/maksim_body_01.png",
+      "filename": "maksim_body_01.png",
+      "sha256": "577134fdb7aa0fb075cd6108d576c9623056a9eb0194a2c79ae44473fa49128d",
+      "file_type": "PNG",
+      "mime_type": "image/png",
+      "source_filename": "MAKSIM_body_canon_v1_sheet_A_front_side_back_APPROVED.png",
+      "created": "2026-08-29T15:43:15Z"
+    },
+    {
+      "asset_id": "maksim_face_01",
+      "character_id": "MAKSIM",
+      "collection": "scene_image_test_app",
+      "relative_path": "authoring/reference_library/assets/characters/MAKSIM/maksim_face_01.png",
+      "filename": "maksim_face_01.png",
+      "sha256": "85c388129aa4ae90d67b3b087516721c7cb2b3c43af317000e32d3df7e5ed4e5",
+      "file_type": "PNG",
+      "mime_type": "image/png",
+      "source_filename": "MAKSIM_face_canon_v1_sheet_A_APPROVED.png",
+      "created": "2026-08-29T15:43:15Z"
+    },
+    {
+      "asset_id": "maksim_face_support_01",
+      "character_id": "MAKSIM",
+      "collection": "scene_image_test_app",
+      "relative_path": "authoring/reference_library/assets/characters/MAKSIM/maksim_face_support_01.png",
+      "filename": "maksim_face_support_01.png",
+      "sha256": "1720f67ebc5081f7f92471f4e32ba02edc8f5445ed87acb3e88770efdcb6cd1b",
+      "file_type": "PNG",
+      "mime_type": "image/png",
+      "source_filename": "MAKSIM_expressions_v1_sheet_A_APPROVED.png",
+      "created": "2026-08-29T15:43:15Z"
+    },
+    {
+      "asset_id": "maksim_gym_01",
+      "character_id": "MAKSIM",
+      "collection": "scene_image_test_app",
+      "relative_path": "authoring/reference_library/assets/characters/MAKSIM/maksim_gym_01.png",
+      "filename": "maksim_gym_01.png",
+      "sha256": "06dfc2fd6696edd4882b42d07ff30b42db1206305aa335c005e1c0d3b08ba2f8",
+      "file_type": "PNG",
+      "mime_type": "image/png",
+      "source_filename": "MAKSIM_natural_motion_v1_six_pose_sheet_A_APPROVED.png",
+      "created": "2026-08-29T15:43:15Z"
+    },
+    {
+      "asset_id": "marina_body_01",
+      "character_id": "MARINA",
+      "collection": "scene_image_test_app",
+      "relative_path": "authoring/reference_library/assets/characters/MARINA/marina_body_01.png",
+      "filename": "marina_body_01.png",
+      "sha256": "67598c7e171f72e90d7a161c209ef555651a5c72b55b672acdf85fdc57f3961f",
+      "file_type": "PNG",
+      "mime_type": "image/png",
+      "source_filename": "MARINA_body_canon_v1_sheet_A_APPROVED.png",
+      "created": "2026-08-29T15:43:15Z"
+    },
+    {
+      "asset_id": "marina_face_01",
+      "character_id": "MARINA",
+      "collection": "scene_image_test_app",
+      "relative_path": "authoring/reference_library/assets/characters/MARINA/marina_face_01.png",
+      "filename": "marina_face_01.png",
+      "sha256": "da85d0c282c2825d26480c403d092f997dc589a778805dd2c0e47353a84fa959",
+      "file_type": "PNG",
+      "mime_type": "image/png",
+      "source_filename": "MARINA_face_canon_v1_sheet_A_APPROVED.png",
+      "created": "2026-08-29T15:43:15Z"
+    },
+    {
+      "asset_id": "marina_face_support_01",
+      "character_id": "MARINA",
+      "collection": "scene_image_test_app",
+      "relative_path": "authoring/reference_library/assets/characters/MARINA/marina_face_support_01.png",
+      "filename": "marina_face_support_01.png",
+      "sha256": "ee0d86402325e7a013f6d2b1892cbccc032107720a394ffa269b4f7030e11294",
+      "file_type": "PNG",
+      "mime_type": "image/png",
+      "source_filename": "MARINA_expressions_v1_sheet_A_APPROVED.png",
+      "created": "2026-08-29T15:43:15Z"
+    },
+    {
+      "asset_id": "marina_sports_01",
+      "character_id": "MARINA",
+      "collection": "scene_image_test_app",
+      "relative_path": "authoring/reference_library/assets/characters/MARINA/marina_sports_01.png",
+      "filename": "marina_sports_01.png",
+      "sha256": "7739db6e04c6253371531972bbefbfabaa7ce7ebdbdcbe6774dc5ad7a868ee79",
+      "file_type": "PNG",
+      "mime_type": "image/png",
+      "source_filename": "MARINA_test07_pool_sunset_v1_APPROVED.png",
+      "created": "2026-08-29T15:43:15Z"
+    },
+    {
+      "asset_id": "olga_body_01",
+      "character_id": "OLGA",
+      "collection": "scene_image_test_app",
+      "relative_path": "authoring/reference_library/assets/characters/OLGA/olga_body_01.png",
+      "filename": "olga_body_01.png",
+      "sha256": "669c87cd5f752c2cbef7e21abd030e909a30a4d65e56103058f77b29d2f675ac",
+      "file_type": "PNG",
+      "mime_type": "image/png",
+      "source_filename": "OLGA_body_canon_v1_sheet_A_front_side_back_APPROVED.png",
+      "created": "2026-08-29T13:44:20Z"
+    },
+    {
+      "asset_id": "olga_face_canon_01",
+      "character_id": "OLGA",
+      "collection": "scene_image_test_app",
+      "relative_path": "authoring/reference_library/assets/characters/OLGA/olga_face_canon_01.png",
+      "filename": "olga_face_canon_01.png",
+      "sha256": "460ae9b9412c6ce06306cff222f90b33cd1adcd0a37c2ff298e54d7c7165f785",
+      "file_type": "PNG",
+      "mime_type": "image/png",
+      "source_filename": "OLGA_face_canon_v1_sheet_A_APPROVED.png",
+      "created": "2026-08-29T13:44:20Z"
+    },
+    {
+      "asset_id": "olga_face_primary_01",
+      "character_id": "OLGA",
+      "collection": "scene_image_test_app",
+      "relative_path": "authoring/reference_library/assets/characters/OLGA/olga_face_primary_01.jpg",
+      "filename": "olga_face_primary_01.jpg",
+      "sha256": "fa8647990249755c2620d037644cf077124cbde2da5d5adda1691719007f5878",
+      "file_type": "JPEG",
+      "mime_type": "image/jpeg",
+      "source_filename": "OLGA_ref_face_primary_v1_SELECTED.jpg",
+      "created": "2026-08-29T13:44:20Z"
+    },
+    {
+      "asset_id": "olga_sports_01",
+      "character_id": "OLGA",
+      "collection": "scene_image_test_app",
+      "relative_path": "authoring/reference_library/assets/characters/OLGA/olga_sports_01.png",
+      "filename": "olga_sports_01.png",
+      "sha256": "b8f2adcdfc9d08d3788290545ae64fc9a4aef66217fd29b9f97c733f5a7badcc",
+      "file_type": "PNG",
+      "mime_type": "image/png",
+      "source_filename": "OLGA_test02_sports_yoga_v1_APPROVED.png",
+      "created": "2026-08-29T13:44:20Z"
+    }
+  ]
 }
