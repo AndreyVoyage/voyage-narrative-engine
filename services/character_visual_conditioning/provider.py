@@ -352,11 +352,11 @@ def _build_provider_filename(index: int, character_id: str, content_type: str) -
 
 
 def _iter_bundle_attachments(reference_bundle: ReferenceBundle):
-    """Yield ``(attachment_index, character_id, entry)`` in bundle order."""
+    """Yield ``(attachment_index, group, entry)`` in bundle order."""
     index = 0
     for group in reference_bundle.character_groups:
         for entry in group.references:
-            yield index, group.character_id, entry
+            yield index, group, entry
             index += 1
 
 
@@ -388,8 +388,13 @@ def _flatten_bundle(
     inputs: list[ReferenceImageInput] = []
     map_lines: list[str] = [REFERENCE_MAP_HEADER]
 
-    for index, character_id, entry in _iter_bundle_attachments(reference_bundle):
-        filename = _build_provider_filename(index, character_id, entry.content_type)
+    for index, group, entry in _iter_bundle_attachments(reference_bundle):
+        label = (
+            group.prompt_alias
+            if group.prompt_alias is not None
+            else group.character_id
+        )
+        filename = _build_provider_filename(index, label, entry.content_type)
         inputs.append(
             ReferenceImageInput(
                 filename=filename,
@@ -398,9 +403,16 @@ def _flatten_bundle(
             )
         )
         map_lines.append(f"image[{index}]:")
-        map_lines.append(f"character_id={character_id}")
+        map_lines.append(f"character_id={label}")
         map_lines.append(f"roles={','.join(entry.roles)}")
-        map_lines.append(f"source={entry.path}")
+        if group.prompt_alias is not None:
+            # Alias-safe source: expose the already-generated safe multipart
+            # attachment filename only. Never the asset basename (which may
+            # embed the raw internal character id) and never the internal
+            # character directory.
+            map_lines.append(f"source={filename}")
+        else:
+            map_lines.append(f"source={entry.path}")
         map_lines.append("")
 
     reference_map = "\n".join(map_lines).rstrip("\n")

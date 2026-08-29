@@ -171,13 +171,15 @@ class ReferenceCharacterGroup:
 
     ``status`` and ``canon_content_hash`` are the verbatim source snapshot
     status/identity and are preserved WITHOUT deriving independent production
-    eligibility.
+    eligibility. ``prompt_alias`` is optional provider-facing text only and
+    never replaces ``character_id`` (the internal stable identity).
     """
 
     character_id: str
     references: Tuple[ReferenceEntry, ...]
     status: Optional[str] = None
     canon_content_hash: Optional[str] = None
+    prompt_alias: Optional[str] = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "references", tuple(self.references))
@@ -192,6 +194,12 @@ class ReferenceCharacterGroup:
                 raise ValueError("status must be a non-empty string")
             if not isinstance(self.canon_content_hash, str) or not self.canon_content_hash:
                 raise ValueError("canon_content_hash must be a non-empty string")
+        if self.prompt_alias is not None and (
+            not isinstance(self.prompt_alias, str) or not self.prompt_alias.strip()
+        ):
+            raise ValueError(
+                "prompt_alias must be a non-empty, non-whitespace string when present"
+            )
 
     def semantic_payload(self) -> dict[str, Any]:
         # Canon groups emit status + canon_content_hash (exact legacy key order);
@@ -203,6 +211,8 @@ class ReferenceCharacterGroup:
             payload["status"] = self.status
         if self.canon_content_hash is not None:
             payload["canon_content_hash"] = self.canon_content_hash
+        if self.prompt_alias is not None:
+            payload["prompt_alias"] = self.prompt_alias
         payload["references"] = [r.semantic_payload() for r in self.references]
         return payload
 

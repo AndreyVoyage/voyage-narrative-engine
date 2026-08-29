@@ -504,6 +504,7 @@ def _build_library_character_group(
     records: Sequence[ReferenceRecord],
     repo_root: Path,
     roles_by_asset_id: dict[str, tuple[str, ...]],
+    prompt_alias: Optional[str] = None,
 ) -> ReferenceCharacterGroup:
     """Resolve selected library records into an ordered, ownership-bound group.
 
@@ -584,7 +585,49 @@ def _build_library_character_group(
         references=tuple(entries),
         status=None,
         canon_content_hash=None,
+        prompt_alias=prompt_alias,
     )
+
+
+def _validate_prompt_aliases(
+    prompt_alias_by_character: Optional[Mapping[str, str]],
+    frame: Sequence[str],
+) -> dict[str, str]:
+    """Normalize optional per-character prompt aliases (fail closed).
+
+    Keys must reference selected frame characters only; each alias must be a
+    non-empty, non-whitespace string. Effective provider labels (alias when
+    present, else internal character_id) must be unique across the bundle.
+    """
+    if prompt_alias_by_character is None:
+        return {}
+    frame_set = set(frame)
+    normalized: dict[str, str] = {}
+    for cid, alias in prompt_alias_by_character.items():
+        if not isinstance(cid, str) or not cid:
+            raise ReferenceSelectionError(
+                "prompt_alias_by_character keys must be non-empty strings"
+            )
+        if cid not in frame_set:
+            raise ReferenceSelectionError(
+                f"prompt_alias_by_character references unknown character {cid!r}"
+            )
+        if not isinstance(alias, str) or not alias.strip():
+            raise ReferenceSelectionError(
+                f"prompt_alias for {cid!r} must be a non-empty, non-whitespace string"
+            )
+        normalized[cid] = alias
+
+    seen: dict[str, str] = {}
+    for cid in frame:
+        label = normalized.get(cid) if cid in normalized else cid
+        if label in seen:
+            raise ReferenceSelectionError(
+                f"duplicate effective provider label {label!r} for "
+                f"{seen[label]!r} and {cid!r}"
+            )
+        seen[label] = cid
+    return normalized
 
 
 def build_reference_bundle_from_library(
@@ -593,6 +636,7 @@ def build_reference_bundle_from_library(
     characters_in_frame: Sequence[str],
     repo_root: Path,
     roles_by_asset_id: Optional[Mapping[str, Sequence[str]]] = None,
+    prompt_alias_by_character: Optional[Mapping[str, str]] = None,
 ) -> ReferenceBundle:
     """Build a provider-neutral Library-origin ReferenceBundle.
 
@@ -674,12 +718,14 @@ def build_reference_bundle_from_library(
     normalized_roles = _validate_roles_by_asset_id(
         roles_by_asset_id, selected_asset_ids
     )
+    normalized_aliases = _validate_prompt_aliases(prompt_alias_by_character, frame)
 
     groups: list[ReferenceCharacterGroup] = []
     for cid in frame:
         groups.append(
             _build_library_character_group(
-                cid, selections[cid], repo_root, normalized_roles
+                cid, selections[cid], repo_root, normalized_roles,
+                prompt_alias=normalized_aliases.get(cid),
             )
         )
 
