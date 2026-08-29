@@ -522,6 +522,49 @@ is not automatic.
 
 ---
 
+## 14. Reference Library → ReferenceBundle Adapter (RBA v0) — OD-SVA-RBA
+
+> **Трек:** SVA — Scenario Visual Authoring (scene image authoring).
+> **Milestone:** SVA-RBA — `REFERENCE_LIBRARY_TO_REFERENCE_BUNDLE_ADAPTER_V0`.
+> **Owner decisions:** `OD-SVA-RBA-01..07 = A`.
+> **Дата записи (addendum к v1.1):** 2026-08-29.
+
+**Decision.** Imported VNE Reference Library records flow into the existing provider-neutral `ReferenceBundle`
+contract through a dedicated adapter; there is no second provider pipeline. Library-origin bundles use the
+neutral transport role `reference` and carry no Character Canon metadata.
+
+### Owner decisions (OD-SVA-RBA-01..07 = A)
+
+| Decision | Value |
+|---|---|
+| OD-SVA-RBA-01 = A | Strategy B: `ReferenceCharacterGroup.status` and `.canon_content_hash` become optional; Library groups carry both `None`; Canon groups keep real Canon values. Valid pairs are both-non-empty or both-None. |
+| OD-SVA-RBA-02 = A | `ReferenceCharacterGroup` field order `(character_id, references, status=None, canon_content_hash=None)`; existing constructions are keyword-based. |
+| OD-SVA-RBA-03 = A | `ReferenceEntry.source_asset_id: Optional[str] = None`; Canon entries omit it; Library entries carry the real `ReferenceRecord.asset_id` in the semantic payload/hash. |
+| OD-SVA-RBA-04 = A | Library selection-time roles via optional `roles_by_asset_id`; default role `"reference"` (neutral transport role, not identity / not minimum-identity evidence / not a finalized role taxonomy). |
+| OD-SVA-RBA-05 = A | The adapter receives already-resolved ordered `ReferenceRecord` sequences per character; it does NOT load/search the manifest, import files, or allocate asset IDs. |
+| OD-SVA-RBA-06 = A | Byte resolution is `repo_root / ReferenceRecord.relative_path`; the parameter is named `repo_root` (not `library_root`). |
+| OD-SVA-RBA-07 = A | `REFERENCE_BUNDLE_SCHEMA_VERSION` remains `reference_bundle/0.1`; no schema-version bump. |
+
+### Implementation facts (SVA-RBA v0)
+
+- Library-origin ReferenceBundle support is implemented (`build_reference_bundle_from_library`).
+- Canon-only `status`/`canon_content_hash` are optional as a paired invariant (fail closed on mixed/empty).
+- Library groups carry neither Canon field; `source_asset_id` provides VNE Library traceability.
+- Existing Canon semantic payload and content-hash semantics are preserved (byte-for-byte).
+- `DEFAULT_LIBRARY_ROLE = "reference"`.
+- The adapter takes resolved `ReferenceRecord` inputs and resolves `record.relative_path` from `repo_root`.
+- ReferenceBundle schema remains `reference_bundle/0.1`; RC3 (conditioned provider attachment) is unchanged and reused.
+- No second provider pipeline exists.
+
+### Non-goals (v0)
+
+Not implemented in this slice: scene-level references, `SceneReferenceGroup`, `prompt_alias`, minimum identity
+gate, `SceneVariant`, cast override, authoring facade, and Ren'Py UI.
+
+**Status:** `IMPLEMENTED (v0)`.
+
+---
+
 ## Сводка решений (быстрый справочник)
 
 | # | Вопрос | Решение |
@@ -539,6 +582,7 @@ is not automatic.
 | 11 | VNE Reference Library (SVA-RL1) | OD-SVA-RL-01 = A: собственная рабочая Reference Library визуальных ассетов; внешние репозитории/папки = только import-источники; VNE владеет импортированными копиями; без авто-синка с источником |
 | 12 | Controlled Reference Import (SVA-RL2) | OD-SVA-RL-02 = A: контролируемый импорт (валидация формата/пути → копия → SHA-256 → манифест); PNG/WEBP/JPEG/JPG; источник read-only; дубликаты по SHA-256 |
 | 13 | Explicit Reference Selection for Library Assets | OD-SVA-RL-03 = A: DISCOVERY ≠ SELECTION; только явно выбранное ограниченное подмножество идёт в generation-запрос; Reference Library → selection → Reference Package Preview → ReferenceBundle → RC3 attachment |
+| 14 | Reference Library → ReferenceBundle adapter (RBA v0) | OD-SVA-RBA-01..07 = A: Strategy B (optional paired Canon metadata); `source_asset_id` traceability; neutral `reference` role; resolved-record input; `repo_root` resolution; schema stays `reference_bundle/0.1` |
 |---|---|---|
 | 1 | Product identity | Гибрид: RenPy VN + LLM director/character layer |
 | 2 | Source of truth | **JSON-first** (переходный гибрид разрешён) |
