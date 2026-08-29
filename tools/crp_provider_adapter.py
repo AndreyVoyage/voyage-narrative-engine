@@ -91,12 +91,19 @@ class ProviderConfig:
         object.__setattr__(self, "extra_params", MappingProxyType(dict(self.extra_params)))
 
 
-def build_provider_callable(config: ProviderConfig) -> Callable[[list], str]:
+def build_provider_callable(
+    config: ProviderConfig,
+    recorder=None,
+) -> Callable[[list], str]:
     """Return a ``Callable[[list], str]`` matching ``executor.ProviderCallable``.
 
     The returned callable is a one-shot provider invocation: no retry, no
     fallback, no provider/model substitution. It returns exactly the plain
     assistant text from the underlying OpenAI-compatible transport.
+
+    ``recorder`` is an OPTIONAL capture callback observing the exact request
+    body bytes and parsed response at the transport boundary. Callers that omit
+    it behave exactly as before.
     """
     if not isinstance(config, ProviderConfig):
         raise TypeError("config must be a ProviderConfig instance")
@@ -115,6 +122,14 @@ def build_provider_callable(config: ProviderConfig) -> Callable[[list], str]:
             # not touch RoleResult/RoleClaim schema shape.
             params["response_format"] = {"type": "json_object"}
 
+        if recorder is not None:
+            return complete(
+                messages,
+                provider="cloud",
+                model=config.model,
+                params=params,
+                recorder=recorder,
+            )
         return complete(
             messages,
             provider="cloud",

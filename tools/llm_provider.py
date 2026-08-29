@@ -56,8 +56,14 @@ def complete(
     model: str | None = None,
     system: str | None = None,
     params: dict[str, Any] | None = None,
+    recorder=None,
 ) -> str:
-    """Return a completion string from mock, local, or cloud provider."""
+    """Return a completion string from mock, local, or cloud provider.
+
+    ``recorder`` is an OPTIONAL callable observing the exact request body bytes
+    and parsed response at the transport boundary. Callers that omit it behave
+    exactly as before; no retry, no fallback, no payload change.
+    """
     normalized = _normalize_messages(messages, system=system)
     selected = provider.strip().lower()
     options = params or {}
@@ -65,9 +71,9 @@ def complete(
     if selected == "mock":
         return _complete_mock(normalized, model=model, params=options)
     if selected == "local":
-        return _complete_local(normalized, model=model, params=options)
+        return _complete_local(normalized, model=model, params=options, recorder=recorder)
     if selected == "cloud":
-        return _complete_cloud(normalized, model=model, params=options)
+        return _complete_cloud(normalized, model=model, params=options, recorder=recorder)
 
     raise LLMProviderError(f"Unknown provider: {provider}")
 
@@ -119,6 +125,7 @@ def _complete_local(
     *,
     model: str | None = None,
     params: dict[str, Any] | None = None,
+    recorder=None,
 ) -> str:
     options = params or {}
     base_url = str(options.get("base_url") or DEFAULT_LOCAL_BASE_URL).rstrip("/")
@@ -132,12 +139,21 @@ def _complete_local(
         if key not in ("base_url", "timeout_s"):
             payload[key] = value
 
-    data = _post_json(
-        f"{base_url}/api/chat",
-        payload,
-        headers={},
-        timeout_s=timeout_s,
-    )
+    if recorder is not None:
+        data = _post_json(
+            f"{base_url}/api/chat",
+            payload,
+            headers={},
+            timeout_s=timeout_s,
+            recorder=recorder,
+        )
+    else:
+        data = _post_json(
+            f"{base_url}/api/chat",
+            payload,
+            headers={},
+            timeout_s=timeout_s,
+        )
     message = data.get("message")
     if isinstance(message, dict) and isinstance(message.get("content"), str):
         return message["content"]
@@ -158,6 +174,7 @@ def _complete_cloud(
     *,
     model: str | None = None,
     params: dict[str, Any] | None = None,
+    recorder=None,
 ) -> str:
     options = params or {}
 
@@ -188,7 +205,21 @@ def _complete_cloud(
             payload[key] = value
 
     headers = {"Authorization": f"Bearer {api_key}"}
-    data = _post_json(f"{base_url}/v1/chat/completions", payload, headers=headers, timeout_s=timeout_s)
+    if recorder is not None:
+        data = _post_json(
+            f"{base_url}/v1/chat/completions",
+            payload,
+            headers=headers,
+            timeout_s=timeout_s,
+            recorder=recorder,
+        )
+    else:
+        data = _post_json(
+            f"{base_url}/v1/chat/completions",
+            payload,
+            headers=headers,
+            timeout_s=timeout_s,
+        )
     choices = data.get("choices")
     if isinstance(choices, list) and choices:
         choice = choices[0] if isinstance(choices[0], dict) else None
@@ -210,6 +241,12 @@ def _complete_cloud(
                     f"cloud provider did not finish successfully (finish_reason={finish_reason!r})"
                 )
                 error.provider_diagnostic = data
+                if recorder is not None:
+                    recorder({
+                        "event": "error",
+                        "error_type": "finish_reason",
+                        "detail": f"finish_reason={finish_reason!r}",
+                    })
                 raise error
             message = choice.get("message")
             if isinstance(message, dict) and isinstance(message.get("content"), str):
@@ -218,8 +255,20 @@ def _complete_cloud(
                     # Never propagate an empty/whitespace assistant answer; this
                     # would otherwise flow into the R8 parser and be reported as a
                     # parse-stage empty output rather than a transport failure.
+                    if recorder is not None:
+                        recorder({
+                            "event": "error",
+                            "error_type": "empty_content",
+                            "detail": "cloud provider returned empty message content",
+                        })
                     raise LLMProviderError("cloud provider returned empty message content")
                 return content
+    if recorder is not None:
+        recorder({
+            "event": "error",
+            "error_type": "no_content",
+            "detail": "cloud provider returned no message content",
+        })
     raise LLMProviderError("cloud provider returned no message content")
 
 
@@ -229,6 +278,7 @@ def _post_json(
     *,
     headers: dict[str, str],
     timeout_s: float = 30.0,
+    recorder=None,
 ) -> dict[str, Any]:
     body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
     request = urllib.request.Request(
@@ -253,6 +303,13 @@ def _post_json(
             f"HTTP timeout must be greater than zero: {timeout_value!r}"
         )
 
+    # Capture the exact request payload/body BEFORE transport so evidence
+    # survives provider failure. The recorder receives the structured payload
+    # and the exact body bytes, but never the Authorization header or any
+    # credential value.
+    if recorder is not None:
+        recorder({"event": "request", "payload": payload, "body": body})
+
     try:
         _ssl_context = _get_ssl_context()
         with urllib.request.urlopen(
@@ -263,18 +320,50 @@ def _post_json(
             raw = response.read().decode("utf-8")
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")
+        if recorder is not None:
+            recorder({
+                "event": "error",
+                "error_type": "http_error",
+                "detail": _truncate(detail, 200),
+            })
         raise LLMProviderError(f"HTTP {exc.code}: {_truncate(detail, 200)}") from None
     except urllib.error.URLError as exc:
+        if recorder is not None:
+            recorder({
+                "event": "error",
+                "error_type": "url_error",
+                "detail": str(exc.reason),
+            })
         raise LLMProviderError(f"connection failed: {exc.reason}") from None
     except TimeoutError:
+        if recorder is not None:
+            recorder({
+                "event": "error",
+                "error_type": "timeout",
+                "detail": "connection timed out",
+            })
         raise LLMProviderError("connection timed out") from None
 
     try:
         data = json.loads(raw)
     except json.JSONDecodeError as exc:
+        if recorder is not None:
+            recorder({
+                "event": "error",
+                "error_type": "invalid_json",
+                "detail": str(exc),
+            })
         raise LLMProviderError(f"invalid JSON response: {exc}") from None
     if not isinstance(data, dict):
+        if recorder is not None:
+            recorder({
+                "event": "error",
+                "error_type": "non_object",
+                "detail": "provider response must be a JSON object",
+            })
         raise LLMProviderError("provider response must be a JSON object")
+    if recorder is not None:
+        recorder({"event": "response", "data": data})
     return data
 
 
