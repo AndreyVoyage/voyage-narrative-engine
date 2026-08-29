@@ -293,6 +293,200 @@ interaction/composition/location refs. The actual UI framework/layout is **not**
 
 ---
 
+## 11. VNE Reference Library (SVA-RL1) — OD-SVA-RL-01
+
+> **Трек:** SVA — Scenario Visual Authoring (scene image authoring).
+> **Milestone:** SVA-RL1 — `VNE_REFERENCE_LIBRARY_V0`.
+> **Owner decision:** `OD-SVA-RL-01 = A` — VNE must own a dedicated working Reference Library for visual authoring assets.
+> **Дата записи (addendum к v1.1):** 2026-08-29.
+
+**Decision.** VNE authoring has its own working visual reference library. External repositories and arbitrary
+local folders — including `narrative-character-canon` — are **import sources only**, not runtime or authoring
+dependencies that VNE must continuously interpret. After a successful controlled import, VNE works from its own
+copied assets.
+
+**Rationale.** VNE must not depend on the availability, governance, status, or rules of an external repository to
+select ordinary authoring references. Copying into a VNE-owned library decouples authoring from the source's
+lifecycle.
+
+**Status:** `PLANNED / RATIFIED_REQUIREMENT`. The requirement is ratified by the owner; implementation is **NOT**
+authorized in this task.
+
+### Required semantics (OD-SVA-RL-01 = A)
+
+1. VNE owns a dedicated working Reference Library for visual authoring assets.
+2. External repositories and arbitrary local folders are **IMPORT SOURCES only**.
+3. `narrative-character-canon` is one possible import source — not a runtime or authoring dependency that VNE
+   must continuously interpret.
+4. After a successful import:
+   - VNE works from its own copy;
+   - the source repository may move/change without invalidating the imported VNE copy;
+   - VNE does **not** automatically reread external governance/status/rules;
+   - VNE does **not** modify the source asset or source repository.
+5. This does **not** mean every file from every external folder is automatically approved or automatically
+   imported. Import remains an explicit user-controlled action.
+
+### Library organization (planning level only)
+
+The application must support:
+
+- character-owned reference collections;
+- creation of new character folders/collections;
+- adding newly approved/generated visual files;
+- browsing imported references per character;
+- optional organization such as identity/body/outfit/scene/custom collections.
+
+Those folder names are **not** mandatory schema in this task; the implementation may choose a more flexible
+collection model.
+
+### Technical manifest (planning level only)
+
+The library requires a small technical manifest/index. Minimum conceptual metadata:
+
+- `asset_id`
+- `character_id`
+- `relative_path`
+- `filename`
+- `sha256`
+- `file_type`
+
+Optional planning-level metadata: `role`, `collection`, `source_filename`, `source_type`.
+
+Rules:
+
+- stable `asset_id` belongs to the VNE Reference Library;
+- `relative_path` is VNE-library-relative;
+- imported asset identity must not depend solely on the original absolute source path;
+- the source absolute machine path is not required as canonical identity;
+- the manifest is technical authoring metadata, **NOT** Character Canon governance.
+
+The JSON/schema version is **not** finalized in this task.
+
+### Relation to the existing Character Canon Bridge
+
+The existing Character Canon Bridge is **NOT** deleted. Existing strict Canon-based workflows may continue using
+it. However, ordinary Scene Authoring Reference Library selection must not require VNE to understand the external
+`narrative-character-canon` repository's complete governance/status workflow. The new Reference Library is an
+additional controlled authoring source feeding the **same** downstream `ReferenceBundle` architecture. Existing
+bridge code is **not** marked deprecated here.
+
+### Non-goals (SVA-RL v0 does NOT require)
+
+- automatic mirroring/synchronization with NCC
+- automatic copying of every file found in a source tree
+- VNE modifying the external source repository
+- external governance parsing for every generation
+- automatic use of every imported image
+- a new provider pipeline
+- Character Canon mutation
+- cloud asset management
+- automatic AI ranking of all references
+- bulk generation
+- automatic retries
+
+---
+
+## 12. Controlled Reference Import (SVA-RL2) — OD-SVA-RL-02
+
+> **Трек:** SVA — Scenario Visual Authoring (scene image authoring).
+> **Milestone:** SVA-RL2 — `CONTROLLED_REFERENCE_IMPORT_V0`.
+> **Owner decision:** `OD-SVA-RL-02 = A` — Controlled Reference Import is required.
+> **Дата записи (addendum к v1.1):** 2026-08-29.
+
+**Decision.** Bringing an external or local source image into the VNE Reference Library is a controlled import
+action, not an automatic sync. The imported copy is registered in the technical manifest and becomes available to
+scene authoring.
+
+**Rationale.** A controlled copy preserves VNE ownership of authoring assets while keeping the external source
+read-only and non-authoritative for the imported copy.
+
+**Status:** `PLANNED / RATIFIED_REQUIREMENT`. Implementation is **NOT** authorized in this task.
+
+### Conceptual pipeline (OD-SVA-RL-02 = A)
+
+```text
+external/local source image
+        ↓
+user selects import
+        ↓
+format/path validation
+        ↓
+copy into VNE Reference Library
+        ↓
+SHA-256
+        ↓
+technical manifest registration
+        ↓
+available to scene authoring
+```
+
+### Import rules
+
+- no automatic source synchronization is required;
+- no automatic overwrite of an imported asset from its original source;
+- importing a newer source file is a separate controlled action;
+- duplicate detection may use SHA-256;
+- the source repository remains read-only.
+
+### Supported image formats
+
+Align with the existing VNE visual asset policy where practical:
+
+- PNG
+- WEBP
+- JPEG/JPG
+
+The implementation schema and exact filesystem root are **not** finalized in this task.
+
+---
+
+## 13. Explicit Reference Selection for Library Assets — OD-SVA-RL-03
+
+> **Трек:** SVA — Scenario Visual Authoring (scene image authoring).
+> **Owner decision:** `OD-SVA-RL-03 = A` — Explicit reference selection for library assets is required.
+> **Дата записи (addendum к v1.1):** 2026-08-29.
+
+**Decision.** `DISCOVERY != SELECTION`. The application may discover/show all imported visual references for a
+character, but only an explicitly selected bounded subset is allowed to enter a specific generation request.
+
+**Rationale.** Showing a library is not the same as sending it to a provider. Without an explicit bounded
+selection, every imported image could leak into a generation request, which is prohibited.
+
+**Status:** `PLANNED / RATIFIED_REQUIREMENT`.
+
+### Conceptual flow (OD-SVA-RL-03 = A)
+
+```text
+Reference Library
+        ↓
+user/reference selection
+        ↓
+Reference Package Preview
+        ↓
+ReferenceBundle
+        ↓
+existing RC3 conditioned provider attachment
+```
+
+No second provider pipeline is created. The existing generic architecture remains authoritative downstream:
+`explicit selection → ReferenceBundle → conditioned provider attachment`.
+
+### Relation to SVA-MR1
+
+The existing ratified `OD-SVA-MR-01 = A` (SVA-MR1 — `MANUAL_SCENE_REFERENCE_INPUT_V0`) is preserved. Planned UX:
+
+Add manual reference
+→ either choose an existing VNE Reference Library asset
+OR
+→ import a new visual into the library
+OR, if later supported,
+→ temporary generation-only reference
+
+Temporary mode is **not** required in RL1/RL2 implementation. `PROPOSE_FOR_CANON` remains a separate workflow and
+is not automatic.
+
+---
+
 ## Сводка решений (быстрый справочник)
 
 | # | Вопрос | Решение |
@@ -307,6 +501,9 @@ interaction/composition/location refs. The actual UI framework/layout is **not**
 | 8 | Framework boundary | Framework = workflow/guardrails; Narrative = продукт/runtime |
 | 9 | Out of scope | SC_028 нет; качество SC_020–027 не трогаем; миграция позже; массовый export персон в RenPy — N6+ |
 | 10 | Manual Scene Reference Input (SVA-MR1) | OD-SVA-MR-01 = A: ручной scene-reference обязателен; character_id/role/scope; scene-local по умолчанию; НЕ мутирует Canon; через ReferenceBundle; UI preview + enable/disable |
+| 11 | VNE Reference Library (SVA-RL1) | OD-SVA-RL-01 = A: собственная рабочая Reference Library визуальных ассетов; внешние репозитории/папки = только import-источники; VNE владеет импортированными копиями; без авто-синка с источником |
+| 12 | Controlled Reference Import (SVA-RL2) | OD-SVA-RL-02 = A: контролируемый импорт (валидация формата/пути → копия → SHA-256 → манифест); PNG/WEBP/JPEG/JPG; источник read-only; дубликаты по SHA-256 |
+| 13 | Explicit Reference Selection for Library Assets | OD-SVA-RL-03 = A: DISCOVERY ≠ SELECTION; только явно выбранное ограниченное подмножество идёт в generation-запрос; Reference Library → selection → Reference Package Preview → ReferenceBundle → RC3 attachment |
 |---|---|---|
 | 1 | Product identity | Гибрид: RenPy VN + LLM director/character layer |
 | 2 | Source of truth | **JSON-first** (переходный гибрид разрешён) |

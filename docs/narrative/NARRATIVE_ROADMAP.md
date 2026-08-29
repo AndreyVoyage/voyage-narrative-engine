@@ -442,3 +442,49 @@ Character Aside / Voice Layer — N6 / future tracks (см. NARRATIVE_FUTURE_TRA
 - **Owner decision:** `OD-SVA-MR-01 = A` (Manual Scene Reference Input is required) — recorded in
   `NARRATIVE_DECISIONS_v1.md` §10.
 - **Placement:** implementation only after the reference-conditioning foundation is proven; not before.
+
+---
+
+## 12. SVA — Reference Library + Controlled Import (2026-08-29)
+
+**Reference Library + Controlled Import foundation sequence (SVA-RL):**
+
+| Milestone | Status |
+|---|---|
+| SVA-RL1 — `VNE_REFERENCE_LIBRARY_V0` | PLANNED / RATIFIED_REQUIREMENT |
+| SVA-RL2 — `CONTROLLED_REFERENCE_IMPORT_V0` | PLANNED / RATIFIED_REQUIREMENT |
+
+**These capabilities become the foundation for:**
+
+| Milestone | Status |
+|---|---|
+| SVA-CAST1 — `SCENE_CAST_OVERRIDE_V0` | PLANNED (foundation: SVA-RL1/SVA-RL2) |
+| SVA-RP1 — `REFERENCE_PACKAGE_PREVIEW_V0` | PLANNED (foundation: SVA-RL1/SVA-RL2) |
+| SVA-MR1 — `MANUAL_SCENE_REFERENCE_INPUT_V0` | PLANNED / RATIFIED_REQUIREMENT (foundation: SVA-RL1/SVA-RL2) |
+
+- **Owner decisions:** `OD-SVA-RL-01 = A` (VNE Reference Library), `OD-SVA-RL-02 = A` (Controlled Reference
+  Import), `OD-SVA-RL-03 = A` (Explicit Reference Selection for Library Assets) — recorded in
+  `NARRATIVE_DECISIONS_v1.md` §11, §12, §13.
+- **Recommended dependency sequence:** `SVA-RL1 → SVA-RL2 → SVA-CAST1 → SVA-RP1 → SVA-MR1` implementation.
+- **Existing foundation:** the generic `ReferenceBundle` (B4-RC2), conditioned provider attachment (B4-RC3), and
+  explicit reference selection (B4-RC4S) are already available and are **referenced, not reimplemented**.
+- **These documentation milestones do NOT block already completed B4 work.** B4-RC4/RC5 proceed independently.
+- **External sources:** external repositories/folders (including `narrative-character-canon`) are **import sources
+  only**; VNE owns imported copies and does not continuously interpret external governance/status/rules.
+- **Non-goals (v0):** no automatic NCC mirroring/sync, no automatic copy of every file in a source tree, no VNE
+  writes to the external source, no per-generation external governance parsing, no automatic use of every imported
+  image, no second provider pipeline, no Character Canon mutation, no cloud asset management, no automatic AI
+  ranking of all references, no bulk generation, no automatic retries.
+
+**Future UI preflight impact.** The next UI/application integration preflight must locate integration seams for:
+
+- Reference Library browser
+- Controlled Import UI
+- Create character/collection
+- Scene Cast Override
+- Reference selection
+- Reference Package Preview
+- Manual Scene References
+- Generate
+
+The preflight must **not** assume the Character Canon Bridge is the sole reference source.
