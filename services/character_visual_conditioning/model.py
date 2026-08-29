@@ -134,14 +134,21 @@ class ReferenceEntry:
     sha256: str
     byte_length: int
     payload: bytes
+    source_asset_id: Optional[str] = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "roles", tuple(self.roles))
+        if self.source_asset_id is not None and (
+            not isinstance(self.source_asset_id, str) or not self.source_asset_id
+        ):
+            raise ValueError("source_asset_id must be a non-empty string when present")
 
     def semantic_payload(self) -> dict[str, Any]:
         # Raw payload bytes never enter the hashed semantic payload; binary
         # identity is bound by sha256 + byte_length + format/content-type.
-        return {
+        # ``source_asset_id`` participates ONLY when present (Library entries);
+        # Canon entries keep it None and omit the key entirely.
+        payload: dict[str, Any] = {
             "character_id": self.character_id,
             "roles": list(self.roles),
             "path": self.path,
@@ -150,6 +157,9 @@ class ReferenceEntry:
             "sha256": self.sha256,
             "byte_length": self.byte_length,
         }
+        if self.source_asset_id is not None:
+            payload["source_asset_id"] = self.source_asset_id
+        return payload
 
     def to_dict(self) -> dict[str, Any]:
         return self.semantic_payload()
@@ -165,20 +175,36 @@ class ReferenceCharacterGroup:
     """
 
     character_id: str
-    status: str
-    canon_content_hash: str
     references: Tuple[ReferenceEntry, ...]
+    status: Optional[str] = None
+    canon_content_hash: Optional[str] = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "references", tuple(self.references))
+        status_present = self.status is not None
+        hash_present = self.canon_content_hash is not None
+        if status_present != hash_present:
+            raise ValueError(
+                "status and canon_content_hash must be both present or both None"
+            )
+        if status_present:
+            if not isinstance(self.status, str) or not self.status:
+                raise ValueError("status must be a non-empty string")
+            if not isinstance(self.canon_content_hash, str) or not self.canon_content_hash:
+                raise ValueError("canon_content_hash must be a non-empty string")
 
     def semantic_payload(self) -> dict[str, Any]:
-        return {
+        # Canon groups emit status + canon_content_hash (exact legacy key order);
+        # Library groups omit both entirely.
+        payload: dict[str, Any] = {
             "character_id": self.character_id,
-            "status": self.status,
-            "canon_content_hash": self.canon_content_hash,
-            "references": [r.semantic_payload() for r in self.references],
         }
+        if self.status is not None:
+            payload["status"] = self.status
+        if self.canon_content_hash is not None:
+            payload["canon_content_hash"] = self.canon_content_hash
+        payload["references"] = [r.semantic_payload() for r in self.references]
+        return payload
 
     def to_dict(self) -> dict[str, Any]:
         return self.semantic_payload()

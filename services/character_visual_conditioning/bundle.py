@@ -32,6 +32,7 @@ from services.character_canon_bridge import (
     Provenance,
     SNAPSHOT_SCHEMA_VERSION,
 )
+from services.reference_library import ASSET_ROOT, ReferenceRecord
 
 from .errors import ReferenceBinaryError, ReferenceSelectionError
 from .hashing import compute_content_hash
@@ -50,6 +51,10 @@ _FORMAT_TO_CONTENT_TYPE = {
 }
 
 _SCENE_KEY_PREFIX = "scene:"
+
+DEFAULT_LIBRARY_ROLE = "reference"
+
+_LIBRARY_CHARACTER_PREFIX = ASSET_ROOT + "/characters/"
 
 
 def _validate_safe_relative_path(path: str) -> str:
@@ -395,3 +400,293 @@ def validate_reference_bundle_integrity(bundle: ReferenceBundle) -> None:
                 raise ReferenceBinaryError("reference sha256 mismatch")
             if _format_from_bytes(entry.payload) != entry.image_format:
                 raise ReferenceBinaryError("reference image format mismatch")
+
+
+def _validate_library_relative_path(path: str, character_id: str) -> str:
+    """Validate a library record path as safe and owned by ``character_id``.
+
+    Fails closed when the path is absolute/drive-qualified/traversal-unsafe,
+    outside the reference-library asset root, or not under the published
+    per-character directory convention:
+
+        authoring/reference_library/assets/characters/<character_id>/...
+    """
+    normalized = _validate_safe_relative_path(path)
+    if not normalized.startswith(ASSET_ROOT + "/"):
+        raise ReferenceBinaryError(
+            f"library reference path outside asset root {ASSET_ROOT!r}: {path!r}"
+        )
+    if not normalized.startswith(f"{_LIBRARY_CHARACTER_PREFIX}{character_id}/"):
+        raise ReferenceBinaryError(
+            f"library reference path {path!r} is not under "
+            f"characters/{character_id}/"
+        )
+    return normalized
+
+
+def _read_library_asset_bytes(
+    repo_root: Path,
+    character_id: str,
+    path: str,
+) -> tuple[str, str, str, int, bytes]:
+    """Read one validated library asset file (READ ONLY).
+
+    Returns ``(format, content_type, sha256, byte_length, payload)``. Fails
+    closed on missing, non-file, empty, or unsupported-magic-byte input.
+    """
+    full = repo_root / path
+    if not full.exists():
+        raise ReferenceBinaryError(
+            f"library reference file missing for {character_id!r}: {path!r}"
+        )
+    if not full.is_file():
+        raise ReferenceBinaryError(
+            f"library reference path is not a file for {character_id!r}: {path!r}"
+        )
+    payload = full.read_bytes()
+    if len(payload) == 0:
+        raise ReferenceBinaryError(
+            f"library reference file empty for {character_id!r}: {path!r}"
+        )
+    fmt = _format_from_bytes(payload)
+    content_type = _FORMAT_TO_CONTENT_TYPE[fmt]
+    digest = hashlib.sha256(payload).hexdigest()
+    return fmt, content_type, digest, len(payload), payload
+
+
+def _validate_roles_by_asset_id(
+    roles_by_asset_id: Optional[Mapping[str, Sequence[str]]],
+    selected_asset_ids: set[str],
+) -> dict[str, tuple[str, ...]]:
+    """Normalize the optional per-asset role mapping (fail closed).
+
+    Each key must be a non-empty asset id, each value a non-empty sequence of
+    non-empty role strings, and caller order is preserved. Any role-map asset id
+    that is not among the selected assets is rejected (never silently ignored).
+    """
+    if roles_by_asset_id is None:
+        return {}
+    normalized: dict[str, tuple[str, ...]] = {}
+    for asset_id, roles in roles_by_asset_id.items():
+        if not isinstance(asset_id, str) or not asset_id:
+            raise ReferenceSelectionError(
+                "roles_by_asset_id keys must be non-empty strings"
+            )
+        if isinstance(roles, (str, bytes)):
+            raise ReferenceSelectionError(
+                f"roles for asset {asset_id!r} must be a sequence of role strings"
+            )
+        try:
+            role_list = list(roles)
+        except TypeError as exc:
+            raise ReferenceSelectionError(
+                f"roles for asset {asset_id!r} must be an iterable of role strings"
+            ) from exc
+        if not role_list:
+            raise ReferenceSelectionError(f"roles for asset {asset_id!r} is empty")
+        for role in role_list:
+            if not isinstance(role, str) or not role:
+                raise ReferenceSelectionError(
+                    f"roles for asset {asset_id!r} contains a non-string role"
+                )
+        normalized[asset_id] = tuple(role_list)
+
+    unknown = set(normalized) - selected_asset_ids
+    if unknown:
+        raise ReferenceSelectionError(
+            f"roles_by_asset_id references unselected asset ids: {sorted(unknown)!r}"
+        )
+    return normalized
+
+
+def _build_library_character_group(
+    character_id: str,
+    records: Sequence[ReferenceRecord],
+    repo_root: Path,
+    roles_by_asset_id: dict[str, tuple[str, ...]],
+) -> ReferenceCharacterGroup:
+    """Resolve selected library records into an ordered, ownership-bound group.
+
+    Duplicate relative paths within the same character collapse to the first
+    occurrence (preserving its binary metadata and source asset identity) while
+    accumulating roles in deterministic caller order. Paths are never
+    deduplicated across different characters.
+    """
+    order: list[str] = []
+    roles_by_path: dict[str, list[str]] = {}
+    meta_by_path: dict[str, tuple] = {}
+    bytes_by_path: dict[str, tuple] = {}
+
+    for record in records:
+        if not isinstance(record, ReferenceRecord):
+            raise ReferenceSelectionError(
+                f"selection for {character_id!r} contains a non-ReferenceRecord value"
+            )
+        if record.character_id != character_id:
+            raise ReferenceSelectionError(
+                f"selected record {record.asset_id!r} belongs to "
+                f"{record.character_id!r}, not {character_id!r}"
+            )
+        path = _validate_library_relative_path(record.relative_path, character_id)
+
+        if path not in bytes_by_path:
+            bytes_by_path[path] = _read_library_asset_bytes(
+                repo_root, character_id, path
+            )
+        fmt, content_type, digest, length, payload = bytes_by_path[path]
+
+        # Every selected record must agree with the resolved bytes.
+        if record.file_type != fmt:
+            raise ReferenceBinaryError(
+                f"library record {record.asset_id!r} file_type "
+                f"{record.file_type!r} does not match detected {fmt!r}"
+            )
+        if record.sha256 != digest:
+            raise ReferenceBinaryError(
+                f"library record {record.asset_id!r} sha256 does not match "
+                f"resolved bytes for {path!r}"
+            )
+
+        if path not in roles_by_path:
+            order.append(path)
+            roles_by_path[path] = []
+            meta_by_path[path] = (
+                fmt,
+                content_type,
+                digest,
+                length,
+                payload,
+                record.asset_id,
+            )
+        roles_by_path[path].extend(
+            roles_by_asset_id.get(record.asset_id, (DEFAULT_LIBRARY_ROLE,))
+        )
+
+    entries: list[ReferenceEntry] = []
+    for path in order:
+        fmt, content_type, digest, length, payload, source_asset_id = meta_by_path[path]
+        entries.append(
+            ReferenceEntry(
+                character_id=character_id,
+                roles=tuple(roles_by_path[path]),
+                path=path,
+                image_format=fmt,
+                content_type=content_type,
+                sha256=digest,
+                byte_length=length,
+                payload=payload,
+                source_asset_id=source_asset_id,
+            )
+        )
+
+    return ReferenceCharacterGroup(
+        character_id=character_id,
+        references=tuple(entries),
+        status=None,
+        canon_content_hash=None,
+    )
+
+
+def build_reference_bundle_from_library(
+    selected_records_by_character: Mapping[str, Sequence[ReferenceRecord]],
+    *,
+    characters_in_frame: Sequence[str],
+    repo_root: Path,
+    roles_by_asset_id: Optional[Mapping[str, Sequence[str]]] = None,
+) -> ReferenceBundle:
+    """Build a provider-neutral Library-origin ReferenceBundle.
+
+    This is the provider-neutral bridge from already-resolved Reference Library
+    records to the existing ReferenceBundle contract. It performs ZERO provider
+    calls, ZERO media generation, and ZERO manifest loading: the caller supplies
+    already-resolved ``ReferenceRecord`` objects keyed by character, in semantic
+    (ordered) selection order.
+
+    - character groups follow ``characters_in_frame`` exactly (never re-sorted);
+    - within a character, entries follow the ordered selected records;
+    - every selected asset must live under
+      ``authoring/reference_library/assets/characters/<character_id>/...`` and
+      its bytes must match the record's declared file_type and SHA-256;
+    - Library groups carry ``status=None`` and ``canon_content_hash=None``;
+    - each entry carries ``source_asset_id = record.asset_id``.
+
+    Selection coverage is exact: the mapping keys must match the frame
+    character ids (missing or extra selections fail closed).
+    """
+    frame = list(characters_in_frame)
+    if not frame:
+        raise ReferenceSelectionError("characters_in_frame must be non-empty")
+
+    seen_frame: set[str] = set()
+    for cid in frame:
+        if not isinstance(cid, str) or not cid:
+            raise ReferenceSelectionError(
+                "characters_in_frame entries must be non-empty strings"
+            )
+        if cid in seen_frame:
+            raise ReferenceSelectionError(f"duplicate character in frame: {cid!r}")
+        seen_frame.add(cid)
+
+    selections: dict[str, tuple[ReferenceRecord, ...]] = {}
+    for cid, records in selected_records_by_character.items():
+        if not isinstance(cid, str) or not cid:
+            raise ReferenceSelectionError(
+                "selection mapping keys must be non-empty strings"
+            )
+        if isinstance(records, (str, bytes)):
+            raise ReferenceSelectionError(
+                f"selection for {cid!r} must be a sequence of ReferenceRecord"
+            )
+        try:
+            records_tuple = tuple(records)
+        except TypeError as exc:
+            raise ReferenceSelectionError(
+                f"selection for {cid!r} must be an iterable of ReferenceRecord"
+            ) from exc
+        selections[cid] = records_tuple
+
+    frame_keys = set(frame)
+    selection_keys = set(selections)
+    if selection_keys != frame_keys:
+        missing = sorted(frame_keys - selection_keys)
+        extra = sorted(selection_keys - frame_keys)
+        if missing and extra:
+            raise ReferenceSelectionError(
+                f"selection coverage mismatch: missing {missing!r}, extra {extra!r}"
+            )
+        if missing:
+            raise ReferenceSelectionError(
+                f"missing selection for frame character(s) {missing!r}"
+            )
+        raise ReferenceSelectionError(
+            f"unexpected extra selection for character(s) {extra!r}"
+        )
+
+    for cid in frame:
+        if not selections[cid]:
+            raise ReferenceSelectionError(
+                f"empty selection for frame character {cid!r}"
+            )
+
+    selected_asset_ids = {
+        rec.asset_id for records in selections.values() for rec in records
+    }
+    normalized_roles = _validate_roles_by_asset_id(
+        roles_by_asset_id, selected_asset_ids
+    )
+
+    groups: list[ReferenceCharacterGroup] = []
+    for cid in frame:
+        groups.append(
+            _build_library_character_group(
+                cid, selections[cid], repo_root, normalized_roles
+            )
+        )
+
+    provisional = ReferenceBundle(
+        schema_version=REFERENCE_BUNDLE_SCHEMA_VERSION,
+        character_groups=tuple(groups),
+        content_hash="",
+    )
+    content_hash = compute_content_hash(provisional.semantic_payload())
+    return dataclasses.replace(provisional, content_hash=content_hash)

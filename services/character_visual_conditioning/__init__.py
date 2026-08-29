@@ -24,7 +24,9 @@ from .errors import (
     ReferenceSelectionError,
 )
 from .bundle import (
+    DEFAULT_LIBRARY_ROLE,
     build_reference_bundle,
+    build_reference_bundle_from_library,
     snapshot_from_serialized,
     validate_reference_bundle_integrity,
 )
@@ -57,6 +59,8 @@ __all__ = [
     "build_visual_reference_set",
     "validate_reference_set_integrity",
     "build_reference_bundle",
+    "build_reference_bundle_from_library",
+    "DEFAULT_LIBRARY_ROLE",
     "validate_reference_bundle_integrity",
     "snapshot_from_serialized",
     "generate_conditioned_image",
