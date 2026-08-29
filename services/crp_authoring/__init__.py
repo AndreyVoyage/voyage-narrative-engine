@@ -31,6 +31,19 @@ from .lifecycle import (
     advance_to_audited,
     reject_candidate,
 )
+from .acceptance_store import (
+    ACCEPTANCE_ARTIFACT_TYPE,
+    ACCEPTANCE_SCHEMA_VERSION,
+    materialize_acceptance,
+    acceptance_record_to_jsonable,
+    acceptance_record_from_jsonable,
+    acceptance_record_envelope,
+    canonical_acceptance_path,
+    write_acceptance_record,
+    load_acceptance_record,
+    resolve_accepted_source_hash,
+    is_accepted,
+)
 from .orchestrator import run_reconstruction
 from .permissions import PERMISSIONS_BY_ROLE, Permission, permission_violations
 from .registry import (
@@ -96,6 +109,17 @@ __all__ = [
     "advance_to_audited",
     "accept_candidate",
     "reject_candidate",
+    "ACCEPTANCE_ARTIFACT_TYPE",
+    "ACCEPTANCE_SCHEMA_VERSION",
+    "materialize_acceptance",
+    "acceptance_record_to_jsonable",
+    "acceptance_record_from_jsonable",
+    "acceptance_record_envelope",
+    "canonical_acceptance_path",
+    "write_acceptance_record",
+    "load_acceptance_record",
+    "resolve_accepted_source_hash",
+    "is_accepted",
     "load_manifest",
     "verify_manifest",
     "build_a_snapshot",
