@@ -1,0 +1,76 @@
+{
+  "profile_id": "SC_004_ANDREY_OLGA",
+  "scene_id": "SC_004",
+  "branch_id": "1B",
+  "location_id": "gym",
+  "fixture_ref": "tests/fixtures/scene_image_test_app/SC_004.v2.json",
+  "media_item_id": "andrey_olga_gym_sc004_b1_image_01",
+  "cast_override": {
+    "KIRA": "ANDREY_JUNIOR",
+    "SERGEY": "OLGA"
+  },
+  "prompt_aliases": {
+    "ANDREY_JUNIOR": "Andrey",
+    "OLGA": "Olga"
+  },
+  "scene_intent": "Gym stretching on the red mat. Andrey is low on the mat stretching while Olga stands nearby. First cautious physical contact: one hand rests at the lower back and waist area. Restrained early closeness.",
+  "visual_goal": "Two characters in a gym stretching area: Andrey low on the red mat stretching, Olga standing beside and slightly over him with one hand placed at his lower back and waist area. Restrained early closeness.",
+  "references": [
+    {
+      "character_id": "OLGA",
+      "asset_id": "olga_face_primary_01",
+      "source_path": "C:/DEV/Narrative/narrative-character-canon/AI_CHARACTERS/OLGA/02_refs_selected/OLGA_ref_face_primary_v1_SELECTED.jpg",
+      "expected_sha256": "fa8647990249755c2620d037644cf077124cbde2da5d5adda1691719007f5878",
+      "role": "primary_face_reference"
+    },
+    {
+      "character_id": "OLGA",
+      "asset_id": "olga_face_canon_01",
+      "source_path": "C:/DEV/Narrative/narrative-character-canon/AI_CHARACTERS/OLGA/03_face_sheet/OLGA_face_canon_v1_sheet_A_APPROVED.png",
+      "expected_sha256": "460ae9b9412c6ce06306cff222f90b33cd1adcd0a37c2ff298e54d7c7165f785",
+      "role": "face_reference"
+    },
+    {
+      "character_id": "OLGA",
+      "asset_id": "olga_body_01",
+      "source_path": "C:/DEV/Narrative/narrative-character-canon/AI_CHARACTERS/OLGA/04_body_sheet/OLGA_body_canon_v1_sheet_A_front_side_back_APPROVED.png",
+      "expected_sha256": "669c87cd5f752c2cbef7e21abd030e909a30a4d65e56103058f77b29d2f675ac",
+      "role": "body_reference"
+    },
+    {
+      "character_id": "OLGA",
+      "asset_id": "olga_sports_01",
+      "source_path": "C:/DEV/Narrative/narrative-character-canon/AI_CHARACTERS/OLGA/07_generated/canon_tests/02_sports_yoga/OLGA_test02_sports_yoga_v1_APPROVED.png",
+      "expected_sha256": "b8f2adcdfc9d08d3788290545ae64fc9a4aef66217fd29b9f97c733f5a7badcc",
+      "role": "sports_reference"
+    },
+    {
+      "character_id": "ANDREY_JUNIOR",
+      "asset_id": "andrey_junior_face_01",
+      "source_path": "C:/DEV/Narrative/narrative-character-canon/AI_CHARACTERS/ANDREY_JUNIOR/03_face_sheet/ANDREY_JUNIOR_face_canon_v1_sheet_A_APPROVED.png",
+      "expected_sha256": "a25ec83ecbc289c5059e4663dda4b250796d8339658924a990d893bee7870d0e",
+      "role": "primary_face_reference"
+    },
+    {
+      "character_id": "ANDREY_JUNIOR",
+      "asset_id": "andrey_junior_face_support_01",
+      "source_path": "C:/DEV/Narrative/narrative-character-canon/AI_CHARACTERS/ANDREY_JUNIOR/07_generated/canon_tests/01_neutral_studio_portrait/ANDREY_JUNIOR_test01_neutral_studio_portrait_v1_APPROVED.png",
+      "expected_sha256": "6f4ddcfb702aa536b5211eb48af9894078092b0e73525c23d4ba443da41b9ef7",
+      "role": "face_reference"
+    },
+    {
+      "character_id": "ANDREY_JUNIOR",
+      "asset_id": "andrey_junior_body_01",
+      "source_path": "C:/DEV/Narrative/narrative-character-canon/AI_CHARACTERS/ANDREY_JUNIOR/04_body_sheet/ANDREY_JUNIOR_body_canon_v2_sheet_A_front_side_back_APPROVED.png",
+      "expected_sha256": "d4eb483cf45afedb949a529562d220d83a13ffba77929e43c190c3dacd46942a",
+      "role": "body_reference"
+    },
+    {
+      "character_id": "ANDREY_JUNIOR",
+      "asset_id": "andrey_junior_gym_01",
+      "source_path": "C:/DEV/Narrative/narrative-character-canon/AI_CHARACTERS/ANDREY_JUNIOR/07_generated/canon_tests/03_athletic_gym_identity/ANDREY_JUNIOR_test03_athletic_gym_identity_v1_APPROVED.png",
+      "expected_sha256": "a2ec1895cbd1a62fc55cc8446f81bbf06c273074a3d4f6882de40d9e605ea9ff",
+      "role": "sports_reference"
+    }
+  ]
+}

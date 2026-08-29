@@ -1,0 +1,76 @@
+{
+  "profile_id": "SC_004_MARINA_MAKSIM",
+  "scene_id": "SC_004",
+  "branch_id": "1B",
+  "location_id": "gym",
+  "fixture_ref": "tests/fixtures/scene_image_test_app/SC_004.v2.json",
+  "media_item_id": "marina_maksim_gym_sc004_b1_image_01",
+  "cast_override": {
+    "KIRA": "MARINA",
+    "SERGEY": "MAKSIM"
+  },
+  "prompt_aliases": {
+    "MARINA": "Marina",
+    "MAKSIM": "Maksim"
+  },
+  "scene_intent": "Modern gym stretching area with an exercise mat. Marina is lying on the mat and stretching naturally. Maksim is positioned above and over the mat area near Marina as her trainer, standing, kneeling, or leaning above her spatially. Marina looks toward Maksim; Maksim looks toward Marina. Believable professional fitness-coaching context. Both are adults wearing realistic sportswear. No intimate body contact.",
+  "visual_goal": "Single image in a modern gym stretching area: Marina lying and stretching naturally on an exercise mat, while Maksim, her trainer, is positioned above and over the mat near her, clearly standing, kneeling, or leaning above her spatially, both looking toward each other. Believable professional fitness-coaching context, both adults in realistic sportswear. No intimate body contact, no hand on the waist, buttocks, chest, inner thigh, or groin, no suggestive pose, no exaggerated backbend, no superhero pose.",
+  "references": [
+    {
+      "character_id": "MARINA",
+      "asset_id": "marina_face_01",
+      "source_path": "C:/DEV/Narrative/narrative-character-canon/AI_CHARACTERS/MARINA/03_face_sheet/MARINA_face_canon_v1_sheet_A_APPROVED.png",
+      "expected_sha256": "da85d0c282c2825d26480c403d092f997dc589a778805dd2c0e47353a84fa959",
+      "role": "primary_face_reference"
+    },
+    {
+      "character_id": "MARINA",
+      "asset_id": "marina_face_support_01",
+      "source_path": "C:/DEV/Narrative/narrative-character-canon/AI_CHARACTERS/MARINA/03_face_sheet/expressions/MARINA_expressions_v1_sheet_A_APPROVED.png",
+      "expected_sha256": "ee0d86402325e7a013f6d2b1892cbccc032107720a394ffa269b4f7030e11294",
+      "role": "face_reference"
+    },
+    {
+      "character_id": "MARINA",
+      "asset_id": "marina_body_01",
+      "source_path": "C:/DEV/Narrative/narrative-character-canon/AI_CHARACTERS/MARINA/04_body_sheet/MARINA_body_canon_v1_sheet_A_APPROVED.png",
+      "expected_sha256": "67598c7e171f72e90d7a161c209ef555651a5c72b55b672acdf85fdc57f3961f",
+      "role": "body_reference"
+    },
+    {
+      "character_id": "MARINA",
+      "asset_id": "marina_sports_01",
+      "source_path": "C:/DEV/Narrative/narrative-character-canon/AI_CHARACTERS/MARINA/07_generated/canon_tests/MARINA_test07_pool_sunset_v1_APPROVED.png",
+      "expected_sha256": "7739db6e04c6253371531972bbefbfabaa7ce7ebdbdcbe6774dc5ad7a868ee79",
+      "role": "sports_reference"
+    },
+    {
+      "character_id": "MAKSIM",
+      "asset_id": "maksim_face_01",
+      "source_path": "C:/DEV/Narrative/narrative-character-canon/AI_CHARACTERS/MAKSIM/03_face_sheet/MAKSIM_face_canon_v1_sheet_A_APPROVED.png",
+      "expected_sha256": "85c388129aa4ae90d67b3b087516721c7cb2b3c43af317000e32d3df7e5ed4e5",
+      "role": "primary_face_reference"
+    },
+    {
+      "character_id": "MAKSIM",
+      "asset_id": "maksim_face_support_01",
+      "source_path": "C:/DEV/Narrative/narrative-character-canon/AI_CHARACTERS/MAKSIM/03_face_sheet/expressions/MAKSIM_expressions_v1_sheet_A_APPROVED.png",
+      "expected_sha256": "1720f67ebc5081f7f92471f4e32ba02edc8f5445ed87acb3e88770efdcb6cd1b",
+      "role": "face_reference"
+    },
+    {
+      "character_id": "MAKSIM",
+      "asset_id": "maksim_body_01",
+      "source_path": "C:/DEV/Narrative/narrative-character-canon/AI_CHARACTERS/MAKSIM/04_body_sheet/MAKSIM_body_canon_v1_sheet_A_front_side_back_APPROVED.png",
+      "expected_sha256": "577134fdb7aa0fb075cd6108d576c9623056a9eb0194a2c79ae44473fa49128d",
+      "role": "body_reference"
+    },
+    {
+      "character_id": "MAKSIM",
+      "asset_id": "maksim_gym_01",
+      "source_path": "C:/DEV/Narrative/narrative-character-canon/AI_CHARACTERS/MAKSIM/04_body_sheet/motion_references/MAKSIM_natural_motion_v1_six_pose_sheet_A_APPROVED.png",
+      "expected_sha256": "06dfc2fd6696edd4882b42d07ff30b42db1206305aa335c005e1c0d3b08ba2f8",
+      "role": "sports_reference"
+    }
+  ]
+}

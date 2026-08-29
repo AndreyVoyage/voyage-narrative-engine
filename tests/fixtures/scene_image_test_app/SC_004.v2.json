@@ -1,0 +1,173 @@
+{
+  "schema_version": "2.0",
+  "id": "SC_004",
+  "name": "Stretch on the red mat",
+  "version": "1.0",
+  "location": "gym",
+  "time": "night",
+  "archetype": "trainer",
+  "intensity": 6,
+  "risk": 4,
+  "duration_minutes": 45,
+  "prerequisites": [],
+  "flags_required": [],
+  "emotional_anchors": [],
+  "symbols": [],
+  "characters": [
+    {
+      "id": "KIRA",
+      "display_name": "Kira",
+      "role": "protagonist",
+      "present": true,
+      "state_start": "U2",
+      "state_end": "U3"
+    },
+    {
+      "id": "SERGEY",
+      "display_name": "Sergey",
+      "role": "trainer",
+      "present": true,
+      "state_start": "S2",
+      "state_end": "S3"
+    }
+  ],
+  "pov_default": "KIRA",
+  "entry_beats": [
+    {
+      "beat_id": "e1",
+      "type": "action",
+      "speaker": "KIRA",
+      "pov": "KIRA",
+      "speech": null,
+      "action": "One character lies low on the red mat, stretching.",
+      "thought": null,
+      "thought_visibility": null,
+      "narration": null,
+      "emotion": null,
+      "visual_cue": null
+    },
+    {
+      "beat_id": "e2",
+      "type": "action",
+      "speaker": "SERGEY",
+      "pov": "KIRA",
+      "speech": null,
+      "action": "The other character stands nearby, watching.",
+      "thought": null,
+      "thought_visibility": null,
+      "narration": null,
+      "emotion": null,
+      "visual_cue": null
+    }
+  ],
+  "choice_points": [
+    {
+      "id": "CP_1",
+      "timing": "stretching",
+      "pov_default": "KIRA",
+      "prompt": "What happens next on the mat?",
+      "branches": [
+        {
+          "id": "1A",
+          "option_text": "Freeze and do not turn around.",
+          "beats": [
+            {
+              "beat_id": "1A-b1",
+              "type": "action",
+              "speaker": "KIRA",
+              "pov": "KIRA",
+              "speech": null,
+              "action": "The character on the mat freezes and does not turn around.",
+              "thought": null,
+              "thought_visibility": null,
+              "narration": null,
+              "emotion": null,
+              "visual_cue": null
+            }
+          ],
+          "effects": {
+            "flags_set": ["sc_004_1a"],
+            "flags_cleared": [],
+            "level_changes": {},
+            "relationship_changes": {}
+          },
+          "next": {
+            "on_complete": "scene_end",
+            "next_scene": null,
+            "completion_flag": "sc_004_1a_complete"
+          }
+        },
+        {
+          "id": "1B",
+          "option_text": "Turn and meet his eyes.",
+          "beats": [
+            {
+              "beat_id": "1B-b1",
+              "type": "action",
+              "speaker": "KIRA",
+              "pov": "KIRA",
+              "speech": null,
+              "action": "The character on the mat turns to look up at the other. First cautious physical contact: one hand rests at the lower back and waist area. Restrained early closeness.",
+              "thought": null,
+              "thought_visibility": null,
+              "narration": null,
+              "emotion": null,
+              "visual_cue": null
+            }
+          ],
+          "effects": {
+            "flags_set": ["sc_004_1b"],
+            "flags_cleared": [],
+            "level_changes": {},
+            "relationship_changes": {}
+          },
+          "next": {
+            "on_complete": "scene_end",
+            "next_scene": null,
+            "completion_flag": "sc_004_1b_complete"
+          }
+        },
+        {
+          "id": "1C",
+          "option_text": "Officially ask for help with the stretch.",
+          "beats": [
+            {
+              "beat_id": "1C-b1",
+              "type": "action",
+              "speaker": "KIRA",
+              "pov": "KIRA",
+              "speech": null,
+              "action": "The character on the mat officially asks for help with the stretch.",
+              "thought": null,
+              "thought_visibility": null,
+              "narration": null,
+              "emotion": null,
+              "visual_cue": null
+            }
+          ],
+          "effects": {
+            "flags_set": ["sc_004_1c"],
+            "flags_cleared": [],
+            "level_changes": {},
+            "relationship_changes": {}
+          },
+          "next": {
+            "on_complete": "scene_end",
+            "next_scene": null,
+            "completion_flag": "sc_004_1c_complete"
+          }
+        }
+      ]
+    }
+  ],
+  "visual": {
+    "scene_id": "VS_002",
+    "stills": []
+  },
+  "safety": {
+    "content_rating": "R",
+    "stop_words_enabled": true,
+    "present_constraints": "First physical contact; hand at the lower back and waist area; no sexual contact.",
+    "notes": "SC_004 / branch 1B fixture for the scene image test app."
+  }
+}
