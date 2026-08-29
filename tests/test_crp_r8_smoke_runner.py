@@ -31,7 +31,7 @@ def _valid_llm_json(package_id="pkg-001", subject_id="char-subject-1"):
         "package_id": package_id,
         "subject_id": subject_id,
         "role_id": "R8",
-        "role_version": "v1",
+        "role_version": "v2",
         "checks": [
             {"check_id": "R8_ROLE_BOUNDARY_SEMANTIC", "outcome": "PASS", "findings": []},
             {"check_id": "R8_MODULE_PLACEMENT", "outcome": "PASS", "findings": []},

@@ -33,6 +33,7 @@ No provider, no network, no canon, no hidden benchmark, no mutation of inputs.
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Mapping, Optional, Tuple
@@ -58,7 +59,7 @@ from .reconstruction_audit import (
 ProviderCallable = Callable[[list], str]
 
 R8_ROLE_ID = "R8"
-R8_ROLE_VERSION = "v1"
+R8_ROLE_VERSION = "v2"
 
 # The three LLM-owned semantic check IDs (closed set; parser rejects any other).
 CHECK_ROLE_BOUNDARY_SEMANTIC = "R8_ROLE_BOUNDARY_SEMANTIC"   # #5 semantic half (HYBRID)
@@ -77,7 +78,7 @@ _CHECK_CLASSIFICATION = {
     CHECK_UNKNOWN_COVERAGE: AuditCheckClassification.LLM_JUDGMENT,
 }
 
-_R8_PROMPT_PATH = "roles/vnext/ROLE_8_INDEPENDENT_EVIDENCE_AUDITOR_v1_PROMPT.md"
+_R8_PROMPT_PATH = "roles/vnext/ROLE_8_INDEPENDENT_EVIDENCE_AUDITOR_v2_PROMPT.md"
 
 
 @dataclass(frozen=True)
@@ -225,7 +226,7 @@ def parse_r8_llm_result(
     if missing:
         raise CrpValidationError(f"R8 output missing required semantic checks: {sorted(missing)}")
 
-    return R8LlmJudgment(
+    judgment = R8LlmJudgment(
         package_id=data["package_id"],
         subject_id=data["subject_id"],
         role_id=data["role_id"],
@@ -233,6 +234,8 @@ def parse_r8_llm_result(
         checks=tuple(checks),
         narrative=data.get("narrative", ""),
     )
+    _enforce_field_grounding(judgment, package)
+    return judgment
 
 
 def _parse_findings(raw_findings, check_id, claim_ids, evidence_ids):
@@ -273,6 +276,71 @@ def _decode_outcome(value) -> AuditCheckOutcome:
         return AuditCheckOutcome(value)
     except ValueError:
         raise CrpValidationError(f"unknown R8 outcome {value!r}") from None
+
+
+# Explicit field-assertion forms R8 may use to pin a finding to a claim field.
+# Only ``field=value`` / ``field: value`` are matched (word-bounded), so prose
+# that merely mentions a value is NOT falsely rejected.
+_FIELD_ASSERTION_RE = re.compile(
+    r"\b(target_module_or_layer|target|claim_type|type|confidence|role_id|role)\b"
+    r"\s*[:=]\s*\"?([A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)*)"
+)
+
+
+def _enforce_field_grounding(
+    judgment: R8LlmJudgment,
+    package: CandidateCharacterPackage,
+) -> None:
+    """Deterministic fail-closed grounding guard over parsed R8 findings.
+
+    A finding pinned to a ``claim_id`` must not make a mechanically false claim
+    about that claim's authoritative fields. This catches the explicit
+    ``field=value`` / ``field: value`` assertion forms (e.g.
+    ``target=psychology.P3`` when the Candidate target is
+    ``behavior.conflict_style``, or ``claim_type=INFERENCE`` when the Candidate
+    says ``FACT``). It never repairs text, never retries the provider, and never
+    rewrites a finding: a contradiction raises ``CrpValidationError``.
+    """
+    claims_by_id = {c.claim_id: c for c in package.claims}
+    for check in judgment.checks:
+        for finding in check.findings:
+            if finding.claim_id is None:
+                continue
+            claim = claims_by_id.get(finding.claim_id)
+            if claim is None:
+                # Reference existence is enforced earlier in parsing; this is
+                # defense in depth only.
+                continue
+            for field, value in _FIELD_ASSERTION_RE.findall(finding.message):
+                field = field.strip().lower()
+                if field in ("target_module_or_layer", "target"):
+                    if value != claim.target_module_or_layer:
+                        raise CrpValidationError(
+                            f"R8 finding for claim {finding.claim_id!r} asserts "
+                            f"target {value!r} but the Candidate target is "
+                            f"{claim.target_module_or_layer!r}"
+                        )
+                elif field in ("claim_type", "type"):
+                    if value.upper() != claim.claim_type.value:
+                        raise CrpValidationError(
+                            f"R8 finding for claim {finding.claim_id!r} asserts "
+                            f"claim_type {value!r} but the Candidate claim_type "
+                            f"is {claim.claim_type.value!r}"
+                        )
+                elif field == "confidence":
+                    if value.upper() != claim.confidence.value:
+                        raise CrpValidationError(
+                            f"R8 finding for claim {finding.claim_id!r} asserts "
+                            f"confidence {value!r} but the Candidate confidence "
+                            f"is {claim.confidence.value!r}"
+                        )
+                elif field in ("role_id", "role"):
+                    if value.upper() != claim.role_id:
+                        raise CrpValidationError(
+                            f"R8 finding for claim {finding.claim_id!r} asserts "
+                            f"role {value!r} but the Candidate role_id is "
+                            f"{claim.role_id!r}"
+                        )
 
 
 # ---------------------------------------------------------------

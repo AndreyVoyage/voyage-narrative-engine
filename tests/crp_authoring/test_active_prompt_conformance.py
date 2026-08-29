@@ -254,7 +254,7 @@ class TestProviderPolicy:
 class TestR8DedicatedConformance:
     def test_r8_identity_and_version(self) -> None:
         assert R8_ROLE_ID == "R8"
-        assert R8_ROLE_VERSION == "v1"
+        assert R8_ROLE_VERSION == "v2"
 
     def test_r8_prompt_path_resolves(self) -> None:
         assert (_REPO_ROOT / _R8_PROMPT_PATH).is_file()

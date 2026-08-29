@@ -10,6 +10,7 @@ overridden), and adversarial cases. No provider, no network, no Kira.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -24,6 +25,7 @@ from services.crp_authoring.r8_llm_judgment import (
     CHECK_UNKNOWN_COVERAGE,
     R8_ROLE_ID,
     R8_ROLE_VERSION,
+    _R8_PROMPT_PATH,
     compose_final_audit,
     parse_r8_llm_result,
     render_r8_messages,
@@ -115,7 +117,8 @@ class TestParseExactBound:
     def test_wrong_role_version_rejected(self) -> None:
         pkg = _clean_package()
         with pytest.raises(CrpValidationError):
-            parse_r8_llm_result(_clean_llm_json(role_version="v2"), pkg, ())
+            # Active R8 version is v2; the historical v1 role_version is rejected.
+            parse_r8_llm_result(_clean_llm_json(role_version="v1"), pkg, ())
 
     def test_wrong_package_id_rejected(self) -> None:
         pkg = _clean_package()
@@ -196,7 +199,7 @@ class TestPromptRendering:
         assert f"package_id: {PKG_ID}" in user
         assert f"subject_id: {SUBJECT}" in user
         assert "role_id: R8" in user
-        assert "role_version: v1" in user
+        assert "role_version: v2" in user
 
     def test_prompt_contains_no_raw_roleresult_or_hidden_eval(self) -> None:
         pkg = _clean_package()
@@ -398,3 +401,128 @@ class TestR8SubstantiveMaterialization:
         assert self.SENTINEL in user
         assert self.UNALLOWED not in user
         assert "ghost-id" not in user
+
+
+def _prompt_low() -> str:
+    pkg = _clean_package()
+    deterministic = run_deterministic_audit(pkg, (), AuditPolicy())
+    text = render_r8_messages(pkg, (), deterministic, {})[0]["content"]
+    return " ".join(text.split()).lower()
+
+
+class TestR8FieldGroundingGuard:
+    """Deterministic post-parse guard: a finding must not make a mechanically
+    false ``field=value`` assertion about an authoritative Candidate field."""
+
+    def _package(self, *, claim_type=ClaimType.FACT, target="behavior.conflict_style",
+                 role_id="R2"):
+        claim = make_claim(claim_id="c1", claim_type=claim_type, role_id=role_id,
+                           target_module_or_layer=target)
+        pkg = make_package(package_id=PKG_ID, subject_id=SUBJECT, claims=(claim,))
+        return _with_manifest(pkg, {target: ("c1",)})
+
+    def _judgment(self, check_id, message, *, evidence_ids=None):
+        data = json.loads(_clean_llm_json())
+        for chk in data["checks"]:
+            if chk["check_id"] == check_id:
+                chk["outcome"] = "FAIL"
+                finding = {"check_id": check_id, "message": message, "claim_id": "c1"}
+                if evidence_ids is not None:
+                    finding["evidence_ids"] = evidence_ids
+                chk["findings"] = [finding]
+        return json.dumps(data, ensure_ascii=False)
+
+    def test_t1_target_misstatement_rejected(self) -> None:
+        pkg = self._package(target="behavior.conflict_style")
+        raw = self._judgment(CHECK_MODULE_PLACEMENT, "misplaced: target=psychology.P3")
+        with pytest.raises(CrpValidationError) as ei:
+            parse_r8_llm_result(raw, pkg, ())
+        assert "target" in str(ei.value)
+
+    def test_t2_claim_type_misstatement_rejected(self) -> None:
+        pkg = self._package(claim_type=ClaimType.FACT)
+        raw = self._judgment(CHECK_ROLE_BOUNDARY_SEMANTIC,
+                             "claim_type=INFERENCE blurs direct evidence")
+        with pytest.raises(CrpValidationError) as ei:
+            parse_r8_llm_result(raw, pkg, ())
+        assert "claim_type" in str(ei.value)
+
+    def test_correct_field_assertions_not_rejected(self) -> None:
+        pkg = self._package(claim_type=ClaimType.FACT, target="behavior.conflict_style")
+        raw = self._judgment(CHECK_MODULE_PLACEMENT,
+                             "target=behavior.conflict_style claim_type=FACT ok")
+        assert parse_r8_llm_result(raw, pkg, ()).checks
+
+    def test_prose_without_assignment_never_false_rejected(self) -> None:
+        # A genuine placement finding phrased in prose (no field=value) must
+        # survive -- R8 may still propose an alternative target.
+        pkg = self._package(target="behavior.conflict_style")
+        raw = self._judgment(CHECK_MODULE_PLACEMENT, "should be moved to psychology.P3")
+        assert parse_r8_llm_result(raw, pkg, ()).checks
+
+
+class TestR8PromptGrounding:
+    """The R8 prompt must carry explicit grounding rules for the RUN_015 classes."""
+
+    def test_t3_evidence_id_grounding_rule_present(self) -> None:
+        low = _prompt_low()
+        assert "content must come from the specific" in low
+        assert "do not borrow wording from one evidence record" in low
+
+    def test_t4_unknown_coverage_rule_present(self) -> None:
+        low = _prompt_low()
+        assert "package `unknowns`" in low
+        assert "routed to `package.unknowns`" in low
+
+    def test_t5_owner_direct_personality_not_auto_inference(self) -> None:
+        low = _prompt_low()
+        assert "personality" in low
+        assert "not automatically an inference" in low
+
+    def test_t6_owner_direct_emotional_state_not_auto_inference(self) -> None:
+        low = _prompt_low()
+        assert "emotion" in low
+
+    def test_t7_r2_r3_not_defective_for_faithful_direct_fact(self) -> None:
+        low = _prompt_low()
+        assert "r2/r3 are not defective" in low
+
+    def test_t8_undefined_p_layer_no_invented_taxonomy(self) -> None:
+        low = _prompt_low()
+        assert "do not invent a taxonomy" in low
+        assert "only fail" in low
+
+
+def _v1_prompt_text() -> str:
+    return (
+        Path(__file__).resolve().parents[2]
+        / "roles/vnext/ROLE_8_INDEPENDENT_EVIDENCE_AUDITOR_v1_PROMPT.md"
+    ).read_text(encoding="utf-8")
+
+
+class TestR8VersionRouting:
+    """R8 v1 is the immutable historical provider-facing prompt; the active
+    dedicated semantic R8 version is v2, which carries the RUN_015 grounding
+    correction. The historical v1 prompt must remain available and unchanged."""
+
+    def test_active_dedicated_r8_version_is_v2(self) -> None:
+        assert R8_ROLE_VERSION == "v2"
+
+    def test_dedicated_prompt_path_points_to_v2(self) -> None:
+        assert _R8_PROMPT_PATH.endswith(
+            "ROLE_8_INDEPENDENT_EVIDENCE_AUDITOR_v2_PROMPT.md"
+        )
+
+    def test_historical_v1_available_and_unchanged(self) -> None:
+        text = _v1_prompt_text()
+        assert "prompt_version: v1" in text
+        # The RUN_015 grounding correction must live ONLY in v2, never v1.
+        assert "GROUNDING_RULES" not in text
+        assert "must not state that a claim has a different claim_type" not in text
+
+    def test_active_v2_system_prompt_contains_grounding_rules(self) -> None:
+        pkg = _clean_package()
+        deterministic = run_deterministic_audit(pkg, (), AuditPolicy())
+        system = render_r8_messages(pkg, (), deterministic, {})[0]["content"]
+        assert "GROUNDING_RULES" in system
+        assert "prompt_version: v2" in system
