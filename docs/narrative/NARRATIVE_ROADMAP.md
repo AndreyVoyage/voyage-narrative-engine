@@ -451,7 +451,7 @@ Character Aside / Voice Layer — N6 / future tracks (см. NARRATIVE_FUTURE_TRA
 
 | Milestone | Status |
 |---|---|
-| SVA-RL1 — `VNE_REFERENCE_LIBRARY_V0` | PLANNED / RATIFIED_REQUIREMENT |
+| SVA-RL1 — `VNE_REFERENCE_LIBRARY_V0` | IMPLEMENTED (v0) |
 | SVA-RL2 — `CONTROLLED_REFERENCE_IMPORT_V0` | PLANNED / RATIFIED_REQUIREMENT |
 
 **These capabilities become the foundation for:**

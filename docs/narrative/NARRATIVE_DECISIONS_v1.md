@@ -384,6 +384,23 @@ bridge code is **not** marked deprecated here.
 - bulk generation
 - automatic retries
 
+### Implementation decisions (OD-SVA-RL-IMPL-01..04 = A)
+
+The SVA-RL1 implementation slice (`VNE_REFERENCE_LIBRARY_V0`) finalizes the
+previously "planning level only" points as follows:
+
+| Decision | Value |
+|---|---|
+| OD-SVA-RL-IMPL-01 = A | `REFERENCE_LIBRARY_ROOT = authoring/reference_library/`; manifest `authoring/reference_library/REFERENCE_LIBRARY_MANIFEST.json`; future asset root `authoring/reference_library/assets/`; future character convention `authoring/reference_library/assets/characters/<character_id>/...` |
+| OD-SVA-RL-IMPL-02 = A | Manifest, code, and tests are Git-tracked; reference image bytes under `authoring/reference_library/assets/**` are Git-ignored in v0; no Git LFS in v0 |
+| OD-SVA-RL-IMPL-03 = A | Reference metadata uses a required opaque `character_id` plus an optional free-string `collection`; no collection enum; no filesystem-slug requirement for `collection`; no explicit character-registration operation in RL1 |
+| OD-SVA-RL-IMPL-04 = A | SVA-RL1 is additive and isolated; no refactor of `tools/visual_asset_registry.py`; shared-helper extraction is deferred to SVA-RL2 only if justified |
+
+SVA-RL1 is implemented and published (see `NARRATIVE_ROADMAP.md` §12).
+Controlled import (copy-in, add/update/remove, and external-source
+magic-byte validation) belongs to SVA-RL2 and is **NOT** implemented in
+SVA-RL1.
+
 ---
 
 ## 12. Controlled Reference Import (SVA-RL2) — OD-SVA-RL-02
