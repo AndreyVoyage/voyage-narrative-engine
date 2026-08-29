@@ -455,6 +455,24 @@ Align with the existing VNE visual asset policy where practical:
 
 The implementation schema and exact filesystem root are **not** finalized in this task.
 
+### Implementation decisions (OD-SVA-RL2-IMPL-01..03 = A)
+
+The SVA-RL2 implementation slice (`CONTROLLED_REFERENCE_IMPORT_V0`) finalizes the
+previously "not finalized" points as follows:
+
+| Decision | Value |
+|---|---|
+| OD-SVA-RL2-IMPL-01 = A | Physical imported asset convention: `authoring/reference_library/assets/characters/<character_id>/<asset_id>.<ext>` (canonical `.png` / `.jpg` / `.webp`). `collection` remains metadata only and never affects the physical path. |
+| OD-SVA-RL2-IMPL-02 = A | Duplicate SHA ownership policy: same SHA + same `character_id` → deterministic no-op (no duplicate binary or record); same SHA + different `character_id` → fail closed (no cross-character binary sharing). |
+| OD-SVA-RL2-IMPL-03 = A | `asset_id` collision policy: same `asset_id` + same SHA + same ownership → deterministic no-op allowed; same `asset_id` + different bytes / conflicting ownership → reject. No update/replace/remove/overwrite in v0. |
+
+SVA-RL2 v0 is explicit controlled single-file COPY import only: no directory
+scanning, no automatic sync, no source mutation, no update, and no remove.
+`role`/`source_type` manifest fields remain deferred (the RL1 manifest contract
+is not extended in this slice).
+
+SVA-RL2 is implemented and published (see `NARRATIVE_ROADMAP.md` §12).
+
 ---
 
 ## 13. Explicit Reference Selection for Library Assets — OD-SVA-RL-03

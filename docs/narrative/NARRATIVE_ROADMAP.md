@@ -452,7 +452,7 @@ Character Aside / Voice Layer — N6 / future tracks (см. NARRATIVE_FUTURE_TRA
 | Milestone | Status |
 |---|---|
 | SVA-RL1 — `VNE_REFERENCE_LIBRARY_V0` | IMPLEMENTED (v0) |
-| SVA-RL2 — `CONTROLLED_REFERENCE_IMPORT_V0` | PLANNED / RATIFIED_REQUIREMENT |
+| SVA-RL2 — `CONTROLLED_REFERENCE_IMPORT_V0` | IMPLEMENTED (v0) |
 
 **These capabilities become the foundation for:**
 
@@ -465,7 +465,8 @@ Character Aside / Voice Layer — N6 / future tracks (см. NARRATIVE_FUTURE_TRA
 - **Owner decisions:** `OD-SVA-RL-01 = A` (VNE Reference Library), `OD-SVA-RL-02 = A` (Controlled Reference
   Import), `OD-SVA-RL-03 = A` (Explicit Reference Selection for Library Assets) — recorded in
   `NARRATIVE_DECISIONS_v1.md` §11, §12, §13.
-- **Recommended dependency sequence:** `SVA-RL1 → SVA-RL2 → SVA-CAST1 → SVA-RP1 → SVA-MR1` implementation.
+- **Recommended dependency sequence:** `SVA-RL1 → SVA-RL2 → ReferenceBundle adapter → SVA-CAST1 → SVA-RP1 → SVA-MR1` implementation.
+- **Next implementation slice:** `REFERENCE_LIBRARY_TO_REFERENCE_BUNDLE_ADAPTER_V0` — connect imported Library references into the existing ReferenceBundle/selection path. Not yet implemented.
 - **Existing foundation:** the generic `ReferenceBundle` (B4-RC2), conditioned provider attachment (B4-RC3), and
   explicit reference selection (B4-RC4S) are already available and are **referenced, not reimplemented**.
 - **These documentation milestones do NOT block already completed B4 work.** B4-RC4/RC5 proceed independently.
