@@ -1,29 +1,45 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Reference Library v0 (SVA-RL1) -- public API.
+Reference Library -- public API (SVA-RL1 foundation + SVA-RL2 controlled import).
 
 Exposes the frozen ``ReferenceRecord`` model, deterministic manifest
-serialize/load/validate, safe repo-relative path validation, and SHA-256
-validation/query primitives. This package is foundation-only: it never copies,
-imports, scans, or deletes external image files, and never mutates the manifest
-from an external image. Controlled import (add/update/remove/copy) belongs to
-SVA-RL2.
+serialize/load/validate, safe repo-relative path validation, SHA-256
+validation/query primitives, and the SVA-RL2 controlled-import API
+(``import_reference``). Import performs an explicit single-file COPY (never a
+move/delete), validates format by magic bytes, enforces duplicate/ownership
+policies, and atomically registers the manifest. There is no directory scan,
+no synchronization, and no update/remove in v0.
 """
 
 from __future__ import annotations
 
 from .errors import (
+    AssetIdCollisionError,
+    CrossCharacterDuplicateError,
+    FormatMismatchError,
     ReferenceLibraryDuplicateError,
     ReferenceLibraryError,
     ReferenceLibraryFileTypeError,
+    ReferenceLibraryImportError,
     ReferenceLibraryManifestError,
     ReferenceLibraryNotFoundError,
     ReferenceLibraryPathError,
     ReferenceLibrarySha256Error,
     ReferenceLibraryValidationError,
+    SourceValidationError,
+    UnsupportedFormatError,
 )
 from .hashing import compute_sha256, is_valid_sha256
+from .importer import (
+    IMPORTED,
+    NO_OP_DUPLICATE,
+    NO_OP_EXISTING_ASSET,
+    ImportResult,
+    compute_destination_relative_path,
+    import_reference,
+    sniff_image_format,
+)
 from .manifest import (
     ASSET_ROOT,
     LIBRARY_ROOT,
@@ -76,6 +92,13 @@ __all__ = [
     "is_valid_sha256",
     "find_records_by_sha256",
     "lookup_record",
+    "import_reference",
+    "ImportResult",
+    "IMPORTED",
+    "NO_OP_DUPLICATE",
+    "NO_OP_EXISTING_ASSET",
+    "sniff_image_format",
+    "compute_destination_relative_path",
     "ReferenceLibraryError",
     "ReferenceLibraryManifestError",
     "ReferenceLibraryValidationError",
@@ -84,4 +107,10 @@ __all__ = [
     "ReferenceLibraryFileTypeError",
     "ReferenceLibraryDuplicateError",
     "ReferenceLibraryNotFoundError",
+    "ReferenceLibraryImportError",
+    "SourceValidationError",
+    "UnsupportedFormatError",
+    "FormatMismatchError",
+    "CrossCharacterDuplicateError",
+    "AssetIdCollisionError",
 ]

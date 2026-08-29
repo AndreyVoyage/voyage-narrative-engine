@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Exception hierarchy for Reference Library v0 (SVA-RL1).
+Exception hierarchy for Reference Library v0 (SVA-RL1 + SVA-RL2).
 
 Small, transport-independent, named exceptions. Messages never carry raw asset
-bytes, absolute machine paths, or external-source content. This package is
-read/validate/serialize only: it never copies, scans, or imports external
-image files, and never mutates the manifest from an external image.
+bytes, absolute machine paths, or external-source content. This package spans
+the RL1 foundation (read/validate/serialize) and the RL2 controlled import
+(explicit single-file copy-in). Import never scans, synchronizes, moves, or
+deletes sources and never mutates the manifest from an external image.
 """
 
 from __future__ import annotations
@@ -45,3 +46,28 @@ class ReferenceLibraryDuplicateError(ReferenceLibraryValidationError):
 
 class ReferenceLibraryNotFoundError(ReferenceLibraryError):
     """Raised when a requested ``asset_id`` has no manifest record."""
+
+
+class ReferenceLibraryImportError(ReferenceLibraryError):
+    """Root of the controlled-import (SVA-RL2) exception hierarchy."""
+
+
+class SourceValidationError(ReferenceLibraryImportError):
+    """Raised when the source is missing, not a regular file, a symlink, empty,
+    or unreadable."""
+
+
+class UnsupportedFormatError(ReferenceLibraryImportError):
+    """Raised when the source bytes are not a supported image format."""
+
+
+class FormatMismatchError(ReferenceLibraryImportError):
+    """Raised when the source extension disagrees with its magic-byte signature."""
+
+
+class CrossCharacterDuplicateError(ReferenceLibraryImportError):
+    """Raised when identical bytes already exist under a different character_id."""
+
+
+class AssetIdCollisionError(ReferenceLibraryImportError):
+    """Raised when ``asset_id`` already exists with a different semantic asset."""
