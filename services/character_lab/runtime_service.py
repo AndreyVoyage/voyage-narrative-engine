@@ -175,56 +175,59 @@ class RuntimeService:
         session = RuntimeSession(
             accepted, RuntimeMemoryBackend(Path(memory_root), subject_id), sid
         )
-        runtime_context = session.build_runtime_context()
-        assembly = policy.assemble_context(
-            runtime_context=runtime_context,
-            session_id=session.session_id,
-            history=history,
-            user_message=user_message,
-        )
-        assembly_hash = build_assembly_hash(assembly.manifest)
-        tid = turn_id or f"turn-{uuid.uuid4().hex}"
-        attribution = build_provider_attribution(provider_info)
-
-        recorder = None
-        if capture is not None:
-            recorder = capture.recorder(
-                turn_id=tid,
-                manifest=assembly.manifest,
-                assembly_hash=assembly_hash,
-                attribution=attribution,
+        try:
+            runtime_context = session.build_runtime_context()
+            assembly = policy.assemble_context(
+                runtime_context=runtime_context,
+                session_id=session.session_id,
+                history=history,
+                user_message=user_message,
             )
-        effective_provider = (
-            provider_factory(recorder) if provider_factory is not None else provider
-        )
-        response = effective_provider(list(assembly.messages))
+            assembly_hash = build_assembly_hash(assembly.manifest)
+            tid = turn_id or f"turn-{uuid.uuid4().hex}"
+            attribution = build_provider_attribution(provider_info)
 
-        events = policy.persist(
-            session=session, user_message=user_message, response=response
-        )
-        package_hash_after = compute_package_hash(accepted.package)
+            recorder = None
+            if capture is not None:
+                recorder = capture.recorder(
+                    turn_id=tid,
+                    manifest=assembly.manifest,
+                    assembly_hash=assembly_hash,
+                    attribution=attribution,
+                )
+            effective_provider = (
+                provider_factory(recorder) if provider_factory is not None else provider
+            )
+            response = effective_provider(list(assembly.messages))
 
-        request_hash = None
-        response_metadata: dict = {}
-        if capture is not None:
-            request_hash = capture.read_request_hash(tid)
-            response_metadata = extract_response_metadata(capture.read_response(tid))
+            events = policy.persist(
+                session=session, user_message=user_message, response=response
+            )
+            package_hash_after = compute_package_hash(accepted.package)
 
-        return TurnResult(
-            turn_id=tid,
-            session_id=session.session_id,
-            character_id=subject_id,
-            variant_id=policy.variant_id,
-            variant_version=policy.variant_version,
-            accepted_source_hash=accepted.source_candidate_hash,
-            package_hash_after=package_hash_after,
-            package_hash_unchanged=(package_hash_after == accepted.source_candidate_hash),
-            user_message=user_message,
-            response=response,
-            messages=assembly.messages,
-            assembly_hash=assembly_hash,
-            request_hash=request_hash,
-            response_metadata=response_metadata,
-            persisted_event_ids=tuple(e.event_id for e in events),
-            provider=attribution,
-        )
+            request_hash = None
+            response_metadata: dict = {}
+            if capture is not None:
+                request_hash = capture.read_request_hash(tid)
+                response_metadata = extract_response_metadata(capture.read_response(tid))
+
+            return TurnResult(
+                turn_id=tid,
+                session_id=session.session_id,
+                character_id=subject_id,
+                variant_id=policy.variant_id,
+                variant_version=policy.variant_version,
+                accepted_source_hash=accepted.source_candidate_hash,
+                package_hash_after=package_hash_after,
+                package_hash_unchanged=(package_hash_after == accepted.source_candidate_hash),
+                user_message=user_message,
+                response=response,
+                messages=assembly.messages,
+                assembly_hash=assembly_hash,
+                request_hash=request_hash,
+                response_metadata=response_metadata,
+                persisted_event_ids=tuple(e.event_id for e in events),
+                provider=attribution,
+            )
+        finally:
+            session.close()

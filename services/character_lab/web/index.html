@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Character Lab</title>
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">Character Lab <span class="badge beta">BETA</span></div>
+    <nav class="modes" id="modes">
+      <button class="mode active" data-mode="chat">Чат</button>
+      <button class="mode" data-mode="character">Персонаж</button>
+      <button class="mode" data-mode="turns">Отладка ходов</button>
+      <button class="mode disabled" data-mode="scene" disabled>Сцена · Slice 3</button>
+      <button class="mode disabled" data-mode="memory" disabled>Память · Slice 3</button>
+    </nav>
+    <div class="provider-state" id="provider-state" title="Состояние провайдера">—</div>
+  </header>
+
+  <main class="workspace">
+    <aside class="left-panel">
+      <section class="panel-block">
+        <h2>Персонажи</h2>
+        <ul id="characters" class="select-list"></ul>
+      </section>
+      <section class="panel-block">
+        <h2>Варианты</h2>
+        <ul id="variants" class="select-list"></ul>
+      </section>
+      <section class="panel-block">
+        <h2>Сессии</h2>
+        <button id="new-session" class="btn primary">+ Новая сессия</button>
+        <ul id="sessions" class="select-list"></ul>
+      </section>
+      <section class="panel-block muted">
+        <div class="data-root-label" id="data-root-label">Данные: …</div>
+        <div class="workspace-label">Clean Test / изолированные данные Character Lab</div>
+      </section>
+    </aside>
+
+    <section class="center-panel" id="center-panel">
+      <div id="view-chat" class="view">
+        <div class="chat-header" id="chat-header">KIRA · Beta v1 — Current</div>
+        <div class="messages" id="messages"></div>
+        <div class="composer">
+          <input id="message-input" placeholder="Написать сообщение..." autocomplete="off">
+          <button id="send" class="btn primary">Отправить</button>
+        </div>
+      </div>
+
+      <div id="view-character" class="view hidden">
+        <div id="character-inspector" class="inspector"></div>
+      </div>
+
+      <div id="view-turns" class="view hidden">
+        <div class="turns-layout">
+          <div class="turns-list" id="turns-list"></div>
+          <div class="turn-detail" id="turn-detail"></div>
+        </div>
+      </div>
+    </section>
+
+    <aside class="right-panel">
+      <section class="panel-block">
+        <h2>Загруженное состояние</h2>
+        <div id="loaded-state" class="kv"></div>
+      </section>
+      <section class="panel-block muted">
+        <h2>Примечание</h2>
+        <p class="note">
+          «Загружено» не означает «доставлено модели». Полный контент пакета
+          (психология, биография, границы и т.д.) в текущем Beta v1 не
+          отправляется в запрос провайдера. Это видно в Инспекторе персонажа.
+        </p>
+      </section>
+    </aside>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>

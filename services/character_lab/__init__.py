@@ -12,6 +12,11 @@ No provider, no network, no acceptance mutation, no accepted-package writer path
 
 from __future__ import annotations
 
+from .app import (
+    CHARACTER_LAB_DATA_ROOT_ENV,
+    CharacterLabApp,
+    resolve_data_root,
+)
 from .runtime_policy import (
     AssemblyItem,
     AssemblyManifest,
@@ -62,4 +67,7 @@ __all__ = [
     "TurnCapture",
     "compute_request_hash",
     "verify_segment_delivered",
+    "CharacterLabApp",
+    "CHARACTER_LAB_DATA_ROOT_ENV",
+    "resolve_data_root",
 ]
