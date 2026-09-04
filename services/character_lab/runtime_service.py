@@ -23,6 +23,7 @@ from services.character_runtime import (
     RuntimeSession,
     load_accepted_character,
 )
+from services.character_runtime.state import RuntimeStateBackend
 from services.crp_authoring import compute_package_hash
 
 from .runtime_policy import RuntimePolicy, build_assembly_hash
@@ -127,6 +128,30 @@ class RuntimeService:
         self._acceptance_root = Path(acceptance_root)
         self._source_loader = source_loader
 
+    @staticmethod
+    def _load_runtime_state(state_root: Optional[Path], subject_id: str) -> list:
+        """Current operator-confirmed state as plain dicts (empty when no DB)."""
+        if state_root is None:
+            return []
+        backend = RuntimeStateBackend(Path(state_root), subject_id)
+        try:
+            entries = backend.load_current_state(subject_id)
+        finally:
+            backend.close()
+        return [
+            {
+                "domain": e.domain,
+                "key": e.key,
+                "value": e.value,
+                "source_kind": e.source_kind,
+                "source_ref": e.source_ref,
+                "seq": e.seq,
+                "event_id": e.event_id,
+                "created_at": e.created_at,
+            }
+            for e in entries
+        ]
+
     def resolve(
         self,
         subject_id: str,
@@ -174,6 +199,7 @@ class RuntimeService:
         turn_id: Optional[str] = None,
         provider_factory: Optional[ProviderFactory] = None,
         scene=None,
+        state_root: Optional[Path] = None,
     ) -> TurnResult:
         accepted = load_accepted_character(
             subject_id,
@@ -200,6 +226,11 @@ class RuntimeService:
                 }
                 for e in backend.load_events_causal(subject_id)
             ]
+            # Explicitly operator-confirmed Runtime State (own per-workspace DB).
+            # Additive + already REMOVE-filtered; Beta v1 ignores this key.
+            runtime_context["runtime_state"] = self._load_runtime_state(
+                state_root, subject_id
+            )
             assembly = policy.assemble_context(
                 runtime_context=runtime_context,
                 session_id=session.session_id,

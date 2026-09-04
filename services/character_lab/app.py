@@ -23,6 +23,13 @@ from pathlib import Path
 from typing import Optional
 
 from services.character_runtime import RuntimeMemoryBackend, load_accepted_character
+from services.character_runtime.state import (
+    ACTIVE_DOMAINS,
+    DOMAIN_FACT,
+    SOURCE_OPERATOR_CONFIRMED,
+    RuntimeStateBackend,
+    RuntimeStateError,
+)
 from services.crp_authoring import compute_package_hash
 
 from . import provenance as _provenance
@@ -299,6 +306,7 @@ class CharacterLabApp:
     # ------------------------------------------------------------ loaded state
     def loaded_state(self) -> dict:
         workspace = self._current_workspace()
+        state_count = self._runtime_state_count()
         state = self._runtime.resolve(
             "kira",
             policy=self._policy,
@@ -333,6 +341,8 @@ class CharacterLabApp:
                 else "Clean Test / isolated Character Lab data"
             ),
             "scene_active": self._active_scene() is not None,
+            "state_active": state_count > 0,
+            "state_count": state_count,
             "package_write_access": "LOCKED",
         }
 
@@ -461,6 +471,7 @@ class CharacterLabApp:
             provider=self._provider_factory(None),
             provider_factory=self._provider_factory,
             memory_root=self._current_workspace().memory_root,
+            state_root=self._current_workspace().state_root,
             session_id=sid,
             provider_info=self._provider_info,
             capture=ws["capture"],
@@ -600,6 +611,165 @@ class CharacterLabApp:
             "turn_id": turn_id,
             "event_count": len(rows),
             "events": rows,
+        }
+
+    # ----------------------------------------------------------- runtime state
+    #
+    # Runtime State = facts the operator has DELIBERATELY confirmed as current
+    # runtime state. It is separate from the Accepted Package, conversational
+    # memory, model output and Scene. There is NO automatic truth promotion:
+    # only ``runtime_state_set`` / ``runtime_state_remove`` (both explicit
+    # deterministic operator actions) ever change it. Nothing here inspects
+    # memory/provider content to derive a fact.
+
+    def _state_backend(self) -> RuntimeStateBackend:
+        return RuntimeStateBackend(self._current_workspace().state_root, "kira")
+
+    def _runtime_state_count(self) -> int:
+        backend = self._state_backend()
+        try:
+            return len(backend.load_current_state("kira"))
+        finally:
+            backend.close()
+
+    def _classify_source_ref(self, source_ref: Optional[str]) -> Optional[str]:
+        """Cheap, honest annotation of an optional operator-supplied reference.
+
+        A matched id is labelled as such; anything else is an operator
+        annotation string. A reference NEVER promotes anything to Runtime State
+        and never implies the fact is true.
+        """
+        if not source_ref:
+            return None
+        ref = source_ref.strip()
+        if not ref:
+            return None
+        if ref in self._ws()["turn_index"] or self._ws()["capture"].turn_dir(ref).exists():
+            return "matched_turn"
+        backend = RuntimeMemoryBackend(self._current_workspace().memory_root, "kira")
+        try:
+            known = {e.event_id for e in backend.load_events_causal("kira")}
+        finally:
+            backend.close()
+        if ref in known:
+            return "matched_memory_event"
+        return "unverified_annotation"
+
+    def _serialize_state_entry(self, entry) -> dict:
+        return {
+            "domain": entry.domain,
+            "key": entry.key,
+            "value": entry.value,
+            "source_kind": entry.source_kind,
+            "source_ref": entry.source_ref,
+            "source_ref_status": self._classify_source_ref(entry.source_ref),
+            "seq": entry.seq,
+            "event_id": entry.event_id,
+            "created_at": entry.created_at,
+        }
+
+    def runtime_state(self) -> dict:
+        workspace = self._current_workspace()
+        backend = self._state_backend()
+        try:
+            current = backend.load_current_state("kira")
+            history = backend.load_events("kira")
+        finally:
+            backend.close()
+        return {
+            "workspace_id": workspace.workspace_id,
+            "workspace_kind": workspace.workspace_kind,
+            "domains_active": list(ACTIVE_DOMAINS),
+            "source_kinds_active": [SOURCE_OPERATOR_CONFIRMED],
+            "automatic_promotion": False,
+            "current": [self._serialize_state_entry(e) for e in current],
+            "current_count": len(current),
+            "history": [
+                {
+                    "seq": ev.seq,
+                    "event_id": ev.event_id,
+                    "domain": ev.domain,
+                    "key": ev.key,
+                    "action": ev.action,
+                    "value": ev.value,
+                    "source_kind": ev.source_kind,
+                    "source_ref": ev.source_ref,
+                    "created_at": ev.created_at,
+                }
+                for ev in history
+            ],
+            "event_count": len(history),
+        }
+
+    def runtime_state_set(self, payload: dict) -> dict:
+        payload = payload or {}
+        key = (payload.get("key") or "").strip()
+        value = (payload.get("value") or "").strip()
+        domain = (payload.get("domain") or DOMAIN_FACT).strip() or DOMAIN_FACT
+        source_ref = payload.get("source_ref")
+        if not key:
+            return {"ok": False, "error": "invalid_key", "message": "Ключ обязателен."}
+        if not value:
+            return {"ok": False, "error": "invalid_value", "message": "Значение обязательно."}
+        backend = self._state_backend()
+        try:
+            event = backend.record_set(
+                key=key,
+                value=value,
+                domain=domain,
+                source_kind=SOURCE_OPERATOR_CONFIRMED,
+                source_ref=source_ref if isinstance(source_ref, str) and source_ref.strip() else None,
+            )
+        except RuntimeStateError as exc:
+            return {"ok": False, "error": "state_rejected", "message": str(exc)}
+        finally:
+            backend.close()
+        return {
+            "ok": True,
+            "action": "SET",
+            "event": {
+                "seq": event.seq,
+                "event_id": event.event_id,
+                "domain": event.domain,
+                "key": event.key,
+                "value": event.value,
+                "source_kind": event.source_kind,
+                "source_ref": event.source_ref,
+                "created_at": event.created_at,
+            },
+            "source_ref_status": self._classify_source_ref(event.source_ref),
+        }
+
+    def runtime_state_remove(self, payload: dict) -> dict:
+        payload = payload or {}
+        key = (payload.get("key") or "").strip()
+        domain = (payload.get("domain") or DOMAIN_FACT).strip() or DOMAIN_FACT
+        if not key:
+            return {"ok": False, "error": "invalid_key", "message": "Ключ обязателен."}
+        backend = self._state_backend()
+        try:
+            was_present = any(
+                e.domain == domain and e.key == key
+                for e in backend.load_current_state("kira")
+            )
+            event = backend.record_remove(
+                key=key, domain=domain, source_kind=SOURCE_OPERATOR_CONFIRMED
+            )
+        except RuntimeStateError as exc:
+            return {"ok": False, "error": "state_rejected", "message": str(exc)}
+        finally:
+            backend.close()
+        return {
+            "ok": True,
+            "action": "REMOVE",
+            "was_present": was_present,
+            "event": {
+                "seq": event.seq,
+                "event_id": event.event_id,
+                "domain": event.domain,
+                "key": event.key,
+                "created_at": event.created_at,
+            },
         }
 
     # ------------------------------------------------------------------ turns

@@ -249,6 +249,12 @@ _GROUNDED_V2_MEMORY_HEADER = (
 )
 _GROUNDED_V2_MEMORY_LINE_PREFIX = "- [со слов собеседника] "
 
+_GROUNDED_V2_STATE_HEADER = "ПОДТВЕРЖДЁННОЕ ТЕКУЩЕЕ СОСТОЯНИЕ"
+_GROUNDED_V2_STATE_FOOTER = (
+    "Эти факты оператор явно подтвердил как текущее состояние. Они дополняют "
+    "контекст, но не переписывают Принятое описание персонажа."
+)
+
 
 class GroundedV2Policy(RuntimePolicy):
     """Accepted Character grounding + honest user-reported causal memory.
@@ -259,8 +265,9 @@ class GroundedV2Policy(RuntimePolicy):
     causal ``seq`` order, each with a provenance label).
 
     Assembly order: (1) core runtime instruction, (2) Accepted Character
-    grounding, (3) causal user-reported memory, (4) Scene when active, (5) the
-    current user input. No chain-of-thought, no decision layer, no relationship
+    grounding, (3) operator-confirmed Runtime State (only when non-empty),
+    (4) causal user-reported memory, (5) Scene when active, (6) the current
+    user input. No chain-of-thought, no decision layer, no relationship
     evolution.
     """
 
@@ -293,6 +300,26 @@ class GroundedV2Policy(RuntimePolicy):
             )
         return "\n".join(lines)
 
+    def select_state(self, runtime_context):
+        # Current operator-confirmed Runtime State only. Already REMOVE-filtered
+        # and sorted by (domain, key) by the backend; re-sorted here for a
+        # deterministic block regardless of caller.
+        entries = list(runtime_context.get("runtime_state") or [])
+        entries.sort(key=lambda e: (e.get("domain") or "", e.get("key") or ""))
+        return entries
+
+    @staticmethod
+    def _state_line(entry) -> str:
+        return f"- {str(entry.get('key', '')).strip()}: {str(entry.get('value', '')).strip()}"
+
+    def _state_block(self, entries) -> str:
+        lines = [_GROUNDED_V2_STATE_HEADER, ""]
+        for entry in entries:
+            lines.append(self._state_line(entry))
+        lines.append("")
+        lines.append(_GROUNDED_V2_STATE_FOOTER)
+        return "\n".join(lines)
+
     def assemble_context(
         self,
         *,
@@ -305,12 +332,16 @@ class GroundedV2Policy(RuntimePolicy):
         package = runtime_context.get("accepted_package")
         grounding = render_accepted_grounding(package) if package is not None else ""
         accepted_source_hash = runtime_context.get("source_candidate_hash")
+        selected_state = self.select_state(runtime_context)
+        state_block = self._state_block(selected_state) if selected_state else None
         selected_mem = self.select_memory(runtime_context, session_id)
         memory_block = self._memory_block(selected_mem) if selected_mem else None
 
         system_messages = [{"role": "system", "content": _GROUNDED_V2_CORE_INSTRUCTION}]
         if grounding:
             system_messages.append({"role": "system", "content": grounding})
+        if state_block is not None:
+            system_messages.append({"role": "system", "content": state_block})
         if memory_block is not None:
             system_messages.append({"role": "system", "content": memory_block})
         if scene is not None:
@@ -331,6 +362,7 @@ class GroundedV2Policy(RuntimePolicy):
                     package,
                     grounding,
                     accepted_source_hash,
+                    selected_state,
                     selected_mem,
                     history,
                     user_message,
@@ -345,6 +377,7 @@ class GroundedV2Policy(RuntimePolicy):
         package,
         grounding,
         accepted_source_hash,
+        selected_state,
         selected_mem,
         history,
         user_message,
@@ -369,6 +402,28 @@ class GroundedV2Policy(RuntimePolicy):
                     },
                 )
             )
+        if selected_state:
+            items.append(
+                AssemblyItem(
+                    "system.runtime_state",
+                    self._state_block(selected_state),
+                    {"entry_count": len(selected_state), "source": "OPERATOR_CONFIRMED"},
+                )
+            )
+            for entry in selected_state:
+                items.append(
+                    AssemblyItem(
+                        "system.runtime_state_line",
+                        self._state_line(entry),
+                        {
+                            "domain": entry.get("domain"),
+                            "key": entry.get("key"),
+                            "seq": entry.get("seq"),
+                            "event_id": entry.get("event_id"),
+                            "source_kind": entry.get("source_kind"),
+                        },
+                    )
+                )
         if selected_mem:
             items.append(
                 AssemblyItem(

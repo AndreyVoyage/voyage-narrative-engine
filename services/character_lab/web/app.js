@@ -18,7 +18,7 @@ function el(tag, className, text) {
 
 const state = {
   catalog: null, loaded: null, sessions: [], turns: [], mode: "chat",
-  workspaces: null, memory: null, scene: null,
+  workspaces: null, memory: null, scene: null, runtimeState: null,
 };
 
 const PROVENANCE_LABELS = {
@@ -38,12 +38,13 @@ function shortHash(h) { return h ? h.slice(0, 12) + "…" : "—"; }
 function setMode(mode) {
   state.mode = mode;
   document.querySelectorAll(".mode").forEach((b) => b.classList.toggle("active", b.dataset.mode === mode));
-  ["chat", "character", "memory", "scene", "turns"].forEach((m) => {
+  ["chat", "character", "memory", "state", "scene", "turns"].forEach((m) => {
     $("view-" + m).classList.toggle("hidden", m !== mode);
   });
   if (mode === "character") loadCharacterInspector();
   if (mode === "turns") loadTurns();
   if (mode === "memory") loadMemory();
+  if (mode === "state") loadRuntimeState();
   if (mode === "scene") loadScene();
 }
 
@@ -211,6 +212,7 @@ function renderLoadedState() {
     ["Workspace", (s.workspace_display_name || "—") + " · " + (s.workspace_kind || "—"),
       s.workspace_kind === "NORMAL" ? "warn" : "ok"],
     ["Scene", s.scene_active ? "активна" : "нет", ""],
+    ["Runtime State", (s.state_count || 0) + (s.state_active ? " факт(ов)" : " (пусто)"), ""],
     ["Session", s.session_id ? shortHash(s.session_id) : "—", ""],
     ["Provider", s.provider_id, ""],
     ["Requested model", s.model, ""],
@@ -357,6 +359,87 @@ async function loadMemory(turnId) {
   } catch (e) {
     box.appendChild(el("div", "note", "Ошибка: " + e.message));
   }
+}
+
+async function loadRuntimeState() {
+  const cur = $("state-current");
+  const hist = $("state-history");
+  cur.innerHTML = "";
+  hist.innerHTML = "";
+  try {
+    const data = await api("/api/runtime-state");
+    state.runtimeState = data;
+    cur.appendChild(el("div", "sub",
+      "Рабочая область: " + data.workspace_id + " · домены: " + (data.domains_active || []).join(", ") +
+      " · подтверждено фактов: " + data.current_count + " · автопродвижение: нет"));
+    const head = el("div", "mem-row head");
+    ["domain", "key", "value", "source", "seq"].forEach((h) => head.appendChild(el("span", "", h)));
+    cur.appendChild(head);
+    (data.current || []).forEach((e) => {
+      const row = el("div", "mem-row");
+      row.appendChild(el("span", "", e.domain));
+      row.appendChild(el("span", "", e.key));
+      row.appendChild(el("span", "mem-text", e.value));
+      const srcTxt = e.source_kind + (e.source_ref ? (" · ref: " + e.source_ref + " (" + (e.source_ref_status || "аннотация") + ")") : "");
+      row.appendChild(el("span", "", srcTxt));
+      row.appendChild(el("span", "", e.seq !== null && e.seq !== undefined ? String(e.seq) : "—"));
+      cur.appendChild(row);
+    });
+    if (!(data.current || []).length) cur.appendChild(el("div", "note", "Состояние пусто."));
+
+    const hh = el("div", "mem-row head");
+    ["seq", "action", "key", "value", "source", "время"].forEach((h) => hh.appendChild(el("span", "", h)));
+    hist.appendChild(hh);
+    (data.history || []).forEach((ev) => {
+      const row = el("div", "mem-row");
+      row.appendChild(el("span", "", ev.seq !== null && ev.seq !== undefined ? String(ev.seq) : "—"));
+      row.appendChild(el("span", "", ev.action));
+      row.appendChild(el("span", "", ev.key));
+      row.appendChild(el("span", "mem-text", ev.value || "—"));
+      row.appendChild(el("span", "", ev.source_kind));
+      row.appendChild(el("span", "", (ev.created_at || "").replace("T", " ").replace("+00:00", "")));
+      hist.appendChild(row);
+    });
+  } catch (e) {
+    cur.appendChild(el("div", "note", "Ошибка: " + e.message));
+  }
+}
+
+async function saveRuntimeState() {
+  const body = {
+    key: $("state-key").value,
+    value: $("state-value").value,
+    source_ref: $("state-source-ref").value,
+  };
+  try {
+    const r = await api("/api/runtime-state/set", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (r.ok) {
+      addSystemMessage("Состояние подтверждено: " + r.event.key + " = " + r.event.value + " (seq " + r.event.seq + ").");
+    } else {
+      addSystemMessage("Отклонено: " + r.message);
+    }
+  } catch (e) {
+    addSystemMessage("Ошибка: " + e.message);
+  }
+  await loadRuntimeState();
+  await refreshLoadedState();
+}
+
+async function removeRuntimeFact() {
+  const key = $("state-key").value.trim();
+  if (!key) { addSystemMessage("Укажите ключ для удаления."); return; }
+  try {
+    const r = await api("/api/runtime-state/remove", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key: key }) });
+    if (r.ok) {
+      addSystemMessage("Факт удалён из состояния (история сохранена): " + key + (r.was_present ? "" : " — факт не был активен"));
+    } else {
+      addSystemMessage("Отклонено: " + r.message);
+    }
+  } catch (e) {
+    addSystemMessage("Ошибка: " + e.message);
+  }
+  await loadRuntimeState();
+  await refreshLoadedState();
 }
 
 async function loadScene() {
@@ -518,6 +601,8 @@ async function init() {
   $("memory-refresh").addEventListener("click", () => loadMemory());
   $("scene-save").addEventListener("click", saveScene);
   $("scene-clear").addEventListener("click", clearScene);
+  $("state-set").addEventListener("click", saveRuntimeState);
+  $("state-remove").addEventListener("click", removeRuntimeFact);
 
   await loadCatalog();
   await loadWorkspaces();

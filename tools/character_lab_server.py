@@ -231,6 +231,9 @@ class CharacterLabServer:
                     if path == "/api/scene":
                         self._json(200, app.get_scene())
                         return
+                    if path == "/api/runtime-state":
+                        self._json(200, app.runtime_state())
+                        return
                 elif method == "POST":
                     if path == "/api/session/new":
                         self._json(200, app.new_session())
@@ -264,6 +267,14 @@ class CharacterLabServer:
                         return
                     if path == "/api/scene":
                         result = app.set_scene(self._read_json())
+                        self._json(200 if result.get("ok") else 409, result)
+                        return
+                    if path == "/api/runtime-state/set":
+                        result = app.runtime_state_set(self._read_json())
+                        self._json(200 if result.get("ok") else 409, result)
+                        return
+                    if path == "/api/runtime-state/remove":
+                        result = app.runtime_state_remove(self._read_json())
                         self._json(200 if result.get("ok") else 409, result)
                         return
                     if path == "/shutdown":

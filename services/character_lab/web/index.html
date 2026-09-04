@@ -13,6 +13,7 @@
       <button class="mode active" data-mode="chat">Чат</button>
       <button class="mode" data-mode="character">Персонаж</button>
       <button class="mode" data-mode="memory">Память</button>
+      <button class="mode" data-mode="state">Состояние</button>
       <button class="mode" data-mode="scene">Сцена</button>
       <button class="mode" data-mode="turns">Отладка ходов</button>
     </nav>
@@ -93,6 +94,29 @@
             <button id="scene-clear" class="btn">Очистить</button>
           </div>
           <pre id="scene-preview" class="scene-preview"></pre>
+        </div>
+      </div>
+
+      <div id="view-state" class="view hidden">
+        <div class="scene-form">
+          <h1>Состояние (Runtime State)</h1>
+          <p class="note">
+            Runtime State — это факты, которые оператор явно подтвердил как
+            текущее состояние. Это не Принятый пакет персонажа, не память
+            разговора, не вывод модели и не сцена. Здесь нет автоматического
+            переноса: ни память, ни ответ модели, ни сцена сами по себе не
+            становятся состоянием. Только явное действие оператора ниже.
+          </p>
+          <label>Ключ<input id="state-key" autocomplete="off" placeholder="living.city"></label>
+          <label>Значение<input id="state-value" autocomplete="off"></label>
+          <label>Источник / ссылка (необязательно)<input id="state-source-ref" autocomplete="off" placeholder="ID события памяти или хода — только аннотация"></label>
+          <div class="scene-actions">
+            <button id="state-set" class="btn primary">Подтвердить состояние</button>
+            <button id="state-remove" class="btn">Удалить факт</button>
+          </div>
+          <div id="state-current" class="memory-table"></div>
+          <h2 style="font-size:12px;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted);margin:12px 0 6px;">История состояния</h2>
+          <div id="state-history" class="memory-table"></div>
         </div>
       </div>
 

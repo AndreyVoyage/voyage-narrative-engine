@@ -268,6 +268,48 @@ class TestSlice3Routes:
                     if i["kind"] == "system.package_grounding"]
         assert grounding and grounding[0]["delivered"] is True
 
+    def test_runtime_state_routes_set_list_remove(self, server):
+        status, body = http_get(server.base_url + "/api/runtime-state")
+        assert status == 200
+        assert body["current"] == [] and body["domains_active"] == ["FACT"]
+        assert body["automatic_promotion"] is False
+
+        status, body = http_post(server.base_url + "/api/runtime-state/set",
+                                 {"key": "living.city", "value": "Prague"})
+        assert status == 200 and body["ok"] is True and body["action"] == "SET"
+
+        status, body = http_get(server.base_url + "/api/runtime-state")
+        assert [e["value"] for e in body["current"]] == ["Prague"]
+
+        status, body = http_post(server.base_url + "/api/runtime-state/remove",
+                                 {"key": "living.city"})
+        assert status == 200 and body["ok"] is True and body["action"] == "REMOVE"
+
+        status, body = http_get(server.base_url + "/api/runtime-state")
+        assert body["current"] == [] and body["event_count"] == 2
+
+    def test_runtime_state_rejects_inactive_domain(self, server):
+        status, body = http_post(server.base_url + "/api/runtime-state/set",
+                                 {"key": "k", "value": "v", "domain": "RELATIONSHIP"})
+        assert status == 409 and body["ok"] is False
+
+    def test_runtime_state_isolated_per_clean_test(self, server):
+        http_post(server.base_url + "/api/runtime-state/set", {"key": "k", "value": "v1"})
+        http_post(server.base_url + "/api/workspace/new-test")
+        _, body = http_get(server.base_url + "/api/runtime-state")
+        assert body["current"] == []
+
+    def test_runtime_state_delivered_in_grounded_turn_via_server(self, server):
+        http_post(server.base_url + "/api/variant/select", {"variant_id": "KIRA_GROUNDED_V2"})
+        http_post(server.base_url + "/api/runtime-state/set",
+                  {"key": "living.city", "value": "СостояниеГородМаркер"})
+        _, chat = http_post(server.base_url + "/api/chat", {"message": "Привет."})
+        status, detail = http_get(server.base_url + "/api/turn/" + chat["turn_id"])
+        assert status == 200
+        state_items = [i for i in detail["manifest"]["items"] if i["kind"] == "system.runtime_state"]
+        assert state_items and state_items[0]["delivered"] is True
+        assert "СостояниеГородМаркер" in (detail["request"]["raw"] or "")
+
     def test_shutdown_endpoint(self, tmp_path):
         app = build_app(tmp_path)
         srv = server_mod.CharacterLabServer(app)

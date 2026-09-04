@@ -58,6 +58,12 @@ class Workspace:
         return self.root
 
     @property
+    def state_root(self) -> Path:
+        # Runtime State lives in its own per-workspace DB file
+        # (<root>/runtime_state.sqlite3), never inside runtime_memory.sqlite3.
+        return self.root
+
+    @property
     def turn_capture_root(self) -> Path:
         return self.root
 

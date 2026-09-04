@@ -219,6 +219,12 @@ body { display: flex; flex-direction: column; }
 .mem-row .prov { color: var(--accent); }
 .mem-row .mem-text { white-space: pre-wrap; overflow-wrap: break-word; word-break: normal; }
 
+/* --- Runtime State inspector (own per-workspace ledger) --- */
+#state-current .mem-row, #state-history .mem-row {
+  grid-template-columns: 70px 200px minmax(220px, 1fr) 240px 140px;
+}
+#state-history .mem-row { grid-template-columns: 60px 80px 180px minmax(200px, 1fr) 160px 150px; }
+
 .scene-form { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 14px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
 .scene-form h1 { font-size: 16px; margin: 0; }
 .scene-form label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
