@@ -17,6 +17,9 @@ import json
 from dataclasses import dataclass, field
 from typing import Any, Mapping
 
+from . import provenance as _provenance
+from .scene import render_scene_block, scene_hash
+
 KIRA_BETA_V1_CURRENT = "KIRA_BETA_V1_CURRENT"
 BETA_V1_VARIANT_VERSION = 1
 
@@ -90,7 +93,7 @@ class RuntimePolicy:
     ) -> ContextAssembly:
         raise NotImplementedError
 
-    def persist(self, *, session, user_message: str, response: str):
+    def persist(self, *, session, user_message: str, response: str, memory=None):
         raise NotImplementedError
 
 
@@ -134,23 +137,31 @@ class BetaV1CurrentPolicy(RuntimePolicy):
         user_message,
         scene=None,
     ) -> ContextAssembly:
-        # Beta v1 has no scene support (Slice 3). scene is ignored.
-        del scene
+        # OD-CL-02 / Part C: with NO scene, this is byte-for-byte the historical
+        # KIRA_BETA_V1_CURRENT provider context. A scene, when present, is an
+        # ADDITIVE, clearly separated system block -- never a rewrite of the
+        # historical assembly.
         prior = self.select_memory(runtime_context, session_id)
         system = self._build_system_prompt(runtime_context, prior)
+        scene_messages = ()
+        if scene is not None:
+            scene_messages = ({"role": "system", "content": render_scene_block(scene)},)
         messages = (
             ({"role": "system", "content": system},)
+            + scene_messages
             + tuple(history)
             + ({"role": "user", "content": user_message},)
         )
         manifest = AssemblyManifest(
             variant_id=self.variant_id,
             variant_version=self.variant_version,
-            items=tuple(self._build_items(runtime_context, prior, history, user_message)),
+            items=tuple(
+                self._build_items(runtime_context, prior, history, user_message, scene)
+            ),
         )
         return ContextAssembly(messages=messages, manifest=manifest)
 
-    def _build_items(self, ctx, prior, history, user_message):
+    def _build_items(self, ctx, prior, history, user_message, scene=None):
         items = []
         items.append(AssemblyItem("system.role_instruction", _BETA_V1_ROLE_LINE, {}))
         package_identity = (
@@ -174,6 +185,12 @@ class BetaV1CurrentPolicy(RuntimePolicy):
             source_hash_line,
             {"accepted_source_hash": ctx["source_candidate_hash"]},
         ))
+        if scene is not None:
+            items.append(AssemblyItem(
+                "system.scene",
+                render_scene_block(scene),
+                {"scene_id": scene.scene_id, "scene_hash": scene_hash(scene)},
+            ))
         for e in prior:
             items.append(AssemblyItem(
                 "system.memory_line",
@@ -193,7 +210,14 @@ class BetaV1CurrentPolicy(RuntimePolicy):
         items.append(AssemblyItem("user.current", user_message, {}))
         return items
 
-    def persist(self, *, session, user_message: str, response: str):
+    def persist(self, *, session, user_message: str, response: str, memory=None):
+        # Part C: event_type strings stay exactly "USER_MESSAGE" /
+        # "CHARACTER_MESSAGE" so historical prompt rendering is unchanged.
+        # Provenance is a SEPARATE observational label written after the fact;
+        # it never reaches Beta v1 provider context.
         user_event = session.record_runtime_event("USER_MESSAGE", user_message)
         char_event = session.record_runtime_event("CHARACTER_MESSAGE", response)
+        if memory is not None:
+            memory.set_provenance(user_event.event_id, _provenance.USER_STATED)
+            memory.set_provenance(char_event.event_id, _provenance.CHARACTER_UTTERANCE)
         return (user_event, char_event)

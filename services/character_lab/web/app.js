@@ -16,7 +16,20 @@ function el(tag, className, text) {
   return node;
 }
 
-const state = { catalog: null, loaded: null, sessions: [], turns: [], mode: "chat" };
+const state = {
+  catalog: null, loaded: null, sessions: [], turns: [], mode: "chat",
+  workspaces: null, memory: null, scene: null,
+};
+
+const PROVENANCE_LABELS = {
+  USER_STATED: "Сообщил пользователь",
+  CHARACTER_UTTERANCE: "Сказала Кира / модель",
+  SCENE_SETUP: "Условие сцены",
+  LEGACY_UNCLASSIFIED: "Старая запись — происхождение не классифицировано",
+};
+
+function provenanceLabel(code) { return PROVENANCE_LABELS[code] || code || "—"; }
+function triState(v) { return v === true ? "✓" : v === false ? "—" : "UNKNOWN"; }
 
 function $(id) { return document.getElementById(id); }
 
@@ -25,11 +38,13 @@ function shortHash(h) { return h ? h.slice(0, 12) + "…" : "—"; }
 function setMode(mode) {
   state.mode = mode;
   document.querySelectorAll(".mode").forEach((b) => b.classList.toggle("active", b.dataset.mode === mode));
-  $("view-chat").classList.toggle("hidden", mode !== "chat");
-  $("view-character").classList.toggle("hidden", mode !== "character");
-  $("view-turns").classList.toggle("hidden", mode !== "turns");
+  ["chat", "character", "memory", "scene", "turns"].forEach((m) => {
+    $("view-" + m).classList.toggle("hidden", m !== mode);
+  });
   if (mode === "character") loadCharacterInspector();
   if (mode === "turns") loadTurns();
+  if (mode === "memory") loadMemory();
+  if (mode === "scene") loadScene();
 }
 
 async function loadCatalog() {
@@ -64,6 +79,56 @@ function renderVariants() {
   });
 }
 
+async function loadWorkspaces() {
+  state.workspaces = await api("/api/workspaces");
+  const sel = $("workspace-select");
+  sel.innerHTML = "";
+  (state.workspaces.workspaces || []).forEach((w) => {
+    const opt = el("option", "", w.display_name + " (" + w.workspace_kind + ")");
+    opt.value = w.workspace_id;
+    if (w.selected) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  renderWorkspaceBanner();
+}
+
+function renderWorkspaceBanner() {
+  const banner = $("workspace-banner");
+  const current = (state.workspaces && state.workspaces.workspaces || []).find((w) => w.selected);
+  const kind = current ? current.workspace_kind : (state.loaded && state.loaded.workspace_kind);
+  banner.innerHTML = "";
+  if (kind === "NORMAL") {
+    banner.className = "workspace-banner longlived";
+    banner.appendChild(el("strong", "", "LONG-LIVED MEMORY"));
+    banner.appendChild(el("span", "", "Постоянная память персонажа активна."));
+  } else {
+    banner.className = "workspace-banner clean";
+    banner.appendChild(el("strong", "", "CLEAN TEST"));
+    banner.appendChild(el("span", "", "Изолированная тестовая память."));
+  }
+}
+
+async function selectWorkspace(workspaceId) {
+  const r = await api("/api/workspace/select", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ workspace_id: workspaceId }),
+  });
+  if (r.notice) addSystemMessage(r.notice.title + " — " + r.notice.message);
+  await loadWorkspaces();
+  await loadSessions();
+  await refreshLoadedState();
+  clearChat();
+}
+
+async function newCleanTest() {
+  const r = await api("/api/workspace/new-test", { method: "POST" });
+  addSystemMessage("Новый Clean Test: " + r.workspace_id);
+  await loadWorkspaces();
+  await loadSessions();
+  await refreshLoadedState();
+  clearChat();
+}
+
 async function refreshLoadedState() {
   try {
     state.loaded = await api("/api/state");
@@ -73,6 +138,7 @@ async function refreshLoadedState() {
   renderLoadedState();
   renderProviderState();
   renderDataRoot();
+  renderWorkspaceBanner();
 }
 
 function renderProviderState() {
@@ -102,6 +168,9 @@ function renderLoadedState() {
     ["Package ID", s.package_id || "—", ""],
     ["Package version", s.package_version !== undefined ? String(s.package_version) : "—", ""],
     ["Variant", "Beta v1 — Current", ""],
+    ["Workspace", (s.workspace_display_name || "—") + " · " + (s.workspace_kind || "—"),
+      s.workspace_kind === "NORMAL" ? "warn" : "ok"],
+    ["Scene", s.scene_active ? "активна" : "нет", ""],
     ["Session", s.session_id ? shortHash(s.session_id) : "—", ""],
     ["Provider", s.provider_id, ""],
     ["Requested model", s.model, ""],
@@ -129,7 +198,8 @@ function renderSessions() {
   ul.innerHTML = "";
   (state.sessions || []).forEach((s) => {
     const li = el("li", s.selected ? "active" : "", s.session_id.slice(0, 24) + "…");
-    li.appendChild(el("div", "sub", s.preview ? s.preview.slice(0, 40) : "новая сессия"));
+    const sub = (s.preview ? s.preview.slice(0, 36) : "новая сессия") + (s.scene_active ? " · сцена" : "");
+    li.appendChild(el("div", "sub", sub));
     li.addEventListener("click", () => selectSession(s.session_id));
     ul.appendChild(li);
   });
@@ -146,6 +216,7 @@ async function selectSession(sessionId) {
   await api("/api/session/select", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ session_id: sessionId }) });
   await loadSessions();
   await refreshLoadedState();
+  if (state.mode === "scene") loadScene();
 }
 
 function clearChat() {
@@ -180,6 +251,7 @@ async function sendMessage() {
   }
   await loadSessions();
   await refreshLoadedState();
+  if (state.mode === "memory") loadMemory();
 }
 
 async function loadCharacterInspector() {
@@ -215,13 +287,92 @@ async function loadCharacterInspector() {
   }
 }
 
+async function loadMemory(turnId) {
+  const box = $("memory-table");
+  box.innerHTML = "";
+  try {
+    const q = turnId ? ("?turn_id=" + encodeURIComponent(turnId)) : "";
+    const data = await api("/api/memory" + q);
+    state.memory = data;
+    box.appendChild(el("div", "sub", "Рабочая область: " + data.workspace_id + " · порядок: " + data.causal_order + " · событий: " + data.event_count));
+    const head = el("div", "mem-row head");
+    ["seq", "время", "сессия", "тип", "происхождение", "STORED", "LOADED", "SELECTED", "DELIVERED", "содержание"].forEach((h) => head.appendChild(el("span", "", h)));
+    box.appendChild(head);
+    (data.events || []).forEach((e) => {
+      const row = el("div", "mem-row");
+      row.appendChild(el("span", "", e.seq !== null && e.seq !== undefined ? String(e.seq) : "—"));
+      row.appendChild(el("span", "", (e.created_at || "").replace("T", " ").replace("+00:00", "")));
+      row.appendChild(el("span", "", shortHash(e.session_id)));
+      row.appendChild(el("span", "", e.event_type));
+      const prov = el("span", "prov", provenanceLabel(e.provenance));
+      if (e.provenance_display_hint) prov.title = "подсказка по типу: " + provenanceLabel(e.provenance_display_hint);
+      row.appendChild(prov);
+      row.appendChild(el("span", "", triState(e.stored)));
+      row.appendChild(el("span", "", triState(e.loaded)));
+      row.appendChild(el("span", "", triState(e.selected)));
+      row.appendChild(el("span", "", triState(e.delivered)));
+      row.appendChild(el("span", "mem-text", e.meaning));
+      box.appendChild(row);
+    });
+  } catch (e) {
+    box.appendChild(el("div", "note", "Ошибка: " + e.message));
+  }
+}
+
+async function loadScene() {
+  try {
+    const data = await api("/api/scene");
+    state.scene = data;
+    const s = data.scene || {};
+    $("scene-title").value = s.title || "";
+    $("scene-location").value = s.location || "";
+    $("scene-participants").value = (s.participants || []).join("\n");
+    $("scene-prior").value = (s.prior_events || []).join("\n");
+    $("scene-current").value = s.current_situation || "";
+    $("scene-preview").textContent = data.preview_block || "(сцена не активна)";
+  } catch (e) {
+    $("scene-preview").textContent = "Ошибка: " + e.message;
+  }
+}
+
+async function saveScene() {
+  const body = {
+    title: $("scene-title").value,
+    location: $("scene-location").value,
+    participants: $("scene-participants").value,
+    prior_events: $("scene-prior").value,
+    current_situation: $("scene-current").value,
+  };
+  try {
+    const r = await api("/api/scene", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (r.ok) {
+      $("scene-preview").textContent = r.preview_block;
+      addSystemMessage("Сцена применена (" + shortHash(r.scene_hash) + ").");
+    } else {
+      $("scene-preview").textContent = "Отклонено: " + r.message;
+    }
+  } catch (e) {
+    $("scene-preview").textContent = "Ошибка: " + e.message;
+  }
+  await refreshLoadedState();
+  await loadSessions();
+}
+
+async function clearScene() {
+  await api("/api/scene", { method: "DELETE" });
+  await loadScene();
+  await refreshLoadedState();
+  await loadSessions();
+  addSystemMessage("Сцена очищена.");
+}
+
 async function loadTurns() {
   state.turns = await api("/api/turns");
   const list = $("turns-list");
   list.innerHTML = "";
   (state.turns || []).forEach((t) => {
     const item = el("div", "turn-item", shortHash(t.turn_id));
-    item.appendChild(el("div", "sub", t.response_preview || "—"));
+    item.appendChild(el("div", "sub", (t.scene_present ? "[сцена] " : "") + (t.response_preview || "—")));
     item.addEventListener("click", () => openTurnDetail(t.turn_id));
     list.appendChild(item);
   });
@@ -233,10 +384,14 @@ async function openTurnDetail(turnId) {
   box.innerHTML = "";
   box.appendChild(el("h1", "", "Ход: " + shortHash(detail.turn_id)));
 
+  const ws = detail.workspace || {};
+  const sc = detail.scene || {};
   const metaRows = [
     ["Character", detail.character_id],
     ["Variant", detail.variant_id],
+    ["Workspace", (ws.workspace_id || "—") + " · " + (ws.workspace_kind || "—")],
     ["Session", detail.session_id ? shortHash(detail.session_id) : "—"],
+    ["Scene", sc.present ? (shortHash(sc.scene_id) + " · " + shortHash(sc.scene_hash)) : "нет"],
     ["Accepted source", shortHash(detail.accepted_source_hash)],
   ];
   metaRows.forEach(([k, v]) => {
@@ -247,7 +402,7 @@ async function openTurnDetail(turnId) {
   });
 
   box.appendChild(el("div", "section-title", "REQUEST"));
-  box.appendChild(el("div", "proven", "Captured transport request"));
+  box.appendChild(el("div", "proven", "Captured transport request (источник истины для DELIVERED)"));
   box.appendChild(el("div", "hash", "SHA-256: " + (detail.request.request_hash || "—")));
   box.appendChild(el("pre", "", prettyJson(detail.request.raw)));
 
@@ -284,8 +439,15 @@ async function openTurnDetail(turnId) {
   box.appendChild(el("pre", "", extractResponseText(detail.response) || "(нет содержимого)"));
 
   box.appendChild(el("div", "section-title", "PERSISTENCE"));
-  const eventIds = (detail.persistence && detail.persistence.event_ids) || [];
-  box.appendChild(el("div", "", "runtime event IDs: " + eventIds.map(shortHash).join(", ")));
+  const events = (detail.persistence && detail.persistence.events) || [];
+  if (events.length) {
+    events.forEach((ev) => {
+      box.appendChild(el("div", "", "seq " + (ev.seq !== null ? ev.seq : "—") + " · " + ev.event_type + " · " + provenanceLabel(ev.provenance) + " · " + shortHash(ev.event_id)));
+    });
+  } else {
+    const ids = (detail.persistence && detail.persistence.event_ids) || [];
+    box.appendChild(el("div", "", "runtime event IDs: " + ids.map(shortHash).join(", ")));
+  }
 
   box.appendChild(el("div", "section-title", "PACKAGE"));
   box.appendChild(el("div", "hash", "accepted source: " + shortHash(detail.package.accepted_source_hash)));
@@ -311,8 +473,14 @@ async function init() {
   $("new-session").addEventListener("click", newSession);
   $("send").addEventListener("click", sendMessage);
   $("message-input").addEventListener("keydown", (e) => { if (e.key === "Enter") sendMessage(); });
+  $("workspace-select").addEventListener("change", (e) => selectWorkspace(e.target.value));
+  $("new-clean-test").addEventListener("click", newCleanTest);
+  $("memory-refresh").addEventListener("click", () => loadMemory());
+  $("scene-save").addEventListener("click", saveScene);
+  $("scene-clear").addEventListener("click", clearScene);
 
   await loadCatalog();
+  await loadWorkspaces();
   await refreshLoadedState();
   await loadSessions();
   clearChat();

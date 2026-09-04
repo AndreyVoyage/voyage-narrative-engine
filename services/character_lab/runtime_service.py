@@ -26,7 +26,12 @@ from services.character_runtime import (
 from services.crp_authoring import compute_package_hash
 
 from .runtime_policy import RuntimePolicy, build_assembly_hash
+from .scene import scene_hash as _compute_scene_hash
 from .turn_capture import TurnCapture
+
+
+def _scene_hash_or_none(scene):
+    return _compute_scene_hash(scene) if scene is not None else None
 
 ProviderCallable = Callable[[list], str]
 ProviderFactory = Callable[[Optional[Callable[[dict], None]]], ProviderCallable]
@@ -80,6 +85,9 @@ class TurnResult:
     response_metadata: dict = field(default_factory=dict)
     persisted_event_ids: tuple = ()
     provider: dict = field(default_factory=dict)
+    scene_id: Optional[str] = None
+    scene_hash: Optional[str] = None
+    scene_present: bool = False
 
 
 def build_provider_attribution(provider_info: Optional[dict]) -> dict:
@@ -165,6 +173,7 @@ class RuntimeService:
         capture: Optional[TurnCapture] = None,
         turn_id: Optional[str] = None,
         provider_factory: Optional[ProviderFactory] = None,
+        scene=None,
     ) -> TurnResult:
         accepted = load_accepted_character(
             subject_id,
@@ -172,9 +181,8 @@ class RuntimeService:
             source_loader=self._source_loader,
         )
         sid = session_id or f"session-{uuid.uuid4().hex}"
-        session = RuntimeSession(
-            accepted, RuntimeMemoryBackend(Path(memory_root), subject_id), sid
-        )
+        backend = RuntimeMemoryBackend(Path(memory_root), subject_id)
+        session = RuntimeSession(accepted, backend, sid)
         try:
             runtime_context = session.build_runtime_context()
             assembly = policy.assemble_context(
@@ -182,6 +190,7 @@ class RuntimeService:
                 session_id=session.session_id,
                 history=history,
                 user_message=user_message,
+                scene=scene,
             )
             assembly_hash = build_assembly_hash(assembly.manifest)
             tid = turn_id or f"turn-{uuid.uuid4().hex}"
@@ -201,7 +210,10 @@ class RuntimeService:
             response = effective_provider(list(assembly.messages))
 
             events = policy.persist(
-                session=session, user_message=user_message, response=response
+                session=session,
+                user_message=user_message,
+                response=response,
+                memory=backend,
             )
             package_hash_after = compute_package_hash(accepted.package)
 
@@ -228,6 +240,9 @@ class RuntimeService:
                 response_metadata=response_metadata,
                 persisted_event_ids=tuple(e.event_id for e in events),
                 provider=attribution,
+                scene_id=getattr(scene, "scene_id", None),
+                scene_hash=_scene_hash_or_none(scene),
+                scene_present=scene is not None,
             )
         finally:
             session.close()

@@ -64,6 +64,15 @@ def http_post(url, body=None):
         return e.code, json.loads(e.read().decode("utf-8"))
 
 
+def http_delete(url):
+    req = urllib.request.Request(url, method="DELETE")
+    try:
+        with urllib.request.urlopen(req, timeout=5) as r:
+            return r.status, json.loads(r.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        return e.code, json.loads(e.read().decode("utf-8"))
+
+
 @pytest.fixture
 def server(tmp_path):
     app = build_app(tmp_path)
@@ -166,6 +175,74 @@ class TestServerApi:
     def test_unknown_route_404(self, server):
         status, _ = http_get(server.base_url + "/api/not-a-real-endpoint")
         assert status == 404
+
+
+class TestSlice3Routes:
+    def test_workspaces_default_clean_test(self, server):
+        status, body = http_get(server.base_url + "/api/workspaces")
+        assert status == 200
+        current = [w for w in body["workspaces"] if w["selected"]]
+        assert len(current) == 1 and current[0]["workspace_kind"] == "CLEAN_TEST"
+
+    def test_workspace_select_normal_warns(self, server):
+        status, body = http_post(server.base_url + "/api/workspace/select", {"workspace_id": "normal"})
+        assert status == 200
+        assert body["workspace_kind"] == "NORMAL"
+        assert body["notice"]["code"] == "LONG_LIVED_MEMORY"
+
+    def test_workspace_select_unknown_404(self, server):
+        status, _ = http_post(server.base_url + "/api/workspace/select", {"workspace_id": "../evil"})
+        assert status == 404
+
+    def test_new_clean_test_route(self, server):
+        status, body = http_post(server.base_url + "/api/workspace/new-test")
+        assert status == 200
+        assert body["workspace_kind"] == "CLEAN_TEST"
+        assert body["session_id"].startswith("session-")
+
+    def test_memory_route_causal_order(self, server):
+        http_post(server.base_url + "/api/chat", {"message": "Привет."})
+        status, body = http_get(server.base_url + "/api/memory")
+        assert status == 200
+        assert body["causal_order"] == "seq"
+        assert [e["event_type"] for e in body["events"]] == ["USER_MESSAGE", "CHARACTER_MESSAGE"]
+        assert [e["provenance"] for e in body["events"]] == ["USER_STATED", "CHARACTER_UTTERANCE"]
+
+    def test_scene_get_set_clear_routes(self, server):
+        status, body = http_get(server.base_url + "/api/scene")
+        assert status == 200 and body["active"] is False
+        status, body = http_post(server.base_url + "/api/scene", {
+            "title": "T", "location": "L", "participants": ["A", "B"],
+            "prior_events": ["e1"], "current_situation": "now",
+        })
+        assert status == 200 and body["ok"] is True
+        status, body = http_get(server.base_url + "/api/scene")
+        assert body["active"] is True and body["scene"]["title"] == "T"
+        status, body = http_delete(server.base_url + "/api/scene")
+        assert status == 200 and body["active"] is False
+
+    def test_scene_delivered_in_turn_via_server(self, server):
+        http_post(server.base_url + "/api/scene", {
+            "title": "Сцена", "location": "парк", "participants": ["Кира"],
+            "prior_events": [], "current_situation": "Уникальная ситуация в парке.",
+        })
+        _, chat = http_post(server.base_url + "/api/chat", {"message": "Привет."})
+        status, detail = http_get(server.base_url + "/api/turn/" + chat["turn_id"])
+        assert status == 200
+        scene_items = [i for i in detail["manifest"]["items"] if i["kind"] == "system.scene"]
+        assert scene_items and scene_items[0]["delivered"] is True
+
+    def test_no_credential_in_slice3_output(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("DEEPSEEK_API_KEY", "SECRET_SENTINEL_VALUE")
+        app = build_app(tmp_path, availability="NOT CONFIGURED")
+        srv = server_mod.CharacterLabServer(app)
+        srv.start()
+        try:
+            for path in ("/api/workspaces", "/api/memory", "/api/scene"):
+                status, body = http_get(srv.base_url + path)
+                assert "SECRET_SENTINEL_VALUE" not in json.dumps(body, ensure_ascii=False)
+        finally:
+            srv.shutdown()
 
     def test_shutdown_endpoint(self, tmp_path):
         app = build_app(tmp_path)

@@ -63,10 +63,33 @@ class TestStaticFrontend:
         assert "Персонаж" in html
         assert "Отладка ходов" in html
 
-    def test_unsupported_modes_not_functional(self):
+    def test_scene_and_memory_modes_now_functional(self):
         html = _read("index.html")
-        assert "Сцена · Slice 3" in html
-        assert "Память · Slice 3" in html
+        # Slice 3: the two previously deferred modes are enabled (no "· Slice 3"
+        # placeholder, buttons are not disabled).
+        assert "Сцена · Slice 3" not in html
+        assert "Память · Slice 3" not in html
+        assert '<button class="mode" data-mode="memory">Память</button>' in html
+        assert '<button class="mode" data-mode="scene">Сцена</button>' in html
+        js = _read("app.js")
+        assert "loadMemory" in js
+        assert "loadScene" in js
+
+    def test_workspace_controls_present(self):
+        html = _read("index.html")
+        for token in ("Рабочая область", "workspace-select", "new-clean-test", "Новый Clean Test"):
+            assert token in html, token
+        js = _read("app.js")
+        assert "LONG-LIVED MEMORY" in js
+        assert "CLEAN TEST" in js
+        assert "/api/workspace/select" in js
+        assert "/api/workspace/new-test" in js
+
+    def test_memory_ui_has_no_fake_metrics(self):
+        for name in ("index.html", "app.js", "app.css"):
+            text = _read(name).lower()
+            for forbidden in ("hallucination", "truth score", "confidence score", "risk:"):
+                assert forbidden not in text, (name, forbidden)
 
     def test_no_external_assets(self):
         for name in ("index.html", "app.css", "app.js"):

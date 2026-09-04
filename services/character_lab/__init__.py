@@ -12,10 +12,28 @@ No provider, no network, no acceptance mutation, no accepted-package writer path
 
 from __future__ import annotations
 
+from . import provenance
 from .app import (
     CHARACTER_LAB_DATA_ROOT_ENV,
     CharacterLabApp,
     resolve_data_root,
+)
+from .scene import (
+    Scene,
+    SceneError,
+    new_scene,
+    render_scene_block,
+    scene_from_jsonable,
+    scene_hash,
+    scene_to_jsonable,
+)
+from .workspace import (
+    NORMAL_ID,
+    WORKSPACE_KIND_CLEAN_TEST,
+    WORKSPACE_KIND_NORMAL,
+    Workspace,
+    WorkspaceError,
+    WorkspaceManager,
 )
 from .runtime_policy import (
     AssemblyItem,
@@ -70,4 +88,18 @@ __all__ = [
     "CharacterLabApp",
     "CHARACTER_LAB_DATA_ROOT_ENV",
     "resolve_data_root",
+    "provenance",
+    "Scene",
+    "SceneError",
+    "new_scene",
+    "render_scene_block",
+    "scene_from_jsonable",
+    "scene_hash",
+    "scene_to_jsonable",
+    "NORMAL_ID",
+    "WORKSPACE_KIND_CLEAN_TEST",
+    "WORKSPACE_KIND_NORMAL",
+    "Workspace",
+    "WorkspaceError",
+    "WorkspaceManager",
 ]

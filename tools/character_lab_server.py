@@ -192,7 +192,7 @@ class CharacterLabServer:
                 self.end_headers()
                 self.wfile.write(body)
 
-            def _route(self, method: str, path: str) -> None:
+            def _route(self, method: str, path: str, query: dict) -> None:
                 if method == "GET":
                     if path in _STATIC_FILES:
                         self._serve_static(_STATIC_FILES[path])
@@ -222,6 +222,15 @@ class CharacterLabServer:
                         except KeyError:
                             self._json(404, {"error": "unknown_turn", "message": "Ход не найден."})
                         return
+                    if path == "/api/workspaces":
+                        self._json(200, app.list_workspaces())
+                        return
+                    if path == "/api/memory":
+                        self._json(200, app.memory(query.get("turn_id", [None])[0]))
+                        return
+                    if path == "/api/scene":
+                        self._json(200, app.get_scene())
+                        return
                 elif method == "POST":
                     if path == "/api/session/new":
                         self._json(200, app.new_session())
@@ -238,17 +247,40 @@ class CharacterLabServer:
                         result = app.chat(body.get("message", ""), body.get("session_id"))
                         self._json(200 if result.get("ok") else 409, result)
                         return
+                    if path == "/api/workspace/select":
+                        wid = self._read_json().get("workspace_id")
+                        try:
+                            self._json(200, app.select_workspace(wid))
+                        except KeyError:
+                            self._json(404, {"error": "unknown_workspace", "message": "Рабочая область не найдена."})
+                        return
+                    if path == "/api/workspace/new-test":
+                        self._json(200, app.new_clean_test())
+                        return
+                    if path == "/api/scene":
+                        result = app.set_scene(self._read_json())
+                        self._json(200 if result.get("ok") else 409, result)
+                        return
                     if path == "/shutdown":
                         self._json(200, {"status": "shutting_down"})
                         threading.Thread(target=server_ref.shutdown, daemon=True).start()
                         return
+                elif method == "DELETE":
+                    if path == "/api/scene":
+                        self._json(200, app.clear_scene())
+                        return
                 self._json(404, {"error": "not_found", "message": "Not found."})
 
             def do_GET(self) -> None:
-                self._route("GET", self.path.split("?", 1)[0])
+                raw = self.path.split("?", 1)
+                query = urllib.parse.parse_qs(raw[1]) if len(raw) > 1 else {}
+                self._route("GET", raw[0], query)
 
             def do_POST(self) -> None:
-                self._route("POST", self.path.split("?", 1)[0])
+                self._route("POST", self.path.split("?", 1)[0], {})
+
+            def do_DELETE(self) -> None:
+                self._route("DELETE", self.path.split("?", 1)[0], {})
 
         return Handler
 

@@ -110,7 +110,9 @@ class TestChat:
     def test_chat_creates_turn_capture_artifacts(self, tmp_path):
         app = make_app(tmp_path)
         r = app.chat("Привет.")
-        turn_dir = tmp_path / "data" / "turns" / r["turn_id"]
+        turn_dir = app.turn_capture_dir(r["turn_id"])
+        # Slice 3: artifacts live under the current (Clean Test) workspace root.
+        assert "workspaces" in turn_dir.parts
         assert (turn_dir / "request.json").exists()
         assert (turn_dir / "manifest.json").exists()
         assert (turn_dir / "response.json").exists()
@@ -126,7 +128,7 @@ class TestChat:
         app = make_app(tmp_path)
         r = app.chat("Привет.")
         detail = app.turn_detail(r["turn_id"])
-        request_bytes = (tmp_path / "data" / "turns" / r["turn_id"] / "request.json").read_bytes()
+        request_bytes = (app.turn_capture_dir(r["turn_id"]) / "request.json").read_bytes()
         assert detail["request"]["request_hash"] == compute_request_hash(request_bytes)
 
     def test_turn_detail_selected_delivered_from_manifest(self, tmp_path):
@@ -174,6 +176,9 @@ class TestSafety:
             json.dumps(app.catalog(), ensure_ascii=False),
             json.dumps(app.loaded_state(), ensure_ascii=False),
             json.dumps(app.character_inspector(), ensure_ascii=False),
+            json.dumps(app.list_workspaces(), ensure_ascii=False),
+            json.dumps(app.memory(), ensure_ascii=False),
+            json.dumps(app.get_scene(), ensure_ascii=False),
         ]
         for blob in blobs:
             assert "SECRET_SENTINEL_VALUE" not in blob

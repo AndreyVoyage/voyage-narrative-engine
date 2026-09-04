@@ -12,15 +12,24 @@
     <nav class="modes" id="modes">
       <button class="mode active" data-mode="chat">Чат</button>
       <button class="mode" data-mode="character">Персонаж</button>
+      <button class="mode" data-mode="memory">Память</button>
+      <button class="mode" data-mode="scene">Сцена</button>
       <button class="mode" data-mode="turns">Отладка ходов</button>
-      <button class="mode disabled" data-mode="scene" disabled>Сцена · Slice 3</button>
-      <button class="mode disabled" data-mode="memory" disabled>Память · Slice 3</button>
     </nav>
     <div class="provider-state" id="provider-state" title="Состояние провайдера">—</div>
   </header>
 
   <main class="workspace">
     <aside class="left-panel">
+      <section class="panel-block">
+        <h2>Рабочая область</h2>
+        <select id="workspace-select" class="workspace-select"></select>
+        <button id="new-clean-test" class="btn">+ Новый Clean Test</button>
+        <div id="workspace-banner" class="workspace-banner clean">
+          <strong>CLEAN TEST</strong>
+          <span>Изолированная тестовая память.</span>
+        </div>
+      </section>
       <section class="panel-block">
         <h2>Персонажи</h2>
         <ul id="characters" class="select-list"></ul>
@@ -36,7 +45,6 @@
       </section>
       <section class="panel-block muted">
         <div class="data-root-label" id="data-root-label">Данные: …</div>
-        <div class="workspace-label">Clean Test / изолированные данные Character Lab</div>
       </section>
     </aside>
 
@@ -52,6 +60,40 @@
 
       <div id="view-character" class="view hidden">
         <div id="character-inspector" class="inspector"></div>
+      </div>
+
+      <div id="view-memory" class="view hidden">
+        <div class="memory-header">
+          <h1>Память персонажа</h1>
+          <p class="note">
+            Порядок таблицы — причинный (seq). Порядок контекста Beta v1 остаётся
+            legacy (created_at, event_id) и намеренно отличается. «Загружено» не
+            равно «доставлено».
+          </p>
+          <button id="memory-refresh" class="btn">Обновить</button>
+        </div>
+        <div id="memory-table" class="memory-table"></div>
+      </div>
+
+      <div id="view-scene" class="view hidden">
+        <div class="scene-form">
+          <h1>Сцена</h1>
+          <p class="note">
+            Условие сцены — ситуационный ввод оператора. Это не данные пакета
+            персонажа и не постоянная память. Без сцены контекст Beta v1 не
+            меняется.
+          </p>
+          <label>Название<input id="scene-title" autocomplete="off"></label>
+          <label>Место<input id="scene-location" autocomplete="off"></label>
+          <label>Участники (по одному в строке)<textarea id="scene-participants" rows="3"></textarea></label>
+          <label>Предыдущие события (по одному в строке)<textarea id="scene-prior" rows="4"></textarea></label>
+          <label>Текущая ситуация<textarea id="scene-current" rows="3"></textarea></label>
+          <div class="scene-actions">
+            <button id="scene-save" class="btn primary">Сохранить / применить</button>
+            <button id="scene-clear" class="btn">Очистить</button>
+          </div>
+          <pre id="scene-preview" class="scene-preview"></pre>
+        </div>
       </div>
 
       <div id="view-turns" class="view hidden">
@@ -72,7 +114,7 @@
         <p class="note">
           «Загружено» не означает «доставлено модели». Полный контент пакета
           (психология, биография, границы и т.д.) в текущем Beta v1 не
-          отправляется в запрос провайдера. Это видно в Инспекторе персонажа.
+          отправляется в запрос провайдера. Реплика Киры — не канонический факт.
         </p>
       </section>
     </aside>
