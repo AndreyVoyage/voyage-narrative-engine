@@ -56,14 +56,18 @@ class TestCatalogAndState:
         assert "kira" in chars
         variants = {v["id"]: v for v in catalog["variants"]}
         assert variants["KIRA_BETA_V1_CURRENT"]["implemented"] is True
-        assert variants["KIRA_GROUNDED_V2"]["implemented"] is False
+        # Grounded v2 is now an implemented, selectable backend policy.
+        assert variants["KIRA_GROUNDED_V2"]["implemented"] is True
+        # Experimental stays disabled.
         assert variants["EXPERIMENTAL"]["implemented"] is False
 
-    def test_planned_variants_not_activatable(self, tmp_path):
+    def test_experimental_variant_not_activatable(self, tmp_path):
         app = make_app(tmp_path)
-        variants = app.catalog()["variants"]
-        planned = [v for v in variants if v["id"] != "KIRA_BETA_V1_CURRENT"]
-        assert planned and all(v["implemented"] is False for v in planned)
+        variants = {v["id"]: v for v in app.catalog()["variants"]}
+        assert variants["EXPERIMENTAL"]["implemented"] is False
+        r = app.select_variant("EXPERIMENTAL")
+        assert r["ok"] is False
+        assert app.loaded_state()["variant_id"] == "KIRA_BETA_V1_CURRENT"
 
     def test_state_returns_real_acceptance_hash(self, tmp_path):
         app = make_app(tmp_path)

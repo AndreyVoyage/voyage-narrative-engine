@@ -184,7 +184,22 @@ class RuntimeService:
         backend = RuntimeMemoryBackend(Path(memory_root), subject_id)
         session = RuntimeSession(accepted, backend, sid)
         try:
-            runtime_context = session.build_runtime_context()
+            runtime_context = dict(session.build_runtime_context())
+            # Additive keys for grounded variants. Beta v1 ignores them, so its
+            # assembled context / manifest / request bytes stay unchanged.
+            runtime_context["accepted_package"] = accepted.package
+            runtime_context["causal_memory"] = [
+                {
+                    "event_id": e.event_id,
+                    "session_id": e.session_id,
+                    "event_type": e.event_type,
+                    "meaning": e.meaning,
+                    "created_at": e.created_at,
+                    "seq": e.seq,
+                    "provenance": e.provenance,
+                }
+                for e in backend.load_events_causal(subject_id)
+            ]
             assembly = policy.assemble_context(
                 runtime_context=runtime_context,
                 session_id=session.session_id,

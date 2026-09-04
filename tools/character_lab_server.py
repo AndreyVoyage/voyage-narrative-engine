@@ -257,6 +257,11 @@ class CharacterLabServer:
                     if path == "/api/workspace/new-test":
                         self._json(200, app.new_clean_test())
                         return
+                    if path == "/api/variant/select":
+                        vid = self._read_json().get("variant_id")
+                        result = app.select_variant(vid)
+                        self._json(200 if result.get("ok") else 409, result)
+                        return
                     if path == "/api/scene":
                         result = app.set_scene(self._read_json())
                         self._json(200 if result.get("ok") else 409, result)

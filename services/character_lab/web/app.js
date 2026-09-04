@@ -64,19 +64,57 @@ function renderCharacters() {
   });
 }
 
+function variantDisplayName(id) {
+  const v = ((state.catalog && state.catalog.variants) || []).find((x) => x.id === id);
+  return v ? v.display_name : (id || "—");
+}
+
+function currentVariantId() {
+  return (state.loaded && state.loaded.variant_id) ||
+    (((state.catalog && state.catalog.variants) || []).find((v) => v.selected) || {}).id;
+}
+
 function renderVariants() {
   const ul = $("variants");
   ul.innerHTML = "";
+  const current = currentVariantId();
   (state.catalog.variants || []).forEach((v) => {
-    const li = el("li", v.implemented ? "active" : "disabled", v.display_name);
-    li.appendChild(el("div", "sub", v.implemented ? "active" : (v.status || "planned") + " / недоступно"));
+    const isCurrent = v.id === current;
+    const li = el("li", !v.implemented ? "disabled" : (isCurrent ? "active" : ""), v.display_name);
+    li.appendChild(el("div", "sub",
+      !v.implemented ? ((v.status || "disabled") + " / недоступно")
+        : (isCurrent ? "выбран" : "доступен — нажмите, чтобы выбрать")));
     if (v.implemented) {
-      li.addEventListener("click", () => refreshLoadedState());
+      li.addEventListener("click", () => selectVariant(v.id));
     } else {
-      li.title = "Вариант запланирован и недоступен";
+      li.title = "Вариант отключён";
     }
     ul.appendChild(li);
   });
+}
+
+async function selectVariant(variantId) {
+  try {
+    const r = await api("/api/variant/select", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ variant_id: variantId }),
+    });
+    if (r && r.ok === false) {
+      addSystemMessage("Вариант недоступен: " + (r.message || variantId));
+      return;
+    }
+    addSystemMessage("Вариант переключён: " + variantId + " — действует со следующего хода.");
+  } catch (e) {
+    addSystemMessage("Ошибка переключения варианта: " + e.message);
+    return;
+  }
+  await loadCatalog();
+  await refreshLoadedState();
+}
+
+function updateChatHeader() {
+  const h = $("chat-header");
+  if (h) h.textContent = "KIRA · " + variantDisplayName(currentVariantId());
 }
 
 async function loadWorkspaces() {
@@ -139,6 +177,8 @@ async function refreshLoadedState() {
   renderProviderState();
   renderDataRoot();
   renderWorkspaceBanner();
+  if (state.catalog) renderVariants();
+  updateChatHeader();
 }
 
 function renderProviderState() {
@@ -167,7 +207,7 @@ function renderLoadedState() {
     ["Hash match", s.hash_match ? "YES" : "NO", s.hash_match ? "ok" : "bad"],
     ["Package ID", s.package_id || "—", ""],
     ["Package version", s.package_version !== undefined ? String(s.package_version) : "—", ""],
-    ["Variant", "Beta v1 — Current", ""],
+    ["Variant", variantDisplayName(s.variant_id) + " · " + (s.variant_id || "—"), ""],
     ["Workspace", (s.workspace_display_name || "—") + " · " + (s.workspace_kind || "—"),
       s.workspace_kind === "NORMAL" ? "warn" : "ok"],
     ["Scene", s.scene_active ? "активна" : "нет", ""],

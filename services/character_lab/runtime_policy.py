@@ -18,10 +18,17 @@ from dataclasses import dataclass, field
 from typing import Any, Mapping
 
 from . import provenance as _provenance
+from .grounding import render_accepted_grounding
 from .scene import render_scene_block, scene_hash
 
 KIRA_BETA_V1_CURRENT = "KIRA_BETA_V1_CURRENT"
 BETA_V1_VARIANT_VERSION = 1
+
+KIRA_GROUNDED_V2 = "KIRA_GROUNDED_V2"
+GROUNDED_V2_VARIANT_VERSION = 1
+
+#: Reserved-but-disabled variant id (no policy, never selectable in V1).
+EXPERIMENTAL_VARIANT_ID = "EXPERIMENTAL"
 
 
 @dataclass(frozen=True)
@@ -221,3 +228,220 @@ class BetaV1CurrentPolicy(RuntimePolicy):
             memory.set_provenance(user_event.event_id, _provenance.USER_STATED)
             memory.set_provenance(char_event.event_id, _provenance.CHARACTER_UTTERANCE)
         return (user_event, char_event)
+
+
+# --------------------------------------------------------------------------- v2
+
+# Grounded v2 core instruction. It never contains chain-of-thought, a decision
+# layer, or relationship-evolution logic -- only framing for the segments below.
+_GROUNDED_V2_CORE_INSTRUCTION = (
+    "Ты — Кира, персонаж. Отвечай от лица персонажа на русском языке.\n"
+    "Ниже отдельным блоком дано принятое описание персонажа (Accepted "
+    "Character). Опирайся только на него и на подтверждённые сведения.\n"
+    "Блок памяти — это информация со слов собеседника, а не установленные "
+    "факты; твои прошлые реплики фактами также не являются.\n"
+    "Не выдумывай факты, которых нет в принятом описании, и не превращай "
+    "неизвестное или спорное в утверждение."
+)
+
+_GROUNDED_V2_MEMORY_HEADER = (
+    "ПАМЯТЬ / MEMORY (со слов собеседника — не установленные факты)"
+)
+_GROUNDED_V2_MEMORY_LINE_PREFIX = "- [со слов собеседника] "
+
+
+class GroundedV2Policy(RuntimePolicy):
+    """Accepted Character grounding + honest user-reported causal memory.
+
+    Consumes two keys ``RuntimeService.turn`` adds to the runtime context that
+    Beta v1 ignores: ``accepted_package`` (rendered via
+    :func:`render_accepted_grounding`) and ``causal_memory`` (durable events in
+    causal ``seq`` order, each with a provenance label).
+
+    Assembly order: (1) core runtime instruction, (2) Accepted Character
+    grounding, (3) causal user-reported memory, (4) Scene when active, (5) the
+    current user input. No chain-of-thought, no decision layer, no relationship
+    evolution.
+    """
+
+    variant_id = KIRA_GROUNDED_V2
+    variant_version = GROUNDED_V2_VARIANT_VERSION
+
+    def select_memory(self, runtime_context, session_id):
+        # Honest factual memory only: USER_STATED events, in causal seq order.
+        # CHARACTER_UTTERANCE and LEGACY_UNCLASSIFIED (incl. NULL provenance)
+        # are never surfaced as established factual grounding.
+        events = runtime_context.get("causal_memory") or ()
+        selected = [
+            e
+            for e in events
+            if _provenance.normalize(e.get("provenance")) == _provenance.USER_STATED
+        ]
+        selected.sort(
+            key=lambda e: (
+                e["seq"] if e.get("seq") is not None else 0,
+                e.get("event_id") or "",
+            )
+        )
+        return selected
+
+    def _memory_block(self, selected) -> str:
+        lines = [_GROUNDED_V2_MEMORY_HEADER]
+        for e in selected:
+            lines.append(
+                _GROUNDED_V2_MEMORY_LINE_PREFIX + str(e.get("meaning", "")).strip()
+            )
+        return "\n".join(lines)
+
+    def assemble_context(
+        self,
+        *,
+        runtime_context,
+        session_id,
+        history,
+        user_message,
+        scene=None,
+    ) -> ContextAssembly:
+        package = runtime_context.get("accepted_package")
+        grounding = render_accepted_grounding(package) if package is not None else ""
+        accepted_source_hash = runtime_context.get("source_candidate_hash")
+        selected_mem = self.select_memory(runtime_context, session_id)
+        memory_block = self._memory_block(selected_mem) if selected_mem else None
+
+        system_messages = [{"role": "system", "content": _GROUNDED_V2_CORE_INSTRUCTION}]
+        if grounding:
+            system_messages.append({"role": "system", "content": grounding})
+        if memory_block is not None:
+            system_messages.append({"role": "system", "content": memory_block})
+        if scene is not None:
+            system_messages.append(
+                {"role": "system", "content": render_scene_block(scene)}
+            )
+
+        messages = (
+            tuple(system_messages)
+            + tuple(history)
+            + ({"role": "user", "content": user_message},)
+        )
+        manifest = AssemblyManifest(
+            variant_id=self.variant_id,
+            variant_version=self.variant_version,
+            items=tuple(
+                self._build_items(
+                    package,
+                    grounding,
+                    accepted_source_hash,
+                    selected_mem,
+                    history,
+                    user_message,
+                    scene,
+                )
+            ),
+        )
+        return ContextAssembly(messages=messages, manifest=manifest)
+
+    def _build_items(
+        self,
+        package,
+        grounding,
+        accepted_source_hash,
+        selected_mem,
+        history,
+        user_message,
+        scene,
+    ):
+        items = [
+            AssemblyItem(
+                "system.role_instruction", _GROUNDED_V2_CORE_INSTRUCTION, {}
+            )
+        ]
+        if grounding:
+            items.append(
+                AssemblyItem(
+                    "system.package_grounding",
+                    grounding,
+                    {
+                        "package_id": getattr(package, "package_id", None),
+                        "package_version": getattr(package, "package_version", None),
+                        "accepted_source_hash": accepted_source_hash,
+                        "rendered_chars": len(grounding),
+                        "grounding": "SELECTED",
+                    },
+                )
+            )
+        if selected_mem:
+            items.append(
+                AssemblyItem(
+                    "system.memory_grounding",
+                    _GROUNDED_V2_MEMORY_HEADER,
+                    {"event_count": len(selected_mem), "order": "seq"},
+                )
+            )
+            for e in selected_mem:
+                items.append(
+                    AssemblyItem(
+                        "system.memory_line",
+                        _GROUNDED_V2_MEMORY_LINE_PREFIX
+                        + str(e.get("meaning", "")).strip(),
+                        {
+                            "event_id": e.get("event_id"),
+                            "seq": e.get("seq"),
+                            "session_id": e.get("session_id"),
+                            "provenance": _provenance.normalize(e.get("provenance")),
+                            "provenance_display": "user-reported",
+                        },
+                    )
+                )
+        if scene is not None:
+            items.append(
+                AssemblyItem(
+                    "system.scene",
+                    render_scene_block(scene),
+                    {"scene_id": scene.scene_id, "scene_hash": scene_hash(scene)},
+                )
+            )
+        for idx, msg in enumerate(history):
+            items.append(
+                AssemblyItem(f"history.{msg['role']}", msg["content"], {"turn_index": idx})
+            )
+        items.append(AssemblyItem("user.current", user_message, {}))
+        return items
+
+    def persist(self, *, session, user_message: str, response: str, memory=None):
+        # Same durable-write contract as Beta v1: append the two dialogue events
+        # and attach honest provenance. No row mutation, no schema change.
+        user_event = session.record_runtime_event("USER_MESSAGE", user_message)
+        char_event = session.record_runtime_event("CHARACTER_MESSAGE", response)
+        if memory is not None:
+            memory.set_provenance(user_event.event_id, _provenance.USER_STATED)
+            memory.set_provenance(char_event.event_id, _provenance.CHARACTER_UTTERANCE)
+        return (user_event, char_event)
+
+
+# ------------------------------------------------------------- policy registry
+
+class UnknownVariantError(ValueError):
+    """Raised when a variant id is not a selectable backend policy."""
+
+
+_POLICY_FACTORIES = {
+    KIRA_BETA_V1_CURRENT: BetaV1CurrentPolicy,
+    KIRA_GROUNDED_V2: GroundedV2Policy,
+}
+
+#: Variant ids the backend will actually instantiate. ``EXPERIMENTAL`` is
+#: intentionally absent -- it stays disabled in V1.
+SUPPORTED_VARIANT_IDS = tuple(_POLICY_FACTORIES.keys())
+
+
+def build_policy(variant_id: str) -> RuntimePolicy:
+    """Resolve a variant id to a fresh policy instance (backend validated)."""
+    if not isinstance(variant_id, str) or not variant_id.strip():
+        raise UnknownVariantError("variant_id must be a non-empty string")
+    if variant_id == EXPERIMENTAL_VARIANT_ID:
+        raise UnknownVariantError("EXPERIMENTAL variant is disabled in V1")
+    try:
+        factory = _POLICY_FACTORIES[variant_id]
+    except KeyError:
+        raise UnknownVariantError(f"unknown variant {variant_id!r}") from None
+    return factory()

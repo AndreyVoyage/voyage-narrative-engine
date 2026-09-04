@@ -26,7 +26,12 @@ from services.character_runtime import RuntimeMemoryBackend, load_accepted_chara
 from services.crp_authoring import compute_package_hash
 
 from . import provenance as _provenance
-from .runtime_policy import BetaV1CurrentPolicy
+from .runtime_policy import (
+    KIRA_BETA_V1_CURRENT,
+    BetaV1CurrentPolicy,
+    UnknownVariantError,
+    build_policy,
+)
 from .runtime_service import RuntimeService
 from .scene import SceneError, new_scene, render_scene_block, scene_from_jsonable, scene_hash, scene_to_jsonable
 from .source_loader import DEFAULT_ACCEPTANCE_ROOT, build_repo_source_loader
@@ -37,8 +42,8 @@ CHARACTER_LAB_DATA_ROOT_ENV = "CHARACTER_LAB_DATA_ROOT"
 
 _VARIANT_CATALOG = (
     {"id": "KIRA_BETA_V1_CURRENT", "display_name": "Beta v1 — Current", "implemented": True},
-    {"id": "KIRA_GROUNDED_V2", "display_name": "Grounded v2", "implemented": False, "status": "planned"},
-    {"id": "EXPERIMENTAL", "display_name": "Experimental", "implemented": False, "status": "planned"},
+    {"id": "KIRA_GROUNDED_V2", "display_name": "Grounded v2", "implemented": True},
+    {"id": "EXPERIMENTAL", "display_name": "Experimental", "implemented": False, "status": "disabled"},
 )
 
 _LONG_LIVED_WARNING = {
@@ -143,6 +148,7 @@ class CharacterLabApp:
             acceptance_root=self._acceptance_root, source_loader=self._source_loader
         )
         self._policy = BetaV1CurrentPolicy()
+        self._variant_id = KIRA_BETA_V1_CURRENT
         self._provider_factory = provider_factory
         self._provider_info = dict(provider_info or {})
         self._provider_availability = provider_availability
@@ -260,7 +266,34 @@ class CharacterLabApp:
     def catalog(self) -> dict:
         return {
             "characters": [{"id": "kira", "display_name": "KIRA", "supported": True}],
-            "variants": list(_VARIANT_CATALOG),
+            "variants": [
+                {**v, "selected": v["id"] == self._variant_id} for v in _VARIANT_CATALOG
+            ],
+        }
+
+    def select_variant(self, variant_id: str) -> dict:
+        """Switch the backend runtime policy. Affects future turns only.
+
+        Backend validated against the minimal policy registry: Experimental
+        stays disabled, and historical turn artifacts keep their recorded
+        ``variant_id`` (this only rebinds ``self._policy``).
+        """
+        try:
+            policy = build_policy(variant_id)
+        except UnknownVariantError as exc:
+            return {
+                "ok": False,
+                "error": "variant_unavailable",
+                "message": str(exc),
+                "variant_id": self._variant_id,
+            }
+        self._policy = policy
+        self._variant_id = policy.variant_id
+        return {
+            "ok": True,
+            "variant_id": policy.variant_id,
+            "variant_version": policy.variant_version,
+            "applies_to": "future turns only",
         }
 
     # ------------------------------------------------------------ loaded state

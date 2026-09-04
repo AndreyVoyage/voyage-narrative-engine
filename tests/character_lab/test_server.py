@@ -244,6 +244,30 @@ class TestSlice3Routes:
         finally:
             srv.shutdown()
 
+    def test_variant_select_grounded_v2_then_experimental_rejected(self, server):
+        status, body = http_post(server.base_url + "/api/variant/select",
+                                 {"variant_id": "KIRA_GROUNDED_V2"})
+        assert status == 200 and body["ok"] is True
+        assert body["variant_id"] == "KIRA_GROUNDED_V2"
+        _, state = http_get(server.base_url + "/api/state")
+        assert state["variant_id"] == "KIRA_GROUNDED_V2"
+
+        status, body = http_post(server.base_url + "/api/variant/select",
+                                 {"variant_id": "EXPERIMENTAL"})
+        assert status == 409 and body["ok"] is False
+        _, state = http_get(server.base_url + "/api/state")
+        assert state["variant_id"] == "KIRA_GROUNDED_V2"
+
+    def test_grounded_v2_turn_delivers_package_grounding_via_server(self, server):
+        http_post(server.base_url + "/api/variant/select", {"variant_id": "KIRA_GROUNDED_V2"})
+        _, chat = http_post(server.base_url + "/api/chat", {"message": "Привет."})
+        status, detail = http_get(server.base_url + "/api/turn/" + chat["turn_id"])
+        assert status == 200
+        assert detail["variant_id"] == "KIRA_GROUNDED_V2"
+        grounding = [i for i in detail["manifest"]["items"]
+                    if i["kind"] == "system.package_grounding"]
+        assert grounding and grounding[0]["delivered"] is True
+
     def test_shutdown_endpoint(self, tmp_path):
         app = build_app(tmp_path)
         srv = server_mod.CharacterLabServer(app)
