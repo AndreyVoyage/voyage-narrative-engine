@@ -1,0 +1,22 @@
+{
+  "profile_id": "SC_004_MARINA_MAKSIM_AUTO_REFS",
+  "scene_id": "SC_004",
+  "branch_id": "1B",
+  "location_id": "gym",
+  "fixture_ref": "tests/fixtures/scene_image_test_app/SC_004.v2.json",
+  "media_item_id": "marina_maksim_gym_sc004_b1_image_01",
+  "cast_override": {
+    "KIRA": "MARINA",
+    "SERGEY": "MAKSIM"
+  },
+  "prompt_aliases": {
+    "MARINA": "Marina",
+    "MAKSIM": "Maksim"
+  },
+  "scene_tags": [
+    "neutral",
+    "stretching"
+  ],
+  "scene_intent": "Modern gym stretching area with an exercise mat. Marina is lying on the mat and stretching naturally. Maksim is positioned above and over the mat area near Marina as her trainer, standing, kneeling, or leaning above her spatially. Marina looks toward Maksim; Maksim looks toward Marina. Believable professional fitness-coaching context. Both are adults wearing realistic sportswear. No intimate body contact.",
+  "visual_goal": "Single image in a modern gym stretching area: Marina lying and stretching naturally on an exercise mat, while Maksim, her trainer, is positioned above and over the mat near her, clearly standing, kneeling, or leaning above her spatially, both looking toward each other. Believable professional fitness-coaching context, both adults in realistic sportswear. No intimate body contact, no hand on the waist, buttocks, chest, inner thigh, or groin, no suggestive pose, no exaggerated backbend, no superhero pose."
+}

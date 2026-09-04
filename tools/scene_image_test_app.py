@@ -65,6 +65,12 @@ from services.reference_library import (  # noqa: E402
     load_manifest,
 )
 from services.scene_interpretation import build_scene_interpretation_artifact  # noqa: E402
+from tools.reference_selector import (  # noqa: E402
+    CatalogError,
+    SelectionError,
+    load_semantic_catalog,
+    select_references,
+)
 
 # ---------------------------------------------------------------------------
 # Application constants (owner-ratified defaults for this test app only).
@@ -79,6 +85,7 @@ API_KEY_ENV_VAR = "OPENAI_API_KEY"
 
 PROFILES_DIR_REL = "authoring/scene_image_test_profiles"
 PHYSICAL_PROFILES_REL = "authoring/scene_image_test_profiles/physical_profiles.json"
+CATALOG_REL = "authoring/reference_library/REFERENCE_SEMANTIC_CATALOG.json"
 
 OUTPUT_ROOT = Path(
     "C:/DEV/Narrative/LOCAL_STORAGE/generated_media_smokes/SCENE_IMAGE_TEST_APP"
@@ -191,35 +198,54 @@ class Profile:
                 f"(got {sorted(self.prompt_aliases)} vs {sorted(effective)})"
             )
 
-        refs = data.get("references")
-        if not isinstance(refs, list) or not refs:
-            raise ProfileError("references must be a non-empty array")
-        self.references: tuple[ReferenceSpec, ...] = tuple(
-            ReferenceSpec(
-                character_id=_require_str(r, "character_id", prefix=f"references[{i}]."),
-                asset_id=_require_str(r, "asset_id", prefix=f"references[{i}]."),
-                source_path=_require_str(r, "source_path", prefix=f"references[{i}]."),
-                expected_sha256=_require_str(
-                    r, "expected_sha256", prefix=f"references[{i}]."
-                ),
-                role=_require_str(r, "role", prefix=f"references[{i}]."),
-            )
-            for i, r in enumerate(refs)
-            if isinstance(r, Mapping)
-        )
-        if len(self.references) != len(refs):
-            raise ProfileError("references entries must all be objects")
+        scene_tags = data.get("scene_tags")
+        if scene_tags is None:
+            scene_tags = []
+        if not isinstance(scene_tags, list) or not all(
+            isinstance(t, str) and t.strip() for t in scene_tags
+        ):
+            raise ProfileError("scene_tags must be a list of non-empty strings")
+        self.scene_tags: tuple[str, ...] = tuple(scene_tags)
 
-        for spec in self.references:
-            if spec.character_id not in effective:
+        refs = data.get("references")
+        if refs is None:
+            self.mode = "auto"
+            self.references: tuple[ReferenceSpec, ...] = ()
+        elif isinstance(refs, list):
+            if not refs:
                 raise ProfileError(
-                    f"reference {spec.asset_id!r} character_id "
-                    f"{spec.character_id!r} is not an effective cast id"
+                    "references must not be empty when present "
+                    "(omit references to use auto mode)"
                 )
-            if not _is_sha256(spec.expected_sha256):
-                raise ProfileError(
-                    f"reference {spec.asset_id!r} expected_sha256 is not a valid sha256"
+            self.mode = "explicit"
+            self.references = tuple(
+                ReferenceSpec(
+                    character_id=_require_str(r, "character_id", prefix=f"references[{i}]."),
+                    asset_id=_require_str(r, "asset_id", prefix=f"references[{i}]."),
+                    source_path=_require_str(r, "source_path", prefix=f"references[{i}]."),
+                    expected_sha256=_require_str(
+                        r, "expected_sha256", prefix=f"references[{i}]."
+                    ),
+                    role=_require_str(r, "role", prefix=f"references[{i}]."),
                 )
+                for i, r in enumerate(refs)
+                if isinstance(r, Mapping)
+            )
+            if len(self.references) != len(refs):
+                raise ProfileError("references entries must all be objects")
+
+            for spec in self.references:
+                if spec.character_id not in effective:
+                    raise ProfileError(
+                        f"reference {spec.asset_id!r} character_id "
+                        f"{spec.character_id!r} is not an effective cast id"
+                    )
+                if not _is_sha256(spec.expected_sha256):
+                    raise ProfileError(
+                        f"reference {spec.asset_id!r} expected_sha256 is not a valid sha256"
+                    )
+        else:
+            raise ProfileError("references must be an array when present")
 
     @property
     def characters_in_frame(self) -> tuple[str, ...]:
@@ -433,6 +459,9 @@ class RunResult:
     imported_asset_ids: tuple[str, ...]
     reused_asset_ids: tuple[str, ...]
     manifest_record_count: int
+    selection_mode: str
+    effective_scene_tags: tuple[str, ...]
+    selected_assets_by_char: dict[str, tuple[tuple[str, str], ...]]
     provider_exposure: bool
     gates: dict[str, bool]
 
@@ -691,17 +720,46 @@ def orchestrate(
     )
     prompt_item = prompt_package.prompt_items[0]
 
-    # 6. Controlled reference preparation (import/reuse into the Library).
-    records_by_character, imported_ids, reused_ids, manifest_count = (
-        prepare_references(profile, repo_root=repo_root, manifest_path=manifest_path)
-    )
+    # 6. Reference resolution: explicit import or automatic selection.
+    if profile.mode == "explicit":
+        records_by_character, imported_ids, reused_ids, manifest_count = (
+            prepare_references(profile, repo_root=repo_root, manifest_path=manifest_path)
+        )
+        roles_by_asset_id = profile.roles_by_asset_id
+        selected_assets_by_char = {
+            cid: tuple(
+                (spec.asset_id, spec.role)
+                for spec in profile.references
+                if spec.character_id == cid
+            )
+            for cid in profile.characters_in_frame
+        }
+    else:
+        records = load_manifest(manifest_path) if manifest_path.exists() else []
+        catalog_path = Path(repo_root) / CATALOG_REL
+        catalog = load_semantic_catalog(catalog_path, records)
+        records_by_character, roles_by_asset_id = select_references(
+            profile.characters_in_frame,
+            profile.location_id,
+            profile.scene_tags,
+            records,
+            catalog,
+        )
+        imported_ids, reused_ids, manifest_count = [], [], len(records)
+        selected_assets_by_char = {
+            cid: tuple(
+                (record.asset_id, roles_by_asset_id[record.asset_id][0])
+                for record in records_by_character[cid]
+            )
+            for cid in profile.characters_in_frame
+        }
 
     # 7. ReferenceBundle from the Library (provider-neutral, aliased).
     bundle = build_reference_bundle_from_library(
         records_by_character,
         characters_in_frame=profile.characters_in_frame,
         repo_root=repo_root,
-        roles_by_asset_id=profile.roles_by_asset_id,
+        roles_by_asset_id=roles_by_asset_id,
         prompt_alias_by_character=profile.prompt_aliases,
     )
     validate_reference_bundle_integrity(bundle)
@@ -727,6 +785,13 @@ def orchestrate(
     refs_by_char = {
         g.character_id: len(g.references) for g in bundle.character_groups
     }
+    _seen_tags: set[str] = set()
+    _eff_tags: list[str] = []
+    for _t in [profile.location_id] + list(profile.scene_tags):
+        if _t not in _seen_tags:
+            _seen_tags.add(_t)
+            _eff_tags.append(_t)
+    effective_scene_tags = tuple(_eff_tags)
     provider_exposure = has_provider_exposure(
         prompt_text=final_prompt_text,
         reference_map=reference_map,
@@ -741,11 +806,17 @@ def orchestrate(
         "location_resolved": location.location_id == profile.location_id,
         "cast_override_applied": {p.character_id for p in ass.participants}
         == set(profile.characters_in_frame),
-        "reference_count_exact": sum(refs_by_char.values()) == len(profile.references),
+        "reference_count_exact": (
+            sum(refs_by_char.values()) == len(profile.references)
+            if profile.mode == "explicit"
+            else True
+        ),
         "reference_group_count": len(bundle.character_groups)
         == len(profile.characters_in_frame),
-        "four_refs_per_character": all(
-            refs_by_char[cid] == 4 for cid in profile.characters_in_frame
+        "reference_count_within_bounds": (
+            all(2 <= refs_by_char[cid] <= 4 for cid in profile.characters_in_frame)
+            if profile.mode == "auto"
+            else all(refs_by_char[cid] == 4 for cid in profile.characters_in_frame)
         ),
         "bundle_valid": True,  # validate_reference_bundle_integrity already ran
         "prompt_package_built": len(prompt_package.prompt_items) == 1,
@@ -770,6 +841,9 @@ def orchestrate(
         imported_asset_ids=tuple(imported_ids),
         reused_asset_ids=tuple(reused_ids),
         manifest_record_count=manifest_count,
+        selection_mode=profile.mode,
+        effective_scene_tags=effective_scene_tags,
+        selected_assets_by_char=selected_assets_by_char,
         provider_exposure=provider_exposure,
         gates=gates,
     )
@@ -806,10 +880,27 @@ def format_preview(result: RunResult, *, model: str, size: str, quality: str) ->
         lines.append(f"  {internal} -> {alias}")
     lines.append("")
 
-    lines.append("REFERENCE ASSET IDS")
-    for spec in p.references:
-        lines.append(f"  {spec.asset_id}")
+    lines.append(f"REFERENCE_SELECTION_MODE={result.selection_mode.upper()}")
+    if result.selection_mode == "auto":
+        lines.append(f"EFFECTIVE_SCENE_TAGS={','.join(result.effective_scene_tags)}")
     lines.append("")
+
+    if result.selection_mode == "explicit":
+        lines.append("REFERENCE ASSET IDS")
+        for spec in p.references:
+            lines.append(f"  {spec.asset_id}")
+        lines.append("")
+    else:
+        lines.append("SELECTED_REFERENCES:")
+        for cid in p.characters_in_frame:
+            lines.append(f"{cid}:")
+            for asset_id, role in result.selected_assets_by_char.get(cid, ()):
+                lines.append(f"  {asset_id} [{role}]")
+        lines.append("")
+        lines.append("REFERENCE_COUNT_BY_CHARACTER:")
+        for cid in p.characters_in_frame:
+            lines.append(f"{cid}={len(result.selected_assets_by_char.get(cid, ()))}")
+        lines.append("")
 
     lines.append(f"REFERENCE BUNDLE HASH={result.bundle.content_hash}")
     lines.append(f"PROMPT PACKAGE HASH={result.prompt_package.content_hash}")

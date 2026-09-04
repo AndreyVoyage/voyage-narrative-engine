@@ -179,6 +179,76 @@ def test_unknown_profile_fails():
         load_profile("DOES_NOT_EXIST", _real_profile_dir())
 
 
+def _min_profile_data(**overrides) -> dict:
+    data = {
+        "profile_id": "SC_004_MARINA_MAKSIM",
+        "scene_id": "SC_004",
+        "branch_id": "1B",
+        "location_id": "gym",
+        "fixture_ref": "tests/fixtures/scene_image_test_app/SC_004.v2.json",
+        "media_item_id": "marina_maksim_gym_sc004_b1_image_01",
+        "scene_intent": "neutral gym",
+        "visual_goal": "neutral gym",
+        "cast_override": {"KIRA": "MARINA", "SERGEY": "MAKSIM"},
+        "prompt_aliases": {"MARINA": "Marina", "MAKSIM": "Maksim"},
+    }
+    data.update(overrides)
+    return data
+
+
+def _ref(character_id, asset_id, role, sha=None):
+    return {
+        "character_id": character_id,
+        "asset_id": asset_id,
+        "source_path": "C:/x/y.png",
+        "expected_sha256": sha or ("a" * 64),
+        "role": role,
+    }
+
+
+def test_references_absent_activates_auto():
+    p = Profile(_min_profile_data(scene_tags=["neutral", "stretching"]))
+    assert p.mode == "auto"
+    assert p.references == ()
+    assert p.scene_tags == ("neutral", "stretching")
+
+
+def test_references_present_activates_explicit():
+    p = Profile(
+        _min_profile_data(
+            references=[
+                _ref("MARINA", "marina_face_01", "face"),
+                _ref("MARINA", "marina_body_01", "body"),
+                _ref("MAKSIM", "maksim_face_01", "face"),
+                _ref("MAKSIM", "maksim_body_01", "body"),
+            ]
+        )
+    )
+    assert p.mode == "explicit"
+    assert len(p.references) == 4
+
+
+def test_empty_references_rejected():
+    with pytest.raises(ProfileError):
+        Profile(_min_profile_data(references=[]))
+
+
+def test_old_explicit_profiles_parse():
+    marina = load_profile("SC_004_MARINA_MAKSIM", _real_profile_dir())
+    assert marina.mode == "explicit"
+    assert len(marina.references) == 8
+    andrey = load_profile("SC_004_ANDREY_OLGA", _real_profile_dir())
+    assert andrey.mode == "explicit"
+    assert len(andrey.references) == 8
+
+
+def test_auto_profile_parses():
+    auto = load_profile("SC_004_MARINA_MAKSIM_AUTO_REFS", _real_profile_dir())
+    assert auto.mode == "auto"
+    assert auto.references == ()
+    assert auto.scene_tags == ("neutral", "stretching")
+
+
 def test_expected_sha_mismatch_fails(tmp_path):
     hermetic = _build_hermetic(tmp_path)
     refs = list(hermetic["profile"]["references"])

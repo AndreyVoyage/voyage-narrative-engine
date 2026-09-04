@@ -1,0 +1,129 @@
+{
+  "schema_version": "vne_reference_semantic_catalog/0.1",
+  "entries": [
+    {
+      "asset_id": "andrey_junior_face_01",
+      "character_id": "ANDREY_JUNIOR",
+      "semantic_roles": ["face", "identity"],
+      "scene_tags": [],
+      "priority": 10,
+      "source_semantic_key": "face_canon"
+    },
+    {
+      "asset_id": "andrey_junior_face_support_01",
+      "character_id": "ANDREY_JUNIOR",
+      "semantic_roles": ["face"],
+      "scene_tags": [],
+      "priority": 20
+    },
+    {
+      "asset_id": "andrey_junior_body_01",
+      "character_id": "ANDREY_JUNIOR",
+      "semantic_roles": ["body", "identity"],
+      "scene_tags": [],
+      "priority": 10,
+      "source_semantic_key": "body_canon_a"
+    },
+    {
+      "asset_id": "andrey_junior_gym_01",
+      "character_id": "ANDREY_JUNIOR",
+      "semantic_roles": ["motion", "body_support"],
+      "scene_tags": ["gym", "neutral", "athletic"],
+      "priority": 20
+    },
+    {
+      "asset_id": "olga_face_primary_01",
+      "character_id": "OLGA",
+      "semantic_roles": ["face", "identity"],
+      "scene_tags": [],
+      "priority": 10,
+      "source_semantic_key": "primary_face_reference"
+    },
+    {
+      "asset_id": "olga_face_canon_01",
+      "character_id": "OLGA",
+      "semantic_roles": ["face"],
+      "scene_tags": [],
+      "priority": 20,
+      "source_semantic_key": "face_canon"
+    },
+    {
+      "asset_id": "olga_body_01",
+      "character_id": "OLGA",
+      "semantic_roles": ["body", "identity"],
+      "scene_tags": [],
+      "priority": 10,
+      "source_semantic_key": "body_canon_a"
+    },
+    {
+      "asset_id": "olga_sports_01",
+      "character_id": "OLGA",
+      "semantic_roles": ["motion", "body_support"],
+      "scene_tags": ["gym", "yoga", "neutral"],
+      "priority": 20
+    },
+    {
+      "asset_id": "marina_face_01",
+      "character_id": "MARINA",
+      "semantic_roles": ["face", "identity"],
+      "scene_tags": [],
+      "priority": 10,
+      "source_semantic_key": "face_canon"
+    },
+    {
+      "asset_id": "marina_face_support_01",
+      "character_id": "MARINA",
+      "semantic_roles": ["face", "expression"],
+      "scene_tags": [],
+      "priority": 20,
+      "source_semantic_key": "expression_canon"
+    },
+    {
+      "asset_id": "marina_body_01",
+      "character_id": "MARINA",
+      "semantic_roles": ["body", "identity"],
+      "scene_tags": [],
+      "priority": 10,
+      "source_semantic_key": "body_canon_a"
+    },
+    {
+      "asset_id": "marina_sports_01",
+      "character_id": "MARINA",
+      "semantic_roles": ["scene_support"],
+      "scene_tags": ["pool", "sunset"],
+      "priority": 20
+    },
+    {
+      "asset_id": "maksim_face_01",
+      "character_id": "MAKSIM",
+      "semantic_roles": ["face", "identity"],
+      "scene_tags": [],
+      "priority": 10,
+      "source_semantic_key": "face_canon"
+    },
+    {
+      "asset_id": "maksim_face_support_01",
+      "character_id": "MAKSIM",
+      "semantic_roles": ["face", "expression"],
+      "scene_tags": [],
+      "priority": 20,
+      "source_semantic_key": "expression_canon"
+    },
+    {
+      "asset_id": "maksim_body_01",
+      "character_id": "MAKSIM",
+      "semantic_roles": ["body", "identity"],
+      "scene_tags": [],
+      "priority": 10,
+      "source_semantic_key": "body_canon"
+    },
+    {
+      "asset_id": "maksim_gym_01",
+      "character_id": "MAKSIM",
+      "semantic_roles": ["motion", "body_support"],
+      "scene_tags": ["gym", "neutral", "motion"],
+      "priority": 20,
+      "source_semantic_key": "natural_motion_reference"
+    }
+  ]
+}
