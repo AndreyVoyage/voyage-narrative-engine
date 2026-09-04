@@ -255,6 +255,27 @@ _GROUNDED_V2_STATE_FOOTER = (
     "контекст, но не переписывают Принятое описание персонажа."
 )
 
+_GROUNDED_V2_REL_HEADER = "ПОДТВЕРЖДЁННОЕ СОСТОЯНИЕ ОТНОШЕНИЙ"
+_GROUNDED_V2_PSY_HEADER = "ПОДТВЕРЖДЁННОЕ ПСИХОЛОГИЧЕСКОЕ СОСТОЯНИЕ"
+_GROUNDED_V2_NUMERIC_FOOTER = (
+    "Это текущие подтверждённые оператором значения времени выполнения "
+    "(шкала -100..+100). Это не неизменный канон персонажа."
+)
+
+_DOMAIN_FACT = "FACT"
+_DOMAIN_RELATIONSHIP = "RELATIONSHIP"
+_DOMAIN_PSYCHOLOGY = "PSYCHOLOGY"
+
+# (domain, manifest kind, per-line kind, block header, block footer).
+_GROUNDED_V2_STATE_SEGMENTS = (
+    (_DOMAIN_FACT, "system.runtime_state", "system.runtime_state_line",
+     _GROUNDED_V2_STATE_HEADER, _GROUNDED_V2_STATE_FOOTER),
+    (_DOMAIN_RELATIONSHIP, "system.relationship_state", "system.relationship_state_line",
+     _GROUNDED_V2_REL_HEADER, _GROUNDED_V2_NUMERIC_FOOTER),
+    (_DOMAIN_PSYCHOLOGY, "system.psychology_state", "system.psychology_state_line",
+     _GROUNDED_V2_PSY_HEADER, _GROUNDED_V2_NUMERIC_FOOTER),
+)
+
 
 class GroundedV2Policy(RuntimePolicy):
     """Accepted Character grounding + honest user-reported causal memory.
@@ -265,10 +286,11 @@ class GroundedV2Policy(RuntimePolicy):
     causal ``seq`` order, each with a provenance label).
 
     Assembly order: (1) core runtime instruction, (2) Accepted Character
-    grounding, (3) operator-confirmed Runtime State (only when non-empty),
-    (4) causal user-reported memory, (5) Scene when active, (6) the current
-    user input. No chain-of-thought, no decision layer, no relationship
-    evolution.
+    grounding, (3) FACT Runtime State, (4) RELATIONSHIP state, (5) PSYCHOLOGY
+    state, (6) causal user-reported memory, (7) Scene when active, (8) the
+    current user input -- each included only when non-empty. Numeric domains
+    are rendered verbatim from operator-confirmed values; this policy performs
+    no autonomous evolution, no chain-of-thought, no decision layer.
     """
 
     variant_id = KIRA_GROUNDED_V2
@@ -309,16 +331,26 @@ class GroundedV2Policy(RuntimePolicy):
         return entries
 
     @staticmethod
+    def _domain_entries(entries, domain):
+        return [e for e in entries if (e.get("domain") or _DOMAIN_FACT) == domain]
+
+    @staticmethod
     def _state_line(entry) -> str:
         return f"- {str(entry.get('key', '')).strip()}: {str(entry.get('value', '')).strip()}"
 
-    def _state_block(self, entries) -> str:
-        lines = [_GROUNDED_V2_STATE_HEADER, ""]
+    def _domain_block(self, header, footer, entries) -> str:
+        lines = [header, ""]
         for entry in entries:
             lines.append(self._state_line(entry))
         lines.append("")
-        lines.append(_GROUNDED_V2_STATE_FOOTER)
+        lines.append(footer)
         return "\n".join(lines)
+
+    # Backwards-compatible FACT-only renderer (kept for existing callers/tests).
+    def _state_block(self, entries) -> str:
+        return self._domain_block(
+            _GROUNDED_V2_STATE_HEADER, _GROUNDED_V2_STATE_FOOTER, entries
+        )
 
     def assemble_context(
         self,
@@ -333,15 +365,20 @@ class GroundedV2Policy(RuntimePolicy):
         grounding = render_accepted_grounding(package) if package is not None else ""
         accepted_source_hash = runtime_context.get("source_candidate_hash")
         selected_state = self.select_state(runtime_context)
-        state_block = self._state_block(selected_state) if selected_state else None
         selected_mem = self.select_memory(runtime_context, session_id)
         memory_block = self._memory_block(selected_mem) if selected_mem else None
 
         system_messages = [{"role": "system", "content": _GROUNDED_V2_CORE_INSTRUCTION}]
         if grounding:
             system_messages.append({"role": "system", "content": grounding})
-        if state_block is not None:
-            system_messages.append({"role": "system", "content": state_block})
+        # Deterministic order: FACT state, then RELATIONSHIP, then PSYCHOLOGY.
+        for domain, _kind, _line_kind, header, footer in _GROUNDED_V2_STATE_SEGMENTS:
+            domain_entries = self._domain_entries(selected_state, domain)
+            if domain_entries:
+                system_messages.append({
+                    "role": "system",
+                    "content": self._domain_block(header, footer, domain_entries),
+                })
         if memory_block is not None:
             system_messages.append({"role": "system", "content": memory_block})
         if scene is not None:
@@ -402,18 +439,25 @@ class GroundedV2Policy(RuntimePolicy):
                     },
                 )
             )
-        if selected_state:
+        for domain, kind, line_kind, header, footer in _GROUNDED_V2_STATE_SEGMENTS:
+            domain_entries = self._domain_entries(selected_state, domain)
+            if not domain_entries:
+                continue
             items.append(
                 AssemblyItem(
-                    "system.runtime_state",
-                    self._state_block(selected_state),
-                    {"entry_count": len(selected_state), "source": "OPERATOR_CONFIRMED"},
+                    kind,
+                    self._domain_block(header, footer, domain_entries),
+                    {
+                        "domain": domain,
+                        "entry_count": len(domain_entries),
+                        "source": "OPERATOR_CONFIRMED",
+                    },
                 )
             )
-            for entry in selected_state:
+            for entry in domain_entries:
                 items.append(
                     AssemblyItem(
-                        "system.runtime_state_line",
+                        line_kind,
                         self._state_line(entry),
                         {
                             "domain": entry.get("domain"),

@@ -271,7 +271,8 @@ class TestSlice3Routes:
     def test_runtime_state_routes_set_list_remove(self, server):
         status, body = http_get(server.base_url + "/api/runtime-state")
         assert status == 200
-        assert body["current"] == [] and body["domains_active"] == ["FACT"]
+        assert body["current"] == []
+        assert body["domains_active"] == ["FACT", "RELATIONSHIP", "PSYCHOLOGY"]
         assert body["automatic_promotion"] is False
 
         status, body = http_post(server.base_url + "/api/runtime-state/set",
@@ -288,10 +289,36 @@ class TestSlice3Routes:
         status, body = http_get(server.base_url + "/api/runtime-state")
         assert body["current"] == [] and body["event_count"] == 2
 
-    def test_runtime_state_rejects_inactive_domain(self, server):
+    def test_runtime_state_rejects_unsupported_domain(self, server):
         status, body = http_post(server.base_url + "/api/runtime-state/set",
-                                 {"key": "k", "value": "v", "domain": "RELATIONSHIP"})
+                                 {"key": "k", "value": "v", "domain": "MOOD"})
         assert status == 409 and body["ok"] is False
+
+    def test_relationship_psychology_set_adjust_remove_via_server(self, server):
+        s, b = http_post(server.base_url + "/api/runtime-state/set",
+                         {"domain": "RELATIONSHIP", "key": "andrey.trust", "value": "20"})
+        assert s == 200 and b["ok"] is True and b["event"]["value"] == "20"
+        s, b = http_post(server.base_url + "/api/runtime-state/adjust",
+                         {"domain": "RELATIONSHIP", "key": "andrey.trust", "delta": 10})
+        assert s == 200 and b["ok"] is True and b["previous_value"] == 20 and b["new_value"] == 30
+        # out-of-range delta rejected, state unchanged
+        s, b = http_post(server.base_url + "/api/runtime-state/adjust",
+                         {"domain": "RELATIONSHIP", "key": "andrey.trust", "delta": 90})
+        assert s == 409 and b["ok"] is False
+        s, b = http_post(server.base_url + "/api/runtime-state/set",
+                         {"domain": "PSYCHOLOGY", "key": "stress", "value": "25"})
+        assert s == 200 and b["ok"] is True
+        _, body = http_get(server.base_url + "/api/runtime-state")
+        vals = {(e["domain"], e["key"]): e["value"] for e in body["current"]}
+        assert vals[("RELATIONSHIP", "andrey.trust")] == "30"
+        assert vals[("PSYCHOLOGY", "stress")] == "25"
+        s, b = http_post(server.base_url + "/api/runtime-state/remove",
+                         {"domain": "PSYCHOLOGY", "key": "stress"})
+        assert s == 200 and b["ok"] is True
+        # adjust after remove is rejected
+        s, b = http_post(server.base_url + "/api/runtime-state/adjust",
+                         {"domain": "PSYCHOLOGY", "key": "stress", "delta": 5})
+        assert s == 409 and b["ok"] is False
 
     def test_runtime_state_isolated_per_clean_test(self, server):
         http_post(server.base_url + "/api/runtime-state/set", {"key": "k", "value": "v1"})

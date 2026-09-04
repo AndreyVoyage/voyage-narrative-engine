@@ -220,10 +220,29 @@ body { display: flex; flex-direction: column; }
 .mem-row .mem-text { white-space: pre-wrap; overflow-wrap: break-word; word-break: normal; }
 
 /* --- Runtime State inspector (own per-workspace ledger) --- */
-#state-current .mem-row, #state-history .mem-row {
-  grid-template-columns: 70px 200px minmax(220px, 1fr) 240px 140px;
+.state-section-title {
+  font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--muted); margin: 14px 0 4px;
 }
-#state-history .mem-row { grid-template-columns: 60px 80px 180px minmax(200px, 1fr) 160px 150px; }
+#state-current .mem-row {
+  grid-template-columns: 120px 200px minmax(180px, 1fr) 240px 60px;
+}
+#state-history .mem-row {
+  grid-template-columns: 50px 70px 110px 180px minmax(160px, 1fr) 150px 150px;
+}
+/* #state-current / #state-history sit inside .scene-form, a column flex
+   container. Being `overflow:auto` boxes (from .memory-table) with no
+   explicit height, their flexbox "automatic minimum size" resolves to 0, so
+   the parent's flex-shrink was crushing them down to a sliver whenever the
+   surrounding form content overflowed the panel -- leaving only a thin
+   clipped strip plus a horizontal scrollbar. Prevent that shrink so each
+   table renders at its natural content height; the enclosing .scene-form
+   keeps scrolling the whole panel (overflow-y: auto, unchanged) when the
+   combined content is taller than the viewport. */
+#state-current, #state-history {
+  flex: 0 0 auto;
+  min-height: 96px;
+}
 
 .scene-form { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 14px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
 .scene-form h1 { font-size: 16px; margin: 0; }

@@ -288,7 +288,7 @@ class TestApiAndUi:
         app = _make_app(tmp_path)
         st = app.runtime_state()
         assert st["current"] == []
-        assert st["domains_active"] == ["FACT"]
+        assert st["domains_active"] == ["FACT", "RELATIONSHIP", "PSYCHOLOGY"]
         assert "history" in st
 
     def test_operator_set_works(self, tmp_path):
@@ -350,16 +350,20 @@ class TestApiAndUi:
                               "extract facts", "accept model claim", "accept_claim",
                               "auto_promot"):
                 assert forbidden not in low, forbidden
-        # server exposes exactly the three explicit runtime-state routes
-        assert server.count('"/api/runtime-state') == 3
+        # explicit runtime-state routes only (no promote/extract endpoint);
+        # /adjust is an explicit operator delta, not autonomous evolution
+        assert server.count('"/api/runtime-state') == 4
         assert '"/api/runtime-state"' in server
         assert '"/api/runtime-state/set"' in server
+        assert '"/api/runtime-state/adjust"' in server
         assert '"/api/runtime-state/remove"' in server
+        assert "/api/runtime-state/evolve" not in server
+        assert "/api/runtime-state/auto" not in server
 
-    def test_domains_relationship_psychology_not_active(self, tmp_path):
+    def test_relationship_and_psychology_domains_now_active(self, tmp_path):
         app = _make_app(tmp_path)
-        r = app.runtime_state_set({"key": "k", "value": "v", "domain": "RELATIONSHIP"})
-        assert r["ok"] is False
-        r = app.runtime_state_set({"key": "k", "value": "v", "domain": "PSYCHOLOGY"})
-        assert r["ok"] is False
-        assert app.runtime_state()["domains_active"] == ["FACT"]
+        assert app.runtime_state()["domains_active"] == ["FACT", "RELATIONSHIP", "PSYCHOLOGY"]
+        r = app.runtime_state_set({"key": "andrey.trust", "value": "20", "domain": "RELATIONSHIP"})
+        assert r["ok"] is True and r["event"]["value"] == "20"
+        r = app.runtime_state_set({"key": "stress", "value": "40", "domain": "PSYCHOLOGY"})
+        assert r["ok"] is True and r["event"]["value"] == "40"

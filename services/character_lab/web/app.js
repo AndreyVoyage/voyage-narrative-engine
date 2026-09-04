@@ -375,7 +375,9 @@ async function loadRuntimeState() {
     const head = el("div", "mem-row head");
     ["domain", "key", "value", "source", "seq"].forEach((h) => head.appendChild(el("span", "", h)));
     cur.appendChild(head);
+    const byKey = {};
     (data.current || []).forEach((e) => {
+      byKey[e.domain + "|" + e.key] = e;
       const row = el("div", "mem-row");
       row.appendChild(el("span", "", e.domain));
       row.appendChild(el("span", "", e.key));
@@ -387,15 +389,31 @@ async function loadRuntimeState() {
     });
     if (!(data.current || []).length) cur.appendChild(el("div", "note", "Состояние пусто."));
 
+    // reflect current numeric values back into the RELATIONSHIP / PSYCHOLOGY forms
+    const relSubj = ($("rel-subject").value || "").trim();
+    const relDim = ($("rel-dimension").value || "").trim();
+    const relEntry = relSubj && relDim ? byKey["RELATIONSHIP|" + relSubj + "." + relDim] : null;
+    $("rel-current").value = relEntry ? relEntry.value : "";
+    const psyDim = ($("psy-dimension").value || "").trim();
+    const psyEntry = psyDim ? byKey["PSYCHOLOGY|" + psyDim] : null;
+    $("psy-current").value = psyEntry ? psyEntry.value : "";
+
     const hh = el("div", "mem-row head");
-    ["seq", "action", "key", "value", "source", "время"].forEach((h) => hh.appendChild(el("span", "", h)));
+    ["seq", "action", "domain", "key", "переход", "source", "время"].forEach((h) => hh.appendChild(el("span", "", h)));
     hist.appendChild(hh);
     (data.history || []).forEach((ev) => {
       const row = el("div", "mem-row");
       row.appendChild(el("span", "", ev.seq !== null && ev.seq !== undefined ? String(ev.seq) : "—"));
       row.appendChild(el("span", "", ev.action));
+      row.appendChild(el("span", "", ev.domain));
       row.appendChild(el("span", "", ev.key));
-      row.appendChild(el("span", "mem-text", ev.value || "—"));
+      let transition = ev.value || "—";
+      if (ev.previous_value !== undefined && ev.previous_value !== null && ev.action === "SET") {
+        transition = ev.previous_value + " → " + (ev.new_value !== null ? ev.new_value : ev.value);
+      } else if (ev.action === "SET" && ev.previous_value === null) {
+        transition = "— → " + (ev.new_value !== undefined && ev.new_value !== null ? ev.new_value : ev.value);
+      }
+      row.appendChild(el("span", "mem-text", transition));
       row.appendChild(el("span", "", ev.source_kind));
       row.appendChild(el("span", "", (ev.created_at || "").replace("T", " ").replace("+00:00", "")));
       hist.appendChild(row);
@@ -403,6 +421,75 @@ async function loadRuntimeState() {
   } catch (e) {
     cur.appendChild(el("div", "note", "Ошибка: " + e.message));
   }
+}
+
+function relKey() {
+  const s = ($("rel-subject").value || "").trim();
+  const d = ($("rel-dimension").value || "").trim();
+  return s && d ? (s + "." + d) : "";
+}
+
+// The Δ field's own placeholder ("напр. +10 или -5") invites a leading "+",
+// but the backend stores/accepts only a canonical decimal integer (no "+",
+// e.g. "-25", "0", "60") and rejects anything else -- which silently failed
+// the whole ADJUST request. Strip a redundant leading "+" (and surrounding
+// whitespace) here so the delta we send is already canonical; this changes
+// nothing about validation, range, or reject-not-clamp behavior server-side.
+function normalizeDelta(raw) {
+  let v = (raw || "").trim();
+  if (v.startsWith("+")) v = v.slice(1).trim();
+  return v;
+}
+
+async function postState(endpoint, body, okMsg) {
+  try {
+    const r = await api("/api/runtime-state/" + endpoint, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    addSystemMessage(r.ok ? okMsg(r) : ("Отклонено: " + r.message));
+  } catch (e) {
+    addSystemMessage("Ошибка: " + e.message);
+  }
+  await loadRuntimeState();
+  await refreshLoadedState();
+}
+
+function setRelationship() {
+  const key = relKey();
+  if (!key) { addSystemMessage("Укажите субъект и параметр."); return; }
+  return postState("set", { domain: "RELATIONSHIP", key: key, value: $("rel-value").value, source_ref: $("rel-source").value },
+    (r) => "Отношения: " + r.event.key + " = " + r.event.value);
+}
+function adjustRelationship() {
+  const key = relKey();
+  if (!key) { addSystemMessage("Укажите субъект и параметр."); return; }
+  return postState("adjust", { domain: "RELATIONSHIP", key: key, delta: normalizeDelta($("rel-delta").value), source_ref: $("rel-source").value },
+    (r) => "Отношения: " + r.event.key + " " + r.previous_value + " → " + r.new_value);
+}
+function removeRelationship() {
+  const key = relKey();
+  if (!key) { addSystemMessage("Укажите субъект и параметр."); return; }
+  return postState("remove", { domain: "RELATIONSHIP", key: key, source_ref: $("rel-source").value },
+    (r) => "Отношения: " + key + " удалено (история сохранена)");
+}
+function setPsychology() {
+  const key = ($("psy-dimension").value || "").trim();
+  if (!key) { addSystemMessage("Укажите параметр."); return; }
+  return postState("set", { domain: "PSYCHOLOGY", key: key, value: $("psy-value").value, source_ref: $("psy-source").value },
+    (r) => "Психология: " + r.event.key + " = " + r.event.value);
+}
+function adjustPsychology() {
+  const key = ($("psy-dimension").value || "").trim();
+  if (!key) { addSystemMessage("Укажите параметр."); return; }
+  return postState("adjust", { domain: "PSYCHOLOGY", key: key, delta: normalizeDelta($("psy-delta").value), source_ref: $("psy-source").value },
+    (r) => "Психология: " + r.event.key + " " + r.previous_value + " → " + r.new_value);
+}
+function removePsychology() {
+  const key = ($("psy-dimension").value || "").trim();
+  if (!key) { addSystemMessage("Укажите параметр."); return; }
+  return postState("remove", { domain: "PSYCHOLOGY", key: key, source_ref: $("psy-source").value },
+    (r) => "Психология: " + key + " удалено (история сохранена)");
 }
 
 async function saveRuntimeState() {
@@ -603,6 +690,12 @@ async function init() {
   $("scene-clear").addEventListener("click", clearScene);
   $("state-set").addEventListener("click", saveRuntimeState);
   $("state-remove").addEventListener("click", removeRuntimeFact);
+  $("rel-set").addEventListener("click", setRelationship);
+  $("rel-adjust").addEventListener("click", adjustRelationship);
+  $("rel-remove").addEventListener("click", removeRelationship);
+  $("psy-set").addEventListener("click", setPsychology);
+  $("psy-adjust").addEventListener("click", adjustPsychology);
+  $("psy-remove").addEventListener("click", removePsychology);
 
   await loadCatalog();
   await loadWorkspaces();

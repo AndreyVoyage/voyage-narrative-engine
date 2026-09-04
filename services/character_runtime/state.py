@@ -5,8 +5,15 @@
 Runtime State is a SEPARATE persistent layer from runtime memory. It is not the
 Accepted Character Package, not conversational memory, not model output, not a
 Scene, and never the product of automatic inference/extraction. Only an explicit
-deterministic operator action (``record_set`` / ``record_remove``) may create or
-change it in V1.
+deterministic operator action (``record_set`` / ``record_adjust`` /
+``record_remove``) may create or change it.
+
+Domains: ``FACT`` (arbitrary text), plus the numeric domains ``RELATIONSHIP``
+and ``PSYCHOLOGY`` whose ``value`` is a canonical decimal integer in
+[-100, 100]. Numeric domains additionally support ``record_adjust`` (an integer
+delta that appends a fresh ``SET``; out-of-range transitions are rejected, never
+clamped). Absence of a numeric key means UNKNOWN / NOT INITIALIZED -- a delta on
+an uninitialized key fails deterministically.
 
 Storage: an append-only state-event ledger in its OWN per-workspace SQLite file
 ``<root>/runtime_state.sqlite3`` -- the existing ``runtime_memory.sqlite3`` is
@@ -24,6 +31,7 @@ under the caller-supplied ``root``.
 
 from __future__ import annotations
 
+import re
 import sqlite3
 import uuid
 from dataclasses import dataclass
@@ -31,17 +39,55 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, Tuple
 
-# ---- V1 application-validated vocabularies (strings, so future slices may add
-#      RELATIONSHIP / PSYCHOLOGY domains without a DB migration) ---------------
+# ---- V1 application-validated vocabularies (strings only -- adding a domain
+#      never changes the runtime_state.sqlite3 schema) -----------------------
 
 DOMAIN_FACT = "FACT"
-#: Domains a V1 operator action may write. RELATIONSHIP / PSYCHOLOGY are
-#: intentionally NOT active in this slice.
-ACTIVE_DOMAINS: Tuple[str, ...] = (DOMAIN_FACT,)
+DOMAIN_RELATIONSHIP = "RELATIONSHIP"
+DOMAIN_PSYCHOLOGY = "PSYCHOLOGY"
+#: Domains an operator action may write.
+ACTIVE_DOMAINS: Tuple[str, ...] = (DOMAIN_FACT, DOMAIN_RELATIONSHIP, DOMAIN_PSYCHOLOGY)
+#: Domains whose ``value`` is a canonical decimal integer in [-100, 100] and
+#: which additionally support the ADJUST/delta transition.
+NUMERIC_DOMAINS: Tuple[str, ...] = (DOMAIN_RELATIONSHIP, DOMAIN_PSYCHOLOGY)
+
+NUMERIC_STATE_MIN = -100
+NUMERIC_STATE_MAX = 100
+
+# RELATIONSHIP key: <other_subject_id>.<dimension> ; PSYCHOLOGY key: <dimension>.
+_RELATIONSHIP_KEY_RE = re.compile(r"^[a-z0-9_]+\.[a-z0-9_]+$")
+_PSYCHOLOGY_KEY_RE = re.compile(r"^[a-z0-9_]+$")
 
 ACTION_SET = "SET"
 ACTION_REMOVE = "REMOVE"
 ACTIONS: Tuple[str, ...] = (ACTION_SET, ACTION_REMOVE)
+
+
+def _coerce_state_int(value) -> int:
+    """Parse a canonical integer state value; reject %/words/floats/bools."""
+    if isinstance(value, bool):
+        raise RuntimeStateError("numeric state value must be an integer")
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str) and re.fullmatch(r"-?\d+", value.strip()):
+        return int(value.strip())
+    raise RuntimeStateError(
+        f"numeric state value must be a canonical integer, got {value!r}"
+    )
+
+
+def _validate_numeric_key(domain: str, key: str) -> str:
+    key = (key or "").strip()
+    if domain == DOMAIN_RELATIONSHIP and not _RELATIONSHIP_KEY_RE.match(key):
+        raise RuntimeStateError(
+            f"RELATIONSHIP key must match <other_subject_id>.<dimension> "
+            f"([a-z0-9_]+.[a-z0-9_]+), got {key!r}"
+        )
+    if domain == DOMAIN_PSYCHOLOGY and not _PSYCHOLOGY_KEY_RE.match(key):
+        raise RuntimeStateError(
+            f"PSYCHOLOGY key must match <dimension> ([a-z0-9_]+), got {key!r}"
+        )
+    return key
 
 #: The only active source kind in V1. A state fact is only ever created by an
 #: explicit operator confirmation -- never promoted automatically from memory,
@@ -183,6 +229,16 @@ class RuntimeStateBackend:
         if not isinstance(key, str) or not key.strip():
             raise RuntimeStateError("key must be a non-empty string")
         key = key.strip()
+        if domain in NUMERIC_DOMAINS:
+            key = _validate_numeric_key(domain, key)
+            if action == ACTION_SET:
+                n = _coerce_state_int(value)
+                if not (NUMERIC_STATE_MIN <= n <= NUMERIC_STATE_MAX):
+                    raise RuntimeStateError(
+                        f"numeric state value {n} out of range "
+                        f"[{NUMERIC_STATE_MIN}, {NUMERIC_STATE_MAX}]"
+                    )
+                value = str(n)
         if source_kind not in ACTIVE_SOURCE_KINDS:
             raise RuntimeStateError(
                 f"source_kind {source_kind!r} is not active in V1 "
@@ -285,6 +341,66 @@ class RuntimeStateBackend:
             key=key,
             action=ACTION_REMOVE,
             value=None,
+            source_kind=source_kind,
+            source_ref=source_ref,
+            event_id=event_id,
+            created_at=created_at,
+        )
+
+    def current_numeric(self, domain: str, key: str) -> Optional[int]:
+        """Current integer value for a numeric ``domain+key``; ``None`` if not
+        initialized (absent, or last event was REMOVE)."""
+        key = (key or "").strip()
+        for entry in self.load_current_state(self._subject_id):
+            if entry.domain == domain and entry.key == key:
+                return _coerce_state_int(entry.value)
+        return None
+
+    def record_adjust(
+        self,
+        *,
+        key: str,
+        delta,
+        domain: str,
+        source_kind: str = SOURCE_OPERATOR_CONFIRMED,
+        source_ref: Optional[str] = None,
+        event_id: Optional[str] = None,
+        created_at: Optional[str] = None,
+    ) -> RuntimeStateEvent:
+        """Apply an integer delta to an already-initialized numeric value.
+
+        Appends a NEW ``SET`` event ``value = current + delta`` (the earlier
+        event is never overwritten, so history proves e.g. ``20 -> 30``).
+
+        Deterministic failures, leaving state unchanged:
+        - ``domain`` is not numeric (FACT rejects ADJUST);
+        - ``delta`` is not an integer;
+        - the key is not initialized (operator must SET an absolute value first);
+        - ``current + delta`` falls outside [-100, 100] (rejected, never clamped).
+        """
+        if domain not in NUMERIC_DOMAINS:
+            raise RuntimeStateError(
+                f"ADJUST is only valid for numeric domains {NUMERIC_DOMAINS}"
+            )
+        step = _coerce_state_int(delta)
+        key = _validate_numeric_key(domain, (key or "").strip())
+        current = self.current_numeric(domain, key)
+        if current is None:
+            raise RuntimeStateError(
+                f"{domain} key {key!r} is not initialized; SET an absolute "
+                f"value first"
+            )
+        new_value = current + step
+        if not (NUMERIC_STATE_MIN <= new_value <= NUMERIC_STATE_MAX):
+            raise RuntimeStateError(
+                f"adjusted value {new_value} out of range "
+                f"[{NUMERIC_STATE_MIN}, {NUMERIC_STATE_MAX}]; state unchanged"
+            )
+        return self._append(
+            domain=domain,
+            key=key,
+            action=ACTION_SET,
+            value=str(new_value),
             source_kind=source_kind,
             source_ref=source_ref,
             event_id=event_id,

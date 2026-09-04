@@ -273,6 +273,10 @@ class CharacterLabServer:
                         result = app.runtime_state_set(self._read_json())
                         self._json(200 if result.get("ok") else 409, result)
                         return
+                    if path == "/api/runtime-state/adjust":
+                        result = app.runtime_state_adjust(self._read_json())
+                        self._json(200 if result.get("ok") else 409, result)
+                        return
                     if path == "/api/runtime-state/remove":
                         result = app.runtime_state_remove(self._read_json())
                         self._json(200 if result.get("ok") else 409, result)

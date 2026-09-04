@@ -101,21 +101,52 @@
         <div class="scene-form">
           <h1>Состояние (Runtime State)</h1>
           <p class="note">
-            Runtime State — это факты, которые оператор явно подтвердил как
-            текущее состояние. Это не Принятый пакет персонажа, не память
-            разговора, не вывод модели и не сцена. Здесь нет автоматического
-            переноса: ни память, ни ответ модели, ни сцена сами по себе не
-            становятся состоянием. Только явное действие оператора ниже.
+            Runtime State — это значения, которые оператор явно подтвердил как
+            текущее состояние выполнения. Это не Принятый пакет персонажа, не
+            память разговора, не вывод модели и не сцена. Здесь нет
+            автоматической эволюции: ни память, ни ответ модели, ни сцена, ни
+            канон сами по себе не меняют состояние. Только явные действия
+            оператора ниже. Числовые домены используют шкалу −100..+100;
+            отсутствие ключа означает «не инициализировано».
           </p>
+
+          <h2 class="state-section-title">Факты</h2>
           <label>Ключ<input id="state-key" autocomplete="off" placeholder="living.city"></label>
           <label>Значение<input id="state-value" autocomplete="off"></label>
-          <label>Источник / ссылка (необязательно)<input id="state-source-ref" autocomplete="off" placeholder="ID события памяти или хода — только аннотация"></label>
+          <label>Источник / причина (необязательно)<input id="state-source-ref" autocomplete="off" placeholder="ID события памяти или хода — только аннотация"></label>
           <div class="scene-actions">
             <button id="state-set" class="btn primary">Подтвердить состояние</button>
             <button id="state-remove" class="btn">Удалить факт</button>
           </div>
+
+          <h2 class="state-section-title">Отношения</h2>
+          <label>Персонаж / субъект<input id="rel-subject" autocomplete="off" placeholder="andrey"></label>
+          <label>Параметр<input id="rel-dimension" autocomplete="off" placeholder="trust"></label>
+          <label>Текущее значение<input id="rel-current" readonly placeholder="(не инициализировано)"></label>
+          <label>Новое абсолютное значение<input id="rel-value" autocomplete="off" placeholder="-100..100"></label>
+          <label>Изменение Δ<input id="rel-delta" autocomplete="off" placeholder="напр. +10 или -5"></label>
+          <label>Источник / причина<input id="rel-source" autocomplete="off"></label>
+          <div class="scene-actions">
+            <button id="rel-set" class="btn primary">Установить</button>
+            <button id="rel-adjust" class="btn">Изменить на Δ</button>
+            <button id="rel-remove" class="btn">Удалить</button>
+          </div>
+
+          <h2 class="state-section-title">Психология</h2>
+          <label>Параметр<input id="psy-dimension" autocomplete="off" placeholder="stress"></label>
+          <label>Текущее значение<input id="psy-current" readonly placeholder="(не инициализировано)"></label>
+          <label>Новое абсолютное значение<input id="psy-value" autocomplete="off" placeholder="-100..100"></label>
+          <label>Изменение Δ<input id="psy-delta" autocomplete="off" placeholder="напр. +10 или -5"></label>
+          <label>Источник / причина<input id="psy-source" autocomplete="off"></label>
+          <div class="scene-actions">
+            <button id="psy-set" class="btn primary">Установить</button>
+            <button id="psy-adjust" class="btn">Изменить на Δ</button>
+            <button id="psy-remove" class="btn">Удалить</button>
+          </div>
+
+          <h2 class="state-section-title">Текущее состояние</h2>
           <div id="state-current" class="memory-table"></div>
-          <h2 style="font-size:12px;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted);margin:12px 0 6px;">История состояния</h2>
+          <h2 class="state-section-title">История состояния</h2>
           <div id="state-history" class="memory-table"></div>
         </div>
       </div>

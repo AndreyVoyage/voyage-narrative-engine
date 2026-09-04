@@ -26,6 +26,9 @@ from services.character_runtime import RuntimeMemoryBackend, load_accepted_chara
 from services.character_runtime.state import (
     ACTIVE_DOMAINS,
     DOMAIN_FACT,
+    NUMERIC_DOMAINS,
+    NUMERIC_STATE_MAX,
+    NUMERIC_STATE_MIN,
     SOURCE_OPERATOR_CONFIRMED,
     RuntimeStateBackend,
     RuntimeStateError,
@@ -655,11 +658,21 @@ class CharacterLabApp:
             return "matched_memory_event"
         return "unverified_annotation"
 
+    @staticmethod
+    def _as_state_int(value):
+        try:
+            return int(str(value).strip())
+        except (TypeError, ValueError):
+            return None
+
     def _serialize_state_entry(self, entry) -> dict:
+        numeric = entry.domain in NUMERIC_DOMAINS
         return {
             "domain": entry.domain,
             "key": entry.key,
             "value": entry.value,
+            "value_int": self._as_state_int(entry.value) if numeric else None,
+            "numeric": numeric,
             "source_kind": entry.source_kind,
             "source_ref": entry.source_ref,
             "source_ref_status": self._classify_source_ref(entry.source_ref),
@@ -676,35 +689,58 @@ class CharacterLabApp:
             history = backend.load_events("kira")
         finally:
             backend.close()
+
+        # Derive "previous -> new" transitions from history alone (no persisted
+        # previous_value column). Only meaningful for numeric domains.
+        running: dict = {}
+        history_rows = []
+        for ev in history:
+            k = (ev.domain, ev.key)
+            prev = running.get(k)
+            row = {
+                "seq": ev.seq,
+                "event_id": ev.event_id,
+                "domain": ev.domain,
+                "key": ev.key,
+                "action": ev.action,
+                "value": ev.value,
+                "source_kind": ev.source_kind,
+                "source_ref": ev.source_ref,
+                "created_at": ev.created_at,
+            }
+            if ev.domain in NUMERIC_DOMAINS:
+                row["previous_value"] = prev
+                row["new_value"] = self._as_state_int(ev.value) if ev.action == "SET" else None
+            if ev.action == "SET":
+                running[k] = self._as_state_int(ev.value)
+            else:  # REMOVE -> back to UNKNOWN / NOT INITIALIZED
+                running[k] = None
+            history_rows.append(row)
+
         return {
             "workspace_id": workspace.workspace_id,
             "workspace_kind": workspace.workspace_kind,
             "domains_active": list(ACTIVE_DOMAINS),
+            "numeric_domains": list(NUMERIC_DOMAINS),
+            "numeric_range": [NUMERIC_STATE_MIN, NUMERIC_STATE_MAX],
             "source_kinds_active": [SOURCE_OPERATOR_CONFIRMED],
             "automatic_promotion": False,
+            "automatic_evolution": False,
             "current": [self._serialize_state_entry(e) for e in current],
             "current_count": len(current),
-            "history": [
-                {
-                    "seq": ev.seq,
-                    "event_id": ev.event_id,
-                    "domain": ev.domain,
-                    "key": ev.key,
-                    "action": ev.action,
-                    "value": ev.value,
-                    "source_kind": ev.source_kind,
-                    "source_ref": ev.source_ref,
-                    "created_at": ev.created_at,
-                }
-                for ev in history
-            ],
+            "history": history_rows,
             "event_count": len(history),
         }
+
+    @staticmethod
+    def _clean_source_ref(source_ref):
+        return source_ref if isinstance(source_ref, str) and source_ref.strip() else None
 
     def runtime_state_set(self, payload: dict) -> dict:
         payload = payload or {}
         key = (payload.get("key") or "").strip()
-        value = (payload.get("value") or "").strip()
+        raw_value = payload.get("value")
+        value = "" if raw_value is None else str(raw_value).strip()
         domain = (payload.get("domain") or DOMAIN_FACT).strip() or DOMAIN_FACT
         source_ref = payload.get("source_ref")
         if not key:
@@ -718,7 +754,7 @@ class CharacterLabApp:
                 value=value,
                 domain=domain,
                 source_kind=SOURCE_OPERATOR_CONFIRMED,
-                source_ref=source_ref if isinstance(source_ref, str) and source_ref.strip() else None,
+                source_ref=self._clean_source_ref(source_ref),
             )
         except RuntimeStateError as exc:
             return {"ok": False, "error": "state_rejected", "message": str(exc)}
@@ -740,10 +776,61 @@ class CharacterLabApp:
             "source_ref_status": self._classify_source_ref(event.source_ref),
         }
 
+    def runtime_state_adjust(self, payload: dict) -> dict:
+        """Apply an integer delta to an initialized numeric (RELATIONSHIP /
+        PSYCHOLOGY) value. Appends a fresh SET; rejects (state unchanged) an
+        uninitialized key, a non-integer delta, FACT, or an out-of-range result.
+        """
+        payload = payload or {}
+        key = (payload.get("key") or "").strip()
+        domain = (payload.get("domain") or "").strip()
+        delta = payload.get("delta")
+        source_ref = payload.get("source_ref")
+        if not key:
+            return {"ok": False, "error": "invalid_key", "message": "Ключ обязателен."}
+        if not domain:
+            return {"ok": False, "error": "invalid_domain", "message": "Домен обязателен."}
+        backend = self._state_backend()
+        try:
+            previous = (
+                backend.current_numeric(domain, key)
+                if domain in NUMERIC_DOMAINS
+                else None
+            )
+            event = backend.record_adjust(
+                key=key,
+                delta=delta,
+                domain=domain,
+                source_kind=SOURCE_OPERATOR_CONFIRMED,
+                source_ref=self._clean_source_ref(source_ref),
+            )
+        except RuntimeStateError as exc:
+            return {"ok": False, "error": "state_rejected", "message": str(exc)}
+        finally:
+            backend.close()
+        return {
+            "ok": True,
+            "action": "ADJUST",
+            "previous_value": previous,
+            "new_value": self._as_state_int(event.value),
+            "event": {
+                "seq": event.seq,
+                "event_id": event.event_id,
+                "domain": event.domain,
+                "key": event.key,
+                "value": event.value,
+                "action": event.action,
+                "source_kind": event.source_kind,
+                "source_ref": event.source_ref,
+                "created_at": event.created_at,
+            },
+        }
+
     def runtime_state_remove(self, payload: dict) -> dict:
         payload = payload or {}
         key = (payload.get("key") or "").strip()
         domain = (payload.get("domain") or DOMAIN_FACT).strip() or DOMAIN_FACT
+        source_ref = payload.get("source_ref")
         if not key:
             return {"ok": False, "error": "invalid_key", "message": "Ключ обязателен."}
         backend = self._state_backend()
@@ -753,7 +840,8 @@ class CharacterLabApp:
                 for e in backend.load_current_state("kira")
             )
             event = backend.record_remove(
-                key=key, domain=domain, source_kind=SOURCE_OPERATOR_CONFIRMED
+                key=key, domain=domain, source_kind=SOURCE_OPERATOR_CONFIRMED,
+                source_ref=self._clean_source_ref(source_ref),
             )
         except RuntimeStateError as exc:
             return {"ok": False, "error": "state_rejected", "message": str(exc)}
