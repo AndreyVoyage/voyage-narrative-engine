@@ -619,6 +619,102 @@ def test_no_retry_or_fallback_logic(tmp_path, monkeypatch):
     assert (out_root / PROFILE_ID / "sc_004_andrey_olga_image_01.png").exists()
 
 
+def test_scene_text_mode_builds_auto_profile_and_reuses_orchestrate():
+    """Ordinary Russian prose -> validated plan -> the existing Profile object,
+    in AUTO mode, with no manual references[] and no duplicated pipeline."""
+    text = (
+        "Марина лежит на коврике в спортзале и делает растяжку.\n"
+        "Максим находится рядом и наблюдает за её техникой.\n"
+        "Марина поворачивает голову и смотрит на него."
+    )
+    fixture = (
+        _REPO_ROOT / "tests/fixtures/scene_text_interpreter/first_proof_proposal.json"
+    )
+    profile, plan = app.profile_from_scene_text(
+        text, repo_root=_REPO_ROOT, proposal_fixture=fixture
+    )
+    assert isinstance(profile, Profile)
+    assert profile.mode == "auto"
+    assert profile.references == ()
+    assert profile.characters_in_frame == ("MARINA", "MAKSIM")
+    assert profile.prompt_aliases == {"MARINA": "Marina", "MAKSIM": "Maksim"}
+    assert profile.location_id == "gym"
+    assert profile.scene_tags == ("stretching", "training", "neutral")
+    assert profile.fixture_ref == app.SCENE_TEXT_GENERIC_FIXTURE_REL
+    assert plan.status == "DRAFT"
+    assert plan.chosen_still.beat_index == 3
+
+
+_RU_SCENE = (
+    "Марина лежит на коврике в спортзале и делает растяжку.\n"
+    "Максим находится рядом и наблюдает за её техникой.\n"
+    "Марина поворачивает голову и смотрит на него."
+)
+
+
+def test_live_interpreter_requires_semantic_gate(monkeypatch, capsys):
+    """--live-interpreter without SCENE_TEXT_INTERPRETER_LIVE=1 fails closed and
+    never constructs the live proposer / touches the transport."""
+    monkeypatch.delenv(app.SEMANTIC_LIVE_ENV_VAR, raising=False)
+    import tools.scene_text_llm_adapter as adapter
+
+    def boom(*a, **k):
+        raise AssertionError("live proposer must not be constructed")
+
+    monkeypatch.setattr(adapter.DeepSeekSceneTextProposer, "__init__", boom)
+    code = app.run_preview(
+        scene_text=_RU_SCENE, repo_root=_REPO_ROOT, live_interpreter=True
+    )
+    err = capsys.readouterr().err
+    assert code == 1
+    assert app.SEMANTIC_LIVE_ENV_VAR in err
+
+
+def test_semantic_live_gate_is_independent_of_image_gate(tmp_path, monkeypatch, capsys):
+    """With the SEMANTIC gate on and a mocked transport, a scene-text preview
+    completes with DRY_RUN_RESULT=PASS while the IMAGE provider is never called
+    and the image gate stays off."""
+    from tests.test_scene_text_interpreter import _build_hermetic_auto  # reuse
+
+    root, manifest = _build_hermetic_auto(tmp_path)
+
+    monkeypatch.setenv(app.SEMANTIC_LIVE_ENV_VAR, "1")
+    monkeypatch.setenv(app.DEEPSEEK_API_KEY_ENV_VAR, "dummy-not-read-by-adapter")
+    monkeypatch.delenv(LIVE_ENV_VAR, raising=False)
+
+    proposal_json = (
+        _REPO_ROOT / "tests/fixtures/scene_text_interpreter/first_proof_proposal.json"
+    ).read_text(encoding="utf-8")
+    proposal = json.loads(proposal_json)["proposal"]
+
+    from tools import llm_provider
+
+    monkeypatch.setattr(
+        llm_provider,
+        "complete",
+        lambda *a, **k: json.dumps(proposal, ensure_ascii=False),
+    )
+
+    def image_boom(*a, **k):
+        raise AssertionError("image provider must not be called in a semantic-live preview")
+
+    monkeypatch.setattr(app, "generate_conditioned_image_from_bundle", image_boom)
+
+    code = app.run_preview(
+        scene_text=_RU_SCENE,
+        repo_root=root,
+        manifest_path=manifest,
+        live_interpreter=True,
+    )
+    out = capsys.readouterr().out
+    assert code == 0
+    assert "REAL_LLM_PROPOSER=YES" in out
+    assert "RAW_RESPONSE_SHA256=" in out
+    assert "REFERENCE_SELECTION_MODE=AUTO" in out
+    assert "DRY_RUN_RESULT=PASS" in out
+    assert "READY_FOR_LIVE_GENERATION=YES" in out
+
+
 def test_deterministic_preview_for_same_inputs(tmp_path):
     hermetic = _build_hermetic(tmp_path)
     profile = Profile(hermetic["profile"])

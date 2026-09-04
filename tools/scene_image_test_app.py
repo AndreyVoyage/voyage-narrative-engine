@@ -65,6 +65,13 @@ from services.reference_library import (  # noqa: E402
     load_manifest,
 )
 from services.scene_interpretation import build_scene_interpretation_artifact  # noqa: E402
+from services.scene_text_interpreter import (  # noqa: E402
+    FixtureProposer,
+    SceneStillPlan,
+    SceneTextInterpreterError,
+    interpret_scene_text,
+    load_scene_still_plan,
+)
 from tools.reference_selector import (  # noqa: E402
     CatalogError,
     SelectionError,
@@ -86,6 +93,24 @@ API_KEY_ENV_VAR = "OPENAI_API_KEY"
 PROFILES_DIR_REL = "authoring/scene_image_test_profiles"
 PHYSICAL_PROFILES_REL = "authoring/scene_image_test_profiles/physical_profiles.json"
 CATALOG_REL = "authoring/reference_library/REFERENCE_SEMANTIC_CATALOG.json"
+
+# Raw-scene-text mode reuses one generic structured fixture only where the
+# existing Profile/orchestrate path requires a Scenario Schema V2 scene. The
+# in-memory cast_override remaps the placeholder cast to the resolved
+# characters; the resolved location_id is passed explicitly to the ASS
+# importer. No second scenario system is introduced.
+SCENE_TEXT_GENERIC_FIXTURE_REL = (
+    "tests/fixtures/scene_image_test_app/GENERIC_2CHAR.v2.json"
+)
+SCENE_TEXT_GENERIC_SCENE_ID = "SC_900"
+SCENE_TEXT_GENERIC_BRANCH_ID = "B1"
+SCENE_TEXT_GENERIC_CAST = ("KIRA", "SERGEY")
+
+# Dedicated gate for a LIVE semantic (LLM) interpretation. This is SEPARATE
+# from the image-generation gate (LIVE_ENV_VAR) on purpose: the semantic model
+# may be live while the image provider stays disabled.
+SEMANTIC_LIVE_ENV_VAR = "SCENE_TEXT_INTERPRETER_LIVE"
+DEEPSEEK_API_KEY_ENV_VAR = "DEEPSEEK_API_KEY"
 
 OUTPUT_ROOT = Path(
     "C:/DEV/Narrative/LOCAL_STORAGE/generated_media_smokes/SCENE_IMAGE_TEST_APP"
@@ -946,10 +971,59 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Scene Image Test App v0 (offline orchestration)."
     )
-    parser.add_argument("--profile", required=True, dest="profile_id")
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("--preview", action="store_true", help="Offline dry-run only.")
-    group.add_argument("--generate", action="store_true", help="Live call (gated).")
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument(
+        "--profile", dest="profile_id", help="Existing scene image test profile id."
+    )
+    source.add_argument(
+        "--scene-text",
+        dest="scene_text",
+        help=(
+            "Ordinary scene prose. Interpreted (offline) into an in-memory AUTO "
+            "profile via services.scene_text_interpreter."
+        ),
+    )
+    source.add_argument(
+        "--scene-file",
+        dest="scene_file",
+        help="Path to a UTF-8 file containing ordinary scene prose.",
+    )
+    source.add_argument(
+        "--plan-file",
+        dest="plan_file",
+        help=(
+            "Replay a previously emitted, validated SceneStillPlan JSON. Strict "
+            "load + content_hash recompute + bridge revalidation; NO semantic "
+            "call. Mutually exclusive with --scene-text/--scene-file/"
+            "--proposal-fixture/--live-interpreter."
+        ),
+    )
+    parser.add_argument(
+        "--proposal-fixture",
+        dest="proposal_fixture",
+        help=(
+            "Recorded interpreter proposal JSON (offline replay). Required with "
+            "--scene-text/--scene-file unless --live-interpreter is used."
+        ),
+    )
+    parser.add_argument(
+        "--live-interpreter",
+        dest="live_interpreter",
+        action="store_true",
+        help=(
+            "Use the LIVE DeepSeek semantic proposer instead of a recorded "
+            "fixture. Gated by SCENE_TEXT_INTERPRETER_LIVE=1 + DEEPSEEK_API_KEY. "
+            "Never enables image generation."
+        ),
+    )
+    parser.add_argument(
+        "--emit-plan",
+        dest="emit_plan",
+        help="Optional path to write the validated SceneStillPlan JSON (scene-text mode).",
+    )
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--preview", action="store_true", help="Offline dry-run only.")
+    mode.add_argument("--generate", action="store_true", help="Live call (gated).")
     parser.add_argument("--model", default=DEFAULT_MODEL)
     parser.add_argument("--size", default=DEFAULT_SIZE)
     parser.add_argument("--quality", default=DEFAULT_QUALITY)
@@ -964,11 +1038,212 @@ def _default_profiles_dir(repo_root: Path) -> Path:
     return repo_root / PROFILES_DIR_REL
 
 
+def format_still_plan_section(plan: SceneStillPlan, *, replay: bool = False) -> str:
+    """Render a deterministic, auditable SCENE STILL PLAN section."""
+    lines: list[str] = []
+    lines.append("SCENE STILL PLAN")
+    lines.append("RAW_TEXT_MODE=YES")
+    lines.append(f"PLAN_REPLAY_MODE={'YES' if replay else 'NO'}")
+    if replay:
+        lines.append("SEMANTIC_PROVIDER_CALLS=0")
+    lines.append(f"PLAN_STATUS={plan.status}")
+    lines.append(
+        f"SOURCE_LANGUAGE={plan.interpreter.get('source_language') or 'unknown'}"
+    )
+    lines.append(f"SOURCE_TEXT_HASH={plan.source_text_hash}")
+    lines.append(f"PLAN_CONTENT_HASH={plan.content_hash}")
+    lines.append(
+        "INTERPRETER="
+        f"{plan.interpreter.get('provider')}/{plan.interpreter.get('model')} "
+        f"mock={plan.interpreter.get('mock')}"
+    )
+    lines.append(f"RESOLVED_CHARACTERS={','.join(plan.characters_in_frame)}")
+    lines.append(f"RESOLVED_LOCATION={plan.location_id}")
+    lines.append(f"RESOLVED_SCENE_TAGS={','.join(plan.scene_tags)}")
+    lines.append("GROUNDING_VALID=YES")
+    lines.append(
+        "UNRESOLVED_ITEMS="
+        + (",".join(plan.unresolved_items) if plan.unresolved_items else "none")
+    )
+    lines.append("CHARACTER_EVIDENCE:")
+    for cid in plan.characters_in_frame:
+        spans = plan.evidence["character_spans"].get(cid, ())
+        lines.append(f"  {cid}: {' | '.join(spans)}")
+    lines.append(f"LOCATION_EVIDENCE={plan.evidence['location_span']}")
+    lines.append(f"STILL_CANDIDATE_COUNT={len(plan.still_candidates)}")
+    lines.append("STILL_CANDIDATES:")
+    for cand in plan.still_candidates:
+        lines.append(
+            f"  beat[{cand.beat_index}] score={cand.score} "
+            f"tags={','.join(cand.rationale_tags)}"
+        )
+    real_llm = plan.interpreter.get("mock") is False
+    lines.append(f"REAL_LLM_PROPOSER={'YES' if real_llm else 'NO'}")
+    raw_sha = plan.interpreter.get("raw_response_sha256")
+    if raw_sha:
+        lines.append(f"RAW_RESPONSE_SHA256={raw_sha}")
+    lines.append(f"CHOSEN_STILL_BEAT_INDEX={plan.chosen_still.beat_index}")
+    lines.append(f"CHOSEN_STILL_EVIDENCE={plan.evidence['chosen_still_beat_span']}")
+    lines.append("CHOSEN_STILL_VISUAL_GOAL")
+    lines.append(plan.chosen_still.visual_goal)
+    return "\n".join(lines)
+
+
+def _build_live_scene_text_proposer():
+    """Construct the LIVE DeepSeek semantic proposer, gated + fail-closed.
+
+    Requires the dedicated semantic gate (never the image gate) and a present
+    ``DEEPSEEK_API_KEY`` (presence only -- the value is never read here). The
+    adapter itself never reads the key; the shared cloud transport does, via
+    ``api_key_env``.
+    """
+    if os.environ.get(SEMANTIC_LIVE_ENV_VAR) != "1":
+        raise ProfileError(
+            f"{SEMANTIC_LIVE_ENV_VAR}=1 is required for --live-interpreter "
+            "(this gate is separate from image generation)"
+        )
+    if not os.environ.get(DEEPSEEK_API_KEY_ENV_VAR):
+        raise ProfileError(
+            f"{DEEPSEEK_API_KEY_ENV_VAR} is required for --live-interpreter"
+        )
+    from tools.scene_text_llm_adapter import DeepSeekSceneTextProposer
+
+    return DeepSeekSceneTextProposer()
+
+
+def _profile_from_plan(plan: SceneStillPlan) -> Profile:
+    """Bridge a validated SceneStillPlan to the existing in-memory AUTO-mode
+    Profile. Identical shape whether the plan came from live interpretation or
+    from a persisted replay. Never enumerates ``references[]``."""
+    cif = plan.characters_in_frame
+    if len(cif) != len(SCENE_TEXT_GENERIC_CAST):
+        raise ProfileError(
+            f"scene-text v0 requires exactly {len(SCENE_TEXT_GENERIC_CAST)} in-frame "
+            f"characters; got {len(cif)}"
+        )
+    src_slug = plan.source_text_hash[:12]
+    profile_data = {
+        "profile_id": f"SCENE_TEXT_{src_slug.upper()}",
+        "scene_id": SCENE_TEXT_GENERIC_SCENE_ID,
+        "branch_id": SCENE_TEXT_GENERIC_BRANCH_ID,
+        "location_id": plan.location_id,
+        "fixture_ref": SCENE_TEXT_GENERIC_FIXTURE_REL,
+        "media_item_id": f"scene_text_{src_slug}_image_01",
+        "cast_override": {
+            SCENE_TEXT_GENERIC_CAST[i]: cif[i] for i in range(len(cif))
+        },
+        "prompt_aliases": dict(plan.provider_alias_by_character),
+        "scene_tags": list(plan.scene_tags),
+        "scene_intent": plan.chosen_still.visual_goal,
+        "visual_goal": plan.chosen_still.visual_goal,
+        # NOTE: no "references" key -> AUTO reference selection.
+    }
+    return Profile(profile_data)
+
+
+def profile_from_scene_text(
+    raw_scene_text: str,
+    *,
+    repo_root: Path,
+    proposal_fixture: Optional[Path] = None,
+    proposer: Optional[object] = None,
+) -> tuple[Profile, SceneStillPlan]:
+    """Interpret ordinary scene prose into a validated plan and an in-memory
+    AUTO-mode Profile that the existing ``orchestrate`` path consumes unchanged.
+
+    Supply either ``proposal_fixture`` (offline replay) or an explicit
+    ``proposer`` (e.g. the live DeepSeek adapter). The Profile never enumerates
+    ``references[]``: the scene-aware AUTO reference selector stays authoritative.
+    """
+    if proposer is None:
+        if proposal_fixture is None:
+            raise ProfileError(
+                "profile_from_scene_text requires proposal_fixture or proposer"
+            )
+        proposer = FixtureProposer(Path(proposal_fixture))
+    plan = interpret_scene_text(
+        raw_scene_text, repo_root=repo_root, proposer=proposer
+    )
+    return _profile_from_plan(plan), plan
+
+
+def profile_from_plan_file(
+    plan_file: Path, *, repo_root: Path
+) -> tuple[Profile, SceneStillPlan]:
+    """Replay a persisted, validated SceneStillPlan into the existing Profile.
+
+    Strictly loads + hash-verifies + bridge-revalidates the plan. NEVER
+    instantiates or calls a SceneTextProposer and makes NO semantic/network
+    call.
+    """
+    plan = load_scene_still_plan(Path(plan_file), repo_root=repo_root)
+    return _profile_from_plan(plan), plan
+
+
+def _resolve_profile_and_plan(
+    *,
+    profile_id: Optional[str],
+    scene_text: Optional[str],
+    scene_file: Optional[str],
+    proposal_fixture: Optional[str],
+    live_interpreter: bool = False,
+    plan_file: Optional[str] = None,
+    repo_root: Path,
+) -> tuple[Profile, Optional[SceneStillPlan]]:
+    """Resolve a Profile from an existing profile id, ordinary prose, or a
+    persisted SceneStillPlan replay."""
+    if profile_id:
+        return load_profile(profile_id, _default_profiles_dir(repo_root)), None
+
+    if plan_file:
+        if proposal_fixture or live_interpreter or scene_text or scene_file:
+            raise ProfileError(
+                "--plan-file is a self-contained replay; do not combine it with "
+                "--scene-text/--scene-file/--proposal-fixture/--live-interpreter"
+            )
+        try:
+            return profile_from_plan_file(Path(plan_file), repo_root=repo_root)
+        except SceneTextInterpreterError as exc:
+            raise ProfileError(f"plan replay failed: {exc}") from exc
+
+    text = scene_text
+    if scene_file is not None:
+        try:
+            text = Path(scene_file).read_text(encoding="utf-8")
+        except OSError as exc:
+            raise ProfileError(
+                f"cannot read --scene-file {scene_file!r}: {exc}"
+            ) from exc
+    if not text or not text.strip():
+        raise ProfileError("scene text is empty")
+
+    if live_interpreter:
+        proposer = _build_live_scene_text_proposer()
+        try:
+            return profile_from_scene_text(
+                text, repo_root=repo_root, proposer=proposer
+            )
+        except SceneTextInterpreterError as exc:
+            raise ProfileError(f"scene-text interpretation failed: {exc}") from exc
+
+    if not proposal_fixture:
+        raise ProfileError(
+            "--proposal-fixture PATH is required with --scene-text/--scene-file "
+            "(offline replay), or pass --live-interpreter for the gated live "
+            "DeepSeek proposer"
+        )
+    try:
+        return profile_from_scene_text(
+            text, repo_root=repo_root, proposal_fixture=Path(proposal_fixture)
+        )
+    except SceneTextInterpreterError as exc:
+        raise ProfileError(f"scene-text interpretation failed: {exc}") from exc
+
+
 def _run_orchestrate(
-    profile_id: str, *, repo_root: Path, manifest_path: Path
+    profile: Profile, *, repo_root: Path, manifest_path: Path
 ) -> tuple[int, Optional[RunResult]]:
     try:
-        profile = load_profile(profile_id, _default_profiles_dir(repo_root))
         result = orchestrate(
             profile, repo_root=repo_root, manifest_path=manifest_path
         )
@@ -985,23 +1260,55 @@ def _run_orchestrate(
         return 1, None
 
 
+def _emit_plan_if_requested(plan: SceneStillPlan, emit_plan: Optional[str]) -> None:
+    if not emit_plan:
+        return
+    Path(emit_plan).write_text(
+        json.dumps(plan.to_dict(), indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+
+
 def run_preview(
-    profile_id: str,
+    profile_id: Optional[str] = None,
     *,
     repo_root: Optional[Path] = None,
     manifest_path: Optional[Path] = None,
     model: str = DEFAULT_MODEL,
     size: str = DEFAULT_SIZE,
     quality: str = DEFAULT_QUALITY,
+    scene_text: Optional[str] = None,
+    scene_file: Optional[str] = None,
+    proposal_fixture: Optional[str] = None,
+    live_interpreter: bool = False,
+    plan_file: Optional[str] = None,
+    emit_plan: Optional[str] = None,
 ) -> int:
     """Run the offline preview and print the deterministic report."""
     root = repo_root if repo_root is not None else _default_repo_root()
     manifest = (
         manifest_path if manifest_path is not None else default_manifest_path(root)
     )
-    code, result = _run_orchestrate(
-        profile_id, repo_root=root, manifest_path=manifest
-    )
+    try:
+        profile, plan = _resolve_profile_and_plan(
+            profile_id=profile_id,
+            scene_text=scene_text,
+            scene_file=scene_file,
+            proposal_fixture=proposal_fixture,
+            live_interpreter=live_interpreter,
+            plan_file=plan_file,
+            repo_root=root,
+        )
+    except SceneImageTestAppError as exc:
+        print(f"FAIL: {exc}", file=sys.stderr)
+        print("DRY_RUN_RESULT=FAIL", file=sys.stderr)
+        print("READY_FOR_LIVE_GENERATION=NO", file=sys.stderr)
+        return 1
+    if plan is not None:
+        print(format_still_plan_section(plan, replay=plan_file is not None))
+        print()
+        _emit_plan_if_requested(plan, emit_plan)
+    code, result = _run_orchestrate(profile, repo_root=root, manifest_path=manifest)
     if code != 0 or result is None:
         return code
     print(format_preview(result, model=model, size=size, quality=quality))
@@ -1009,7 +1316,7 @@ def run_preview(
 
 
 def run_generate(
-    profile_id: str,
+    profile_id: Optional[str] = None,
     *,
     repo_root: Optional[Path] = None,
     manifest_path: Optional[Path] = None,
@@ -1018,6 +1325,12 @@ def run_generate(
     quality: str = DEFAULT_QUALITY,
     output_root: Optional[Path] = None,
     provider_calls: Optional[list[int]] = None,
+    scene_text: Optional[str] = None,
+    scene_file: Optional[str] = None,
+    proposal_fixture: Optional[str] = None,
+    live_interpreter: bool = False,
+    plan_file: Optional[str] = None,
+    emit_plan: Optional[str] = None,
 ) -> int:
     """Run a gated single live generation (NOT authorized in this task)."""
     if os.environ.get(LIVE_ENV_VAR) != "1":
@@ -1035,9 +1348,27 @@ def run_generate(
     manifest = (
         manifest_path if manifest_path is not None else default_manifest_path(root)
     )
-    code, result = _run_orchestrate(
-        profile_id, repo_root=root, manifest_path=manifest
-    )
+    try:
+        profile, plan = _resolve_profile_and_plan(
+            profile_id=profile_id,
+            scene_text=scene_text,
+            scene_file=scene_file,
+            proposal_fixture=proposal_fixture,
+            live_interpreter=live_interpreter,
+            plan_file=plan_file,
+            repo_root=root,
+        )
+    except SceneImageTestAppError as exc:
+        print(f"FAIL: {exc}", file=sys.stderr)
+        print("DRY_RUN_RESULT=FAIL", file=sys.stderr)
+        print("READY_FOR_LIVE_GENERATION=NO", file=sys.stderr)
+        return 1
+    if plan is not None:
+        print(format_still_plan_section(plan, replay=plan_file is not None))
+        print()
+        _emit_plan_if_requested(plan, emit_plan)
+    effective_profile_id = profile.profile_id
+    code, result = _run_orchestrate(profile, repo_root=root, manifest_path=manifest)
     if code != 0 or result is None:
         return code
     if not result.all_gates_pass:
@@ -1057,13 +1388,15 @@ def run_generate(
         quality=quality,
     )
 
-    out_dir = (output_root if output_root is not None else OUTPUT_ROOT) / profile_id
+    out_dir = (
+        output_root if output_root is not None else OUTPUT_ROOT
+    ) / effective_profile_id
     out_dir.mkdir(parents=True, exist_ok=True)
-    out_path = out_dir / _output_filename(profile_id)
+    out_path = out_dir / _output_filename(effective_profile_id)
     out_path.write_bytes(conditioned.payload)
 
     meta = {
-        "profile_id": profile_id,
+        "profile_id": effective_profile_id,
         "model": conditioned.model,
         "payload_sha256": conditioned.payload_sha256,
         "content_type": conditioned.content_type,
@@ -1072,7 +1405,7 @@ def run_generate(
         "final_prompt_hash": result.final_prompt_hash,
         "attachment_filenames": list(result.attachment_filenames),
     }
-    meta_path = out_dir / f"{_output_filename(profile_id)}.json"
+    meta_path = out_dir / f"{_output_filename(effective_profile_id)}.json"
     meta_path.write_text(
         json.dumps(meta, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
@@ -1086,19 +1419,20 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
-    if args.preview:
-        return run_preview(
-            args.profile_id,
-            model=args.model,
-            size=args.size,
-            quality=args.quality,
-        )
-    return run_generate(
-        args.profile_id,
+    shared = dict(
         model=args.model,
         size=args.size,
         quality=args.quality,
+        scene_text=args.scene_text,
+        scene_file=args.scene_file,
+        proposal_fixture=args.proposal_fixture,
+        live_interpreter=args.live_interpreter,
+        plan_file=args.plan_file,
+        emit_plan=args.emit_plan,
     )
+    if args.preview:
+        return run_preview(args.profile_id, **shared)
+    return run_generate(args.profile_id, **shared)
 
 
 if __name__ == "__main__":

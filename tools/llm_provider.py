@@ -36,6 +36,14 @@ DEFAULT_LOCAL_MODEL = "llama3"
 DEFAULT_CLOUD_BASE_URL = "https://api.openai.com"
 DEFAULT_CLOUD_MODEL = "gpt-4o-mini"
 
+# Optional ``params["api_key_env"]`` selects which environment variable the
+# cloud provider reads the bearer secret from. Restricted to a strict
+# allowlist; the value is used ONLY for the Authorization header and is never
+# placed in params, the request body, logs, or error messages. Omitting the
+# param preserves the historical behavior (OPENAI_API_KEY).
+CLOUD_API_KEY_ENV_ALLOWLIST = ("OPENAI_API_KEY", "DEEPSEEK_API_KEY")
+DEFAULT_CLOUD_API_KEY_ENV = "OPENAI_API_KEY"
+
 
 class LLMProviderError(RuntimeError):
     """Clean, user-facing provider error."""
@@ -152,10 +160,18 @@ def _complete_cloud(
     model: str | None = None,
     params: dict[str, Any] | None = None,
 ) -> str:
-    options = params or {}
-    api_key = os.environ.get("OPENAI_API_KEY")
+    # Copy so the caller's dict is never mutated and so ``api_key_env`` is
+    # removed here, BEFORE the request body is built.
+    options = dict(params or {})
+
+    api_key_env = options.pop("api_key_env", DEFAULT_CLOUD_API_KEY_ENV)
+    if api_key_env not in CLOUD_API_KEY_ENV_ALLOWLIST:
+        raise LLMProviderError(
+            "api_key_env must be one of " + ", ".join(CLOUD_API_KEY_ENV_ALLOWLIST)
+        )
+    api_key = os.environ.get(api_key_env)
     if not api_key:
-        raise LLMProviderError("OPENAI_API_KEY is required for cloud provider")
+        raise LLMProviderError(f"{api_key_env} is required for cloud provider")
 
     base_url = str(options.get("base_url") or os.environ.get("OPENAI_BASE_URL") or DEFAULT_CLOUD_BASE_URL).rstrip("/")
     payload: dict[str, Any] = {
@@ -163,7 +179,7 @@ def _complete_cloud(
         "messages": messages,
     }
     for key, value in options.items():
-        if key != "base_url":
+        if key not in ("base_url", "api_key_env"):
             payload[key] = value
 
     headers = {"Authorization": f"Bearer {api_key}"}

@@ -1,0 +1,113 @@
+{
+  "schema_version": "2.0",
+  "id": "SC_900",
+  "name": "Generic two-character gym session",
+  "version": "1.0",
+  "location": "gym",
+  "time": "day",
+  "archetype": "trainer",
+  "intensity": 3,
+  "risk": 2,
+  "duration_minutes": 30,
+  "prerequisites": [],
+  "flags_required": [],
+  "emotional_anchors": [],
+  "symbols": [],
+  "characters": [
+    {
+      "id": "KIRA",
+      "display_name": "Kira",
+      "role": "protagonist",
+      "present": true,
+      "state_start": "U1",
+      "state_end": "U1"
+    },
+    {
+      "id": "SERGEY",
+      "display_name": "Sergey",
+      "role": "trainer",
+      "present": true,
+      "state_start": "S1",
+      "state_end": "S1"
+    }
+  ],
+  "pov_default": "KIRA",
+  "entry_beats": [
+    {
+      "beat_id": "e1",
+      "type": "action",
+      "speaker": "KIRA",
+      "pov": "KIRA",
+      "speech": null,
+      "action": "One character works through a stretching routine on the floor mat.",
+      "thought": null,
+      "thought_visibility": null,
+      "narration": null,
+      "emotion": null,
+      "visual_cue": null
+    },
+    {
+      "beat_id": "e2",
+      "type": "action",
+      "speaker": "SERGEY",
+      "pov": "KIRA",
+      "speech": null,
+      "action": "The other character stands nearby and observes.",
+      "thought": null,
+      "thought_visibility": null,
+      "narration": null,
+      "emotion": null,
+      "visual_cue": null
+    }
+  ],
+  "choice_points": [
+    {
+      "id": "CP_1",
+      "timing": "session",
+      "pov_default": "KIRA",
+      "prompt": "How does the session continue?",
+      "branches": [
+        {
+          "id": "B1",
+          "option_text": "Continue the training session together.",
+          "beats": [
+            {
+              "beat_id": "B1-b1",
+              "type": "action",
+              "speaker": "KIRA",
+              "pov": "KIRA",
+              "speech": null,
+              "action": "The two continue the training session together in the same space.",
+              "thought": null,
+              "thought_visibility": null,
+              "narration": null,
+              "emotion": null,
+              "visual_cue": null
+            }
+          ],
+          "effects": {
+            "flags_set": ["sc_900_b1"],
+            "flags_cleared": [],
+            "level_changes": {},
+            "relationship_changes": {}
+          },
+          "next": {
+            "on_complete": "scene_end",
+            "next_scene": null,
+            "completion_flag": "sc_900_b1_complete"
+          }
+        }
+      ]
+    }
+  ],
+  "visual": {
+    "scene_id": "VS_900",
+    "stills": []
+  },
+  "safety": {
+    "content_rating": "PG-13",
+    "stop_words_enabled": true,
+    "present_constraints": "Neutral professional fitness-coaching context; no physical contact.",
+    "notes": "Generic reusable two-character gym fixture for scene-text-to-still-plan v0. Cast is remapped in memory via cast_override; the location is supplied explicitly to the ASS importer."
+  }
+}

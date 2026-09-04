@@ -1,0 +1,16 @@
+{
+  "schema_version": "vne_character_name_aliases/0.1",
+  "note": "VNE-owned surface-name -> stable character_id map for the Scene Text Interpreter v0. No live NCC dependency. Seed is bounded to the v0 catalog-eligible cast (see REFERENCE_SEMANTIC_CATALOG.json). surface_aliases are matched case-insensitively as NFC substrings of the submitted scene text; they are never inferred from filenames. provider_alias is the Latin provider-facing label.",
+  "characters": [
+    {
+      "character_id": "MARINA",
+      "provider_alias": "Marina",
+      "surface_aliases": ["Марина", "Марину", "Марины", "Марине", "Мариной", "Marina"]
+    },
+    {
+      "character_id": "MAKSIM",
+      "provider_alias": "Maksim",
+      "surface_aliases": ["Максим", "Максима", "Максиму", "Максимом", "Максиме", "Maksim"]
+    }
+  ]
+}

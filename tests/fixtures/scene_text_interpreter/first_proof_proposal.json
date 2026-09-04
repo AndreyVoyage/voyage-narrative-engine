@@ -1,0 +1,76 @@
+{
+  "_note": "Recorded UNTRUSTED proposal for the first offline scene-text proof. Replayed by FixtureProposer as an offline stand-in for a real LLM. Every span here is deterministically re-grounded against the submitted source text before any SceneStillPlan is built; nothing in this file is trusted on its face.",
+  "_source_text": "Марина лежит на коврике в спортзале и делает растяжку.\nМаксим находится рядом и наблюдает за её техникой.\nМарина поворачивает голову и смотрит на него.",
+  "interpreter": {
+    "provider": "fixture",
+    "model": "first_proof_replay",
+    "mock": true
+  },
+  "proposal": {
+    "source_language": "ru",
+    "confidence": "high",
+    "unresolved_items": [],
+    "characters": [
+      {"character_id": "MARINA", "source_spans": ["Марина"]},
+      {"character_id": "MAKSIM", "source_spans": ["Максим"]}
+    ],
+    "location_id": "gym",
+    "location_span": "в спортзале",
+    "scene_tags": ["stretching", "training", "neutral"],
+    "beats": [
+      {
+        "index": 0,
+        "text_span": "Марина лежит на коврике в спортзале и делает растяжку",
+        "actor_character_ids": ["MARINA"],
+        "action_phrase": "делает растяжку",
+        "gaze_phrase": null,
+        "positioning_phrase": "на коврике",
+        "contact_flag": false
+      },
+      {
+        "index": 1,
+        "text_span": "Максим находится рядом и наблюдает за её техникой",
+        "actor_character_ids": ["MAKSIM"],
+        "action_phrase": "наблюдает за её техникой",
+        "gaze_phrase": null,
+        "positioning_phrase": "рядом",
+        "contact_flag": false
+      },
+      {
+        "index": 2,
+        "text_span": "Марина поворачивает голову и смотрит на него",
+        "actor_character_ids": ["MARINA"],
+        "action_phrase": "смотрит на него",
+        "gaze_phrase": "смотрит на него",
+        "positioning_phrase": null,
+        "contact_flag": false
+      },
+      {
+        "index": 3,
+        "text_span": "Марина лежит на коврике в спортзале и делает растяжку. Максим находится рядом и наблюдает за её техникой",
+        "actor_character_ids": ["MARINA", "MAKSIM"],
+        "action_phrase": "наблюдает за её техникой",
+        "gaze_phrase": "смотрит на него",
+        "positioning_phrase": "рядом",
+        "contact_flag": false
+      }
+    ],
+    "still_candidates": [
+      {
+        "beat_index": 3,
+        "rationale_tags": ["both_characters_present", "static_pose", "mutual_gaze", "scene_cue_present"],
+        "visual_goal_text": "In a modern gym, Marina lies on the exercise mat working through a stretch while Maksim is nearby observing her technique; Marina has turned her head toward Maksim and looks at him. Believable professional fitness-coaching context, both adults in realistic sportswear, no physical contact between them."
+      },
+      {
+        "beat_index": 0,
+        "rationale_tags": ["single_character_only", "static_pose", "scene_cue_present"],
+        "visual_goal_text": "In a modern gym, Marina lies on the exercise mat working through a stretch."
+      },
+      {
+        "beat_index": 1,
+        "rationale_tags": ["single_character_only", "static_pose", "scene_cue_present"],
+        "visual_goal_text": "In a modern gym, Maksim stands nearby and observes the training technique."
+      }
+    ]
+  }
+}

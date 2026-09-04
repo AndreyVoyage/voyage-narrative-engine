@@ -1,0 +1,14 @@
+{
+  "schema_version": "vne_location_aliases/0.1",
+  "note": "VNE-owned surface-phrase -> stable Location Canon location_id map for the Scene Text Interpreter v0. Every location_id must resolve against scenarios/locations/<id>.json. surface_aliases are matched case-insensitively as NFC substrings; resolution is fail-closed (no fuzzy guessing). If aliases of two distinct locations both occur in the source, resolution is ambiguous and fails closed.",
+  "locations": [
+    {
+      "location_id": "gym",
+      "surface_aliases": ["спортзал", "спортзале", "спортзала", "тренажёрный зал", "тренажерный зал", "фитнес-зал", "gym"]
+    },
+    {
+      "location_id": "yoga_hall",
+      "surface_aliases": ["йога-зал", "йога-зале", "зал для йоги", "студия йоги", "yoga hall", "yoga studio"]
+    }
+  ]
+}
