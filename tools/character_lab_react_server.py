@@ -196,9 +196,13 @@ class ReactCharacterLabServer:
                 elif method == "GET" and parts[:2] == ["api", "workspaces"]:
                     if len(parts) == 2:
                         return self._call(transport.list_workspaces)
+                    workspace_id = urllib.parse.unquote(parts[2])
                     if len(parts) == 3:
-                        workspace_id = urllib.parse.unquote(parts[2])
                         return self._call(lambda: transport.get_workspace(workspace_id))
+                    if len(parts) == 4 and parts[3] == "memory":
+                        return self._call(lambda: transport.get_memory(workspace_id))
+                    if len(parts) == 4 and parts[3] == "runtime-state":
+                        return self._call(lambda: transport.get_runtime_state(workspace_id))
 
                 elif method == "GET" and parts[:2] == ["api", "sessions"] and len(parts) == 3:
                     session_id = urllib.parse.unquote(parts[2])
@@ -212,6 +216,15 @@ class ReactCharacterLabServer:
 
                 elif method == "POST" and parts == ["api", "chat"]:
                     return self._call(lambda: transport.send_message(body))
+
+                elif method == "POST" and parts == ["api", "runtime-state", "set"]:
+                    return self._call(lambda: transport.set_runtime_state(body))
+
+                elif method == "POST" and parts == ["api", "runtime-state", "adjust"]:
+                    return self._call(lambda: transport.adjust_runtime_state(body))
+
+                elif method == "POST" and parts == ["api", "runtime-state", "remove"]:
+                    return self._call(lambda: transport.remove_runtime_state(body))
 
                 elif method == "POST" and parts == ["shutdown"]:
                     self._json(200, {"status": "shutting_down"})

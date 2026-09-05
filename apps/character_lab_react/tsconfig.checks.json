@@ -19,6 +19,7 @@
     "src/client/httpCharacterClient.ts",
     "src/mocks/mockData.ts",
     "src/mocks/mockCharacterClient.ts",
-    "src/mocks/mockCharacterDebugClient.ts"
+    "src/mocks/mockCharacterDebugClient.ts",
+    "src/features/state/stateInput.ts"
   ]
 }

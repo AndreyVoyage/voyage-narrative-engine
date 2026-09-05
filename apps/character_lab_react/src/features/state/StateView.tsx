@@ -1,42 +1,53 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAppState } from "../../app/AppState";
 import { RuntimeStateGroups } from "../../components/devtools";
-import { EmptyState, NotIntegratedNotice, Panel, Toolbar } from "../../components/primitives";
+import { EmptyState, Panel, Toolbar } from "../../components/primitives";
 import type { RuntimeStateSummary } from "../../client/types";
+import { StateEditor } from "./StateEditor";
 
 /** Developer/debug view: Runtime State (FACT / RELATIONSHIP / PSYCHOLOGY),
- * workspace-scoped. Real SET/ADJUST/REMOVE editing is deferred past this
- * foundation slice -- see the mock client for the in-memory shape. Not yet
- * transported in "local" (Desktop Integration v1) mode. */
+ * workspace-scoped. In "local" mode this reads REAL state through
+ * CharacterClient and edits it through SET / ADJUST / REMOVE -- never mock
+ * data. */
 export function StateView() {
   const { state, client } = useAppState();
-  const workspaceId = state.session?.workspace.workspaceId ?? null;
+  const workspaceId = state.selectedWorkspaceId;
   const [runtimeState, setRuntimeState] = useState<RuntimeStateSummary | null>(null);
-  const notIntegrated = state.clientMode === "local";
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const reload = useCallback(async () => {
+    if (!workspaceId) {
+      setRuntimeState(null);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      setRuntimeState(await client.getRuntimeState(workspaceId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+    }
+  }, [client, workspaceId]);
 
   useEffect(() => {
-    let cancelled = false;
-    if (!workspaceId || notIntegrated) return;
-    client.getRuntimeState(workspaceId).then((s) => {
-      if (!cancelled) setRuntimeState(s);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [client, workspaceId, notIntegrated]);
-
-  if (notIntegrated) {
-    return (
-      <Panel>
-        <NotIntegratedNotice capability="Состояние" />
-      </Panel>
-    );
-  }
+    void reload();
+  }, [reload]);
 
   if (!workspaceId) {
     return (
       <Panel>
         <EmptyState title="Рабочая область ещё не готова" />
+      </Panel>
+    );
+  }
+
+  if (error) {
+    return (
+      <Panel>
+        <EmptyState title="Ошибка состояния">Ошибка: {error}</EmptyState>
       </Panel>
     );
   }
@@ -48,7 +59,17 @@ export function StateView() {
           Рабочая область: {workspaceId} · домены: {(runtimeState?.domainsActive ?? []).join(", ")}
         </div>
       </Toolbar>
-      <RuntimeStateGroups current={runtimeState?.current ?? []} />
+      {loading && !runtimeState ? (
+        <EmptyState title="Загрузка состояния…" />
+      ) : (
+        <RuntimeStateGroups current={runtimeState?.current ?? []} />
+      )}
+      <StateEditor
+        client={client}
+        workspaceId={workspaceId}
+        current={runtimeState?.current ?? []}
+        onChanged={reload}
+      />
     </Panel>
   );
 }

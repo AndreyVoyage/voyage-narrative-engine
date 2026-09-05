@@ -388,6 +388,32 @@ class CharacterService(Protocol):
 
     def get_runtime_state(self, workspace_id: str) -> RuntimeStateSummary: ...
 
+    def set_runtime_state(
+        self,
+        workspace_id: str,
+        domain: str,
+        key: str,
+        value: str,
+        source_ref: Optional[str] = None,
+    ) -> RuntimeStateEntrySummary: ...
+
+    def adjust_runtime_state(
+        self,
+        workspace_id: str,
+        domain: str,
+        key: str,
+        delta: int,
+        source_ref: Optional[str] = None,
+    ) -> RuntimeStateEntrySummary: ...
+
+    def remove_runtime_state(
+        self,
+        workspace_id: str,
+        domain: str,
+        key: str,
+        source_ref: Optional[str] = None,
+    ) -> RuntimeStateEntrySummary: ...
+
     def get_scene(self, session_id: str) -> SceneSummary: ...
 
     def set_scene(

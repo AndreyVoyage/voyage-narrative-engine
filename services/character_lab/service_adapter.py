@@ -54,13 +54,46 @@ from services.character_core.contract import (
     WorkspaceSummary,
 )
 
+from services.character_runtime.state import NUMERIC_DOMAINS, SOURCE_OPERATOR_CONFIRMED
+
 from .app import CharacterLabApp
 
-__all__ = ["CharacterLabServiceAdapter", "CharacterLabDebugAdapter"]
+__all__ = [
+    "CharacterLabServiceAdapter",
+    "CharacterLabDebugAdapter",
+    "RuntimeStateMutationError",
+]
 
 #: The only character this adapter currently exposes. Not a Core-level
 #: constraint -- just what the underlying CharacterLabApp presently loads.
 _CHARACTER_ID = "kira"
+
+
+class RuntimeStateMutationError(RuntimeError):
+    """A Runtime State mutation was rejected by the backend's canonical
+    validation (invalid domain/key/value, out-of-range result, ADJUST on a
+    missing/removed key, etc.).
+
+    Carries the backend's deterministic ``code`` (e.g. ``invalid_key``,
+    ``invalid_domain``, ``invalid_value``, ``state_rejected``) and a short,
+    deliberately-written ``message``. Never a traceback or internal detail.
+
+    Subclasses ``RuntimeError`` (NOT ``ValueError``) so the transport can map
+    it to a specific, deterministic client error instead of the generic
+    ``ValueError`` variant path.
+    """
+
+    def __init__(self, code: str, message: str) -> None:
+        super().__init__(message)
+        self.code = code
+        self.message = message
+
+
+def _state_int(value) -> "Optional[int]":
+    try:
+        return int(str(value).strip())
+    except (TypeError, ValueError):
+        return None
 
 
 def _package_ref_from_loaded_state(loaded: dict) -> CharacterPackageRef:
@@ -303,6 +336,76 @@ class CharacterLabServiceAdapter:
             domains_active=tuple(data["domains_active"]),
             current=current, current_count=data["current_count"],
         )
+
+    def _entry_from_event(self, event: dict) -> RuntimeStateEntrySummary:
+        domain = event["domain"]
+        value = event.get("value", "")
+        numeric = domain in NUMERIC_DOMAINS
+        return RuntimeStateEntrySummary(
+            domain=domain,
+            key=event["key"],
+            value=value,
+            value_int=_state_int(value) if numeric else None,
+            source_kind=event.get("source_kind", SOURCE_OPERATOR_CONFIRMED),
+            source_ref=event.get("source_ref"),
+            seq=event.get("seq"),
+        )
+
+    def set_runtime_state(
+        self,
+        workspace_id: str,
+        domain: str,
+        key: str,
+        value: str,
+        source_ref: Optional[str] = None,
+    ) -> RuntimeStateEntrySummary:
+        self._ensure_current_workspace(workspace_id)
+        result = self._app.runtime_state_set({
+            "domain": domain, "key": key, "value": value, "source_ref": source_ref,
+        })
+        if not result.get("ok"):
+            raise RuntimeStateMutationError(
+                result.get("error", "state_rejected"),
+                result.get("message", "state rejected"),
+            )
+        return self._entry_from_event(result["event"])
+
+    def adjust_runtime_state(
+        self,
+        workspace_id: str,
+        domain: str,
+        key: str,
+        delta: int,
+        source_ref: Optional[str] = None,
+    ) -> RuntimeStateEntrySummary:
+        self._ensure_current_workspace(workspace_id)
+        result = self._app.runtime_state_adjust({
+            "domain": domain, "key": key, "delta": delta, "source_ref": source_ref,
+        })
+        if not result.get("ok"):
+            raise RuntimeStateMutationError(
+                result.get("error", "state_rejected"),
+                result.get("message", "state rejected"),
+            )
+        return self._entry_from_event(result["event"])
+
+    def remove_runtime_state(
+        self,
+        workspace_id: str,
+        domain: str,
+        key: str,
+        source_ref: Optional[str] = None,
+    ) -> RuntimeStateEntrySummary:
+        self._ensure_current_workspace(workspace_id)
+        result = self._app.runtime_state_remove({
+            "domain": domain, "key": key, "source_ref": source_ref,
+        })
+        if not result.get("ok"):
+            raise RuntimeStateMutationError(
+                result.get("error", "state_rejected"),
+                result.get("message", "state rejected"),
+            )
+        return self._entry_from_event(result["event"])
 
     # -------------------------------------------------------------- scene
     # Scene remains session-scoped (existing Character Lab semantics exactly).

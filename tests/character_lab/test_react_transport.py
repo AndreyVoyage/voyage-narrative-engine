@@ -317,3 +317,120 @@ class TestEndToEndSmoke:
         status, body = _http_post(srv.base_url + "/shutdown")
         assert status == 200
         srv.shutdown()
+
+
+class TestMemoryStateTransportDirect:
+    def test_get_memory_returns_workspace_scoped_causal(self, tmp_path):
+        transport = _transport(tmp_path)
+        ws, session = _new_session(transport)
+        transport.send_message({"sessionId": session["sessionId"], "text": "Привет"})
+        data = transport.get_memory(ws["workspaceId"])
+        assert data["workspaceId"] == ws["workspaceId"]
+        assert data["causalOrder"] == "seq"
+        assert data["eventCount"] >= 2
+        seqs = [e["seq"] for e in data["events"] if e["seq"] is not None]
+        assert seqs == sorted(seqs)
+
+    def test_get_runtime_state_returns_domains(self, tmp_path):
+        transport = _transport(tmp_path)
+        ws, _ = _new_session(transport)
+        data = transport.get_runtime_state(ws["workspaceId"])
+        assert set(data["domainsActive"]) == {"FACT", "RELATIONSHIP", "PSYCHOLOGY"}
+        assert data["currentCount"] == 0
+
+    def test_set_adjust_remove_through_transport(self, tmp_path):
+        transport = _transport(tmp_path)
+        ws, _ = _new_session(transport)
+        entry = transport.set_runtime_state({
+            "workspaceId": ws["workspaceId"], "domain": "RELATIONSHIP",
+            "key": "andrey.trust", "value": "30",
+        })
+        assert entry["valueInt"] == 30
+        adjusted = transport.adjust_runtime_state({
+            "workspaceId": ws["workspaceId"], "domain": "RELATIONSHIP",
+            "key": "andrey.trust", "delta": 10,
+        })
+        assert adjusted["valueInt"] == 40
+        removed = transport.remove_runtime_state({
+            "workspaceId": ws["workspaceId"], "domain": "RELATIONSHIP", "key": "andrey.trust",
+        })
+        assert removed["value"] == "" and removed["valueInt"] is None
+
+    def test_invalid_domain_rejected(self, tmp_path):
+        transport = _transport(tmp_path)
+        ws, _ = _new_session(transport)
+        with pytest.raises(ReactTransportError) as exc_info:
+            transport.set_runtime_state({
+                "workspaceId": ws["workspaceId"], "domain": "BOGUS", "key": "k", "value": "v",
+            })
+        assert exc_info.value.code == "invalid_domain"
+        assert exc_info.value.status == 400
+
+    def test_invalid_delta_rejected(self, tmp_path):
+        transport = _transport(tmp_path)
+        ws, _ = _new_session(transport)
+        with pytest.raises(ReactTransportError) as exc_info:
+            transport.adjust_runtime_state({
+                "workspaceId": ws["workspaceId"], "domain": "RELATIONSHIP",
+                "key": "andrey.trust", "delta": "not-an-int",
+            })
+        assert exc_info.value.code == "invalid_delta"
+        assert exc_info.value.status == 400
+
+    def test_missing_value_rejected(self, tmp_path):
+        transport = _transport(tmp_path)
+        ws, _ = _new_session(transport)
+        with pytest.raises(ReactTransportError) as exc_info:
+            transport.set_runtime_state({
+                "workspaceId": ws["workspaceId"], "domain": "FACT", "key": "k",
+            })
+        assert exc_info.value.code == "invalid_value"
+
+    def test_adjust_after_remove_conflict(self, tmp_path):
+        transport = _transport(tmp_path)
+        ws, _ = _new_session(transport)
+        transport.set_runtime_state({
+            "workspaceId": ws["workspaceId"], "domain": "PSYCHOLOGY", "key": "stress", "value": "40",
+        })
+        transport.remove_runtime_state({
+            "workspaceId": ws["workspaceId"], "domain": "PSYCHOLOGY", "key": "stress",
+        })
+        with pytest.raises(ReactTransportError) as exc_info:
+            transport.adjust_runtime_state({
+                "workspaceId": ws["workspaceId"], "domain": "PSYCHOLOGY", "key": "stress", "delta": 1,
+            })
+        assert exc_info.value.status == 409
+        assert "Traceback" not in json.dumps(exc_info.value.to_json())
+
+
+class TestMemoryStateHttp:
+    def test_memory_and_state_over_http(self, server):
+        status, ws = _http_post(server.base_url + "/api/workspaces")
+        assert status == 200
+        wid = ws["workspaceId"]
+        status, memory = _http_get(server.base_url + f"/api/workspaces/{wid}/memory")
+        assert status == 200 and memory["workspaceId"] == wid
+        status, state = _http_get(server.base_url + f"/api/workspaces/{wid}/runtime-state")
+        assert status == 200 and state["workspaceId"] == wid
+
+    def test_state_mutations_over_http(self, server):
+        status, ws = _http_post(server.base_url + "/api/workspaces")
+        wid = ws["workspaceId"]
+        status, entry = _http_post(server.base_url + "/api/runtime-state/set", {
+            "workspaceId": wid, "domain": "PSYCHOLOGY", "key": "stress", "value": "40",
+        })
+        assert status == 200 and entry["valueInt"] == 40
+        status, adjusted = _http_post(server.base_url + "/api/runtime-state/adjust", {
+            "workspaceId": wid, "domain": "PSYCHOLOGY", "key": "stress", "delta": -15,
+        })
+        assert status == 200 and adjusted["valueInt"] == 25
+
+    def test_invalid_domain_over_http_has_no_traceback(self, server):
+        status, ws = _http_post(server.base_url + "/api/workspaces")
+        wid = ws["workspaceId"]
+        status, body = _http_post(server.base_url + "/api/runtime-state/set", {
+            "workspaceId": wid, "domain": "BOGUS", "key": "k", "value": "v",
+        })
+        assert status == 400
+        assert body["error"]["code"] == "invalid_domain"
+        assert "Traceback" not in json.dumps(body)

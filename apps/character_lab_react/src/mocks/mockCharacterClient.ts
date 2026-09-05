@@ -18,6 +18,7 @@ import {
   type CharacterVariantSummary,
   type MemoryEventSummary,
   type MemorySummary,
+  type RuntimeStateDomain,
   type RuntimeStateEntrySummary,
   type RuntimeStateSummary,
   type SceneSummary,
@@ -209,6 +210,72 @@ export class MockCharacterClient implements CharacterClient {
       domainsActive: ["FACT", "RELATIONSHIP", "PSYCHOLOGY"],
       current: [...current],
       currentCount: current.length,
+    };
+  }
+
+  async setRuntimeState(
+    workspaceId: string,
+    domain: RuntimeStateDomain,
+    key: string,
+    value: string,
+    sourceRef?: string
+  ): Promise<RuntimeStateEntrySummary> {
+    this.requireWorkspace(workspaceId);
+    const entries = this.stateByWorkspace.get(workspaceId) ?? [];
+    const numeric = domain === "RELATIONSHIP" || domain === "PSYCHOLOGY";
+    const parsed = numeric ? Number(value) : null;
+    const entry: RuntimeStateEntrySummary = {
+      domain,
+      key,
+      value,
+      valueInt: numeric && Number.isInteger(parsed) ? parsed : null,
+      sourceKind: "OPERATOR_CONFIRMED",
+      sourceRef: sourceRef ?? null,
+      seq: entries.length + 1,
+    };
+    const rest = entries.filter((e) => !(e.domain === domain && e.key === key));
+    this.stateByWorkspace.set(workspaceId, [...rest, entry]);
+    return entry;
+  }
+
+  async adjustRuntimeState(
+    workspaceId: string,
+    domain: RuntimeStateDomain,
+    key: string,
+    delta: number,
+    sourceRef?: string
+  ): Promise<RuntimeStateEntrySummary> {
+    this.requireWorkspace(workspaceId);
+    const entries = this.stateByWorkspace.get(workspaceId) ?? [];
+    const current = entries.find((e) => e.domain === domain && e.key === key);
+    if (!current || current.valueInt === null) {
+      throw new Error(`${domain} key '${key}' is not initialized; SET an absolute value first`);
+    }
+    const next = current.valueInt + delta;
+    if (next < -100 || next > 100) {
+      throw new Error(`adjusted value ${next} out of range [-100, 100]; state unchanged`);
+    }
+    return this.setRuntimeState(workspaceId, domain, key, String(next), sourceRef);
+  }
+
+  async removeRuntimeState(
+    workspaceId: string,
+    domain: RuntimeStateDomain,
+    key: string,
+    _sourceRef?: string
+  ): Promise<RuntimeStateEntrySummary> {
+    this.requireWorkspace(workspaceId);
+    const entries = this.stateByWorkspace.get(workspaceId) ?? [];
+    const rest = entries.filter((e) => !(e.domain === domain && e.key === key));
+    this.stateByWorkspace.set(workspaceId, rest);
+    return {
+      domain,
+      key,
+      value: "",
+      valueInt: null,
+      sourceKind: "OPERATOR_CONFIRMED",
+      sourceRef: null,
+      seq: null,
     };
   }
 

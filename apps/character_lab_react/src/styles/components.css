@@ -127,6 +127,87 @@
   min-height: 64px;
 }
 
+/* ------------------------------------------------------------------- forms */
+
+/* `color-scheme: dark` (set on :root) already switches the browser's built-in
+   widgets (select dropdown, option list, scrollbars, autofill) to a dark
+   scheme. The explicit rules below pin background/text/border so no native
+   light background ever shows through a light-on-light "invisible text" bug
+   (the workspace <select> previously had no background rule at all). */
+
+.clab-select {
+  width: 100%;
+  border: var(--clab-border-width) solid var(--clab-border-strong);
+  background: var(--clab-surface-1);
+  color: var(--clab-text);
+  border-radius: var(--clab-radius-sm);
+  padding: var(--clab-space-2) var(--clab-space-3);
+  color-scheme: dark;
+}
+
+select option {
+  background: var(--clab-surface-1);
+  color: var(--clab-text);
+}
+
+input::placeholder,
+textarea::placeholder {
+  /* Clearly dimmer than entered values (--clab-text) so a hint is never
+     mistaken for a real value, but still readable -- not "disabled". */
+  color: var(--clab-text-muted);
+  opacity: 1; /* Firefox lowers placeholder opacity by default; keep it fixed */
+}
+
+select:disabled,
+input:disabled,
+textarea:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ---------------------------------------------------- runtime state editor */
+
+.clab-state-editor button {
+  appearance: none;
+  border: var(--clab-border-width) solid var(--clab-border-strong);
+  background: var(--clab-surface-2);
+  color: var(--clab-text);
+  border-radius: var(--clab-radius-sm);
+  padding: var(--clab-space-2) var(--clab-space-3);
+  font-size: var(--clab-text-sm);
+  cursor: pointer;
+}
+
+.clab-state-editor button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.clab-state-editor input {
+  width: 100%;
+  border: var(--clab-border-width) solid var(--clab-border-strong);
+  background: var(--clab-surface-1);
+  color: var(--clab-text);
+  border-radius: var(--clab-radius-sm);
+  padding: var(--clab-space-2) var(--clab-space-3);
+}
+
+.clab-state-key {
+  font-size: var(--clab-text-sm);
+  color: var(--clab-text-muted);
+  margin-top: var(--clab-space-1);
+}
+
+.clab-state-key code {
+  font-family: var(--clab-font-mono);
+}
+
+.clab-state-error {
+  color: var(--clab-danger);
+  font-size: var(--clab-text-sm);
+  margin-top: var(--clab-space-1);
+}
+
 /* -------------------------------------------------------------- nav mode */
 
 .clab-mode-nav {

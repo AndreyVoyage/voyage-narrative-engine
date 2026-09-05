@@ -8,6 +8,11 @@
  */
 
 :root {
+  /* Native form widgets (select dropdown, option list, scrollbars, autofill)
+     follow the dark theme so a light native background never shows through a
+     light-on-light "invisible text" bug. */
+  color-scheme: dark;
+
   /* ---- surface hierarchy -------------------------------------------- */
   --clab-bg: #0b0d14;
   --clab-surface-0: #10131c;

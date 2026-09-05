@@ -1,42 +1,53 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAppState } from "../../app/AppState";
 import { MemoryTable } from "../../components/devtools";
-import { EmptyState, NotIntegratedNotice, Panel, Toolbar } from "../../components/primitives";
+import { EmptyState, Panel, Toolbar } from "../../components/primitives";
 import type { MemorySummary } from "../../client/types";
 
-/** Developer/debug view: causal-order runtime memory for the current
- * session's workspace (memory is workspace-scoped, not session-scoped). Not
- * yet transported in "local" (Desktop Integration v1) mode -- see
- * NotIntegratedNotice below rather than any fetch attempt in that mode. */
+/** Developer/debug view: causal-order runtime memory for the SELECTED
+ * workspace (memory is workspace-scoped, not session-scoped). In "local"
+ * (Desktop Integration) mode this reads REAL memory through CharacterClient --
+ * never mock data. */
 export function MemoryView() {
   const { state, client } = useAppState();
-  const workspaceId = state.session?.workspace.workspaceId ?? null;
+  const workspaceId = state.selectedWorkspaceId;
   const [memory, setMemory] = useState<MemorySummary | null>(null);
-  const notIntegrated = state.clientMode === "local";
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const reload = useCallback(async () => {
+    if (!workspaceId) {
+      setMemory(null);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    setMemory(null);
+    try {
+      setMemory(await client.getMemory(workspaceId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+    }
+  }, [client, workspaceId]);
 
   useEffect(() => {
-    let cancelled = false;
-    if (!workspaceId || notIntegrated) return;
-    client.getMemory(workspaceId).then((m) => {
-      if (!cancelled) setMemory(m);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [client, workspaceId, notIntegrated, state.messages.length]);
-
-  if (notIntegrated) {
-    return (
-      <Panel>
-        <NotIntegratedNotice capability="Память" />
-      </Panel>
-    );
-  }
+    void reload();
+  }, [reload, state.messages.length]);
 
   if (!workspaceId) {
     return (
       <Panel>
         <EmptyState title="Рабочая область ещё не готова" />
+      </Panel>
+    );
+  }
+
+  if (error) {
+    return (
+      <Panel>
+        <EmptyState title="Ошибка памяти">Ошибка: {error}</EmptyState>
       </Panel>
     );
   }
@@ -49,7 +60,11 @@ export function MemoryView() {
           {memory?.eventCount ?? 0}
         </div>
       </Toolbar>
-      <MemoryTable events={memory?.events ?? []} />
+      {loading && !memory ? (
+        <EmptyState title="Загрузка памяти…" />
+      ) : (
+        <MemoryTable events={memory?.events ?? []} />
+      )}
     </Panel>
   );
 }

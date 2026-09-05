@@ -34,6 +34,8 @@ import {
   type CharacterSummary,
   type CharacterVariantSummary,
   type MemorySummary,
+  type RuntimeStateDomain,
+  type RuntimeStateEntrySummary,
   type RuntimeStateSummary,
   type SceneSummary,
   type SetSceneInput,
@@ -151,6 +153,43 @@ function toChatTurnResult(json: any): ChatTurnResult {
   };
 }
 
+function toRuntimeStateEntrySummary(json: any): RuntimeStateEntrySummary {
+  return {
+    domain: json.domain,
+    key: json.key,
+    value: json.value,
+    valueInt: json.valueInt ?? null,
+    sourceKind: json.sourceKind,
+    sourceRef: json.sourceRef ?? null,
+    seq: json.seq ?? null,
+  };
+}
+
+function toRuntimeStateSummary(json: any): RuntimeStateSummary {
+  return {
+    workspaceId: json.workspaceId,
+    domainsActive: json.domainsActive ?? [],
+    current: (json.current ?? []).map(toRuntimeStateEntrySummary),
+    currentCount: json.currentCount ?? 0,
+  };
+}
+
+function toMemorySummary(json: any): MemorySummary {
+  return {
+    workspaceId: json.workspaceId,
+    causalOrder: json.causalOrder,
+    eventCount: json.eventCount,
+    events: (json.events ?? []).map((e: any) => ({
+      seq: e.seq ?? null,
+      eventId: e.eventId,
+      sessionId: e.sessionId,
+      eventType: e.eventType,
+      provenance: e.provenance,
+      meaning: e.meaning,
+    })),
+  };
+}
+
 export class HttpCharacterClient implements CharacterClient {
   // ------------------------------------------------------------- catalog
 
@@ -225,15 +264,62 @@ export class HttpCharacterClient implements CharacterClient {
     return toChatTurnResult(data);
   }
 
+  // --------------------------------------------------------------- memory
+
+  async getMemory(workspaceId: string): Promise<MemorySummary> {
+    const data = await requestJson(`/api/workspaces/${encodeURIComponent(workspaceId)}/memory`);
+    return toMemorySummary(data);
+  }
+
+  // ---------------------------------------------------------- runtime state
+
+  async getRuntimeState(workspaceId: string): Promise<RuntimeStateSummary> {
+    const data = await requestJson(`/api/workspaces/${encodeURIComponent(workspaceId)}/runtime-state`);
+    return toRuntimeStateSummary(data);
+  }
+
+  async setRuntimeState(
+    workspaceId: string,
+    domain: RuntimeStateDomain,
+    key: string,
+    value: string,
+    sourceRef?: string
+  ): Promise<RuntimeStateEntrySummary> {
+    const data = await requestJson("/api/runtime-state/set", {
+      method: "POST",
+      body: JSON.stringify({ workspaceId, domain, key, value, sourceRef }),
+    });
+    return toRuntimeStateEntrySummary(data);
+  }
+
+  async adjustRuntimeState(
+    workspaceId: string,
+    domain: RuntimeStateDomain,
+    key: string,
+    delta: number,
+    sourceRef?: string
+  ): Promise<RuntimeStateEntrySummary> {
+    const data = await requestJson("/api/runtime-state/adjust", {
+      method: "POST",
+      body: JSON.stringify({ workspaceId, domain, key, delta, sourceRef }),
+    });
+    return toRuntimeStateEntrySummary(data);
+  }
+
+  async removeRuntimeState(
+    workspaceId: string,
+    domain: RuntimeStateDomain,
+    key: string,
+    sourceRef?: string
+  ): Promise<RuntimeStateEntrySummary> {
+    const data = await requestJson("/api/runtime-state/remove", {
+      method: "POST",
+      body: JSON.stringify({ workspaceId, domain, key, sourceRef }),
+    });
+    return toRuntimeStateEntrySummary(data);
+  }
+
   // ------------------------------------------- not integrated in v1 (honest)
-
-  async getMemory(_workspaceId: string): Promise<MemorySummary> {
-    throw new NotIntegratedInTransportError("memory");
-  }
-
-  async getRuntimeState(_workspaceId: string): Promise<RuntimeStateSummary> {
-    throw new NotIntegratedInTransportError("runtime_state");
-  }
 
   async getScene(_sessionId: string): Promise<SceneSummary> {
     throw new NotIntegratedInTransportError("scene");

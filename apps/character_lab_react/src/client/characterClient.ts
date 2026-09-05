@@ -28,6 +28,8 @@ import type {
   CharacterSummary,
   CharacterVariantSummary,
   MemorySummary,
+  RuntimeStateDomain,
+  RuntimeStateEntrySummary,
   RuntimeStateSummary,
   SceneSummary,
   SessionPurpose,
@@ -64,6 +66,26 @@ export interface CharacterClient {
 
   // ---------------------------------------------------------- runtime state
   getRuntimeState(workspaceId: string): Promise<RuntimeStateSummary>;
+  setRuntimeState(
+    workspaceId: string,
+    domain: RuntimeStateDomain,
+    key: string,
+    value: string,
+    sourceRef?: string
+  ): Promise<RuntimeStateEntrySummary>;
+  adjustRuntimeState(
+    workspaceId: string,
+    domain: RuntimeStateDomain,
+    key: string,
+    delta: number,
+    sourceRef?: string
+  ): Promise<RuntimeStateEntrySummary>;
+  removeRuntimeState(
+    workspaceId: string,
+    domain: RuntimeStateDomain,
+    key: string,
+    sourceRef?: string
+  ): Promise<RuntimeStateEntrySummary>;
 
   // -------------------------------------------------------------- scene
   getScene(sessionId: string): Promise<SceneSummary>;

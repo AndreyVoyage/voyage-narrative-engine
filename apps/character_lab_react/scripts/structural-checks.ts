@@ -2,11 +2,13 @@
  * Minimum-sufficient RUNTIME structural checks for the React Character Lab
  * foundation's transport-neutral client layer.
  *
- * Runs entirely against the plain-TypeScript `client`/`mocks` files (no
- * `react` import anywhere in the dependency graph, and no Node built-ins
- * either, so it needs no `@types/node`), so it can be compiled and executed
- * with only the machine's existing global TypeScript compiler and Node.js --
- * no npm install, no network.
+ * Runs entirely against the plain-TypeScript `client`/`mocks` files and (as
+ * of the REACT_RELATIONSHIP_STATE_KEY_PAYLOAD_FIX_V1 regression, check 16)
+ * `react`'s `createElement` -- a real dependency already installed for the
+ * app itself, called directly (never rendered), so no jsdom/renderer/DOM and
+ * no Node built-ins are needed either (so it still needs no `@types/node`),
+ * and it can be compiled and executed with only the machine's existing
+ * global TypeScript compiler and Node.js -- no npm install, no network.
  *
  * Text-based checks (no HTTP concepts in the contract source, no imports
  * from Python internals) are run separately via plain `grep` -- see
@@ -33,9 +35,11 @@ import {
   SUPPORTED_SESSION_PURPOSES,
   isSessionPurposeSupported,
 } from "../src/client/types.js";
+import { createElement } from "react";
 import { MockCharacterClient } from "../src/mocks/mockCharacterClient.js";
 import { MockCharacterDebugClient } from "../src/mocks/mockCharacterDebugClient.js";
 import { HttpCharacterClient } from "../src/client/httpCharacterClient.js";
+import { parseDeltaInput } from "../src/features/state/stateInput.js";
 
 let passed = 0;
 let failed = 0;
@@ -185,42 +189,22 @@ async function main() {
       typeof httpClient.sendMessage === "function" &&
       typeof httpClient.getMemory === "function" &&
       typeof httpClient.getRuntimeState === "function" &&
+      typeof httpClient.setRuntimeState === "function" &&
+      typeof httpClient.adjustRuntimeState === "function" &&
+      typeof httpClient.removeRuntimeState === "function" &&
       typeof httpClient.getScene === "function" &&
       typeof httpClient.setScene === "function" &&
       typeof httpClient.clearScene === "function"
   );
 
-  // 14. Methods not transported in Desktop Integration v1 (Memory / Runtime
-  //     State / Scene) reject with a clear typed error IMMEDIATELY -- they
-  //     never attempt a network call, and never fabricate a successful
-  //     result as if it came from Core. Run with no server listening on
-  //     127.0.0.1:8787 to prove no network call happens: a fetch attempt
-  //     would reject with a connection error, not resolve to this specific
-  //     typed error.
+  // 14. Scene is the only remaining capability not transported in Desktop
+  //     Integration v1. It rejects with a clear typed error IMMEDIATELY --
+  //     never a network call, never a fabricated successful result. Run with
+  //     no server listening on 127.0.0.1:8787 to prove no network call
+  //     happens: a fetch attempt would reject with a connection error, not
+  //     resolve to this specific typed error.
   await checkAsync(
-    "14. getMemory rejects with NotIntegratedInTransportError (no fake data, no network call)",
-    async () => {
-      try {
-        await httpClient.getMemory("bogus-workspace-no-server-listening");
-        return false;
-      } catch (err) {
-        return err instanceof NotIntegratedInTransportError && err.capability === "memory";
-      }
-    }
-  );
-  await checkAsync(
-    "14b. getRuntimeState rejects with NotIntegratedInTransportError (no fake data, no network call)",
-    async () => {
-      try {
-        await httpClient.getRuntimeState("bogus-workspace-no-server-listening");
-        return false;
-      } catch (err) {
-        return err instanceof NotIntegratedInTransportError && err.capability === "runtime_state";
-      }
-    }
-  );
-  await checkAsync(
-    "14c. getScene/setScene/clearScene reject with NotIntegratedInTransportError (no fake data, no network call)",
+    "14. getScene/setScene/clearScene reject with NotIntegratedInTransportError (no fake data, no network call)",
     async () => {
       try {
         await httpClient.getScene("bogus-session-no-server-listening");
@@ -242,6 +226,146 @@ async function main() {
       }
     }
   );
+
+  // 15. Runtime State delta normalization: a redundant leading "+" is
+  //     normalized exactly as the existing Character Lab does ("+10" -> "10"),
+  //     in ONE shared helper used by both RELATIONSHIP and PSYCHOLOGY. It does
+  //     not weaken backend canonical validation -- it only fixes the + sign.
+  check(
+    "15. delta input normalizes a redundant leading '+' (+10 -> 10) and rejects non-integers",
+    parseDeltaInput("+10") === 10 &&
+      parseDeltaInput("10") === 10 &&
+      parseDeltaInput("-15") === -15 &&
+      parseDeltaInput("  +10  ") === 10 &&
+      parseDeltaInput("abc") === null &&
+      parseDeltaInput("") === null &&
+      parseDeltaInput("10.5") === null
+  );
+
+  // 16. REGRESSION (REACT_RELATIONSHIP_STATE_KEY_PAYLOAD_FIX_V1): the actual
+  //     production defect was `StateEditor.tsx`'s `NumericEditor` declaring a
+  //     component prop literally named `key` -- React's reserved
+  //     reconciliation attribute, which it strips from `props` before the
+  //     component ever sees it. `<NumericEditor key={relationshipKey} .../>`
+  //     therefore delivered `key === undefined` at the mutation call sites
+  //     even though the displayed computed key ("andrey.trust") was correct,
+  //     producing the exact symptom: "'key' must be a non-empty string" from
+  //     `react_transport.py`'s `_require_str_field`. The fix renamed the data
+  //     prop to `stateKey`. This check proves the underlying mechanism
+  //     generically (any component prop named exactly `key` is swallowed by
+  //     React and never reaches `props`), using the project's own `react`
+  //     dependency -- no jsdom/renderer/new test framework needed, since
+  //     `createElement` never invokes the component function.
+  check(
+    "16. a prop literally named 'key' never reaches props (the exact StateEditor.tsx defect class)",
+    (() => {
+      // React reserves `key` for reconciliation: it's moved to `element.key`,
+      // and `element.props.key` is left as a non-enumerable warning-getter
+      // that always resolves to `undefined` -- so `const { key } = props`
+      // (exactly what the old `NumericEditor({ ..., key })` destructure did)
+      // silently yields `undefined`, never the passed value. Muting
+      // console.error here only suppresses React's own dev warning about
+      // this access; it does not affect the assertion.
+      const originalConsoleError = console.error;
+      console.error = () => {};
+      let propsKey: unknown;
+      let propsHasEnumerableKey: boolean;
+      try {
+        const el = createElement("div", { key: "andrey.trust", stateKey: "andrey.trust", domain: "RELATIONSHIP" });
+        propsKey = el.props.key;
+        propsHasEnumerableKey = Object.keys(el.props).includes("key");
+        return (
+          el.key === "andrey.trust" &&
+          propsKey === undefined &&
+          !propsHasEnumerableKey &&
+          (el.props as any).stateKey === "andrey.trust"
+        );
+      } finally {
+        console.error = originalConsoleError;
+      }
+    })()
+  );
+
+  // 17. Client-level regression for the actual payloads the fix must produce
+  //     (`StateEditor` -> `CharacterClient` -> `HttpCharacterClient` -> JSON
+  //     body), intercepting `fetch` so no real network call happens.
+  const originalFetch = globalThis.fetch;
+  let lastRequest: { path: string; body: any } | null = null;
+  function fakeResponse(body: unknown): Response {
+    const text = JSON.stringify(body);
+    return {
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      text: async () => text,
+    } as unknown as Response;
+  }
+  (globalThis as any).fetch = async (path: string, init?: RequestInit) => {
+    const body = init?.body ? JSON.parse(String(init.body)) : {};
+    lastRequest = { path, body };
+    return fakeResponse({
+      domain: body.domain ?? "RELATIONSHIP",
+      key: body.key ?? "",
+      value: body.value ?? "0",
+      valueInt: typeof body.value === "string" && /^-?\d+$/.test(body.value) ? Number(body.value) : null,
+      sourceKind: "runtime_state_edit",
+      sourceRef: body.sourceRef ?? null,
+      seq: 1,
+    });
+  };
+  try {
+    await checkAsync("17. RELATIONSHIP SET sends domain=RELATIONSHIP key=andrey.trust value=30", async () => {
+      await httpClient.setRuntimeState("ws-1", "RELATIONSHIP", "andrey.trust", "30");
+      return (
+        lastRequest?.path === "/api/runtime-state/set" &&
+        lastRequest.body.workspaceId === "ws-1" &&
+        lastRequest.body.domain === "RELATIONSHIP" &&
+        lastRequest.body.key === "andrey.trust" &&
+        lastRequest.body.value === "30"
+      );
+    });
+    await checkAsync(
+      "17b. RELATIONSHIP ADJUST normalizes '+10' -> 10 and sends key=andrey.trust delta=10",
+      async () => {
+        const delta = parseDeltaInput("+10");
+        if (delta === null) return false;
+        await httpClient.adjustRuntimeState("ws-1", "RELATIONSHIP", "andrey.trust", delta);
+        return (
+          lastRequest?.path === "/api/runtime-state/adjust" &&
+          lastRequest.body.domain === "RELATIONSHIP" &&
+          lastRequest.body.key === "andrey.trust" &&
+          lastRequest.body.delta === 10
+        );
+      }
+    );
+    await checkAsync("17c. RELATIONSHIP REMOVE sends key=andrey.trust", async () => {
+      await httpClient.removeRuntimeState("ws-1", "RELATIONSHIP", "andrey.trust");
+      return (
+        lastRequest?.path === "/api/runtime-state/remove" &&
+        lastRequest.body.domain === "RELATIONSHIP" &&
+        lastRequest.body.key === "andrey.trust"
+      );
+    });
+    await checkAsync("17d. PSYCHOLOGY SET sends domain=PSYCHOLOGY key=stress (canonical key is the dimension itself)", async () => {
+      await httpClient.setRuntimeState("ws-1", "PSYCHOLOGY", "stress", "5");
+      return (
+        lastRequest?.path === "/api/runtime-state/set" &&
+        lastRequest.body.domain === "PSYCHOLOGY" &&
+        lastRequest.body.key === "stress"
+      );
+    });
+    await checkAsync("17e. FACT SET is unaffected: sends domain=FACT key=current.test_status", async () => {
+      await httpClient.setRuntimeState("ws-1", "FACT", "current.test_status", "react-state-smoke");
+      return (
+        lastRequest?.path === "/api/runtime-state/set" &&
+        lastRequest.body.domain === "FACT" &&
+        lastRequest.body.key === "current.test_status" &&
+        lastRequest.body.value === "react-state-smoke"
+      );
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 
   console.log(`\n${passed} passed, ${failed} failed`);
   if (failed > 0) {

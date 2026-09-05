@@ -80,6 +80,7 @@ class TestContractIsTransportNeutral:
             "list_characters", "get_character", "list_variants",
             "create_session", "get_session", "send_message",
             "get_memory", "get_runtime_state",
+            "set_runtime_state", "adjust_runtime_state", "remove_runtime_state",
             "get_scene", "set_scene", "clear_scene",
         }
         present = {n for n in dir(CharacterService) if not n.startswith("_")}

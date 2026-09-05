@@ -44,12 +44,16 @@ from services.character_core.contract import (
     CharacterSession,
     CharacterSummary,
     CharacterVariantSummary,
+    MemoryEventSummary,
+    MemorySummary,
+    RuntimeStateEntrySummary,
+    RuntimeStateSummary,
     SessionPurpose,
     SessionPurposeNotImplementedError,
     WorkspaceSummary,
 )
 
-from .service_adapter import CharacterLabServiceAdapter
+from .service_adapter import CharacterLabServiceAdapter, RuntimeStateMutationError
 
 __all__ = ["ReactTransportError", "ReactTransport"]
 
@@ -84,6 +88,37 @@ def _require_str_field(payload: dict, field: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise _invalid_request(f"'{field}' must be a non-empty string")
     return value
+
+
+def _require_value_field(payload: dict) -> str:
+    value = payload.get("value")
+    if isinstance(value, bool):
+        raise ReactTransportError(400, "invalid_value", "'value' must not be a boolean")
+    if isinstance(value, (str, int)):
+        text = str(value).strip()
+        if text:
+            return text
+    raise ReactTransportError(400, "invalid_value", "'value' must be a non-empty value")
+
+
+def _require_int_field(payload: dict, field: str) -> int:
+    value = payload.get(field)
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ReactTransportError(400, "invalid_delta", f"'{field}' must be an integer")
+    return value
+
+
+_RUNTIME_STATE_DOMAINS = ("FACT", "RELATIONSHIP", "PSYCHOLOGY")
+
+
+def _require_domain(payload: dict) -> str:
+    domain = _require_str_field(payload, "domain")
+    if domain not in _RUNTIME_STATE_DOMAINS:
+        raise ReactTransportError(
+            400, "invalid_domain",
+            f"'domain' must be one of {list(_RUNTIME_STATE_DOMAINS)}",
+        )
+    return domain
 
 
 # ------------------------------------------------------------- serialization
@@ -156,6 +191,46 @@ def _chat_result_to_json(r: ChatTurnResult) -> dict:
     }
 
 
+def _state_entry_to_json(e: RuntimeStateEntrySummary) -> dict:
+    return {
+        "domain": e.domain,
+        "key": e.key,
+        "value": e.value,
+        "valueInt": e.value_int,
+        "sourceKind": e.source_kind,
+        "sourceRef": e.source_ref,
+        "seq": e.seq,
+    }
+
+
+def _runtime_state_to_json(s: RuntimeStateSummary) -> dict:
+    return {
+        "workspaceId": s.workspace_id,
+        "domainsActive": list(s.domains_active),
+        "current": [_state_entry_to_json(e) for e in s.current],
+        "currentCount": s.current_count,
+    }
+
+
+def _memory_to_json(m: MemorySummary) -> dict:
+    return {
+        "workspaceId": m.workspace_id,
+        "causalOrder": m.causal_order,
+        "eventCount": m.event_count,
+        "events": [
+            {
+                "seq": e.seq,
+                "eventId": e.event_id,
+                "sessionId": e.session_id,
+                "eventType": e.event_type,
+                "provenance": e.provenance,
+                "meaning": e.meaning,
+            }
+            for e in m.events
+        ],
+    }
+
+
 def _parse_session_purpose(raw: Any) -> SessionPurpose:
     if not isinstance(raw, str) or not raw:
         raise _invalid_request("'purpose' must be a non-empty string")
@@ -186,6 +261,13 @@ def _run(operation: str, fn: Callable[[], Dict[str, Any]]) -> Dict[str, Any]:
             f"SessionPurpose.{exc.purpose.value} is recognized but not "
             "implemented by this desktop integration",
         ) from exc
+    except RuntimeStateMutationError as exc:
+        # Canonical backend rejection of a Runtime State mutation. Invalid
+        # input (domain/key/value) is a client error (400); anything the
+        # backend rejects because of current state (out-of-range result, ADJUST
+        # on a missing/removed key) is a conflict (409).
+        status = 400 if exc.code in ("invalid_domain", "invalid_key", "invalid_value") else 409
+        raise ReactTransportError(status, exc.code, exc.message) from exc
     except KeyError as exc:
         # The adapter raises a bare KeyError for every "unknown id" case
         # (character/workspace/session) -- e.g. create_session() alone can
@@ -304,3 +386,61 @@ class ReactTransport:
         def op():
             return _chat_result_to_json(self._adapter.send_message(session_id, text))
         return _run("session", op)
+
+    # --------------------------------------------------------------- memory
+
+    def get_memory(self, workspace_id: str) -> dict:
+        def op():
+            return _memory_to_json(self._adapter.get_memory(workspace_id))
+        return _run("workspace", op)
+
+    # ---------------------------------------------------------- runtime state
+
+    def get_runtime_state(self, workspace_id: str) -> dict:
+        def op():
+            return _runtime_state_to_json(self._adapter.get_runtime_state(workspace_id))
+        return _run("workspace", op)
+
+    def set_runtime_state(self, payload: dict) -> dict:
+        if not isinstance(payload, dict):
+            raise _invalid_request("request body must be a JSON object")
+        workspace_id = _require_str_field(payload, "workspaceId")
+        domain = _require_domain(payload)
+        key = _require_str_field(payload, "key")
+        value = _require_value_field(payload)
+        source_ref = payload.get("sourceRef")
+
+        def op():
+            return _state_entry_to_json(
+                self._adapter.set_runtime_state(workspace_id, domain, key, value, source_ref)
+            )
+        return _run("workspace", op)
+
+    def adjust_runtime_state(self, payload: dict) -> dict:
+        if not isinstance(payload, dict):
+            raise _invalid_request("request body must be a JSON object")
+        workspace_id = _require_str_field(payload, "workspaceId")
+        domain = _require_domain(payload)
+        key = _require_str_field(payload, "key")
+        delta = _require_int_field(payload, "delta")
+        source_ref = payload.get("sourceRef")
+
+        def op():
+            return _state_entry_to_json(
+                self._adapter.adjust_runtime_state(workspace_id, domain, key, delta, source_ref)
+            )
+        return _run("workspace", op)
+
+    def remove_runtime_state(self, payload: dict) -> dict:
+        if not isinstance(payload, dict):
+            raise _invalid_request("request body must be a JSON object")
+        workspace_id = _require_str_field(payload, "workspaceId")
+        domain = _require_domain(payload)
+        key = _require_str_field(payload, "key")
+        source_ref = payload.get("sourceRef")
+
+        def op():
+            return _state_entry_to_json(
+                self._adapter.remove_runtime_state(workspace_id, domain, key, source_ref)
+            )
+        return _run("workspace", op)

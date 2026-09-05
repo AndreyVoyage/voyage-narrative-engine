@@ -20,6 +20,7 @@ from services.character_lab.app import CharacterLabApp
 from services.character_lab.service_adapter import (
     CharacterLabDebugAdapter,
     CharacterLabServiceAdapter,
+    RuntimeStateMutationError,
 )
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -412,3 +413,69 @@ class TestPackageUnchanged:
             "kira", acceptance_root=_REPO_ROOT / "accepted", source_loader=loader
         )
         assert compute_package_hash(acc.package) == EXPECTED_HASH
+
+
+class TestRuntimeStateMutation:
+    def test_set_fact_through_adapter(self, tmp_path):
+        svc, _, _ = _adapter(tmp_path)
+        ws = svc.create_test_workspace()
+        entry = svc.set_runtime_state(ws.workspace_id, "FACT", "current.test_status", "react-state-smoke")
+        assert entry.domain == "FACT"
+        assert entry.key == "current.test_status"
+        assert entry.value == "react-state-smoke"
+        assert entry.value_int is None
+
+    def test_relationship_set_adjust_remove(self, tmp_path):
+        svc, _, _ = _adapter(tmp_path)
+        ws = svc.create_test_workspace()
+        svc.set_runtime_state(ws.workspace_id, "RELATIONSHIP", "andrey.trust", "30")
+        adjusted = svc.adjust_runtime_state(ws.workspace_id, "RELATIONSHIP", "andrey.trust", 10)
+        assert adjusted.value_int == 40
+        svc.remove_runtime_state(ws.workspace_id, "RELATIONSHIP", "andrey.trust")
+        state = svc.get_runtime_state(ws.workspace_id)
+        assert all(not (e.domain == "RELATIONSHIP" and e.key == "andrey.trust") for e in state.current)
+
+    def test_psychology_set_adjust_remove(self, tmp_path):
+        svc, _, _ = _adapter(tmp_path)
+        ws = svc.create_test_workspace()
+        svc.set_runtime_state(ws.workspace_id, "PSYCHOLOGY", "stress", "40")
+        adjusted = svc.adjust_runtime_state(ws.workspace_id, "PSYCHOLOGY", "stress", -15)
+        assert adjusted.value_int == 25
+
+    def test_out_of_range_adjust_rejected(self, tmp_path):
+        svc, _, _ = _adapter(tmp_path)
+        ws = svc.create_test_workspace()
+        svc.set_runtime_state(ws.workspace_id, "PSYCHOLOGY", "stress", "90")
+        with pytest.raises(RuntimeStateMutationError):
+            svc.adjust_runtime_state(ws.workspace_id, "PSYCHOLOGY", "stress", 20)
+
+    def test_adjust_after_remove_rejected(self, tmp_path):
+        svc, _, _ = _adapter(tmp_path)
+        ws = svc.create_test_workspace()
+        svc.set_runtime_state(ws.workspace_id, "RELATIONSHIP", "andrey.trust", "30")
+        svc.remove_runtime_state(ws.workspace_id, "RELATIONSHIP", "andrey.trust")
+        with pytest.raises(RuntimeStateMutationError):
+            svc.adjust_runtime_state(ws.workspace_id, "RELATIONSHIP", "andrey.trust", 1)
+
+    def test_append_only_semantics_preserved(self, tmp_path):
+        svc, _, app = _adapter(tmp_path)
+        ws = svc.create_test_workspace()
+        svc.set_runtime_state(ws.workspace_id, "PSYCHOLOGY", "stress", "40")
+        svc.set_runtime_state(ws.workspace_id, "PSYCHOLOGY", "stress", "55")
+        app.select_workspace(ws.workspace_id)
+        data = app.runtime_state()
+        stress = [h for h in data["history"] if h["domain"] == "PSYCHOLOGY" and h["key"] == "stress"]
+        assert [h["action"] for h in stress] == ["SET", "SET"]
+        assert [h["value"] for h in stress] == ["40", "55"]
+
+    def test_source_kind_is_operator_confirmed_and_source_ref_is_annotation(self, tmp_path):
+        svc, _, _ = _adapter(tmp_path)
+        ws = svc.create_test_workspace()
+        entry = svc.set_runtime_state(ws.workspace_id, "FACT", "k", "v", source_ref="react-character-lab")
+        assert entry.source_kind == "OPERATOR_CONFIRMED"
+        assert entry.source_ref == "react-character-lab"
+
+    def test_unknown_workspace_rejects_explicitly(self, tmp_path):
+        svc, _, _ = _adapter(tmp_path)
+        with pytest.raises(KeyError):
+            svc.set_runtime_state("test-0000000000000000", "FACT", "k", "v")
