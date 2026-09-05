@@ -20,14 +20,15 @@ from services.scene_draft import (
     serialize_version_record,
 )
 
+from tests.scene_draft.conftest import make_body
+
 ASS_ID = "ass_sc900_1"
-LOCATION_ID = "test"
-SOURCE_REF = "scenarios/SCENARIO_900.v2.json"
+SOURCE_REF = "scenes/SC_900.json"
 
 
-def _with_name(body, name):
+def _with_title(body, title):
     b = copy.deepcopy(body)
-    b["name"] = name
+    b["scene_title"] = title
     return b
 
 
@@ -37,7 +38,6 @@ def _accept(store, scene_id, version=1):
         scene_id,
         version,
         ass_id=ASS_ID,
-        location_id=LOCATION_ID,
         source_ref=SOURCE_REF,
     )
 
@@ -56,31 +56,29 @@ def test_duplicate_initial_creation_rejected(store, valid_body, scene_id):
 
 def test_save_draft_preserves_version(store, valid_body, scene_id):
     store.create_initial_draft(scene_id, valid_body)
-    v = store.save_draft(scene_id, 1, _with_name(valid_body, "Updated"))
+    v = store.save_draft(scene_id, 1, _with_title(valid_body, "Updated"))
     assert v.version == 1
-    assert v.body["name"] == "Updated"
+    assert v.body.scene_title == "Updated"
 
 
 def test_save_draft_does_not_increment_latest(store, valid_body, scene_id):
     store.create_initial_draft(scene_id, valid_body)
-    store.save_draft(scene_id, 1, _with_name(valid_body, "Updated"))
+    store.save_draft(scene_id, 1, _with_title(valid_body, "Updated"))
     v2 = store.fork_draft_from_version(scene_id, 1)
     assert v2.version == 2  # pointer stayed at 1, so fork allocates 2
 
 
 def test_save_draft_scene_id_must_remain_identical(store, valid_body, scene_id):
     store.create_initial_draft(scene_id, valid_body)
-    bad_body = copy.deepcopy(valid_body)
-    bad_body["id"] = "SC_999"
     with pytest.raises(SceneIdMismatchError):
-        store.save_draft(scene_id, 1, bad_body)
+        store.save_draft(scene_id, 1, make_body(scene_id="SC_999"))
 
 
 def test_save_accepted_fails_closed(store, valid_body, scene_id):
     store.create_initial_draft(scene_id, valid_body)
     _accept(store, scene_id)
     with pytest.raises(AcceptedVersionImmutableError):
-        store.save_draft(scene_id, 1, _with_name(valid_body, "MUTATED"))
+        store.save_draft(scene_id, 1, _with_title(valid_body, "MUTATED"))
 
 
 def test_accepted_file_unchanged_after_rejected_save(store, valid_body, scene_id):
@@ -89,7 +87,7 @@ def test_accepted_file_unchanged_after_rejected_save(store, valid_body, scene_id
     path = store._version_path(scene_id, 1)
     before = path.read_bytes()
     with pytest.raises(AcceptedVersionImmutableError):
-        store.save_draft(scene_id, 1, _with_name(valid_body, "MUTATED"))
+        store.save_draft(scene_id, 1, _with_title(valid_body, "MUTATED"))
     assert path.read_bytes() == before
 
 
@@ -153,9 +151,7 @@ def test_version_mismatch_persisted_fails_closed(store, valid_body, scene_id):
 
 def test_scene_id_mismatch_persisted_fails_closed(store, valid_body, scene_id):
     store.create_initial_draft(scene_id, valid_body)
-    bad_body = copy.deepcopy(valid_body)
-    bad_body["id"] = "SC_999"
-    v2 = SceneVersion(scene_id="SC_999", version=2, lifecycle=LIFECYCLE_DRAFT, body=bad_body)
+    v2 = SceneVersion(scene_id="SC_999", version=2, lifecycle=LIFECYCLE_DRAFT, body=make_body(scene_id="SC_999"))
     path = store._version_path(scene_id, 2)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(serialize_version_record(v2), encoding="utf-8")
@@ -181,7 +177,7 @@ def test_deterministic_serialization(valid_body):
 
 def test_atomic_write_leaves_no_temp_files(store, valid_body, scene_id):
     store.create_initial_draft(scene_id, valid_body)
-    store.save_draft(scene_id, 1, _with_name(valid_body, "Updated"))
+    store.save_draft(scene_id, 1, _with_title(valid_body, "Updated"))
     store.fork_draft_from_version(scene_id, 1)
     leftovers = [
         p for p in store._scene_dir(scene_id).rglob("*.tmp") if p.name.startswith(".scene_draft_")

@@ -4,27 +4,27 @@
 Scene Editor domain lifecycle -- plain-data models.
 
 ``SceneVersion`` is the authoring/history artifact, NOT the downstream accepted
-contract. ASS (``services.ass``) remains canonical for accepted scenes.
+contract. ASS (``services.ass``) remains canonical for accepted scenes. The
+authored ``body`` is now a ``SceneBody`` (``services/scene_body``), the single
+authoritative ordered body; a plain dict input is converted via
+``SceneBody.from_dict`` for the existing store boundary.
 
-Models are ``@dataclass(frozen=True)`` and hold only detached, **deeply
-immutable** plain data. The authored ``body`` is recursively frozen to
-``types.MappingProxyType`` (mappings) and ``tuple`` (sequences) at construction
-time, so a caller can neither mutate a SceneVersion through a retained input
-reference nor through the object itself. ``body_plain()``/``to_dict()`` always
-return **freshly-allocated** plain JSON-compatible data (no aliases).
+Models are ``@dataclass(frozen=True)`` and hold only detached, deeply immutable
+plain data (``SceneBody`` itself is deeply frozen at its own construction).
+``body_plain()``/``to_dict()`` always return freshly-allocated plain data (no
+aliases).
 
-``content_hash`` is computed in ``__post_init__`` from the frozen authored body
-and is therefore deterministic and unaffected by acceptance lifecycle metadata.
+``content_hash`` is computed in ``__post_init__`` from the canonical SceneBody
+(including its explicit nulls / ordered entries) and is therefore deterministic
+and unaffected by acceptance lifecycle metadata.
 """
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from dataclasses import dataclass, field
-from types import MappingProxyType
 from typing import Any, Optional
 
-from tools.narrative_schema_v2 import validate_scene
+from services.scene_body import SceneBody, SceneBodyError
 
 from .errors import (
     SceneIdMismatchError,
@@ -36,33 +36,6 @@ from .hashing import compute_authored_body_hash
 LIFECYCLE_DRAFT = "DRAFT"
 LIFECYCLE_ACCEPTED = "ACCEPTED"
 LIFECYCLES = (LIFECYCLE_DRAFT, LIFECYCLE_ACCEPTED)
-
-
-def _freeze(value: Any) -> Any:
-    """Deeply convert a value into an immutable representation.
-
-    Mirrors ``services/ass/model.py``: dict/Mapping -> MappingProxyType of
-    recursively-frozen values; list/tuple -> tuple of recursively-frozen items.
-    A fresh dict is built first, severing any caller alias.
-    """
-    if isinstance(value, Mapping):
-        return MappingProxyType({key: _freeze(item) for key, item in value.items()})
-    if isinstance(value, (list, tuple)):
-        return tuple(_freeze(item) for item in value)
-    return value
-
-
-def _to_plain(value: Any) -> Any:
-    """Deeply convert a (possibly frozen) value into fresh plain data.
-
-    Always allocates new dicts/lists; the result shares no storage with internal
-    SceneVersion state and can never mutate it.
-    """
-    if isinstance(value, Mapping):
-        return {key: _to_plain(item) for key, item in value.items()}
-    if isinstance(value, (list, tuple)):
-        return [_to_plain(item) for item in value]
-    return value
 
 
 def _require_non_empty_string(value: Any, field: str) -> str:
@@ -109,15 +82,16 @@ class SceneVersion:
     - ``version`` is a positive integer;
     - ``lifecycle`` is exactly ``DRAFT`` or ``ACCEPTED``;
     - DRAFT implies ``acceptance is None``; ACCEPTED implies a valid link;
-    - ``body`` passes the existing unmodified ``validate_scene``;
-    - ``body["id"]`` exactly equals ``scene_id``;
-    - ``content_hash`` is derived deterministically from the authored body only.
+    - ``body`` is a valid ``SceneBody`` (a plain dict input is converted);
+    - ``SceneVersion.scene_id`` exactly equals ``SceneBody.scene_id``;
+    - ``content_hash`` is derived deterministically from the canonical SceneBody
+      (including explicit nulls and ordered entries) only.
     """
 
     scene_id: str
     version: int
     lifecycle: str
-    body: Any
+    body: Any  # SceneBody, or a plain dict converted via SceneBody.from_dict
     acceptance: Optional[AcceptanceLink] = None
     content_hash: str = field(init=False, default="")
 
@@ -128,17 +102,22 @@ class SceneVersion:
         if self.lifecycle not in LIFECYCLES:
             raise SceneInvariantError(f"lifecycle: expected one of {LIFECYCLES!r}")
 
-        if not isinstance(self.body, dict):
-            raise SceneValidationError("body: expected object")
+        body = self.body
+        if isinstance(body, SceneBody):
+            normalized = body
+        elif isinstance(body, dict):
+            try:
+                normalized = SceneBody.from_dict(body)
+            except SceneBodyError as exc:
+                raise SceneValidationError(f"body failed validation: {exc}") from exc
+        else:
+            raise SceneValidationError("body: expected SceneBody or object")
+        object.__setattr__(self, "body", normalized)
 
-        errors, _warnings = validate_scene(self.body)
-        if errors:
-            raise SceneValidationError(f"body failed validation: {errors[0]}")
-
-        body_id = self.body.get("id")
-        if body_id != self.scene_id:
+        if normalized.scene_id != self.scene_id:
             raise SceneIdMismatchError(
-                f"scene_id {self.scene_id!r} does not equal body id {body_id!r}"
+                f"scene_id {self.scene_id!r} does not equal SceneBody scene_id "
+                f"{normalized.scene_id!r}"
             )
 
         if self.lifecycle == LIFECYCLE_DRAFT:
@@ -150,13 +129,11 @@ class SceneVersion:
             if not isinstance(self.acceptance, AcceptanceLink):
                 raise SceneInvariantError("acceptance must be an AcceptanceLink")
 
-        frozen_body = _freeze(self.body)
-        object.__setattr__(self, "body", frozen_body)
-        object.__setattr__(self, "content_hash", compute_authored_body_hash(_to_plain(frozen_body)))
+        object.__setattr__(self, "content_hash", compute_authored_body_hash(normalized.to_dict()))
 
     def body_plain(self) -> dict[str, Any]:
-        """Return a fresh plain dict/list copy of the authored body (no aliases)."""
-        return _to_plain(self.body)
+        """Return a fresh plain dict copy of the authored SceneBody (no aliases)."""
+        return self.body.to_dict()
 
     def to_dict(self) -> dict[str, Any]:
         """Return the full persisted record as fresh plain JSON-compatible data."""
@@ -164,7 +141,7 @@ class SceneVersion:
             "scene_id": self.scene_id,
             "version": self.version,
             "lifecycle": self.lifecycle,
-            "body": _to_plain(self.body),
+            "body": self.body.to_dict(),
             "content_hash": self.content_hash,
             "acceptance": self.acceptance.to_dict() if self.acceptance is not None else None,
         }
@@ -173,9 +150,9 @@ class SceneVersion:
     def from_dict(cls, data: Any) -> "SceneVersion":
         """Build a SceneVersion from persisted plain dict data.
 
-        ``__post_init__`` re-validates the body, re-checks ``scene_id``, and
-        recomputes ``content_hash``. Callers that also need to verify a stored
-        ``content_hash`` compare it against ``result.content_hash``.
+        ``__post_init__`` re-validates the SceneBody, re-checks ``scene_id``,
+        and recomputes ``content_hash``. Callers that also need to verify a
+        stored ``content_hash`` compare it against ``result.content_hash``.
         """
         if not isinstance(data, dict):
             raise SceneValidationError("record must be an object")

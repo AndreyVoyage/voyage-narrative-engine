@@ -19,7 +19,7 @@ import dataclasses
 import json
 from typing import Any, Sequence
 
-from services.ass import ASS
+from services.ass import AcceptedScene
 from services.character_canon_bridge import CharacterCanonSnapshot
 from services.character_canon_bridge.status import (
     is_known_canon_status,
@@ -51,12 +51,15 @@ def _require_json_compatible(payload: Any) -> None:
 
 def build_scene_interpretation_artifact(
     *,
-    ass: ASS,
+    ass: AcceptedScene,
     location: LocationCanon,
     character_snapshots: Sequence[CharacterCanonSnapshot],
     interpretation_payload: dict[str, Any],
 ) -> SceneInterpretationArtifact:
     """Build the immutable scene interpretation artifact.
+
+    ``ass`` is any accepted-scene snapshot (legacy ``ASS`` ass/0.1 or
+    ``OrderedASS`` ass/0.2) exposing the common anchor fields.
 
     Validation is exact, deterministic, and fail-closed:
 

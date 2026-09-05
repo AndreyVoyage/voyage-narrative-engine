@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import pytest
 
+from services.scene_body import SceneBody
 from services.scene_draft import (
     LIFECYCLE_ACCEPTED,
     LIFECYCLE_DRAFT,
@@ -15,6 +16,7 @@ from services.scene_draft import (
     SceneValidationError,
     SceneVersion,
 )
+from tests.scene_draft.conftest import make_body
 
 
 def _link(ass_id: str = "ass_sc900_1") -> AcceptanceLink:
@@ -28,16 +30,13 @@ def test_valid_draft(valid_body):
     assert v.scene_id == "SC_900"
     assert v.acceptance is None
     assert len(v.content_hash) == 64
+    assert isinstance(v.body, SceneBody)
 
 
 def test_valid_accepted(valid_body):
     link = _link()
     v = SceneVersion(
-        scene_id="SC_900",
-        version=2,
-        lifecycle=LIFECYCLE_ACCEPTED,
-        body=valid_body,
-        acceptance=link,
+        scene_id="SC_900", version=2, lifecycle=LIFECYCLE_ACCEPTED, body=valid_body, acceptance=link
     )
     assert v.lifecycle == LIFECYCLE_ACCEPTED
     assert v.acceptance is link
@@ -48,11 +47,7 @@ def test_valid_accepted(valid_body):
 def test_draft_with_acceptance_rejected(valid_body):
     with pytest.raises(SceneInvariantError):
         SceneVersion(
-            scene_id="SC_900",
-            version=1,
-            lifecycle=LIFECYCLE_DRAFT,
-            body=valid_body,
-            acceptance=_link(),
+            scene_id="SC_900", version=1, lifecycle=LIFECYCLE_DRAFT, body=valid_body, acceptance=_link()
         )
 
 
@@ -64,17 +59,17 @@ def test_accepted_without_acceptance_rejected(valid_body):
 @pytest.mark.parametrize("bad_version", [0, -1, 1.5, "1", True, None])
 def test_invalid_version_rejected(valid_body, bad_version):
     with pytest.raises(SceneInvariantError):
-        SceneVersion(
-            scene_id="SC_900",
-            version=bad_version,
-            lifecycle=LIFECYCLE_DRAFT,
-            body=valid_body,
-        )
+        SceneVersion(scene_id="SC_900", version=bad_version, lifecycle=LIFECYCLE_DRAFT, body=valid_body)
 
 
 def test_invalid_body_rejected():
     with pytest.raises(SceneValidationError):
-        SceneVersion(scene_id="SC_900", version=1, lifecycle=LIFECYCLE_DRAFT, body={"id": "SC_900"})
+        SceneVersion(
+            scene_id="SC_900",
+            version=1,
+            lifecycle=LIFECYCLE_DRAFT,
+            body={"authoring_schema_version": "scene_body/0.9"},
+        )
 
 
 def test_non_dict_body_rejected():
@@ -82,9 +77,9 @@ def test_non_dict_body_rejected():
         SceneVersion(scene_id="SC_900", version=1, lifecycle=LIFECYCLE_DRAFT, body="not a dict")
 
 
-def test_scene_id_mismatch_rejected(valid_body):
+def test_scene_id_mismatch_rejected():
     with pytest.raises(SceneIdMismatchError):
-        SceneVersion(scene_id="SC_999", version=1, lifecycle=LIFECYCLE_DRAFT, body=valid_body)
+        SceneVersion(scene_id="SC_999", version=1, lifecycle=LIFECYCLE_DRAFT, body=make_body())
 
 
 def test_deterministic_authored_content_hash(valid_body):
@@ -97,11 +92,7 @@ def test_deterministic_authored_content_hash(valid_body):
 def test_content_hash_unchanged_by_lifecycle(valid_body):
     draft = SceneVersion(scene_id="SC_900", version=1, lifecycle=LIFECYCLE_DRAFT, body=valid_body)
     accepted = SceneVersion(
-        scene_id="SC_900",
-        version=1,
-        lifecycle=LIFECYCLE_ACCEPTED,
-        body=valid_body,
-        acceptance=_link(),
+        scene_id="SC_900", version=1, lifecycle=LIFECYCLE_ACCEPTED, body=valid_body, acceptance=_link()
     )
     assert draft.content_hash == accepted.content_hash
 
@@ -109,14 +100,11 @@ def test_content_hash_unchanged_by_lifecycle(valid_body):
 def test_caller_mutation_cannot_affect_model(valid_body):
     v = SceneVersion(scene_id="SC_900", version=1, lifecycle=LIFECYCLE_DRAFT, body=valid_body)
     original_hash = v.content_hash
-    original_name = v.body["name"]
-    valid_body["name"] = "MUTATED"
-    valid_body["characters"][0]["display_name"] = "MUTATED"
-    valid_body["choice_points"][0]["branches"][0]["option_text"] = "MUTATED"
-    assert v.body["name"] == original_name
+    original_title = v.body.scene_title
+    valid_body["scene_title"] = "MUTATED"
+    valid_body["entries"][0]["text"] = "MUTATED"
+    assert v.body.scene_title == original_title
     assert v.content_hash == original_hash
-    with pytest.raises(TypeError):
-        v.body["name"] = "x"
 
 
 def test_acceptance_link_requires_non_empty():
@@ -124,3 +112,31 @@ def test_acceptance_link_requires_non_empty():
         AcceptanceLink(ass_id="", ass_content_hash="a" * 64)
     with pytest.raises(SceneValidationError):
         AcceptanceLink(ass_id="ass_x", ass_content_hash="")
+
+
+def test_entry_reorder_changes_hash():
+    a = SceneVersion(scene_id="SC_900", version=1, lifecycle=LIFECYCLE_DRAFT, body=make_body())
+    b_body = make_body()
+    b_body["entries"] = [b_body["entries"][1], b_body["entries"][0], b_body["entries"][2]]
+    b = SceneVersion(scene_id="SC_900", version=1, lifecycle=LIFECYCLE_DRAFT, body=b_body)
+    assert a.content_hash != b.content_hash
+
+
+def test_location_change_changes_hash():
+    a = SceneVersion(scene_id="SC_900", version=1, lifecycle=LIFECYCLE_DRAFT, body=make_body())
+    b = SceneVersion(scene_id="SC_900", version=1, lifecycle=LIFECYCLE_DRAFT, body=make_body(location_id="gym_night"))
+    assert a.content_hash != b.content_hash
+
+
+def test_content_rating_change_changes_hash():
+    a = SceneVersion(scene_id="SC_900", version=1, lifecycle=LIFECYCLE_DRAFT, body=make_body())
+    b = SceneVersion(scene_id="SC_900", version=1, lifecycle=LIFECYCLE_DRAFT, body=make_body(content_rating="R"))
+    assert a.content_hash != b.content_hash
+
+
+def test_text_change_changes_hash():
+    a = SceneVersion(scene_id="SC_900", version=1, lifecycle=LIFECYCLE_DRAFT, body=make_body())
+    b_body = make_body()
+    b_body["entries"][0]["text"] = "A different narration."
+    b = SceneVersion(scene_id="SC_900", version=1, lifecycle=LIFECYCLE_DRAFT, body=b_body)
+    assert a.content_hash != b.content_hash

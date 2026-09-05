@@ -10,9 +10,21 @@ import json
 
 import pytest
 
-from services.ass import ASS, Participant, Provenance as AssProvenance
+from services.ass import (
+    ASS,
+    OrderedASS,
+    Participant,
+    Provenance as AssProvenance,
+    build_ordered_ass,
+)
 from services.character_canon_bridge import CharacterCanonSnapshot, Provenance as CanonProvenance
 from services.location_canon import LocationCanon
+from services.scene_body import (
+    AUTHORING_SCHEMA_VERSION,
+    Participant as BodyParticipant,
+    SceneBody,
+    TextEntry,
+)
 from services.scene_interpretation import (
     CharacterStatusUnknownError,
     SceneInterpretationValidationError,
@@ -378,3 +390,51 @@ def test_no_characters_in_frame_field():
     )
     assert "characters_in_frame" not in artifact.to_dict()
     assert "interpretation_payload" in artifact.to_dict()
+
+
+# ---------------------------------------------------------------------------
+# K. OrderedASS (ass/0.2) compatibility
+# ---------------------------------------------------------------------------
+
+def _ordered_ass(scene_id="SC_TEST", location_id="yoga_hall") -> OrderedASS:
+    body = SceneBody(
+        authoring_schema_version=AUTHORING_SCHEMA_VERSION,
+        scene_id=scene_id,
+        location_id=location_id,
+        participants=(BodyParticipant(character_id="KIRA", role="protagonist", present=True),),
+        content_rating="PG",
+        entries=(TextEntry(entry_id="e1", presentation="NARRATIVE", text="Kira enters."),),
+    )
+    return build_ordered_ass(
+        body,
+        ass_id="ass_test",
+        version=1,
+        source_ref="scenes/SC_TEST.json",
+        source_hash="0" * 64,
+    )
+
+
+def test_ordered_ass_accepted():
+    ass = _ordered_ass()
+    assert ass.schema_version == "ass/0.2"
+    artifact = build_scene_interpretation_artifact(
+        ass=ass,
+        location=_location(),
+        character_snapshots=[_snapshot("KIRA", "APPROVED_AS_CANON")],
+        interpretation_payload=PAYLOAD,
+    )
+    assert artifact.scene_id == "SC_TEST"
+    assert artifact.ass_anchor.ass_id == "ass_test"
+    assert artifact.ass_anchor.content_hash == ass.content_hash
+    assert artifact.production_eligible is True
+
+
+def test_ordered_ass_location_mismatch_rejected():
+    ass = _ordered_ass(location_id="yoga_hall")
+    with pytest.raises(SceneInterpretationValidationError):
+        build_scene_interpretation_artifact(
+            ass=ass,
+            location=_location(location_id="gym_night"),
+            character_snapshots=[_snapshot("KIRA", "APPROVED_AS_CANON")],
+            interpretation_payload=PAYLOAD,
+        )

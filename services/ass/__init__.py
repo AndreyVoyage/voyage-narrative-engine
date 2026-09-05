@@ -15,7 +15,7 @@ an implicit PEP 420 namespace package (matching the existing
 
 from __future__ import annotations
 
-from .errors import ASSError, ASSNormalizationError, ASSSourceError
+from .errors import ASSError, ASSInvariantError, ASSNormalizationError, ASSSourceError
 from .hashing import compute_content_hash, compute_source_hash
 from .importer import (
     ASS_SCHEMA_VERSION,
@@ -24,11 +24,19 @@ from .importer import (
 )
 from .model import (
     ASS,
+    AcceptedScene,
     AcceptedSceneSnapshot,
     Beat,
+    LEGACY_ASS_SCHEMA_VERSION,
     LocationStateOverride,
     Participant,
     Provenance,
+)
+from .ordered import (
+    ORDERED_ASS_SCHEMA_VERSION,
+    SOURCE_KIND_ORDERED_ACCEPT,
+    OrderedASS,
+    build_ordered_ass,
 )
 
 __all__ = [
@@ -38,11 +46,18 @@ __all__ = [
     "SOURCE_KIND_IMPORT",
     # Models
     "AcceptedSceneSnapshot",
+    "AcceptedScene",
     "ASS",
     "Participant",
     "Beat",
     "LocationStateOverride",
     "Provenance",
+    "LEGACY_ASS_SCHEMA_VERSION",
+    # Ordered ASS
+    "OrderedASS",
+    "build_ordered_ass",
+    "ORDERED_ASS_SCHEMA_VERSION",
+    "SOURCE_KIND_ORDERED_ACCEPT",
     # Hashing
     "compute_content_hash",
     "compute_source_hash",
@@ -50,4 +65,5 @@ __all__ = [
     "ASSError",
     "ASSSourceError",
     "ASSNormalizationError",
+    "ASSInvariantError",
 ]

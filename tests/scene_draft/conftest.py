@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
@@ -12,24 +11,64 @@ import pytest
 
 from services.scene_draft import SceneDraftStore
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
 SCENE_ID = "SC_900"
-FIXTURE_PATH = REPO_ROOT / "tests" / "fixtures" / "SC_900_THOUGHT_VISIBILITY.v2.json"
+
+
+def make_body(scene_id: str = SCENE_ID, **overrides) -> dict[str, Any]:
+    """A valid complete SceneBody (scene_body/1.0) as a plain dict."""
+    body: dict[str, Any] = {
+        "authoring_schema_version": "scene_body/1.0",
+        "scene_id": scene_id,
+        "scene_title": "Test scene",
+        "location_id": "yoga_hall",
+        "participants": [{"character_id": "KIRA", "role": "protagonist", "present": True}],
+        "content_rating": "PG",
+        "character_state_overrides": None,
+        "location_state_overrides": None,
+        "entries": [
+            {
+                "entry_id": "e1",
+                "kind": "TEXT",
+                "presentation": "NARRATIVE",
+                "text": "Kira enters the yoga hall.",
+                "character_id": None,
+                "thought_visibility": None,
+            },
+            {
+                "entry_id": "c1",
+                "kind": "CHOICE",
+                "prompt": "What next?",
+                "options": [
+                    {
+                        "option_id": "o1",
+                        "display_text": "Continue",
+                        "target": {"target_kind": "SCENE", "target_id": "SC_901"},
+                    }
+                ],
+            },
+            {
+                "entry_id": "v1",
+                "kind": "VISUAL_CHANGE",
+                "operation": "SET",
+                "asset_id": "kira_yoga_hall",
+                "transition": "fade",
+            },
+        ],
+    }
+    body.update(overrides)
+    return body
 
 
 @pytest.fixture
 def scene_id() -> str:
-    """The fixture scene's stable id (matches the committed SC_900 body)."""
     return SCENE_ID
 
 
 @pytest.fixture
 def valid_body() -> dict[str, Any]:
-    """A committed valid Scenario V2 body (already satisfies the unmodified validator)."""
-    return json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
+    return make_body()
 
 
 @pytest.fixture
 def store(tmp_path: Path) -> SceneDraftStore:
-    """A fresh SceneDraftStore rooted under the pytest tmp dir."""
     return SceneDraftStore(tmp_path / "scene_draft")

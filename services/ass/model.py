@@ -38,7 +38,13 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Any, Optional, Tuple
+from typing import Any, Optional, Protocol, Tuple
+
+from .errors import ASSInvariantError
+
+# The legacy ASS envelope's own contract/format version. Enforced exactly on
+# ``ASS`` construction so a legacy ASS can never claim ``ass/0.2``.
+LEGACY_ASS_SCHEMA_VERSION = "ass/0.1"
 
 
 class AcceptedSceneSnapshot:
@@ -48,6 +54,22 @@ class AcceptedSceneSnapshot:
     exists so callers and type hints can reference the concept without
     depending on field layout.
     """
+
+
+class AcceptedScene(Protocol):
+    """Common accepted-scene input contract shared by legacy ASS and OrderedASS.
+
+    Downstream consumers (``services/scene_interpretation``) accept either
+    concrete type through this stable anchor-field surface, avoiding ``Any``
+    and avoiding a dependency on a specific schema version.
+    """
+
+    scene_id: str
+    ass_id: str
+    version: int
+    location_id: str
+    participants: Tuple["Participant", ...]
+    content_hash: str
 
 
 def _freeze(value: Any) -> Any:
@@ -209,6 +231,11 @@ class ASS(AcceptedSceneSnapshot):
     author: Optional[str] = None
 
     def __post_init__(self) -> None:
+        if self.schema_version != LEGACY_ASS_SCHEMA_VERSION:
+            raise ASSInvariantError(
+                f"ASS schema_version {self.schema_version!r} unsupported; "
+                f"expected {LEGACY_ASS_SCHEMA_VERSION!r}"
+            )
         object.__setattr__(self, "participants", tuple(self.participants))
         object.__setattr__(self, "ordered_beats", tuple(self.ordered_beats))
         if self.location_state_overrides is not None:

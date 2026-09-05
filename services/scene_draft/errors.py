@@ -18,12 +18,13 @@ class SceneDraftError(Exception):
 
 
 class SceneValidationError(SceneDraftError):
-    """Raised when a scene ``body`` is not a dict, or fails the existing
-    unmodified ``tools.narrative_schema_v2.validate_scene`` semantic check."""
+    """Raised when a scene ``body`` is not a SceneBody / plain dict, or fails
+    SceneBody model validation (``services.scene_body``)."""
 
 
 class SceneIdMismatchError(SceneDraftError):
-    """Raised when ``body["id"]`` does not exactly equal the requested ``scene_id``."""
+    """Raised when ``SceneBody.scene_id`` does not exactly equal the requested
+    ``scene_id``."""
 
 
 class SceneInvariantError(SceneDraftError):
@@ -60,6 +61,12 @@ class PersistenceError(SceneDraftError):
 
 
 class AcceptanceError(SceneDraftError):
-    """Raised when the ASS importer succeeds but the returned ASS is
+    """Raised when OrderedASS projection succeeds but the returned OrderedASS is
     inconsistent with the SceneVersion being accepted (scene_id or version
     mismatch)."""
+
+
+class AcceptanceIncompleteError(SceneDraftError):
+    """Raised when acceptance is attempted on a SceneBody that is not yet
+    acceptance-complete. This always fires before OrderedASS construction and
+    before any lifecycle mutation."""

@@ -13,6 +13,7 @@ from __future__ import annotations
 from .compiler import accept_draft
 from .errors import (
     AcceptanceError,
+    AcceptanceIncompleteError,
     AcceptedVersionImmutableError,
     AlreadyAcceptedError,
     PersistenceError,
@@ -58,4 +59,5 @@ __all__ = [
     "AlreadyAcceptedError",
     "PersistenceError",
     "AcceptanceError",
+    "AcceptanceIncompleteError",
 ]

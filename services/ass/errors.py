@@ -34,3 +34,13 @@ class ASSNormalizationError(ASSError):
     and duplicate ``beat_id`` detected at the ASS layer (defense in depth,
     independently of the shared source validator).
     """
+
+
+class ASSInvariantError(ASSError):
+    """Raised on an ASS/OrderedASS model invariant violation.
+
+    Covers: a wrong or unknown ``schema_version`` (e.g. a legacy ASS claiming
+    ``ass/0.2``, or an OrderedASS claiming ``ass/0.1``) and an OrderedASS whose
+    ``ordered_flow`` is empty (an ass/0.2 object without a complete ordered flow
+    must be impossible to construct).
+    """
