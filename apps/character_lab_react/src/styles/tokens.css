@@ -1,0 +1,94 @@
+/**
+ * Character Lab React -- design tokens.
+ *
+ * A professional desktop developer tool: clean, minimal, quietly futuristic.
+ * Not a game screen. Every feature component reads sizing/color/typography
+ * from these custom properties instead of hard-coding pixel values, so a new
+ * form field or table row can never break the overall page layout.
+ */
+
+:root {
+  /* ---- surface hierarchy -------------------------------------------- */
+  --clab-bg: #0b0d14;
+  --clab-surface-0: #10131c;
+  --clab-surface-1: #161a26;
+  --clab-surface-2: #1d2130;
+  --clab-surface-raised: #232840;
+  --clab-border: #2a2f42;
+  --clab-border-strong: #3a4058;
+
+  /* ---- text ------------------------------------------------------- */
+  --clab-text: #e7e9f2;
+  --clab-text-muted: #9aa0b8;
+  --clab-text-subtle: #6b7290;
+
+  /* ---- accent / interactive states ---------------------------------- */
+  --clab-accent: #7c8cff;
+  --clab-accent-strong: #99a6ff;
+  --clab-accent-soft: rgba(124, 140, 255, 0.14);
+  --clab-accent-contrast: #0b0d14;
+
+  --clab-ok: #46d19e;
+  --clab-ok-soft: rgba(70, 209, 158, 0.14);
+  --clab-warn: #e3b341;
+  --clab-warn-soft: rgba(227, 179, 65, 0.14);
+  --clab-danger: #ef6f6f;
+  --clab-danger-soft: rgba(239, 111, 111, 0.14);
+
+  /* Developer/debug UI gets its own quiet accent -- visually distinct from
+     normal character-facing UI, never the primary accent color. */
+  --clab-debug-accent: #d18cf0;
+  --clab-debug-soft: rgba(209, 140, 240, 0.12);
+
+  /* ---- spacing scale -------------------------------------------------- */
+  --clab-space-0: 0;
+  --clab-space-1: 4px;
+  --clab-space-2: 8px;
+  --clab-space-3: 12px;
+  --clab-space-4: 16px;
+  --clab-space-5: 20px;
+  --clab-space-6: 24px;
+  --clab-space-8: 32px;
+  --clab-space-10: 40px;
+
+  /* ---- radius ----------------------------------------------------- */
+  --clab-radius-sm: 6px;
+  --clab-radius-md: 10px;
+  --clab-radius-lg: 14px;
+  --clab-radius-pill: 999px;
+
+  /* ---- typography scale -------------------------------------------- */
+  --clab-font-sans:
+    "Inter", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", sans-serif;
+  --clab-font-mono: ui-monospace, "Cascadia Code", Consolas, monospace;
+
+  --clab-text-xs: 11px;
+  --clab-text-sm: 12.5px;
+  --clab-text-md: 14px;
+  --clab-text-lg: 16px;
+  --clab-text-xl: 20px;
+  --clab-text-2xl: 26px;
+
+  --clab-line-tight: 1.25;
+  --clab-line-normal: 1.5;
+
+  /* ---- borders / elevation -------------------------------------------- */
+  --clab-border-width: 1px;
+  --clab-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --clab-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --clab-shadow-focus: 0 0 0 3px var(--clab-accent-soft);
+
+  /* ---- layout dimensions (owned ONLY by layout primitives) ----------- */
+  --clab-sidebar-width: 268px;
+  --clab-inspector-width: 340px;
+  --clab-topbar-height: 52px;
+  --clab-content-max-width: 1400px;
+
+  /* ---- responsive breakpoints (reference values for container/media) - */
+  --clab-bp-medium: 1180px;
+  --clab-bp-narrow: 820px;
+
+  /* ---- motion --------------------------------------------------------- */
+  --clab-motion-fast: 120ms ease;
+  --clab-motion-normal: 200ms ease;
+}

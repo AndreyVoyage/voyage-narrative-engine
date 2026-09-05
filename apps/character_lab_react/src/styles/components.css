@@ -1,0 +1,289 @@
+/**
+ * Character Lab React -- interactive element + small component styling.
+ * Sizing still comes from tokens/layout primitives; this file only styles
+ * appearance and interactive states.
+ */
+
+/* ------------------------------------------------------------------ brand */
+
+.clab-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--clab-space-2);
+  font-weight: 600;
+  font-size: var(--clab-text-lg);
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.clab-brand__mark {
+  flex: 0 0 auto;
+  color: var(--clab-accent);
+}
+
+.clab-brand__badge {
+  font-size: var(--clab-text-xs);
+  padding: 2px var(--clab-space-2);
+  border-radius: var(--clab-radius-pill);
+  background: var(--clab-accent);
+  color: var(--clab-accent-contrast);
+  letter-spacing: 0.03em;
+}
+
+/* --------------------------------------------------------------- buttons */
+
+.clab-btn {
+  appearance: none;
+  border: var(--clab-border-width) solid var(--clab-border-strong);
+  background: var(--clab-surface-2);
+  color: var(--clab-text);
+  border-radius: var(--clab-radius-sm);
+  padding: var(--clab-space-2) var(--clab-space-3);
+  font-size: var(--clab-text-sm);
+  cursor: pointer;
+  transition: border-color var(--clab-motion-fast), background var(--clab-motion-fast);
+}
+
+.clab-btn:hover {
+  border-color: var(--clab-accent);
+}
+
+.clab-btn--primary {
+  background: var(--clab-accent);
+  border-color: var(--clab-accent);
+  color: var(--clab-accent-contrast);
+  font-weight: 600;
+}
+
+.clab-btn--primary:hover {
+  background: var(--clab-accent-strong);
+  border-color: var(--clab-accent-strong);
+}
+
+.clab-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.clab-btn[data-active="true"] {
+  border-color: var(--clab-accent);
+  color: var(--clab-accent-strong);
+  font-weight: 600;
+}
+
+/* Compact square icon-only control (hamburger, Inspector toggle). Fixed
+   size so it never grows wider than intended and always stays reachable in
+   the topbar's right/left zones. */
+.clab-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  flex: 0 0 auto;
+}
+
+.clab-icon-btn[aria-expanded="true"] {
+  border-color: var(--clab-accent);
+  color: var(--clab-accent-strong);
+  background: var(--clab-accent-soft);
+}
+
+/* Responsive topbar controls: hidden on desktop, revealed only once the
+   corresponding AppShell region becomes a collapsible drawer (see
+   layout.css's breakpoints). */
+[data-narrow-only="true"],
+[data-medium-only="true"] {
+  display: none;
+}
+
+@media (max-width: 1180px) {
+  [data-medium-only="true"] {
+    display: inline-flex;
+  }
+}
+
+@media (max-width: 820px) {
+  [data-narrow-only="true"] {
+    display: inline-flex;
+  }
+}
+
+/* ----------------------------------------------------------------- input */
+
+.clab-input,
+.clab-textarea {
+  width: 100%;
+  border: var(--clab-border-width) solid var(--clab-border-strong);
+  background: var(--clab-surface-1);
+  color: var(--clab-text);
+  border-radius: var(--clab-radius-sm);
+  padding: var(--clab-space-2) var(--clab-space-3);
+}
+
+.clab-textarea {
+  resize: vertical;
+  min-height: 64px;
+}
+
+/* -------------------------------------------------------------- nav mode */
+
+.clab-mode-nav {
+  display: flex;
+  gap: var(--clab-space-1);
+  /* Never wraps -- wrapping would grow the fixed-height topbar row. Its
+     parent (`.clab-topbar__center`) scrolls horizontally instead when the
+     nav doesn't fit. */
+  flex-wrap: nowrap;
+}
+
+.clab-mode-nav__item {
+  flex: 0 0 auto;
+  border: var(--clab-border-width) solid transparent;
+  background: transparent;
+  color: var(--clab-text-muted);
+  border-radius: var(--clab-radius-sm);
+  padding: var(--clab-space-1) var(--clab-space-3);
+  font-size: var(--clab-text-sm);
+  cursor: pointer;
+}
+
+.clab-mode-nav__item:hover {
+  color: var(--clab-text);
+}
+
+.clab-mode-nav__item[data-active="true"] {
+  background: var(--clab-accent-soft);
+  border-color: var(--clab-accent);
+  color: var(--clab-accent-strong);
+  font-weight: 600;
+}
+
+/* debug-tier nav items get the debug accent, never the primary accent --
+   a visible, structural reminder that this is developer/debug UI. */
+.clab-mode-nav__item[data-tier="debug"][data-active="true"] {
+  background: var(--clab-debug-soft);
+  border-color: var(--clab-debug-accent);
+  color: var(--clab-debug-accent);
+}
+
+/* ---------------------------------------------------------------- badges */
+
+.clab-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--clab-space-1);
+  font-size: var(--clab-text-xs);
+  padding: 1px var(--clab-space-2);
+  border-radius: var(--clab-radius-pill);
+  border: var(--clab-border-width) solid var(--clab-border-strong);
+  color: var(--clab-text-muted);
+}
+
+.clab-badge--ok {
+  border-color: var(--clab-ok);
+  color: var(--clab-ok);
+  background: var(--clab-ok-soft);
+}
+
+.clab-badge--warn {
+  border-color: var(--clab-warn);
+  color: var(--clab-warn);
+  background: var(--clab-warn-soft);
+}
+
+.clab-badge--danger {
+  border-color: var(--clab-danger);
+  color: var(--clab-danger);
+  background: var(--clab-danger-soft);
+}
+
+.clab-badge--debug {
+  border-color: var(--clab-debug-accent);
+  color: var(--clab-debug-accent);
+  background: var(--clab-debug-soft);
+}
+
+/* ------------------------------------------------------------ list items */
+
+.clab-select-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--clab-space-1);
+}
+
+.clab-select-list__item {
+  border-radius: var(--clab-radius-sm);
+  border: var(--clab-border-width) solid transparent;
+  padding: var(--clab-space-2) var(--clab-space-3);
+  cursor: pointer;
+}
+
+.clab-select-list__item:hover {
+  background: var(--clab-surface-2);
+}
+
+.clab-select-list__item[data-active="true"] {
+  background: var(--clab-accent-soft);
+  border-color: var(--clab-accent);
+}
+
+.clab-select-list__item[data-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.clab-select-list__sub {
+  font-size: var(--clab-text-xs);
+  color: var(--clab-text-subtle);
+}
+
+/* ------------------------------------------------------------- chat view */
+
+.clab-chat-messages {
+  display: flex;
+  flex-direction: column;
+  gap: var(--clab-space-3);
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+}
+
+.clab-chat-bubble {
+  max-width: 72%;
+  padding: var(--clab-space-2) var(--clab-space-3);
+  border-radius: var(--clab-radius-md);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.clab-chat-bubble[data-role="user"] {
+  align-self: flex-end;
+  background: var(--clab-accent);
+  color: var(--clab-accent-contrast);
+}
+
+.clab-chat-bubble[data-role="character"] {
+  align-self: flex-start;
+  background: var(--clab-surface-2);
+}
+
+.clab-chat-bubble[data-role="system"] {
+  align-self: center;
+  background: transparent;
+  color: var(--clab-text-subtle);
+  font-size: var(--clab-text-sm);
+}
+
+/* ----------------------------------------------------------------- hash */
+
+.clab-hash {
+  font-family: var(--clab-font-mono);
+  font-size: var(--clab-text-xs);
+  color: var(--clab-text-muted);
+  overflow-wrap: anywhere;
+}

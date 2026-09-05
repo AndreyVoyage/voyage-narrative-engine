@@ -1,0 +1,55 @@
+/**
+ * Character Lab React -- base reset + global element defaults.
+ * Framework-free plain CSS; no Tailwind/Bootstrap/etc.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--clab-bg);
+  color: var(--clab-text);
+  font-family: var(--clab-font-sans);
+  font-size: var(--clab-text-md);
+  line-height: var(--clab-line-normal);
+  overflow-x: hidden; /* the app shell manages its own internal scrolling */
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+button {
+  font-family: inherit;
+}
+
+input,
+textarea,
+select {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
+::selection {
+  background: var(--clab-accent-soft);
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--clab-shadow-focus);
+  border-radius: var(--clab-radius-sm);
+}

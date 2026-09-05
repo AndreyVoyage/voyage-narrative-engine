@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "skipLibCheck": true,
+    "strict": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "outDir": "dist-checks",
+    "rootDir": "."
+  },
+  "include": [
+    "scripts/structural-checks.ts",
+    "src/client/types.ts",
+    "src/client/characterClient.ts",
+    "src/client/characterDebugClient.ts",
+    "src/mocks/mockData.ts",
+    "src/mocks/mockCharacterClient.ts",
+    "src/mocks/mockCharacterDebugClient.ts"
+  ]
+}

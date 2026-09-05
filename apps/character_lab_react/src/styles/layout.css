@@ -1,0 +1,321 @@
+/**
+ * Character Lab React -- layout primitives.
+ *
+ * Page/layout sizing lives HERE ONLY. Feature components must never define
+ * application-wide dimensions (widths, viewport heights, fixed panel sizes)
+ * -- they compose these primitives instead, so a new form field or table row
+ * can never break the overall page layout.
+ *
+ * Desktop is primary: sidebar + main + inspector. Responsive behavior
+ * degrades gracefully -- the inspector becomes a collapsible drawer at
+ * medium width, and the sidebar becomes a collapsible drawer at narrow
+ * width, with the main content column never forcing horizontal page
+ * overflow.
+ */
+
+/* ------------------------------------------------------------- app shell */
+
+.clab-app-shell {
+  display: grid;
+  grid-template-columns: var(--clab-sidebar-width) minmax(0, 1fr) var(--clab-inspector-width);
+  grid-template-rows: var(--clab-topbar-height) minmax(0, 1fr);
+  grid-template-areas:
+    "topbar topbar topbar"
+    "sidebar main inspector";
+  height: 100vh;
+  background: var(--clab-bg);
+  color: var(--clab-text);
+  font-family: var(--clab-font-sans);
+  font-size: var(--clab-text-md);
+  line-height: var(--clab-line-normal);
+}
+
+/* Three explicit zones -- left (menu/identity), center (mode nav), right
+   (inspector toggle). NO `margin-left: auto` positioning: the right zone's
+   placement comes from the grid track itself, so it can never be pushed
+   outside the topbar's own bounds. */
+.clab-app-shell__topbar {
+  grid-area: topbar;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--clab-space-4);
+  padding: 0 var(--clab-space-4);
+  background: var(--clab-surface-0);
+  border-bottom: var(--clab-border-width) solid var(--clab-border);
+  min-width: 0;
+}
+
+.clab-topbar__left {
+  display: flex;
+  align-items: center;
+  gap: var(--clab-space-2);
+  min-width: 0;
+}
+
+/* The nav lives in the flexible center track. It never wraps (wrapping would
+   grow the fixed-height topbar row); instead it scrolls horizontally within
+   its OWN region when it doesn't fit -- explicitly allowed for topbar nav,
+   unlike page-level horizontal scroll. */
+.clab-topbar__center {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.clab-topbar__right {
+  display: flex;
+  align-items: center;
+  gap: var(--clab-space-2);
+  min-width: 0;
+  justify-self: end;
+}
+
+.clab-app-shell__sidebar {
+  grid-area: sidebar;
+  min-width: 0;
+  overflow-y: auto;
+  background: var(--clab-surface-0);
+  border-right: var(--clab-border-width) solid var(--clab-border);
+}
+
+.clab-app-shell__main {
+  grid-area: main;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  /* No horizontal overflow here -- `min-width: 0` at every flex/grid
+     boundary down to feature content handles shrinkage; dedicated wide
+     content (DataTableShell, request-capture <pre>, etc.) carries its OWN
+     overflow-x, never the shell. */
+  background: var(--clab-bg);
+}
+
+.clab-app-shell__inspector {
+  grid-area: inspector;
+  min-width: 0;
+  overflow-y: auto;
+  background: var(--clab-surface-0);
+  border-left: var(--clab-border-width) solid var(--clab-border);
+}
+
+/* medium width: the inspector stops taking a fixed grid column and becomes
+   a drawer that overlays the content instead of squeezing it. */
+@media (max-width: 1180px) {
+  .clab-app-shell {
+    grid-template-columns: var(--clab-sidebar-width) minmax(0, 1fr);
+    grid-template-areas:
+      "topbar topbar"
+      "sidebar main";
+  }
+
+  .clab-app-shell__inspector {
+    position: fixed;
+    top: var(--clab-topbar-height);
+    right: 0;
+    bottom: 0;
+    width: min(380px, 92vw);
+    transform: translateX(100%);
+    transition: transform var(--clab-motion-normal);
+    z-index: 30;
+    box-shadow: var(--clab-shadow-md);
+  }
+
+  .clab-app-shell__inspector[data-open="true"] {
+    transform: translateX(0);
+  }
+}
+
+/* narrow width: single main content column; navigation collapses into a
+   drawer too, so nothing forces horizontal page overflow. */
+@media (max-width: 820px) {
+  .clab-app-shell {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "topbar"
+      "main";
+  }
+
+  .clab-app-shell__sidebar {
+    position: fixed;
+    top: var(--clab-topbar-height);
+    left: 0;
+    bottom: 0;
+    width: min(300px, 90vw);
+    transform: translateX(-100%);
+    transition: transform var(--clab-motion-normal);
+    z-index: 30;
+    box-shadow: var(--clab-shadow-md);
+  }
+
+  .clab-app-shell__sidebar[data-open="true"] {
+    transform: translateX(0);
+  }
+}
+
+/* Region content wrappers (used by MainPanel / Sidebar / InspectorPanel).
+   Padding responsibility is intentionally split:
+   - main content carries NO padding of its own -- every feature view
+     already supplies exactly one padding layer via `Panel`, so padding here
+     would double it (outer container + panel + inner stack + feature
+     content, the exact cumulative-squeeze this file exists to prevent);
+   - sidebar/inspector content carries the padding directly, because their
+     children (nav lists, the loaded-state summary) do NOT wrap themselves
+     in `Panel`. */
+.clab-main-content {
+  min-width: 0;
+  min-height: 100%;
+}
+
+.clab-sidebar-content,
+.clab-inspector-content {
+  min-width: 0;
+  padding: var(--clab-space-4);
+}
+
+.clab-scrim {
+  position: fixed;
+  inset: var(--clab-topbar-height) 0 0 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 20;
+}
+
+/* ------------------------------------------------------------- primitives */
+
+.clab-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  gap: var(--clab-space-3);
+  padding: var(--clab-space-4);
+}
+
+.clab-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--clab-space-2);
+  min-width: 0;
+}
+
+.clab-section__title {
+  font-size: var(--clab-text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--clab-text-subtle);
+  font-weight: 600;
+}
+
+.clab-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--clab-space-3);
+  flex-wrap: wrap;
+}
+
+.clab-stack {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.clab-inline {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.clab-card {
+  background: var(--clab-surface-1);
+  border: var(--clab-border-width) solid var(--clab-border);
+  border-radius: var(--clab-radius-md);
+  padding: var(--clab-space-4);
+  min-width: 0;
+}
+
+.clab-card--raised {
+  background: var(--clab-surface-raised);
+  box-shadow: var(--clab-shadow-sm);
+}
+
+/* Data table shell: bounded WIDTH scroll only, height grows naturally with
+   content so rows are never vertically clipped (the exact class of bug this
+   token/primitive system exists to prevent). */
+.clab-data-table-shell {
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  border: var(--clab-border-width) solid var(--clab-border);
+  border-radius: var(--clab-radius-md);
+  background: var(--clab-surface-1);
+}
+
+.clab-data-table-shell table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--clab-text-sm);
+}
+
+.clab-data-table-shell th,
+.clab-data-table-shell td {
+  text-align: left;
+  padding: var(--clab-space-2) var(--clab-space-3);
+  border-bottom: var(--clab-border-width) solid var(--clab-border);
+  white-space: nowrap;
+}
+
+.clab-data-table-shell td[data-wrap="true"] {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.clab-data-table-shell thead th {
+  position: sticky;
+  top: 0;
+  background: var(--clab-surface-2);
+  color: var(--clab-text-subtle);
+  text-transform: uppercase;
+  font-size: var(--clab-text-xs);
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+
+.clab-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--clab-space-4);
+  min-width: 0;
+}
+
+.clab-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--clab-space-1);
+  min-width: 0;
+}
+
+.clab-form-field__label {
+  font-size: var(--clab-text-xs);
+  color: var(--clab-text-muted);
+}
+
+.clab-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--clab-space-2);
+  padding: var(--clab-space-6);
+  border: 1px dashed var(--clab-border-strong);
+  border-radius: var(--clab-radius-md);
+  color: var(--clab-text-muted);
+}
+
+/* ------------------------------------------------------- gap size utility */
+
+.clab-gap-1 { gap: var(--clab-space-1); }
+.clab-gap-2 { gap: var(--clab-space-2); }
+.clab-gap-3 { gap: var(--clab-space-3); }
+.clab-gap-4 { gap: var(--clab-space-4); }
+.clab-gap-6 { gap: var(--clab-space-6); }
