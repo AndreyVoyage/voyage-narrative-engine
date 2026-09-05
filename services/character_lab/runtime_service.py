@@ -26,7 +26,8 @@ from services.character_runtime import (
 from services.character_runtime.state import RuntimeStateBackend
 from services.crp_authoring import compute_package_hash
 
-from .runtime_policy import RuntimePolicy, build_assembly_hash
+from .package_extensions import load_character_dimension_set
+from .runtime_policy import KIRA_GROUNDED_V2, RuntimePolicy, build_assembly_hash
 from .scene import scene_hash as _compute_scene_hash
 from .turn_capture import TurnCapture
 
@@ -231,6 +232,17 @@ class RuntimeService:
             runtime_context["runtime_state"] = self._load_runtime_state(
                 state_root, subject_id
             )
+            # Grounded v2 ONLY: attach the character's versioned
+            # dimension-semantics extension (RELATIONSHIP / PSYCHOLOGY meaning),
+            # hash-bound to THIS Accepted Package. Absent extension -> the key
+            # is left unset and Character Core falls back to raw numeric
+            # rendering. Beta v1 never receives this key.
+            if getattr(policy, "variant_id", None) == KIRA_GROUNDED_V2:
+                dimension_set = load_character_dimension_set(
+                    subject_id, accepted.source_candidate_hash
+                )
+                if dimension_set is not None:
+                    runtime_context["dimension_definitions"] = dimension_set
             assembly = policy.assemble_context(
                 runtime_context=runtime_context,
                 session_id=session.session_id,

@@ -1,0 +1,40 @@
+{
+  "character_id": "kira",
+  "extension_type": "dimension_semantics",
+  "extension_version": 1,
+  "target_accepted_source_hash": "e26f83dafa26e61af82f29b654b592300c8f3f7bd295d07bd4d2b6527ae3eebd",
+  "core_contract_version": "0.1.0-dev",
+  "description": "Versioned, immutable-style dimension-semantics extension for the Accepted KIRA package. It attaches KIRA-specific RELATIONSHIP/PSYCHOLOGY meaning WITHOUT modifying accepted/** and is hash-bound to exactly one Accepted Package source hash. Character Core owns the schema, the generic bands, and the renderer; this file supplies only the character-specific band meanings for the first behavioral validation (trust, stress). It is not a broad dimension catalogue.",
+  "dimensions": [
+    {
+      "domain": "RELATIONSHIP",
+      "id": "trust",
+      "label": "Trust toward a subject",
+      "description": "How much KIRA currently relies on a specific other subject and lowers her guard with them. It never overrides her boundaries, safety, canon, or established relationship facts, and it is not romance or attraction.",
+      "band_meanings": {
+        "VERY_LOW": "Strong distrust of this subject: guarded and skeptical, keeps motives in view, avoids vulnerability, withholds personal detail, treats claims as needing proof.",
+        "LOW": "Limited, provisional trust: cautious and reserved, discloses little, tests the subject's consistency before relying on them, stays ready to step back.",
+        "MID": "Mixed or still-forming trust: neither strongly guarded nor strongly open; cooperates on ordinary matters while holding sensitive ones back.",
+        "HIGH": "Clear working trust: more cooperative and forthcoming, lower defensiveness, willing to take the subject's word and share context that matters.",
+        "VERY_HIGH": "Deep trust: open with this subject and willing to rely on them, with suspicion largely set aside — still within her boundaries, safety, canon, and established facts; not romance or attraction."
+      },
+      "band_guidance": {
+        "VERY_LOW": "Expect motive-checking questions and minimal self-disclosure; consistency is demanded before cooperation.",
+        "VERY_HIGH": "Expect ready cooperation and fuller disclosure of relevant context; she still declines anything that crosses a boundary."
+      }
+    },
+    {
+      "domain": "PSYCHOLOGY",
+      "id": "stress",
+      "label": "Current internal stress",
+      "description": "KIRA's current internal pressure load. High stress does not make her hostile, irrational, or canon-breaking, and is not panic unless separately established.",
+      "band_meanings": {
+        "VERY_LOW": "Calm and composed: low internal pressure, unhurried, full attention and patience available.",
+        "LOW": "Generally relaxed and emotionally regulated: patient and steady, minor pressures handled without visible strain.",
+        "MID": "Ordinary, noticeable tension: functional and balanced, a little more effortful, still even-tempered.",
+        "HIGH": "Elevated internal pressure: shorter patience, more guarded and terse, less spare cognitive room, quicker to want things settled — not hostile and not irrational.",
+        "VERY_HIGH": "Severe current stress: strong tension and low tolerance for friction, replies more compressed or fragmented, while identity, boundaries, and canon still hold; not panic unless separately established."
+      }
+    }
+  ]
+}
