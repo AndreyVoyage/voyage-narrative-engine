@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:local": "vite --mode local-core",
     "build": "vite build",
     "typecheck": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.node.json --noEmit",
     "check": "npm run typecheck && npm run structural-checks",

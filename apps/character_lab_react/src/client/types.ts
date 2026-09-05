@@ -67,6 +67,27 @@ export class SessionPurposeNotImplementedError extends Error {
   }
 }
 
+/**
+ * Thrown by a {@link CharacterClient} implementation when a capability the
+ * interface declares is not wired up by the CURRENT transport (e.g. Memory /
+ * Runtime State / Scene in `HttpCharacterClient`'s Desktop Integration v1).
+ * A deterministic, typed signal -- never a silent mock-data substitution
+ * presented as if it came from Core, and never a raw transport-level error
+ * (a failed `fetch`, a 404) that would be ambiguous with a genuine backend
+ * failure.
+ */
+export class NotIntegratedInTransportError extends Error {
+  readonly capability: string;
+  constructor(capability: string) {
+    super(
+      `'${capability}' is not integrated in this transport yet -- ` +
+        "see the transport's own documentation for what it currently covers"
+    );
+    this.name = "NotIntegratedInTransportError";
+    this.capability = capability;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Capabilities
 // ---------------------------------------------------------------------------

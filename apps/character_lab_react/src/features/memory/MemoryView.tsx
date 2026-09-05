@@ -1,26 +1,37 @@
 import { useEffect, useState } from "react";
 import { useAppState } from "../../app/AppState";
 import { MemoryTable } from "../../components/devtools";
-import { EmptyState, Panel, Toolbar } from "../../components/primitives";
+import { EmptyState, NotIntegratedNotice, Panel, Toolbar } from "../../components/primitives";
 import type { MemorySummary } from "../../client/types";
 
 /** Developer/debug view: causal-order runtime memory for the current
- * session's workspace (memory is workspace-scoped, not session-scoped). */
+ * session's workspace (memory is workspace-scoped, not session-scoped). Not
+ * yet transported in "local" (Desktop Integration v1) mode -- see
+ * NotIntegratedNotice below rather than any fetch attempt in that mode. */
 export function MemoryView() {
   const { state, client } = useAppState();
   const workspaceId = state.session?.workspace.workspaceId ?? null;
   const [memory, setMemory] = useState<MemorySummary | null>(null);
+  const notIntegrated = state.clientMode === "local";
 
   useEffect(() => {
     let cancelled = false;
-    if (!workspaceId) return;
+    if (!workspaceId || notIntegrated) return;
     client.getMemory(workspaceId).then((m) => {
       if (!cancelled) setMemory(m);
     });
     return () => {
       cancelled = true;
     };
-  }, [client, workspaceId, state.messages.length]);
+  }, [client, workspaceId, notIntegrated, state.messages.length]);
+
+  if (notIntegrated) {
+    return (
+      <Panel>
+        <NotIntegratedNotice capability="Память" />
+      </Panel>
+    );
+  }
 
   if (!workspaceId) {
     return (

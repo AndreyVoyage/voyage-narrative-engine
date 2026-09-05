@@ -27,6 +27,7 @@
 
 import {
   ALL_SESSION_PURPOSES,
+  NotIntegratedInTransportError,
   SessionPurpose,
   SessionPurposeNotImplementedError,
   SUPPORTED_SESSION_PURPOSES,
@@ -34,6 +35,7 @@ import {
 } from "../src/client/types.js";
 import { MockCharacterClient } from "../src/mocks/mockCharacterClient.js";
 import { MockCharacterDebugClient } from "../src/mocks/mockCharacterDebugClient.js";
+import { HttpCharacterClient } from "../src/client/httpCharacterClient.js";
 
 let passed = 0;
 let failed = 0;
@@ -158,6 +160,88 @@ async function main() {
   // .tsx layer, which cannot be executed without react/@types/react
   // installed -- verified by direct source review instead (see the task's
   // final report and docs/character_lab/REACT_CHARACTER_LAB_FOUNDATION_V1.md).
+
+  // --- Desktop Integration v1 (HttpCharacterClient / local loopback) ---
+
+  // 13. HttpCharacterClient is a genuinely separate concrete class from
+  //     MockCharacterClient -- Desktop Integration v1 adds a new transport,
+  //     it does not repurpose or wrap the mock's in-memory implementation.
+  const httpClient = new HttpCharacterClient();
+  check(
+    "13. HttpCharacterClient is a distinct class from MockCharacterClient",
+    Object.getPrototypeOf(httpClient) !== Object.getPrototypeOf(client)
+  );
+  check(
+    "13b. HttpCharacterClient implements the full CharacterClient method surface",
+    typeof httpClient.listCharacters === "function" &&
+      typeof httpClient.getCharacter === "function" &&
+      typeof httpClient.listVariants === "function" &&
+      typeof httpClient.capabilities === "function" &&
+      typeof httpClient.listWorkspaces === "function" &&
+      typeof httpClient.getWorkspace === "function" &&
+      typeof httpClient.createTestWorkspace === "function" &&
+      typeof httpClient.createSession === "function" &&
+      typeof httpClient.getSession === "function" &&
+      typeof httpClient.sendMessage === "function" &&
+      typeof httpClient.getMemory === "function" &&
+      typeof httpClient.getRuntimeState === "function" &&
+      typeof httpClient.getScene === "function" &&
+      typeof httpClient.setScene === "function" &&
+      typeof httpClient.clearScene === "function"
+  );
+
+  // 14. Methods not transported in Desktop Integration v1 (Memory / Runtime
+  //     State / Scene) reject with a clear typed error IMMEDIATELY -- they
+  //     never attempt a network call, and never fabricate a successful
+  //     result as if it came from Core. Run with no server listening on
+  //     127.0.0.1:8787 to prove no network call happens: a fetch attempt
+  //     would reject with a connection error, not resolve to this specific
+  //     typed error.
+  await checkAsync(
+    "14. getMemory rejects with NotIntegratedInTransportError (no fake data, no network call)",
+    async () => {
+      try {
+        await httpClient.getMemory("bogus-workspace-no-server-listening");
+        return false;
+      } catch (err) {
+        return err instanceof NotIntegratedInTransportError && err.capability === "memory";
+      }
+    }
+  );
+  await checkAsync(
+    "14b. getRuntimeState rejects with NotIntegratedInTransportError (no fake data, no network call)",
+    async () => {
+      try {
+        await httpClient.getRuntimeState("bogus-workspace-no-server-listening");
+        return false;
+      } catch (err) {
+        return err instanceof NotIntegratedInTransportError && err.capability === "runtime_state";
+      }
+    }
+  );
+  await checkAsync(
+    "14c. getScene/setScene/clearScene reject with NotIntegratedInTransportError (no fake data, no network call)",
+    async () => {
+      try {
+        await httpClient.getScene("bogus-session-no-server-listening");
+        return false;
+      } catch (err) {
+        if (!(err instanceof NotIntegratedInTransportError) || err.capability !== "scene") return false;
+      }
+      try {
+        await httpClient.setScene("bogus-session-no-server-listening", { location: "x" });
+        return false;
+      } catch (err) {
+        if (!(err instanceof NotIntegratedInTransportError) || err.capability !== "scene") return false;
+      }
+      try {
+        await httpClient.clearScene("bogus-session-no-server-listening");
+        return false;
+      } catch (err) {
+        return err instanceof NotIntegratedInTransportError && err.capability === "scene";
+      }
+    }
+  );
 
   console.log(`\n${passed} passed, ${failed} failed`);
   if (failed > 0) {

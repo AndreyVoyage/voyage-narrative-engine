@@ -87,7 +87,7 @@ function Topbar() {
 }
 
 function CharacterAndVariantList() {
-  const { state, selectVariant } = useAppState();
+  const { state, createSession } = useAppState();
   return (
     <Stack gap={2}>
       <div className="clab-section__title">Персонажи</div>
@@ -105,7 +105,7 @@ function CharacterAndVariantList() {
             className="clab-select-list__item"
             data-active={v.variantId === state.session?.variantId ? "true" : "false"}
             data-disabled={v.implemented ? "false" : "true"}
-            onClick={() => v.implemented && void selectVariant(v.variantId)}
+            onClick={() => v.implemented && void createSession(v.variantId)}
           >
             {v.displayName}
             {!v.implemented && <div className="clab-select-list__sub">{v.status ?? "недоступно"}</div>}
@@ -116,12 +116,44 @@ function CharacterAndVariantList() {
   );
 }
 
+/** Workspace picker: see the current workspace, choose an existing one
+ * (NORMAL or Clean Test), or create a fresh Clean Test. Selecting here never
+ * creates a session by itself -- "+ Новая сессия" below is the explicit,
+ * separate step that consumes the current selection. */
+function WorkspaceList() {
+  const { state, selectWorkspace, createCleanTestWorkspace } = useAppState();
+  return (
+    <Stack gap={2}>
+      <div className="clab-section__title">Рабочая область</div>
+      <select
+        className="clab-select"
+        value={state.selectedWorkspaceId ?? ""}
+        onChange={(e) => selectWorkspace(e.target.value)}
+      >
+        {state.workspaces.length === 0 && <option value="">(нет рабочих областей)</option>}
+        {state.workspaces.map((w) => (
+          <option key={w.workspaceId} value={w.workspaceId}>
+            {w.displayName} · {w.workspaceKind}
+          </option>
+        ))}
+      </select>
+      <button className="clab-btn" onClick={() => void createCleanTestWorkspace()}>
+        + Новый Clean Test
+      </button>
+    </Stack>
+  );
+}
+
 function SessionsList() {
-  const { state, startNewCleanTestSession } = useAppState();
+  const { state, createSession } = useAppState();
   return (
     <Stack gap={2}>
       <div className="clab-section__title">Сессии</div>
-      <button className="clab-btn clab-btn--primary" onClick={() => void startNewCleanTestSession()}>
+      <button
+        className="clab-btn clab-btn--primary"
+        disabled={!state.selectedWorkspaceId}
+        onClick={() => void createSession()}
+      >
         + Новая сессия
       </button>
       {state.session && (
@@ -161,7 +193,9 @@ function LoadedStateInspector() {
             </Inline>
             <Inline gap={2}>
               <span className="clab-form-field__label">транспорт</span>
-              <span className="clab-badge">mock (dev)</span>
+              <span className="clab-badge">
+                {state.clientMode === "local" ? "local (HTTP loopback)" : "mock (dev)"}
+              </span>
             </Inline>
           </Stack>
         </Card>
@@ -186,6 +220,7 @@ export function App() {
       sidebar={
         <Sidebar>
           <CharacterAndVariantList />
+          <WorkspaceList />
           <SessionsList />
         </Sidebar>
       }

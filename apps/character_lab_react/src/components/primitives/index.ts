@@ -8,3 +8,4 @@ export { DataTableShell } from "./DataTableShell";
 export type { DataTableColumn } from "./DataTableShell";
 export { FormGrid, FormField } from "./FormGrid";
 export { EmptyState } from "./EmptyState";
+export { NotIntegratedNotice } from "./NotIntegratedNotice";

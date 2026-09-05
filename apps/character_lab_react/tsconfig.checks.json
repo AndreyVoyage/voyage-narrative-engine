@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2020",
+    "lib": ["ES2020", "DOM"],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "skipLibCheck": true,
@@ -15,6 +16,7 @@
     "src/client/types.ts",
     "src/client/characterClient.ts",
     "src/client/characterDebugClient.ts",
+    "src/client/httpCharacterClient.ts",
     "src/mocks/mockData.ts",
     "src/mocks/mockCharacterClient.ts",
     "src/mocks/mockCharacterDebugClient.ts"

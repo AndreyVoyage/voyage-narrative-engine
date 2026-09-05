@@ -1,24 +1,34 @@
 import { useEffect, useState } from "react";
 import { useAppState } from "../../app/AppState";
 import { SceneForm } from "../../components/character";
-import { EmptyState, Panel } from "../../components/primitives";
+import { EmptyState, NotIntegratedNotice, Panel } from "../../components/primitives";
 import type { SceneSummary, SetSceneInput } from "../../client/types";
 
+/** Not yet transported in "local" (Desktop Integration v1) mode. */
 export function SceneView() {
   const { state, client } = useAppState();
   const sessionId = state.session?.sessionId ?? null;
   const [scene, setSceneState] = useState<SceneSummary | null>(null);
+  const notIntegrated = state.clientMode === "local";
 
   useEffect(() => {
     let cancelled = false;
-    if (!sessionId) return;
+    if (!sessionId || notIntegrated) return;
     client.getScene(sessionId).then((s) => {
       if (!cancelled) setSceneState(s);
     });
     return () => {
       cancelled = true;
     };
-  }, [client, sessionId]);
+  }, [client, sessionId, notIntegrated]);
+
+  if (notIntegrated) {
+    return (
+      <Panel>
+        <NotIntegratedNotice capability="Сцена" />
+      </Panel>
+    );
+  }
 
   if (!sessionId) {
     return (
