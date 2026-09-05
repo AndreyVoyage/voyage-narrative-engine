@@ -17,6 +17,12 @@ import json
 from dataclasses import dataclass, field
 from typing import Any, Mapping
 
+from services.character_core.dimensions import (
+    DimensionSet,
+    interpret_state_entry,
+    semantic_state_line,
+)
+
 from . import provenance as _provenance
 from .grounding import render_accepted_grounding
 from .scene import render_scene_block, scene_hash
@@ -335,13 +341,33 @@ class GroundedV2Policy(RuntimePolicy):
         return [e for e in entries if (e.get("domain") or _DOMAIN_FACT) == domain]
 
     @staticmethod
-    def _state_line(entry) -> str:
-        return f"- {str(entry.get('key', '')).strip()}: {str(entry.get('value', '')).strip()}"
+    def _resolve_dimension_set(runtime_context):
+        """Optional package-declared dimension semantics for this turn.
 
-    def _domain_block(self, header, footer, entries) -> str:
+        Returns a validated :class:`DimensionSet` when the runtime context
+        carries ``dimension_definitions`` (a ``DimensionSet`` or a list of
+        loader-neutral mappings), else ``None``. Nothing in the current
+        pipeline populates this key, so current KIRA turns take the ``None``
+        path and render exactly as before -- a future versioned Character
+        Package supplies the definitions.
+        """
+        return DimensionSet.coerce(runtime_context.get("dimension_definitions"))
+
+    @staticmethod
+    def _state_line(entry, *, dimension_set=None, domain=None) -> str:
+        key = str(entry.get("key", "")).strip()
+        value = str(entry.get("value", "")).strip()
+        if dimension_set is not None and domain in (_DOMAIN_RELATIONSHIP, _DOMAIN_PSYCHOLOGY):
+            # Enriched only when a definition actually resolves; otherwise the
+            # helper returns the identical raw "- key: value" line (Core never
+            # fabricates meaning from the id).
+            return semantic_state_line(domain, key, value, dimension_set)
+        return f"- {key}: {value}"
+
+    def _domain_block(self, header, footer, entries, *, dimension_set=None, domain=None) -> str:
         lines = [header, ""]
         for entry in entries:
-            lines.append(self._state_line(entry))
+            lines.append(self._state_line(entry, dimension_set=dimension_set, domain=domain))
         lines.append("")
         lines.append(footer)
         return "\n".join(lines)
@@ -365,6 +391,7 @@ class GroundedV2Policy(RuntimePolicy):
         grounding = render_accepted_grounding(package) if package is not None else ""
         accepted_source_hash = runtime_context.get("source_candidate_hash")
         selected_state = self.select_state(runtime_context)
+        dimension_set = self._resolve_dimension_set(runtime_context)
         selected_mem = self.select_memory(runtime_context, session_id)
         memory_block = self._memory_block(selected_mem) if selected_mem else None
 
@@ -377,7 +404,10 @@ class GroundedV2Policy(RuntimePolicy):
             if domain_entries:
                 system_messages.append({
                     "role": "system",
-                    "content": self._domain_block(header, footer, domain_entries),
+                    "content": self._domain_block(
+                        header, footer, domain_entries,
+                        dimension_set=dimension_set, domain=domain,
+                    ),
                 })
         if memory_block is not None:
             system_messages.append({"role": "system", "content": memory_block})
@@ -404,6 +434,7 @@ class GroundedV2Policy(RuntimePolicy):
                     history,
                     user_message,
                     scene,
+                    dimension_set,
                 )
             ),
         )
@@ -419,6 +450,7 @@ class GroundedV2Policy(RuntimePolicy):
         history,
         user_message,
         scene,
+        dimension_set=None,
     ):
         items = [
             AssemblyItem(
@@ -443,29 +475,48 @@ class GroundedV2Policy(RuntimePolicy):
             domain_entries = self._domain_entries(selected_state, domain)
             if not domain_entries:
                 continue
+            semantic_domain = domain in (_DOMAIN_RELATIONSHIP, _DOMAIN_PSYCHOLOGY)
             items.append(
                 AssemblyItem(
                     kind,
-                    self._domain_block(header, footer, domain_entries),
+                    self._domain_block(
+                        header, footer, domain_entries,
+                        dimension_set=dimension_set, domain=domain,
+                    ),
                     {
                         "domain": domain,
                         "entry_count": len(domain_entries),
                         "source": "OPERATOR_CONFIRMED",
+                        "semantics": (
+                            "PACKAGE_DEFINED"
+                            if (semantic_domain and dimension_set is not None)
+                            else "RAW"
+                        ),
                     },
                 )
             )
             for entry in domain_entries:
+                meta = {
+                    "domain": entry.get("domain"),
+                    "key": entry.get("key"),
+                    "seq": entry.get("seq"),
+                    "event_id": entry.get("event_id"),
+                    "source_kind": entry.get("source_kind"),
+                }
+                if semantic_domain and dimension_set is not None:
+                    interp = interpret_state_entry(
+                        domain, entry.get("key", ""), entry.get("value", ""), dimension_set
+                    )
+                    if interp is not None and interp.band is not None:
+                        meta["band"] = interp.band.value
+                        meta["semantic_meaning"] = interp.meaning
                 items.append(
                     AssemblyItem(
                         line_kind,
-                        self._state_line(entry),
-                        {
-                            "domain": entry.get("domain"),
-                            "key": entry.get("key"),
-                            "seq": entry.get("seq"),
-                            "event_id": entry.get("event_id"),
-                            "source_kind": entry.get("source_kind"),
-                        },
+                        self._state_line(
+                            entry, dimension_set=dimension_set, domain=domain
+                        ),
+                        meta,
                     )
                 )
         if selected_mem:

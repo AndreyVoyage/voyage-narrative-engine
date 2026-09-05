@@ -38,6 +38,8 @@ from services.character_runtime import (
 )
 from services.crp_authoring import compute_package_hash
 
+from tests.fixtures.character_core.synthetic_dimensions import synthetic_dimension_set
+
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _ACCEPTED_ROOT = _REPO_ROOT / "accepted"
 EXPECTED_HASH = "e26f83dafa26e61af82f29b654b592300c8f3f7bd295d07bd4d2b6527ae3eebd"
@@ -446,3 +448,88 @@ class TestGroundedV2AppSelection:
         r = app.select_variant("EXPERIMENTAL")
         assert r["ok"] is False
         assert app.loaded_state()["variant_id"] == KIRA_BETA_V1_CURRENT
+
+
+# --------------------------------------------------------------- dimension hook
+
+class TestGroundedV2DimensionSemanticsHook:
+    """DIMENSION_SEMANTICS_BEHAVIOR_RENDERING_FOUNDATION_V1.
+
+    Smallest Grounded hook: when validated package dimension definitions are
+    present in the runtime context, numeric RELATIONSHIP / PSYCHOLOGY lines
+    carry value + generic band + package-declared meaning. When absent (the
+    situation for the current KIRA package -- nothing populates the key), the
+    raw numeric representation is byte-identical to before.
+    """
+
+    def _ctx(self, *, with_defs):
+        acc = _accepted()
+        ctx = {
+            "subject_id": "kira",
+            "source_candidate_hash": acc.source_candidate_hash,
+            "package_id": acc.package.package_id,
+            "package_version": acc.package.package_version,
+            "package_status": acc.package.status.value,
+            "runtime_memory": [],
+            "causal_memory": [],
+            "accepted_package": acc.package,
+            "runtime_state": [
+                {"domain": "RELATIONSHIP", "key": "andrey.trust", "value": "72", "seq": 1},
+                {"domain": "PSYCHOLOGY", "key": "stress", "value": "72", "seq": 2},
+            ],
+        }
+        if with_defs:
+            ctx["dimension_definitions"] = synthetic_dimension_set()
+        return ctx
+
+    def test_supplied_definitions_produce_semantic_rendering(self):
+        asm = GroundedV2Policy().assemble_context(
+            runtime_context=self._ctx(with_defs=True),
+            session_id="sid", history=[], user_message="hi",
+        )
+        sys_text = _system_text(asm.messages)
+        assert "andrey.trust: 72 (band: VERY_HIGH)" in sys_text
+        assert "strong trust toward this subject" in sys_text
+        assert "stress: 72 (band: VERY_HIGH)" in sys_text
+        assert "severe current stress" in sys_text
+
+        rel_lines = [i for i in asm.manifest.items
+                     if i.kind == "system.relationship_state_line"]
+        assert rel_lines and rel_lines[0].meta.get("band") == "VERY_HIGH"
+        assert rel_lines[0].meta.get("semantic_meaning") == "strong trust toward this subject"
+        rel_block = next(i for i in asm.manifest.items
+                         if i.kind == "system.relationship_state")
+        assert rel_block.meta.get("semantics") == "PACKAGE_DEFINED"
+
+    def test_absent_definitions_preserve_raw_grounded_behavior(self):
+        asm = GroundedV2Policy().assemble_context(
+            runtime_context=self._ctx(with_defs=False),
+            session_id="sid", history=[], user_message="hi",
+        )
+        sys_text = _system_text(asm.messages)
+        assert "- andrey.trust: 72" in sys_text
+        assert "band:" not in sys_text
+        assert "VERY_HIGH" not in sys_text
+        rel_block = next(i for i in asm.manifest.items
+                         if i.kind == "system.relationship_state")
+        assert rel_block.meta.get("semantics") == "RAW"
+
+    def test_absent_key_matches_explicit_none(self):
+        policy = GroundedV2Policy()
+        ctx_no_key = self._ctx(with_defs=False)
+        ctx_none = dict(ctx_no_key, dimension_definitions=None)
+        a = policy.assemble_context(runtime_context=ctx_no_key, session_id="s",
+                                    history=[], user_message="hi")
+        b = policy.assemble_context(runtime_context=ctx_none, session_id="s",
+                                    history=[], user_message="hi")
+        assert list(a.messages) == list(b.messages)
+
+    def test_no_hardcoded_dimension_meaning_in_runtime_policy(self):
+        import services.character_lab.runtime_policy as rp
+        src = Path(rp.__file__).read_text(encoding="utf-8")
+        low = src.lower()
+        # Band literals belong only to Core; the policy asks Core for them.
+        assert "very_high" not in low and "very_low" not in low
+        # No id-driven branching / hard-coded dimension names.
+        assert 'dimension_id ==' not in low
+        assert '== "trust"' not in low and '== "stress"' not in low
