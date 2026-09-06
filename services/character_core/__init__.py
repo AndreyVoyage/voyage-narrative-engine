@@ -58,6 +58,17 @@ from .dimensions import (
     render_semantic_state,
     semantic_state_line,
 )
+from .epistemics import (
+    HOLDER_ADDRESSABLE_KINDS,
+    EpistemicEnvelope,
+    EpistemicEnvelopeError,
+    EpistemicKind,
+    EpistemicVisibility,
+    EpistemicVisibilityResult,
+    assess_epistemic_visibility,
+    is_holder_addressable,
+    select_visible_epistemic_context,
+)
 from .release import (
     CHARACTER_CORE_RELEASE_BOUNDARY,
     CONTRACT_VERSION,
@@ -120,4 +131,13 @@ __all__ = [
     "interpret_state_entry",
     "semantic_state_line",
     "render_semantic_state",
+    "EpistemicKind",
+    "HOLDER_ADDRESSABLE_KINDS",
+    "is_holder_addressable",
+    "EpistemicVisibility",
+    "EpistemicEnvelopeError",
+    "EpistemicEnvelope",
+    "EpistemicVisibilityResult",
+    "assess_epistemic_visibility",
+    "select_visible_epistemic_context",
 ]
