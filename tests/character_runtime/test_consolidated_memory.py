@@ -215,3 +215,154 @@ def test_module_does_not_touch_runtime_state(wired):
     assert "RuntimeStateBackend" not in src
     assert "EvolutionCandidate" not in src
     assert normalize_meaning("  A  b ") == "a b"
+
+
+# ================================================================= standalone
+# CONSOLIDATED_MEMORY_STANDALONE_RELATION_V1: declare SUPERSEDES / CONFLICTS_WITH
+# between records that are ALREADY approved (not only at candidate-approval time).
+
+
+def _approve(cm, mb, event_id, meaning, session_id):
+    _add_event(mb, event_id, "USER_MESSAGE", meaning, "USER_STATED", session_id=session_id)
+    cand = cm.propose(memory_backend=mb, source_event_id=event_id)
+    return cm.decide(candidate_id=cand.candidate_id, decision=DECISION_APPROVE).record_id
+
+
+class TestStandaloneDeclareRelation:
+    # 1 + 2 + 3
+    def test_declare_supersedes_between_two_approved_records(self, wired):
+        mb, cm, _ = wired
+        old_id = _approve(cm, mb, "e-msk", "Я родился в Москве.", "s1")
+        new_id = _approve(cm, mb, "e-tula", "Нет, я родился в Туле.", "s2")
+        # both active before the declaration
+        assert {r.record_id for r in cm.load_active_records()} == {old_id, new_id}
+
+        rel = cm.declare_relation(from_record_id=new_id, to_record_id=old_id,
+                                  kind=RELATION_SUPERSEDES, declared_by="operator:test")
+        assert rel.relation_id.startswith("memrel-")
+        assert rel.kind == RELATION_SUPERSEDES and rel.declared_by == "operator:test"
+
+        active = {r.record_id for r in cm.load_active_records()}
+        assert active == {new_id}                              # 3: target excluded
+        all_recs = {r.record_id: r for r in cm.load_all_records()}
+        assert old_id in all_recs and new_id in all_recs       # 2: history preserved
+        assert all_recs[old_id].status == RECORD_STATUS_SUPERSEDED
+        assert all_recs[old_id].superseded_by_record_id == new_id
+        assert all_recs[old_id].meaning == "Я родился в Москве."   # content untouched
+        assert all_recs[new_id].status == RECORD_STATUS_ACTIVE
+
+    # 4 + 5
+    def test_declare_conflicts_with_between_two_approved_records(self, wired):
+        mb, cm, _ = wired
+        a_id = _approve(cm, mb, "e-cat", "У меня есть кот.", "s1")
+        b_id = _approve(cm, mb, "e-nocat", "У меня нет животных.", "s2")
+        cm.declare_relation(from_record_id=a_id, to_record_id=b_id,
+                            kind=RELATION_CONFLICTS_WITH, declared_by="operator:test")
+        active = {r.record_id for r in cm.load_active_records()}
+        assert active == {a_id, b_id}                          # 4: both remain ACTIVE
+        assert cm.active_conflict_record_ids() == frozenset({a_id, b_id})  # 5: both flagged
+        rels = cm.load_relations()
+        assert len(rels) == 1 and rels[0].kind == RELATION_CONFLICTS_WITH
+
+    # 6
+    def test_self_relation_rejected(self, wired):
+        mb, cm, _ = wired
+        rid = _approve(cm, mb, "e-x", "Некоторое утверждение.", "s1")
+        with pytest.raises(ConsolidatedMemoryError):
+            cm.declare_relation(from_record_id=rid, to_record_id=rid, kind=RELATION_SUPERSEDES)
+
+    # 7 + 8
+    def test_missing_endpoints_rejected(self, wired):
+        mb, cm, _ = wired
+        rid = _approve(cm, mb, "e-y", "Реальная запись.", "s1")
+        with pytest.raises(ConsolidatedMemoryError):
+            cm.declare_relation(from_record_id="memrec-missing", to_record_id=rid,
+                                kind=RELATION_SUPERSEDES)
+        with pytest.raises(ConsolidatedMemoryError):
+            cm.declare_relation(from_record_id=rid, to_record_id="memrec-missing",
+                                kind=RELATION_CONFLICTS_WITH)
+
+    # 9
+    def test_cross_workspace_reference_rejected(self, tmp_path):
+        root_a = tmp_path / "wsA"
+        root_b = tmp_path / "wsB"
+        mb_a = _mem(root_a); cm_a = ConsolidatedMemoryBackend(root_a, SUBJECT)
+        mb_b = _mem(root_b); cm_b = ConsolidatedMemoryBackend(root_b, SUBJECT)
+        try:
+            a_id = _approve(cm_a, mb_a, "e-a", "Запись из A.", "s1")
+            b_id = _approve(cm_b, mb_b, "e-b", "Запись из B.", "s1")
+            # backend A must not resolve a record id that lives only in workspace B
+            with pytest.raises(ConsolidatedMemoryError):
+                cm_a.declare_relation(from_record_id=a_id, to_record_id=b_id,
+                                      kind=RELATION_SUPERSEDES)
+            assert cm_a.load_relations() == ()
+        finally:
+            cm_a.close(); mb_a.close(); cm_b.close(); mb_b.close()
+
+    # 10
+    def test_unsupported_kind_rejected(self, wired):
+        mb, cm, _ = wired
+        a_id = _approve(cm, mb, "e-p", "P.", "s1")
+        b_id = _approve(cm, mb, "e-q", "Q.", "s2")
+        with pytest.raises(ConsolidatedMemoryError):
+            cm.declare_relation(from_record_id=a_id, to_record_id=b_id, kind="RELATED_TO")
+
+    # 11
+    def test_exact_duplicate_relation_rejected(self, wired):
+        mb, cm, _ = wired
+        a_id = _approve(cm, mb, "e-d1", "D1.", "s1")
+        b_id = _approve(cm, mb, "e-d2", "D2.", "s2")
+        cm.declare_relation(from_record_id=a_id, to_record_id=b_id, kind=RELATION_CONFLICTS_WITH)
+        with pytest.raises(ConsolidatedMemoryError):
+            cm.declare_relation(from_record_id=a_id, to_record_id=b_id, kind=RELATION_CONFLICTS_WITH)
+        assert len(cm.load_relations()) == 1
+        # a different kind for the same pair is NOT an exact duplicate
+        cm.declare_relation(from_record_id=a_id, to_record_id=b_id, kind=RELATION_SUPERSEDES)
+        assert len(cm.load_relations()) == 2
+
+    # 12
+    def test_approval_time_relations_still_work(self, wired):
+        mb, cm, _ = wired
+        old_id = _approve(cm, mb, "e-old", "Старое утверждение.", "s1")
+        _add_event(mb, "e-new", "USER_MESSAGE", "Новое утверждение.", "USER_STATED", session_id="s2")
+        cand = cm.propose(memory_backend=mb, source_event_id="e-new")
+        dec = cm.decide(candidate_id=cand.candidate_id, decision=DECISION_APPROVE,
+                        relations=[(RELATION_SUPERSEDES, old_id)])
+        assert {r.record_id for r in cm.load_active_records()} == {dec.record_id}
+        assert {r.record_id: r.status for r in cm.load_all_records()}[old_id] == RECORD_STATUS_SUPERSEDED
+        # relation row identical in shape to a standalone one
+        rel = cm.load_relations()[0]
+        assert rel.relation_id.startswith("memrel-") and rel.from_record_id == dec.record_id
+
+    # 13
+    def test_declaration_does_not_mutate_candidate_decision_record_or_state(self, wired):
+        mb, cm, root = wired
+        a_id = _approve(cm, mb, "e-m1", "M1 verbatim.", "s1")
+        b_id = _approve(cm, mb, "e-m2", "M2 verbatim.", "s2")
+        cands_before = cm.load_candidates()
+        decs_before = cm.load_decisions()
+        recs_before = {r.record_id: (r.meaning, r.provenance, r.epistemic_kind, r.source_event_id)
+                       for r in cm.load_all_records()}
+
+        cm.declare_relation(from_record_id=b_id, to_record_id=a_id, kind=RELATION_SUPERSEDES)
+
+        assert cm.load_candidates() == cands_before          # candidates untouched
+        assert cm.load_decisions() == decs_before            # decision ledger untouched
+        recs_after = {r.record_id: (r.meaning, r.provenance, r.epistemic_kind, r.source_event_id)
+                      for r in cm.load_all_records()}
+        assert recs_after == recs_before                     # record content/provenance untouched
+        # no Runtime State DB was created by a memory-relation declaration
+        assert not (root / "runtime_state.sqlite3").exists()
+
+    def test_declared_relation_survives_reopen(self, wired):
+        mb, cm, root = wired
+        a_id = _approve(cm, mb, "e-r1", "R1.", "s1")
+        b_id = _approve(cm, mb, "e-r2", "R2.", "s2")
+        cm.declare_relation(from_record_id=b_id, to_record_id=a_id, kind=RELATION_SUPERSEDES)
+        cm.close()
+        cm2 = ConsolidatedMemoryBackend(root, SUBJECT)
+        try:
+            assert {r.record_id for r in cm2.load_active_records()} == {b_id}
+            assert len(cm2.load_relations()) == 1
+        finally:
+            cm2.close()

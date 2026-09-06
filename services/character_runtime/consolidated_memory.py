@@ -289,6 +289,58 @@ class ConsolidatedMemoryBackend:
         self._conn.commit()
         return cur.lastrowid
 
+    # -- relations (shared by decide(... relations=...) and declare_relation) --
+    def _record_exists(self, subject_id: str, record_id: str) -> bool:
+        return (
+            self._conn.execute(
+                "SELECT 1 FROM consolidated_memory_records WHERE record_id = ? "
+                "AND subject_id = ? LIMIT 1",
+                (record_id, subject_id),
+            ).fetchone()
+            is not None
+        )
+
+    def _relation_row_exists(
+        self, subject_id: str, kind: str, from_record_id: str, to_record_id: str
+    ) -> bool:
+        return (
+            self._conn.execute(
+                "SELECT 1 FROM consolidated_memory_relations WHERE subject_id = ? "
+                "AND kind = ? AND from_record_id = ? AND to_record_id = ? LIMIT 1",
+                (subject_id, kind, from_record_id, to_record_id),
+            ).fetchone()
+            is not None
+        )
+
+    def _append_relation(
+        self,
+        *,
+        subject_id: str,
+        kind: str,
+        from_record_id: str,
+        to_record_id: str,
+        declared_by: Optional[str],
+    ) -> MemoryRelation:
+        """Append ONE relation row (no UPDATE, no DELETE, no mirror row).
+
+        The single insertion point used by both the approval-time
+        ``decide(..., relations=[...])`` path and the standalone
+        :meth:`declare_relation`, so the two share exactly one row format,
+        one id scheme (``memrel-…``) and one seq mechanism.
+        """
+        relation_id = f"memrel-{uuid.uuid4().hex}"
+        created_at = _now_iso()
+        cols = ("relation_id", "subject_id", "kind", "from_record_id",
+                "to_record_id", "declared_by", "created_at")
+        vals = (relation_id, subject_id, kind, from_record_id, to_record_id,
+                declared_by, created_at)
+        seq = self._insert_with_seq("consolidated_memory_relations", cols, vals, "relation_id")
+        return MemoryRelation(
+            relation_id=relation_id, subject_id=subject_id, kind=kind,
+            from_record_id=from_record_id, to_record_id=to_record_id,
+            declared_by=declared_by, created_at=created_at, seq=seq,
+        )
+
     # -- eligibility + candidate --------------------------------------------
     def propose(
         self,
@@ -443,11 +495,11 @@ class ConsolidatedMemoryBackend:
             self._insert_with_seq("consolidated_memory_records", rec_cols, rec_vals, "record_id")
 
             for kind, target in rel_list:
-                rel_id = f"memrel-{uuid.uuid4().hex}"
-                rel_cols = ("relation_id", "subject_id", "kind", "from_record_id",
-                            "to_record_id", "declared_by", "created_at")
-                rel_vals = (rel_id, c_subject, kind, record_id, target, decided_by, _now_iso())
-                self._insert_with_seq("consolidated_memory_relations", rel_cols, rel_vals, "relation_id")
+                self._append_relation(
+                    subject_id=c_subject, kind=kind,
+                    from_record_id=record_id, to_record_id=target,
+                    declared_by=decided_by,
+                )
 
         dec_cols = ("decision_id", "candidate_id", "decision", "decided_by",
                     "record_id", "note", "created_at")
@@ -458,6 +510,63 @@ class ConsolidatedMemoryBackend:
             decision_id=decision_id, candidate_id=candidate_id, decision=decision,
             decided_by=decided_by, record_id=record_id, note=note,
             created_at=created_at, seq=seq,
+        )
+
+    # -- standalone relation ---------------------------------------------
+    def declare_relation(
+        self,
+        *,
+        from_record_id: str,
+        to_record_id: str,
+        kind: str,
+        declared_by: Optional[str] = None,
+    ) -> MemoryRelation:
+        """Operator-declare a relation between TWO ALREADY-APPROVED records.
+
+        Additive and append-only: inserts exactly one row into
+        ``consolidated_memory_relations`` (no UPDATE, no DELETE, no record
+        mutation, no schema change, no mirror row). Existing derived
+        semantics are unchanged -- ``SUPERSEDES`` is directional
+        (``from`` supersedes ``to``; ``to`` becomes derived ``SUPERSEDED``,
+        ``from`` stays active unless separately superseded), ``CONFLICTS_WITH``
+        leaves both records active with the conflict surfaced (unresolved,
+        auditable) for both by :meth:`active_conflict_record_ids`.
+
+        Fail-closed :class:`ConsolidatedMemoryError` for: an unknown relation
+        kind; a self-relation; a missing ``from``/``to`` record; a record from
+        a different workspace/subject (each per-workspace DB only contains its
+        own subject's records, so a foreign id simply "does not exist" here);
+        or an EXACT duplicate declaration (same ``from`` + ``to`` + ``kind``).
+        """
+        self._require_open()
+        if kind not in RELATION_KINDS:
+            raise ConsolidatedMemoryError(
+                f"relation kind must be one of {RELATION_KINDS}, got {kind!r}"
+            )
+        for name, value in (("from_record_id", from_record_id), ("to_record_id", to_record_id)):
+            if not isinstance(value, str) or not value.strip():
+                raise ConsolidatedMemoryError(f"{name} must be a non-empty string")
+        from_record_id = from_record_id.strip()
+        to_record_id = to_record_id.strip()
+        if from_record_id == to_record_id:
+            raise ConsolidatedMemoryError("a record cannot relate to itself")
+        if not self._record_exists(self._subject_id, from_record_id):
+            raise ConsolidatedMemoryError(
+                f"from_record {from_record_id!r} does not exist for this subject/workspace"
+            )
+        if not self._record_exists(self._subject_id, to_record_id):
+            raise ConsolidatedMemoryError(
+                f"to_record {to_record_id!r} does not exist for this subject/workspace"
+            )
+        if self._relation_row_exists(self._subject_id, kind, from_record_id, to_record_id):
+            raise ConsolidatedMemoryError(
+                f"duplicate relation: {kind} from {from_record_id!r} to "
+                f"{to_record_id!r} already exists"
+            )
+        return self._append_relation(
+            subject_id=self._subject_id, kind=kind,
+            from_record_id=from_record_id, to_record_id=to_record_id,
+            declared_by=declared_by,
         )
 
     # -- reads ------------------------------------------------------------
