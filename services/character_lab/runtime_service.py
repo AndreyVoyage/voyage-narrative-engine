@@ -23,6 +23,7 @@ from services.character_runtime import (
     RuntimeSession,
     load_accepted_character,
 )
+from services.character_runtime.consolidated_memory import ConsolidatedMemoryBackend
 from services.character_runtime.state import RuntimeStateBackend
 from services.crp_authoring import compute_package_hash
 
@@ -153,6 +154,33 @@ class RuntimeService:
             for e in entries
         ]
 
+    @staticmethod
+    def _load_consolidated_memory(memory_root: Path, subject_id: str) -> list:
+        """Active (non-superseded) APPROVED Consolidated Memory records for this
+        workspace, as plain dicts. Read-only; opens and closes its own
+        connection to the shared per-workspace ``runtime_memory.sqlite3``."""
+        backend = ConsolidatedMemoryBackend(Path(memory_root), subject_id)
+        try:
+            records = backend.load_active_records(subject_id)
+            in_conflict = backend.active_conflict_record_ids(subject_id)
+        finally:
+            backend.close()
+        return [
+            {
+                "record_id": r.record_id,
+                "source_event_id": r.source_event_id,
+                "basis_event_ids": list(r.basis_event_ids),
+                "memory_kind": r.memory_kind,
+                "epistemic_kind": r.epistemic_kind,
+                "provenance": r.provenance,
+                "holder_id": r.holder_id,
+                "meaning": r.meaning,
+                "seq": r.seq,
+                "in_conflict": r.record_id in in_conflict,
+            }
+            for r in records
+        ]
+
     def resolve(
         self,
         subject_id: str,
@@ -243,6 +271,12 @@ class RuntimeService:
                 )
                 if dimension_set is not None:
                     runtime_context["dimension_definitions"] = dimension_set
+                # Approved, active Consolidated Memory for THIS workspace only
+                # (shares the per-workspace memory DB; Beta v1 never gets this
+                # key). Raw Event Log is untouched.
+                runtime_context["consolidated_memory"] = self._load_consolidated_memory(
+                    Path(memory_root), subject_id
+                )
             assembly = policy.assemble_context(
                 runtime_context=runtime_context,
                 session_id=session.session_id,

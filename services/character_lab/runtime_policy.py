@@ -255,6 +255,46 @@ _GROUNDED_V2_MEMORY_HEADER = (
 )
 _GROUNDED_V2_MEMORY_LINE_PREFIX = "- [со слов собеседника] "
 
+# Bounded working-context policy (OD-MEM-EVO-10). Applied to the GROUNDING /
+# working-memory layer only -- NOT to the live conversation ``history``, which
+# is assembled separately. "Whichever limit is reached first"; newest eligible
+# causal events are preferred (the single newest line is always kept for
+# continuity, then older lines are added only while within BOTH bounds).
+GROUNDED_V2_RAW_MEMORY_MAX_EVENTS = 20
+GROUNDED_V2_RAW_MEMORY_MAX_CHARS = 6000
+GROUNDED_V2_CONSOLIDATED_MAX_RECORDS = 20
+GROUNDED_V2_CONSOLIDATED_MAX_CHARS = 6000
+
+# Consolidated Memory (approved, active, workspace-scoped user reports).
+_GROUNDED_V2_CONSMEM_HEADER = (
+    "КОНСОЛИДИРОВАННАЯ ПАМЯТЬ (сообщено собеседником в прошлых сессиях этой "
+    "рабочей области — не независимо подтверждённые факты)"
+)
+_GROUNDED_V2_CONSMEM_LINE_PREFIX = "- [USER_REPORT] "
+_GROUNDED_V2_CONSMEM_CONFLICT_SUFFIX = "  [ПРОТИВОРЕЧИЕ: есть несогласованная запись]"
+_GROUNDED_V2_CONSMEM_FOOTER = (
+    "Это устойчивая память со слов собеседника из прошлых сессий этой рабочей "
+    "области; провенанс сохранён. Это не независимо подтверждённая истина, и "
+    "противоречия здесь не разрешаются автоматически."
+)
+
+
+def _bounded_newest(items, *, rendered_len, max_items, max_chars):
+    """Keep the newest ``items`` (input is oldest->newest) within BOTH a count
+    and a rendered-character budget, then return them back in oldest->newest
+    order. The single newest item is always kept (conversational/grounding
+    continuity); older items are added only while both limits still hold."""
+    kept = []
+    total = 0
+    for idx, item in enumerate(reversed(list(items))):
+        line_len = rendered_len(item)
+        if idx > 0 and (len(kept) >= max_items or total + line_len > max_chars):
+            break
+        kept.append(item)
+        total += line_len
+    kept.reverse()
+    return kept
+
 _GROUNDED_V2_STATE_HEADER = "ПОДТВЕРЖДЁННОЕ ТЕКУЩЕЕ СОСТОЯНИЕ"
 _GROUNDED_V2_STATE_FOOTER = (
     "Эти факты оператор явно подтвердил как текущее состояние. Они дополняют "
@@ -305,7 +345,8 @@ class GroundedV2Policy(RuntimePolicy):
     def select_memory(self, runtime_context, session_id):
         # Honest factual memory only: USER_STATED events, in causal seq order.
         # CHARACTER_UTTERANCE and LEGACY_UNCLASSIFIED (incl. NULL provenance)
-        # are never surfaced as established factual grounding.
+        # are never surfaced as established factual grounding. Then bound the
+        # working-memory layer (OD-MEM-EVO-10): newest 20 events / 6000 chars.
         events = runtime_context.get("causal_memory") or ()
         selected = [
             e
@@ -318,7 +359,34 @@ class GroundedV2Policy(RuntimePolicy):
                 e.get("event_id") or "",
             )
         )
-        return selected
+        return _bounded_newest(
+            selected,
+            rendered_len=lambda e: len(
+                _GROUNDED_V2_MEMORY_LINE_PREFIX + str(e.get("meaning", "")).strip()
+            ),
+            max_items=GROUNDED_V2_RAW_MEMORY_MAX_EVENTS,
+            max_chars=GROUNDED_V2_RAW_MEMORY_MAX_CHARS,
+        )
+
+    def select_consolidated(self, runtime_context):
+        # Approved, active, workspace-scoped Consolidated Memory records
+        # (RuntimeService injects them for Grounded v2 only). Deterministic
+        # order by approval seq; bounded newest 20 records / 6000 chars.
+        records = list(runtime_context.get("consolidated_memory") or [])
+        records.sort(
+            key=lambda r: (
+                r["seq"] if r.get("seq") is not None else 0,
+                r.get("record_id") or "",
+            )
+        )
+        return _bounded_newest(
+            records,
+            rendered_len=lambda r: len(
+                _GROUNDED_V2_CONSMEM_LINE_PREFIX + str(r.get("meaning", "")).strip()
+            ),
+            max_items=GROUNDED_V2_CONSOLIDATED_MAX_RECORDS,
+            max_chars=GROUNDED_V2_CONSOLIDATED_MAX_CHARS,
+        )
 
     def _memory_block(self, selected) -> str:
         lines = [_GROUNDED_V2_MEMORY_HEADER]
@@ -326,6 +394,25 @@ class GroundedV2Policy(RuntimePolicy):
             lines.append(
                 _GROUNDED_V2_MEMORY_LINE_PREFIX + str(e.get("meaning", "")).strip()
             )
+        return "\n".join(lines)
+
+    @staticmethod
+    def _consolidated_line(record) -> str:
+        suffix = (
+            _GROUNDED_V2_CONSMEM_CONFLICT_SUFFIX if record.get("in_conflict") else ""
+        )
+        return (
+            _GROUNDED_V2_CONSMEM_LINE_PREFIX
+            + str(record.get("meaning", "")).strip()
+            + suffix
+        )
+
+    def _consolidated_block(self, selected) -> str:
+        lines = [_GROUNDED_V2_CONSMEM_HEADER, ""]
+        for r in selected:
+            lines.append(self._consolidated_line(r))
+        lines.append("")
+        lines.append(_GROUNDED_V2_CONSMEM_FOOTER)
         return "\n".join(lines)
 
     def select_state(self, runtime_context):
@@ -394,6 +481,12 @@ class GroundedV2Policy(RuntimePolicy):
         dimension_set = self._resolve_dimension_set(runtime_context)
         selected_mem = self.select_memory(runtime_context, session_id)
         memory_block = self._memory_block(selected_mem) if selected_mem else None
+        selected_consolidated = self.select_consolidated(runtime_context)
+        consolidated_block = (
+            self._consolidated_block(selected_consolidated)
+            if selected_consolidated
+            else None
+        )
 
         system_messages = [{"role": "system", "content": _GROUNDED_V2_CORE_INSTRUCTION}]
         if grounding:
@@ -411,6 +504,8 @@ class GroundedV2Policy(RuntimePolicy):
                 })
         if memory_block is not None:
             system_messages.append({"role": "system", "content": memory_block})
+        if consolidated_block is not None:
+            system_messages.append({"role": "system", "content": consolidated_block})
         if scene is not None:
             system_messages.append(
                 {"role": "system", "content": render_scene_block(scene)}
@@ -435,6 +530,7 @@ class GroundedV2Policy(RuntimePolicy):
                     user_message,
                     scene,
                     dimension_set,
+                    selected_consolidated,
                 )
             ),
         )
@@ -451,6 +547,7 @@ class GroundedV2Policy(RuntimePolicy):
         user_message,
         scene,
         dimension_set=None,
+        selected_consolidated=None,
     ):
         items = [
             AssemblyItem(
@@ -539,6 +636,40 @@ class GroundedV2Policy(RuntimePolicy):
                             "session_id": e.get("session_id"),
                             "provenance": _provenance.normalize(e.get("provenance")),
                             "provenance_display": "user-reported",
+                        },
+                    )
+                )
+        if selected_consolidated:
+            items.append(
+                AssemblyItem(
+                    "system.consolidated_memory",
+                    self._consolidated_block(selected_consolidated),
+                    {
+                        "record_count": len(selected_consolidated),
+                        "epistemic_kind": "USER_REPORT",
+                        "order": "seq",
+                        "conflict_count": sum(
+                            1 for r in selected_consolidated if r.get("in_conflict")
+                        ),
+                    },
+                )
+            )
+            for r in selected_consolidated:
+                items.append(
+                    AssemblyItem(
+                        "system.consolidated_memory_line",
+                        self._consolidated_line(r),
+                        {
+                            "record_id": r.get("record_id"),
+                            "source_event_id": r.get("source_event_id"),
+                            "basis_event_ids": list(r.get("basis_event_ids") or []),
+                            "epistemic_kind": r.get("epistemic_kind"),
+                            "provenance": r.get("provenance"),
+                            "memory_kind": r.get("memory_kind"),
+                            "holder_id": r.get("holder_id"),
+                            "in_conflict": bool(r.get("in_conflict")),
+                            "seq": r.get("seq"),
+                            "provenance_display": "user-reported (remembered)",
                         },
                     )
                 )

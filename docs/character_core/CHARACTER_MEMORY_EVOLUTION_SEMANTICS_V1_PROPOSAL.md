@@ -42,8 +42,38 @@ correction recorded here:
 A separate slice
 (`DIMENSION_SEMANTICS_BEHAVIOR_RENDERING_FOUNDATION_V1`) implements the
 generic dimension schema, the band interpreter, the semantic renderer, and a
-bounded Grounded-v2 rendering hook. Consolidated Memory and EvolutionCandidate
-themselves are **not** implemented in that slice.
+bounded Grounded-v2 rendering hook. `EvolutionCandidate` is **not** implemented
+in that slice.
+
+### Implemented: Consolidated Memory v1 (`CONSOLIDATED_MEMORY_V1`)
+
+The **selection / promotion** half of §2/§4 is now built
+(`services/character_runtime/consolidated_memory.py`), matching every
+decision above:
+
+- one shared per-workspace DB file (`runtime_memory.sqlite3`): the raw
+  `runtime_events` Event Log is untouched; four new **append-only** tables
+  hold candidates, an APPROVE/REJECT decision ledger, approved records, and
+  operator-declared relations.
+- `runtime event → eligibility validation → MemoryPromotionCandidate →
+  explicit operator APPROVE/REJECT → (on APPROVE) one verbatim
+  `ConsolidatedMemoryRecord` with `basis_event_ids` = exactly one id.
+- eligibility: `USER_MESSAGE` + provenance `USER_STATED` + non-empty +
+  same workspace. A `CHARACTER_UTTERANCE` can never be promoted. No
+  automatic salience scan.
+- epistemic kind `USER_REPORT` (never `WORLD_FACT`); provenance + source
+  event id retained.
+- exact **normalized** dedupe only (whitespace + case-fold); no embeddings.
+- `SUPERSEDES` / `CONFLICTS_WITH` are operator-declared relation rows;
+  nothing is deleted or overwritten — superseded records are *derived* out
+  of the active view, conflicts stay unresolved and visible.
+- Grounded v2 receives active approved records for the **same workspace
+  only** as a separate `КОНСОЛИДИРОВАННАЯ ПАМЯТЬ` / `- [USER_REPORT]` block
+  (bounded: newest ≤20 records / ≤6000 chars); the raw working-memory block
+  is now bounded the same way (OD-MEM-EVO-10). Beta v1 is unchanged.
+
+Still **deferred**: summarization / multi-event merge, automatic promotion,
+forgetting/decay, `EvolutionCandidate` and any state mutation from memory.
 
 ---
 

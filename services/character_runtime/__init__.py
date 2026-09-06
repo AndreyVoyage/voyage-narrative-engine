@@ -7,6 +7,14 @@ accepted CRP character packages through the acceptance gate and manages durable
 runtime memory that never rewrites the accepted package.
 """
 
+from .consolidated_memory import (
+    ConsolidatedMemoryBackend,
+    ConsolidatedMemoryError,
+    ConsolidatedMemoryRecord,
+    MemoryPromotionCandidate,
+    MemoryPromotionDecision,
+    MemoryRelation,
+)
 from .memory import RuntimeEvent, RuntimeMemoryBackend, RuntimeMemoryError
 from .runtime import (
     AcceptedCharacter,
@@ -21,6 +29,12 @@ __all__ = [
     "RuntimeEvent",
     "RuntimeMemoryBackend",
     "RuntimeMemoryError",
+    "ConsolidatedMemoryBackend",
+    "ConsolidatedMemoryError",
+    "ConsolidatedMemoryRecord",
+    "MemoryPromotionCandidate",
+    "MemoryPromotionDecision",
+    "MemoryRelation",
     "AcceptedCharacter",
     "CharacterRuntimeError",
     "RuntimeSession",
