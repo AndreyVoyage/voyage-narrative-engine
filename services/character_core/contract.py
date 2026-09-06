@@ -37,6 +37,26 @@ __all__ = [
     "RuntimeStateSummary",
     "MemoryEventSummary",
     "MemorySummary",
+    "MEMORY_KIND_EPISODIC",
+    "MEMORY_KIND_SEMANTIC",
+    "MEMORY_KINDS",
+    "PROMOTION_DECISION_APPROVE",
+    "PROMOTION_DECISION_REJECT",
+    "PROMOTION_DECISIONS",
+    "CANDIDATE_STATUS_PENDING",
+    "CANDIDATE_STATUS_APPROVED",
+    "CANDIDATE_STATUS_REJECTED",
+    "CONSOLIDATED_RELATION_SUPERSEDES",
+    "CONSOLIDATED_RELATION_CONFLICTS_WITH",
+    "CONSOLIDATED_RELATION_KINDS",
+    "CONSOLIDATED_RECORD_STATUS_ACTIVE",
+    "CONSOLIDATED_RECORD_STATUS_SUPERSEDED",
+    "EPISTEMIC_USER_REPORT",
+    "MemoryEventInspection",
+    "MemoryEventList",
+    "MemoryPromotionCandidateSummary",
+    "ConsolidatedMemoryRecordSummary",
+    "MemoryRelationSummary",
     "SceneSummary",
     "TurnSummary",
     "ManifestItemSummary",
@@ -254,6 +274,119 @@ class MemorySummary:
     events: Tuple[MemoryEventSummary, ...] = ()
 
 
+# --------------------------------------------------------------------------
+# Consolidated Memory (operator-driven promotion) vocabulary + DTOs
+# --------------------------------------------------------------------------
+
+# Plain-string vocabulary mirroring the Consolidated Memory V1 backend's
+# values (``services.character_runtime.consolidated_memory``), so clients can
+# render/branch on them without importing backend modules. The BACKEND remains
+# the sole authority on validation -- these constants never weaken its checks.
+
+MEMORY_KIND_EPISODIC = "EPISODIC"
+MEMORY_KIND_SEMANTIC = "SEMANTIC"
+#: The only two memory kinds in V1.
+MEMORY_KINDS: Tuple[str, ...] = (MEMORY_KIND_EPISODIC, MEMORY_KIND_SEMANTIC)
+
+PROMOTION_DECISION_APPROVE = "APPROVE"
+PROMOTION_DECISION_REJECT = "REJECT"
+#: Operator decisions over a promotion candidate.
+PROMOTION_DECISIONS: Tuple[str, ...] = (
+    PROMOTION_DECISION_APPROVE,
+    PROMOTION_DECISION_REJECT,
+)
+
+CANDIDATE_STATUS_PENDING = "PENDING"
+CANDIDATE_STATUS_APPROVED = "APPROVED"
+CANDIDATE_STATUS_REJECTED = "REJECTED"
+
+CONSOLIDATED_RELATION_SUPERSEDES = "SUPERSEDES"
+CONSOLIDATED_RELATION_CONFLICTS_WITH = "CONFLICTS_WITH"
+#: The only two operator-declarable relations between approved records.
+CONSOLIDATED_RELATION_KINDS: Tuple[str, ...] = (
+    CONSOLIDATED_RELATION_SUPERSEDES,
+    CONSOLIDATED_RELATION_CONFLICTS_WITH,
+)
+
+CONSOLIDATED_RECORD_STATUS_ACTIVE = "ACTIVE"
+CONSOLIDATED_RECORD_STATUS_SUPERSEDED = "SUPERSEDED"
+
+#: V1 only ever promotes user reports. ``USER_REPORT`` == "the user stated
+#: this" -- never an independently confirmed world fact.
+EPISTEMIC_USER_REPORT = "USER_REPORT"
+
+
+@dataclass(frozen=True)
+class MemoryEventInspection:
+    """One raw runtime-memory event WITH its promotion eligibility.
+
+    ``eligible_for_promotion`` / ``ineligibility_reason`` are computed by the
+    SERVICE side (adapter) reusing the backend's own vocabulary constants; the
+    backend's ``propose()`` remains the sole authoritative gate at mutation
+    time. A client must never re-derive eligibility itself.
+    """
+
+    event_id: str
+    seq: Optional[int]
+    event_type: str
+    provenance: str
+    meaning: str
+    subject_id: str
+    session_id: str
+    eligible_for_promotion: bool
+    ineligibility_reason: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class MemoryEventList:
+    """Raw workspace memory events annotated for operator inspection."""
+
+    workspace_id: str
+    causal_order: str
+    events: Tuple[MemoryEventInspection, ...] = ()
+
+
+@dataclass(frozen=True)
+class MemoryPromotionCandidateSummary:
+    """One promotion candidate with its derived decision status."""
+
+    candidate_id: str
+    source_event_id: str
+    memory_kind: str
+    epistemic_kind: str
+    meaning: str
+    provenance: str
+    seq: Optional[int]
+    decision_status: str  # PENDING / APPROVED / REJECTED
+
+
+@dataclass(frozen=True)
+class ConsolidatedMemoryRecordSummary:
+    """One approved consolidated record, with derived status + conflicts."""
+
+    record_id: str
+    memory_kind: str
+    epistemic_kind: str
+    meaning: str
+    source_event_id: str
+    basis_event_ids: Tuple[str, ...]
+    provenance: str
+    status: str  # ACTIVE / SUPERSEDED (derived, never stored mutable)
+    superseded_by_record_id: Optional[str] = None
+    conflict_record_ids: Tuple[str, ...] = ()
+    seq: Optional[int] = None
+
+
+@dataclass(frozen=True)
+class MemoryRelationSummary:
+    """One operator-declared relation between two approved records."""
+
+    relation_id: str
+    kind: str  # SUPERSEDES / CONFLICTS_WITH
+    from_record_id: str
+    to_record_id: str
+
+
 @dataclass(frozen=True)
 class SceneSummary:
     """Session-scoped situational Scene setup (never Accepted Package data,
@@ -385,6 +518,43 @@ class CharacterService(Protocol):
     def send_message(self, session_id: str, text: str) -> ChatTurnResult: ...
 
     def get_memory(self, workspace_id: str) -> MemorySummary: ...
+
+    # -------------------------------------------------- consolidated memory
+    # Operator-driven, human-approved Consolidated Memory (V1). The service
+    # side validates against the authoritative backend; a client only ever
+    # selects an event / a candidate / two records and confirms an action.
+
+    def list_memory_events(self, workspace_id: str) -> MemoryEventList: ...
+
+    def list_memory_promotion_candidates(
+        self, workspace_id: str
+    ) -> Tuple[MemoryPromotionCandidateSummary, ...]: ...
+
+    def propose_memory_promotion(
+        self,
+        workspace_id: str,
+        source_event_id: str,
+        memory_kind: str,
+    ) -> MemoryPromotionCandidateSummary: ...
+
+    def decide_memory_promotion(
+        self,
+        workspace_id: str,
+        candidate_id: str,
+        decision: str,
+    ) -> MemoryPromotionCandidateSummary: ...
+
+    def list_consolidated_memory(
+        self, workspace_id: str
+    ) -> Tuple[ConsolidatedMemoryRecordSummary, ...]: ...
+
+    def create_consolidated_memory_relation(
+        self,
+        workspace_id: str,
+        from_record_id: str,
+        to_record_id: str,
+        relation_type: str,
+    ) -> MemoryRelationSummary: ...
 
     def get_runtime_state(self, workspace_id: str) -> RuntimeStateSummary: ...
 

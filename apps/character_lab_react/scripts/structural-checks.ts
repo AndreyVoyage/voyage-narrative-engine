@@ -367,6 +367,212 @@ async function main() {
     globalThis.fetch = originalFetch;
   }
 
+  // --- Consolidated Memory operator UI (REACT_CONSOLIDATED_MEMORY_OPERATOR_UI_V1) ---
+
+  // 18. Both concrete clients expose the operator-driven consolidated-memory
+  //     surface; the UI (MemoryView) only ever calls through this interface.
+  const memoryOps = [
+    "listMemoryEvents",
+    "listMemoryPromotionCandidates",
+    "proposeMemoryPromotion",
+    "decideMemoryPromotion",
+    "listConsolidatedMemory",
+    "createConsolidatedMemoryRelation",
+  ] as const;
+  check(
+    "18. Mock + Http clients both expose all 6 consolidated-memory operations",
+    memoryOps.every(
+      (m) =>
+        typeof (client as any)[m] === "function" &&
+        typeof (httpClient as any)[m] === "function"
+    )
+  );
+
+  // 18b. Mock end-to-end: backend-style eligibility gate, verbatim candidate,
+  //      explicit APPROVE/REJECT, exact dedupe, no automatic promotion. (The
+  //      Python backend stays authoritative in "local" mode; the mock only
+  //      mirrors externally-visible behavior for offline UI development.)
+  await checkAsync(
+    "18b. mock: only eligible USER_STATED promotes; APPROVE creates a record; REJECT does not; exact dupe blocked",
+    async () => {
+      const mc = new MockCharacterClient();
+      const wsId = (await mc.listWorkspaces())[0].workspaceId;
+      const s = await mc.createSession("kira", "KIRA_BETA_V1_CURRENT", SessionPurpose.TESTING, wsId);
+      await mc.sendMessage(s.sessionId, "Я терпеть не могу шумные вечеринки.");
+      const evs = (await mc.listMemoryEvents(wsId)).events;
+      const userEvt = evs.find((e) => e.eventType === "USER_MESSAGE")!;
+      const charEvt = evs.find((e) => e.eventType === "CHARACTER_MESSAGE")!;
+      if (!userEvt.eligibleForPromotion) return false;
+      if (charEvt.eligibleForPromotion || !charEvt.ineligibilityReason) return false;
+      // a character utterance can never be promoted
+      let charRejected = false;
+      try {
+        await mc.proposeMemoryPromotion(wsId, charEvt.eventId, "SEMANTIC");
+      } catch {
+        charRejected = true;
+      }
+      if (!charRejected) return false;
+
+      const cand = await mc.proposeMemoryPromotion(wsId, userEvt.eventId, "SEMANTIC");
+      if (cand.decisionStatus !== "PENDING" || cand.epistemicKind !== "USER_REPORT") return false;
+      if (cand.meaning !== "Я терпеть не могу шумные вечеринки.") return false; // verbatim
+      if ((await mc.listConsolidatedMemory(wsId)).length !== 0) return false; // candidate != record
+      const decided = await mc.decideMemoryPromotion(wsId, cand.candidateId, "APPROVE");
+      if (decided.decisionStatus !== "APPROVED") return false;
+      const recs1 = await mc.listConsolidatedMemory(wsId);
+      if (recs1.length !== 1 || recs1[0].status !== "ACTIVE" || recs1[0].epistemicKind !== "USER_REPORT")
+        return false;
+
+      // exact (normalized) duplicate is blocked at APPROVE
+      await mc.sendMessage(s.sessionId, "  Я  ТЕРПЕТЬ  не могу шумные вечеринки. ");
+      const dupUserEvts = (await mc.listMemoryEvents(wsId)).events.filter(
+        (e) => e.eventType === "USER_MESSAGE"
+      );
+      const dupEvt = dupUserEvts[dupUserEvts.length - 1];
+      const dupCand = await mc.proposeMemoryPromotion(wsId, dupEvt.eventId, "SEMANTIC");
+      let dupBlocked = false;
+      try {
+        await mc.decideMemoryPromotion(wsId, dupCand.candidateId, "APPROVE");
+      } catch {
+        dupBlocked = true;
+      }
+      if (!dupBlocked || (await mc.listConsolidatedMemory(wsId)).length !== 1) return false;
+
+      // REJECT creates no record and is final
+      await mc.sendMessage(s.sessionId, "Совсем другое утверждение.");
+      const rejUserEvts = (await mc.listMemoryEvents(wsId)).events.filter(
+        (e) => e.eventType === "USER_MESSAGE"
+      );
+      const rejEvt = rejUserEvts[rejUserEvts.length - 1];
+      const rejCand = await mc.proposeMemoryPromotion(wsId, rejEvt.eventId, "EPISODIC");
+      const rej = await mc.decideMemoryPromotion(wsId, rejCand.candidateId, "REJECT");
+      if (rej.decisionStatus !== "REJECTED") return false;
+      if ((await mc.listConsolidatedMemory(wsId)).length !== 1) return false;
+      let secondDecisionBlocked = false;
+      try {
+        await mc.decideMemoryPromotion(wsId, rejCand.candidateId, "APPROVE");
+      } catch {
+        secondDecisionBlocked = true;
+      }
+      return secondDecisionBlocked;
+    }
+  );
+
+  // 18c. Mock standalone relations mirror the accepted backend derivation.
+  await checkAsync(
+    "18c. mock: SUPERSEDES -> target derived SUPERSEDED; CONFLICTS_WITH -> both active + flagged; self/missing rejected",
+    async () => {
+      const mc = new MockCharacterClient();
+      const wsId = (await mc.listWorkspaces())[0].workspaceId;
+      const s = await mc.createSession("kira", "KIRA_BETA_V1_CURRENT", SessionPurpose.TESTING, wsId);
+      async function approve(text: string): Promise<string> {
+        await mc.sendMessage(s.sessionId, text);
+        const userEvts = (await mc.listMemoryEvents(wsId)).events.filter(
+          (e) => e.eventType === "USER_MESSAGE"
+        );
+        const evt = userEvts[userEvts.length - 1];
+        const c = await mc.proposeMemoryPromotion(wsId, evt.eventId, "SEMANTIC");
+        await mc.decideMemoryPromotion(wsId, c.candidateId, "APPROVE");
+        const recs = await mc.listConsolidatedMemory(wsId);
+        return recs[recs.length - 1].recordId;
+      }
+      const oldId = await approve("Я родился в Москве.");
+      const newId = await approve("Нет, я родился в Туле.");
+      await mc.createConsolidatedMemoryRelation(wsId, newId, oldId, "SUPERSEDES");
+      let recs = await mc.listConsolidatedMemory(wsId);
+      const oldRec = recs.find((r) => r.recordId === oldId)!;
+      const newRec = recs.find((r) => r.recordId === newId)!;
+      if (oldRec.status !== "SUPERSEDED" || oldRec.supersededByRecordId !== newId) return false;
+      if (newRec.status !== "ACTIVE") return false;
+      if (oldRec.meaning !== "Я родился в Москве.") return false; // never rewritten
+
+      const aId = await approve("У меня есть кот.");
+      const bId = await approve("У меня нет животных.");
+      await mc.createConsolidatedMemoryRelation(wsId, aId, bId, "CONFLICTS_WITH");
+      recs = await mc.listConsolidatedMemory(wsId);
+      const aRec = recs.find((r) => r.recordId === aId)!;
+      const bRec = recs.find((r) => r.recordId === bId)!;
+      if (aRec.status !== "ACTIVE" || bRec.status !== "ACTIVE") return false;
+      if (!aRec.conflictRecordIds.includes(bId) || !bRec.conflictRecordIds.includes(aId)) return false;
+
+      let selfRejected = false;
+      try {
+        await mc.createConsolidatedMemoryRelation(wsId, aId, aId, "SUPERSEDES");
+      } catch {
+        selfRejected = true;
+      }
+      let missingRejected = false;
+      try {
+        await mc.createConsolidatedMemoryRelation(wsId, aId, "memrec-nope", "SUPERSEDES");
+      } catch {
+        missingRejected = true;
+      }
+      return selfRejected && missingRejected;
+    }
+  );
+
+  // 18d. Consolidated memory is workspace-scoped: a fresh Clean Test never
+  //      sees another workspace's approved records.
+  await checkAsync("18d. mock: consolidated memory is isolated per workspace", async () => {
+    const mc = new MockCharacterClient();
+    const wsA = (await mc.listWorkspaces())[0].workspaceId;
+    const s = await mc.createSession("kira", "KIRA_BETA_V1_CURRENT", SessionPurpose.TESTING, wsA);
+    await mc.sendMessage(s.sessionId, "Факт только для рабочей области A.");
+    const evt = (await mc.listMemoryEvents(wsA)).events.find((e) => e.eventType === "USER_MESSAGE")!;
+    const c = await mc.proposeMemoryPromotion(wsA, evt.eventId, "SEMANTIC");
+    await mc.decideMemoryPromotion(wsA, c.candidateId, "APPROVE");
+    if ((await mc.listConsolidatedMemory(wsA)).length !== 1) return false;
+    const wsB = await mc.createTestWorkspace();
+    return (await mc.listConsolidatedMemory(wsB.workspaceId)).length === 0;
+  });
+
+  // 18e. HttpCharacterClient routes every consolidated-memory call to a
+  //      relative /api/... path with the expected method + JSON body.
+  const originalFetch2 = globalThis.fetch;
+  interface SeenReq { path: string; method: string; body: Record<string, unknown> }
+  const reqLog: SeenReq[] = [];
+  (globalThis as any).fetch = async (path: string, init?: RequestInit) => {
+    reqLog.push({
+      path,
+      method: (init?.method ?? "GET").toUpperCase(),
+      body: init?.body ? JSON.parse(String(init.body)) : {},
+    });
+    return {
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      text: async () =>
+        JSON.stringify({ events: [], candidates: [], records: [], workspaceId: "w", causalOrder: "seq" }),
+    } as unknown as Response;
+  };
+  try {
+    await checkAsync("18e. HttpCharacterClient consolidated-memory calls use relative /api/... routes", async () => {
+      reqLog.length = 0;
+      await httpClient.listMemoryEvents("ws-1");
+      await httpClient.listMemoryPromotionCandidates("ws-1");
+      await httpClient.listConsolidatedMemory("ws-1");
+      await httpClient.proposeMemoryPromotion("ws-1", "evt-1", "SEMANTIC");
+      await httpClient.decideMemoryPromotion("ws-1", "cand-1", "APPROVE");
+      await httpClient.createConsolidatedMemoryRelation("ws-1", "rec-a", "rec-b", "SUPERSEDES");
+      const [ev, ca, co, pr, de, re] = reqLog;
+      return (
+        ev.path === "/api/workspaces/ws-1/memory/events" && ev.method === "GET" &&
+        ca.path === "/api/workspaces/ws-1/memory/candidates" && ca.method === "GET" &&
+        co.path === "/api/workspaces/ws-1/memory/consolidated" && co.method === "GET" &&
+        pr.path === "/api/memory/candidates" && pr.method === "POST" &&
+        pr.body.workspaceId === "ws-1" && pr.body.sourceEventId === "evt-1" &&
+        pr.body.memoryKind === "SEMANTIC" &&
+        de.path === "/api/memory/candidates/decision" && de.method === "POST" &&
+        de.body.candidateId === "cand-1" && de.body.decision === "APPROVE" &&
+        re.path === "/api/memory/relations" && re.method === "POST" &&
+        re.body.fromRecordId === "rec-a" && re.body.toRecordId === "rec-b" &&
+        re.body.relationType === "SUPERSEDES"
+      );
+    });
+  } finally {
+    globalThis.fetch = originalFetch2;
+  }
+
   console.log(`\n${passed} passed, ${failed} failed`);
   if (failed > 0) {
     throw new Error(`${failed} structural check(s) failed`);

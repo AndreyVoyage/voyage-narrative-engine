@@ -15,11 +15,11 @@
  * so Vite's dev proxy (`vite.config.ts`) can forward them to the backend
  * server without any CORS configuration.
  *
- * Desktop Integration v1 does not transport Memory / Runtime State / Scene
- * yet (see `services/character_lab/react_transport.py`'s minimal API
- * surface) -- those methods deterministically reject with
- * `NotIntegratedInTransportError` rather than calling a nonexistent endpoint
- * or fabricating mock data under a live label.
+ * Desktop Integration v1 transports characters, workspaces, sessions, chat,
+ * memory (raw events + operator-driven consolidated memory) and Runtime
+ * State. Scene remains NOT transported -- those methods deterministically
+ * reject with `NotIntegratedInTransportError` rather than calling a
+ * nonexistent endpoint or fabricating mock data under a live label.
  */
 
 import type { CharacterClient } from "./characterClient.js";
@@ -33,7 +33,15 @@ import {
   type CharacterSession,
   type CharacterSummary,
   type CharacterVariantSummary,
+  type ConsolidatedMemoryRecordSummary,
+  type ConsolidatedRelationKind,
+  type MemoryEventInspection,
+  type MemoryEventList,
+  type MemoryKind,
+  type MemoryPromotionCandidateSummary,
+  type MemoryRelationSummary,
   type MemorySummary,
+  type PromotionDecision,
   type RuntimeStateDomain,
   type RuntimeStateEntrySummary,
   type RuntimeStateSummary,
@@ -190,6 +198,66 @@ function toMemorySummary(json: any): MemorySummary {
   };
 }
 
+function toMemoryEventInspection(json: any): MemoryEventInspection {
+  return {
+    eventId: json.eventId,
+    seq: json.seq ?? null,
+    eventType: json.eventType,
+    provenance: json.provenance,
+    meaning: json.meaning,
+    subjectId: json.subjectId,
+    sessionId: json.sessionId,
+    eligibleForPromotion: json.eligibleForPromotion === true,
+    ineligibilityReason: json.ineligibilityReason ?? null,
+  };
+}
+
+function toMemoryEventList(json: any): MemoryEventList {
+  return {
+    workspaceId: json.workspaceId,
+    causalOrder: json.causalOrder,
+    events: (json.events ?? []).map(toMemoryEventInspection),
+  };
+}
+
+function toCandidateSummary(json: any): MemoryPromotionCandidateSummary {
+  return {
+    candidateId: json.candidateId,
+    sourceEventId: json.sourceEventId,
+    memoryKind: json.memoryKind,
+    epistemicKind: json.epistemicKind,
+    meaning: json.meaning,
+    provenance: json.provenance,
+    seq: json.seq ?? null,
+    decisionStatus: json.decisionStatus,
+  };
+}
+
+function toConsolidatedRecord(json: any): ConsolidatedMemoryRecordSummary {
+  return {
+    recordId: json.recordId,
+    memoryKind: json.memoryKind,
+    epistemicKind: json.epistemicKind,
+    meaning: json.meaning,
+    sourceEventId: json.sourceEventId,
+    basisEventIds: json.basisEventIds ?? [],
+    provenance: json.provenance,
+    status: json.status,
+    supersededByRecordId: json.supersededByRecordId ?? null,
+    conflictRecordIds: json.conflictRecordIds ?? [],
+    seq: json.seq ?? null,
+  };
+}
+
+function toRelationSummary(json: any): MemoryRelationSummary {
+  return {
+    relationId: json.relationId,
+    kind: json.kind,
+    fromRecordId: json.fromRecordId,
+    toRecordId: json.toRecordId,
+  };
+}
+
 export class HttpCharacterClient implements CharacterClient {
   // ------------------------------------------------------------- catalog
 
@@ -269,6 +337,70 @@ export class HttpCharacterClient implements CharacterClient {
   async getMemory(workspaceId: string): Promise<MemorySummary> {
     const data = await requestJson(`/api/workspaces/${encodeURIComponent(workspaceId)}/memory`);
     return toMemorySummary(data);
+  }
+
+  // ---------------------------------- consolidated memory (operator-driven)
+
+  async listMemoryEvents(workspaceId: string): Promise<MemoryEventList> {
+    const data = await requestJson(
+      `/api/workspaces/${encodeURIComponent(workspaceId)}/memory/events`
+    );
+    return toMemoryEventList(data);
+  }
+
+  async listMemoryPromotionCandidates(
+    workspaceId: string
+  ): Promise<readonly MemoryPromotionCandidateSummary[]> {
+    const data = (await requestJson(
+      `/api/workspaces/${encodeURIComponent(workspaceId)}/memory/candidates`
+    )) as { candidates: any[] };
+    return data.candidates.map(toCandidateSummary);
+  }
+
+  async proposeMemoryPromotion(
+    workspaceId: string,
+    sourceEventId: string,
+    memoryKind: MemoryKind
+  ): Promise<MemoryPromotionCandidateSummary> {
+    const data = await requestJson("/api/memory/candidates", {
+      method: "POST",
+      body: JSON.stringify({ workspaceId, sourceEventId, memoryKind }),
+    });
+    return toCandidateSummary(data);
+  }
+
+  async decideMemoryPromotion(
+    workspaceId: string,
+    candidateId: string,
+    decision: PromotionDecision
+  ): Promise<MemoryPromotionCandidateSummary> {
+    const data = await requestJson("/api/memory/candidates/decision", {
+      method: "POST",
+      body: JSON.stringify({ workspaceId, candidateId, decision }),
+    });
+    return toCandidateSummary(data);
+  }
+
+  async listConsolidatedMemory(
+    workspaceId: string
+  ): Promise<readonly ConsolidatedMemoryRecordSummary[]> {
+    const data = (await requestJson(
+      `/api/workspaces/${encodeURIComponent(workspaceId)}/memory/consolidated`
+    )) as { records: any[] };
+    return data.records.map(toConsolidatedRecord);
+  }
+
+  async createConsolidatedMemoryRelation(
+    workspaceId: string,
+    fromRecordId: string,
+    toRecordId: string,
+    relationType: ConsolidatedRelationKind
+  ): Promise<MemoryRelationSummary> {
+    const data = await requestJson("/api/memory/relations", {
+      method: "POST",
+      body: JSON.stringify({ workspaceId, fromRecordId, toRecordId, relationType }),
+    });
+    return toRelationSummary(data);
   }
 
   // ---------------------------------------------------------- runtime state

@@ -29,9 +29,9 @@ plain JSON-safe ``dict``. It never touches sockets/HTTP itself, so it is fully
 unit-testable without starting a server (see
 ``tests/character_lab/test_react_transport.py``).
 
-Minimal API surface v1 (deliberately -- see the task boundary): characters,
-workspaces, sessions, chat. Memory / Runtime State / Scene / Debug are NOT
-exposed here yet.
+Minimal API surface (deliberately): characters, workspaces, sessions, chat,
+memory (raw events + operator-driven consolidated memory), Runtime State.
+Scene / Debug are NOT exposed here yet.
 """
 
 from __future__ import annotations
@@ -39,12 +39,20 @@ from __future__ import annotations
 from typing import Any, Callable, Dict, Optional
 
 from services.character_core.contract import (
+    CONSOLIDATED_RELATION_KINDS,
+    MEMORY_KINDS,
+    PROMOTION_DECISIONS,
     CapabilitySet,
     ChatTurnResult,
     CharacterSession,
     CharacterSummary,
     CharacterVariantSummary,
+    ConsolidatedMemoryRecordSummary,
+    MemoryEventInspection,
+    MemoryEventList,
     MemoryEventSummary,
+    MemoryPromotionCandidateSummary,
+    MemoryRelationSummary,
     MemorySummary,
     RuntimeStateEntrySummary,
     RuntimeStateSummary,
@@ -53,7 +61,11 @@ from services.character_core.contract import (
     WorkspaceSummary,
 )
 
-from .service_adapter import CharacterLabServiceAdapter, RuntimeStateMutationError
+from .service_adapter import (
+    CharacterLabServiceAdapter,
+    MemoryOperationError,
+    RuntimeStateMutationError,
+)
 
 __all__ = ["ReactTransportError", "ReactTransport"]
 
@@ -231,6 +243,66 @@ def _memory_to_json(m: MemorySummary) -> dict:
     }
 
 
+def _memory_event_inspection_to_json(e: MemoryEventInspection) -> dict:
+    return {
+        "eventId": e.event_id,
+        "seq": e.seq,
+        "eventType": e.event_type,
+        "provenance": e.provenance,
+        "meaning": e.meaning,
+        "subjectId": e.subject_id,
+        "sessionId": e.session_id,
+        "eligibleForPromotion": e.eligible_for_promotion,
+        "ineligibilityReason": e.ineligibility_reason,
+    }
+
+
+def _memory_event_list_to_json(lst: MemoryEventList) -> dict:
+    return {
+        "workspaceId": lst.workspace_id,
+        "causalOrder": lst.causal_order,
+        "events": [_memory_event_inspection_to_json(e) for e in lst.events],
+    }
+
+
+def _candidate_to_json(c: MemoryPromotionCandidateSummary) -> dict:
+    return {
+        "candidateId": c.candidate_id,
+        "sourceEventId": c.source_event_id,
+        "memoryKind": c.memory_kind,
+        "epistemicKind": c.epistemic_kind,
+        "meaning": c.meaning,
+        "provenance": c.provenance,
+        "seq": c.seq,
+        "decisionStatus": c.decision_status,
+    }
+
+
+def _record_to_json(r: ConsolidatedMemoryRecordSummary) -> dict:
+    return {
+        "recordId": r.record_id,
+        "memoryKind": r.memory_kind,
+        "epistemicKind": r.epistemic_kind,
+        "meaning": r.meaning,
+        "sourceEventId": r.source_event_id,
+        "basisEventIds": list(r.basis_event_ids),
+        "provenance": r.provenance,
+        "status": r.status,
+        "supersededByRecordId": r.superseded_by_record_id,
+        "conflictRecordIds": list(r.conflict_record_ids),
+        "seq": r.seq,
+    }
+
+
+def _relation_to_json(r: MemoryRelationSummary) -> dict:
+    return {
+        "relationId": r.relation_id,
+        "kind": r.kind,
+        "fromRecordId": r.from_record_id,
+        "toRecordId": r.to_record_id,
+    }
+
+
 def _parse_session_purpose(raw: Any) -> SessionPurpose:
     if not isinstance(raw, str) or not raw:
         raise _invalid_request("'purpose' must be a non-empty string")
@@ -267,6 +339,13 @@ def _run(operation: str, fn: Callable[[], Dict[str, Any]]) -> Dict[str, Any]:
         # backend rejects because of current state (out-of-range result, ADJUST
         # on a missing/removed key) is a conflict (409).
         status = 400 if exc.code in ("invalid_domain", "invalid_key", "invalid_value") else 409
+        raise ReactTransportError(status, exc.code, exc.message) from exc
+    except MemoryOperationError as exc:
+        # Canonical Consolidated Memory backend rejection. The backend's own
+        # deliberately-written message is preserved verbatim; the deterministic
+        # code lets the client branch without parsing prose. Bad references /
+        # rule violations are conflicts (409); malformed input codes are 400.
+        status = 400 if exc.code in ("invalid_memory_kind", "invalid_decision", "invalid_relation_kind") else 409
         raise ReactTransportError(status, exc.code, exc.message) from exc
     except KeyError as exc:
         # The adapter raises a bare KeyError for every "unknown id" case
@@ -392,6 +471,92 @@ class ReactTransport:
     def get_memory(self, workspace_id: str) -> dict:
         def op():
             return _memory_to_json(self._adapter.get_memory(workspace_id))
+        return _run("workspace", op)
+
+    # -------------------------------------------------- consolidated memory
+
+    def list_memory_events(self, workspace_id: str) -> dict:
+        def op():
+            return _memory_event_list_to_json(self._adapter.list_memory_events(workspace_id))
+        return _run("workspace", op)
+
+    def list_memory_promotion_candidates(self, workspace_id: str) -> dict:
+        def op():
+            return {
+                "candidates": [
+                    _candidate_to_json(c)
+                    for c in self._adapter.list_memory_promotion_candidates(workspace_id)
+                ]
+            }
+        return _run("workspace", op)
+
+    def propose_memory_promotion(self, payload: dict) -> dict:
+        if not isinstance(payload, dict):
+            raise _invalid_request("request body must be a JSON object")
+        workspace_id = _require_str_field(payload, "workspaceId")
+        source_event_id = _require_str_field(payload, "sourceEventId")
+        memory_kind = _require_str_field(payload, "memoryKind")
+        if memory_kind not in MEMORY_KINDS:
+            raise ReactTransportError(
+                400, "invalid_memory_kind",
+                f"'memoryKind' must be one of {list(MEMORY_KINDS)}",
+            )
+
+        def op():
+            return _candidate_to_json(
+                self._adapter.propose_memory_promotion(
+                    workspace_id, source_event_id, memory_kind
+                )
+            )
+        return _run("workspace", op)
+
+    def decide_memory_promotion(self, payload: dict) -> dict:
+        if not isinstance(payload, dict):
+            raise _invalid_request("request body must be a JSON object")
+        workspace_id = _require_str_field(payload, "workspaceId")
+        candidate_id = _require_str_field(payload, "candidateId")
+        decision = _require_str_field(payload, "decision")
+        if decision not in PROMOTION_DECISIONS:
+            raise ReactTransportError(
+                400, "invalid_decision",
+                f"'decision' must be one of {list(PROMOTION_DECISIONS)}",
+            )
+
+        def op():
+            return _candidate_to_json(
+                self._adapter.decide_memory_promotion(workspace_id, candidate_id, decision)
+            )
+        return _run("workspace", op)
+
+    def list_consolidated_memory(self, workspace_id: str) -> dict:
+        def op():
+            return {
+                "records": [
+                    _record_to_json(r)
+                    for r in self._adapter.list_consolidated_memory(workspace_id)
+                ]
+            }
+        return _run("workspace", op)
+
+    def create_consolidated_memory_relation(self, payload: dict) -> dict:
+        if not isinstance(payload, dict):
+            raise _invalid_request("request body must be a JSON object")
+        workspace_id = _require_str_field(payload, "workspaceId")
+        from_record_id = _require_str_field(payload, "fromRecordId")
+        to_record_id = _require_str_field(payload, "toRecordId")
+        relation_type = _require_str_field(payload, "relationType")
+        if relation_type not in CONSOLIDATED_RELATION_KINDS:
+            raise ReactTransportError(
+                400, "invalid_relation_kind",
+                f"'relationType' must be one of {list(CONSOLIDATED_RELATION_KINDS)}",
+            )
+
+        def op():
+            return _relation_to_json(
+                self._adapter.create_consolidated_memory_relation(
+                    workspace_id, from_record_id, to_record_id, relation_type
+                )
+            )
         return _run("workspace", op)
 
     # ---------------------------------------------------------- runtime state

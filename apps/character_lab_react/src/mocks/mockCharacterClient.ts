@@ -11,13 +11,22 @@ import {
   SessionPurpose,
   SessionPurposeNotImplementedError,
   isSessionPurposeSupported,
+  type CandidateDecisionStatus,
   type CapabilitySet,
   type ChatTurnResult,
   type CharacterSession,
   type CharacterSummary,
   type CharacterVariantSummary,
+  type ConsolidatedMemoryRecordSummary,
+  type ConsolidatedRelationKind,
+  type MemoryEventInspection,
+  type MemoryEventList,
   type MemoryEventSummary,
+  type MemoryKind,
+  type MemoryPromotionCandidateSummary,
+  type MemoryRelationSummary,
   type MemorySummary,
+  type PromotionDecision,
   type RuntimeStateDomain,
   type RuntimeStateEntrySummary,
   type RuntimeStateSummary,
@@ -47,6 +56,9 @@ export class MockCharacterClient implements CharacterClient {
   private readonly memoryByWorkspace = new Map<string, MemoryEventSummary[]>();
   private readonly stateByWorkspace = new Map<string, RuntimeStateEntrySummary[]>();
   private readonly sceneBySession = new Map<string, SceneSummary>();
+  private readonly candidatesByWorkspace = new Map<string, MemoryPromotionCandidateSummary[]>();
+  private readonly recordsByWorkspace = new Map<string, ConsolidatedMemoryRecordSummary[]>();
+  private readonly relationsByWorkspace = new Map<string, MemoryRelationSummary[]>();
   private selectedVariantId = "KIRA_BETA_V1_CURRENT";
   private selectedWorkspaceId: string;
 
@@ -198,6 +210,228 @@ export class MockCharacterClient implements CharacterClient {
       eventCount: events.length,
       events: [...events],
     };
+  }
+
+  // ---------------------------------- consolidated memory (operator-driven)
+  // The mock mirrors the backend's externally visible behavior (eligibility,
+  // final decisions, dedupe, relation rules) so UI development needs no
+  // backend; the Python backend remains the authority in "local" mode.
+
+  private static assessEligibility(
+    event: MemoryEventSummary
+  ): { eligible: boolean; reason: string | null } {
+    if (event.eventType !== "USER_MESSAGE") {
+      return { eligible: false, reason: "not_a_user_message" };
+    }
+    if (event.provenance !== "USER_STATED") {
+      return { eligible: false, reason: "not_user_stated" };
+    }
+    if (!event.meaning.trim()) {
+      return { eligible: false, reason: "empty_content" };
+    }
+    return { eligible: true, reason: null };
+  }
+
+  async listMemoryEvents(workspaceId: string): Promise<MemoryEventList> {
+    this.requireWorkspace(workspaceId);
+    const events = (this.memoryByWorkspace.get(workspaceId) ?? []).map((e) => {
+      const { eligible, reason } = MockCharacterClient.assessEligibility(e);
+      const inspected: MemoryEventInspection = {
+        ...e,
+        subjectId: MOCK_CHARACTER_ID,
+        eligibleForPromotion: eligible,
+        ineligibilityReason: reason,
+      };
+      return inspected;
+    });
+    return { workspaceId, causalOrder: "seq", events };
+  }
+
+  async listMemoryPromotionCandidates(
+    workspaceId: string
+  ): Promise<readonly MemoryPromotionCandidateSummary[]> {
+    this.requireWorkspace(workspaceId);
+    return [...(this.candidatesByWorkspace.get(workspaceId) ?? [])];
+  }
+
+  async proposeMemoryPromotion(
+    workspaceId: string,
+    sourceEventId: string,
+    memoryKind: MemoryKind
+  ): Promise<MemoryPromotionCandidateSummary> {
+    this.requireWorkspace(workspaceId);
+    const event = (this.memoryByWorkspace.get(workspaceId) ?? []).find(
+      (e) => e.eventId === sourceEventId
+    );
+    if (!event) {
+      throw new Error(`source event '${sourceEventId}' not found in this workspace memory`);
+    }
+    const { eligible } = MockCharacterClient.assessEligibility(event);
+    if (!eligible) {
+      throw new Error(
+        "ineligible: only USER_MESSAGE + USER_STATED events are promotable; a character utterance can never become consolidated memory"
+      );
+    }
+    const candidate: MemoryPromotionCandidateSummary = {
+      candidateId: nextId("memcand"),
+      sourceEventId,
+      memoryKind,
+      epistemicKind: "USER_REPORT",
+      meaning: event.meaning,
+      provenance: event.provenance,
+      seq: null,
+      decisionStatus: "PENDING",
+    };
+    const list = this.candidatesByWorkspace.get(workspaceId) ?? [];
+    list.push(candidate);
+    this.candidatesByWorkspace.set(workspaceId, list);
+    return candidate;
+  }
+
+  private setCandidateStatus(
+    workspaceId: string,
+    candidateId: string,
+    status: CandidateDecisionStatus
+  ): MemoryPromotionCandidateSummary {
+    const list = this.candidatesByWorkspace.get(workspaceId) ?? [];
+    const index = list.findIndex((c) => c.candidateId === candidateId);
+    if (index < 0) throw new Error(`unknown candidate '${candidateId}'`);
+    const updated = { ...list[index], decisionStatus: status };
+    list[index] = updated;
+    return updated;
+  }
+
+  async decideMemoryPromotion(
+    workspaceId: string,
+    candidateId: string,
+    decision: PromotionDecision
+  ): Promise<MemoryPromotionCandidateSummary> {
+    this.requireWorkspace(workspaceId);
+    const candidate = (this.candidatesByWorkspace.get(workspaceId) ?? []).find(
+      (c) => c.candidateId === candidateId
+    );
+    if (!candidate) throw new Error(`unknown candidate '${candidateId}'`);
+    if (candidate.decisionStatus !== "PENDING") {
+      throw new Error(`candidate '${candidateId}' was already decided (decisions are final)`);
+    }
+    if (decision === "REJECT") {
+      return this.setCandidateStatus(workspaceId, candidateId, "REJECTED");
+    }
+    // Matches the backend's normalize_meaning: strip + collapse whitespace,
+    // case-fold (Python `" ".join(text.split())` -> JS needs the leading
+    // `.trim()`, since `"  x".split(/\s+/)` keeps a leading "").
+    const normalize = (t: string) => t.trim().split(/\s+/).join(" ").toLowerCase();
+    const normalized = normalize(candidate.meaning);
+    const records = this.recordsByWorkspace.get(workspaceId) ?? [];
+    const duplicate = records.find(
+      (r) =>
+        r.status === "ACTIVE" &&
+        r.epistemicKind === candidate.epistemicKind &&
+        normalize(r.meaning) === normalized
+    );
+    if (duplicate) {
+      throw new Error(
+        `duplicate: an active consolidated record with the same normalized meaning already exists (record_id='${duplicate.recordId}')`
+      );
+    }
+    const record: ConsolidatedMemoryRecordSummary = {
+      recordId: nextId("memrec"),
+      memoryKind: candidate.memoryKind,
+      epistemicKind: candidate.epistemicKind,
+      meaning: candidate.meaning,
+      sourceEventId: candidate.sourceEventId,
+      basisEventIds: [candidate.sourceEventId],
+      provenance: candidate.provenance,
+      status: "ACTIVE",
+      supersededByRecordId: null,
+      conflictRecordIds: [],
+      seq: records.length + 1,
+    };
+    records.push(record);
+    this.recordsByWorkspace.set(workspaceId, records);
+    return this.setCandidateStatus(workspaceId, candidateId, "APPROVED");
+  }
+
+  async listConsolidatedMemory(
+    workspaceId: string
+  ): Promise<readonly ConsolidatedMemoryRecordSummary[]> {
+    this.requireWorkspace(workspaceId);
+    const records = this.recordsByWorkspace.get(workspaceId) ?? [];
+    const relations = this.relationsByWorkspace.get(workspaceId) ?? [];
+    const supersededBy = new Map<string, string>();
+    for (const rel of relations) {
+      if (rel.kind === "SUPERSEDES") supersededBy.set(rel.toRecordId, rel.fromRecordId);
+    }
+    const activeIds = new Set(
+      records.filter((r) => !supersededBy.has(r.recordId)).map((r) => r.recordId)
+    );
+    const conflictPartners = new Map<string, Set<string>>();
+    for (const rel of relations) {
+      if (rel.kind !== "CONFLICTS_WITH") continue;
+      if (activeIds.has(rel.fromRecordId) && activeIds.has(rel.toRecordId)) {
+        if (!conflictPartners.has(rel.fromRecordId)) {
+          conflictPartners.set(rel.fromRecordId, new Set());
+        }
+        conflictPartners.get(rel.fromRecordId)!.add(rel.toRecordId);
+        if (!conflictPartners.has(rel.toRecordId)) {
+          conflictPartners.set(rel.toRecordId, new Set());
+        }
+        conflictPartners.get(rel.toRecordId)!.add(rel.fromRecordId);
+      }
+    }
+    return records.map((r) => {
+      const superseder = supersededBy.get(r.recordId);
+      return {
+        ...r,
+        status: superseder ? ("SUPERSEDED" as const) : ("ACTIVE" as const),
+        supersededByRecordId: superseder ?? null,
+        conflictRecordIds: [...(conflictPartners.get(r.recordId) ?? [])].sort(),
+      };
+    });
+  }
+
+  async createConsolidatedMemoryRelation(
+    workspaceId: string,
+    fromRecordId: string,
+    toRecordId: string,
+    relationType: ConsolidatedRelationKind
+  ): Promise<MemoryRelationSummary> {
+    this.requireWorkspace(workspaceId);
+    if (fromRecordId === toRecordId) {
+      throw new Error("a record cannot relate to itself");
+    }
+    const records = this.recordsByWorkspace.get(workspaceId) ?? [];
+    const pairs: ReadonlyArray<readonly [string, string]> = [
+      ["from_record", fromRecordId],
+      ["to_record", toRecordId],
+    ];
+    for (const [name, id] of pairs) {
+      if (!records.some((r) => r.recordId === id)) {
+        throw new Error(`${name} '${id}' does not exist for this subject/workspace`);
+      }
+    }
+    const relations = this.relationsByWorkspace.get(workspaceId) ?? [];
+    if (
+      relations.some(
+        (rel) =>
+          rel.kind === relationType &&
+          rel.fromRecordId === fromRecordId &&
+          rel.toRecordId === toRecordId
+      )
+    ) {
+      throw new Error(
+        `duplicate relation: ${relationType} from '${fromRecordId}' to '${toRecordId}' already exists`
+      );
+    }
+    const relation: MemoryRelationSummary = {
+      relationId: nextId("memrel"),
+      kind: relationType,
+      fromRecordId,
+      toRecordId,
+    };
+    relations.push(relation);
+    this.relationsByWorkspace.set(workspaceId, relations);
+    return relation;
   }
 
   // ---------------------------------------------------------- runtime state

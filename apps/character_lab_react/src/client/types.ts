@@ -294,3 +294,80 @@ export interface TurnDebugBundle {
   readonly manifest: ContextManifestSummary;
   readonly request: RequestCaptureSummary;
 }
+
+// ---------------------------------------------------------------------------
+// Consolidated Memory (operator-driven promotion) -- mirrors the Python
+// contract DTOs/vocabulary in services/character_core/contract.py.
+// ---------------------------------------------------------------------------
+
+export type MemoryKind = "EPISODIC" | "SEMANTIC";
+export const ALL_MEMORY_KINDS: readonly MemoryKind[] = ["EPISODIC", "SEMANTIC"];
+
+export type PromotionDecision = "APPROVE" | "REJECT";
+
+export type CandidateDecisionStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+export type ConsolidatedRelationKind = "SUPERSEDES" | "CONFLICTS_WITH";
+export const ALL_CONSOLIDATED_RELATION_KINDS: readonly ConsolidatedRelationKind[] = [
+  "SUPERSEDES",
+  "CONFLICTS_WITH",
+];
+
+export type ConsolidatedRecordStatus = "ACTIVE" | "SUPERSEDED";
+
+/** V1 only ever promotes user reports. `USER_REPORT` == "the user stated
+ * this" -- never an independently confirmed world fact. */
+export const EPISTEMIC_USER_REPORT = "USER_REPORT";
+
+/** One raw runtime-memory event WITH its service-computed promotion
+ * eligibility. Eligibility is computed by the backend/service side; the UI
+ * must never re-derive it. */
+export interface MemoryEventInspection {
+  readonly eventId: string;
+  readonly seq: number | null;
+  readonly eventType: string;
+  readonly provenance: string;
+  readonly meaning: string;
+  readonly subjectId: string;
+  readonly sessionId: string;
+  readonly eligibleForPromotion: boolean;
+  readonly ineligibilityReason: string | null;
+}
+
+export interface MemoryEventList {
+  readonly workspaceId: string;
+  readonly causalOrder: string;
+  readonly events: readonly MemoryEventInspection[];
+}
+
+export interface MemoryPromotionCandidateSummary {
+  readonly candidateId: string;
+  readonly sourceEventId: string;
+  readonly memoryKind: MemoryKind;
+  readonly epistemicKind: string;
+  readonly meaning: string;
+  readonly provenance: string;
+  readonly seq: number | null;
+  readonly decisionStatus: CandidateDecisionStatus;
+}
+
+export interface ConsolidatedMemoryRecordSummary {
+  readonly recordId: string;
+  readonly memoryKind: MemoryKind;
+  readonly epistemicKind: string;
+  readonly meaning: string;
+  readonly sourceEventId: string;
+  readonly basisEventIds: readonly string[];
+  readonly provenance: string;
+  readonly status: ConsolidatedRecordStatus;
+  readonly supersededByRecordId: string | null;
+  readonly conflictRecordIds: readonly string[];
+  readonly seq: number | null;
+}
+
+export interface MemoryRelationSummary {
+  readonly relationId: string;
+  readonly kind: ConsolidatedRelationKind;
+  readonly fromRecordId: string;
+  readonly toRecordId: string;
+}

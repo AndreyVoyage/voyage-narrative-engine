@@ -27,7 +27,14 @@ import type {
   CharacterSession,
   CharacterSummary,
   CharacterVariantSummary,
+  ConsolidatedMemoryRecordSummary,
+  ConsolidatedRelationKind,
+  MemoryEventList,
+  MemoryKind,
+  MemoryPromotionCandidateSummary,
+  MemoryRelationSummary,
   MemorySummary,
+  PromotionDecision,
   RuntimeStateDomain,
   RuntimeStateEntrySummary,
   RuntimeStateSummary,
@@ -63,6 +70,34 @@ export interface CharacterClient {
 
   // --------------------------------------------------------------- memory
   getMemory(workspaceId: string): Promise<MemorySummary>;
+
+  // ---------------------------------- consolidated memory (operator-driven)
+  // The backend/service side is authoritative for eligibility, candidate
+  // creation, decisions, dedupe and relation validation -- the client only
+  // ever selects and confirms. All operations are workspace-scoped.
+  listMemoryEvents(workspaceId: string): Promise<MemoryEventList>;
+  listMemoryPromotionCandidates(
+    workspaceId: string
+  ): Promise<readonly MemoryPromotionCandidateSummary[]>;
+  proposeMemoryPromotion(
+    workspaceId: string,
+    sourceEventId: string,
+    memoryKind: MemoryKind
+  ): Promise<MemoryPromotionCandidateSummary>;
+  decideMemoryPromotion(
+    workspaceId: string,
+    candidateId: string,
+    decision: PromotionDecision
+  ): Promise<MemoryPromotionCandidateSummary>;
+  listConsolidatedMemory(
+    workspaceId: string
+  ): Promise<readonly ConsolidatedMemoryRecordSummary[]>;
+  createConsolidatedMemoryRelation(
+    workspaceId: string,
+    fromRecordId: string,
+    toRecordId: string,
+    relationType: ConsolidatedRelationKind
+  ): Promise<MemoryRelationSummary>;
 
   // ---------------------------------------------------------- runtime state
   getRuntimeState(workspaceId: string): Promise<RuntimeStateSummary>;

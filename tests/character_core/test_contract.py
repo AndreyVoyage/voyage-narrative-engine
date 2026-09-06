@@ -100,3 +100,31 @@ class TestKnownCapabilities:
         }
         for name in KNOWN_CAPABILITIES:
             assert isinstance(name, str) and name
+
+
+class TestConsolidatedMemoryContractSurface:
+    """The V1 operator-driven Consolidated Memory surface on CharacterService."""
+
+    def test_character_service_covers_consolidated_memory_v1(self):
+        from services.character_core.contract import CharacterService
+
+        required = {
+            "list_memory_events", "list_memory_promotion_candidates",
+            "propose_memory_promotion", "decide_memory_promotion",
+            "list_consolidated_memory", "create_consolidated_memory_relation",
+        }
+        present = {n for n in dir(CharacterService) if not n.startswith("_")}
+        assert required <= present
+
+    def test_vocabulary_values_are_stable_strings(self):
+        from services.character_core.contract import (
+            CONSOLIDATED_RELATION_KINDS,
+            EPISTEMIC_USER_REPORT,
+            MEMORY_KINDS,
+            PROMOTION_DECISIONS,
+        )
+
+        assert MEMORY_KINDS == ("EPISODIC", "SEMANTIC")
+        assert PROMOTION_DECISIONS == ("APPROVE", "REJECT")
+        assert CONSOLIDATED_RELATION_KINDS == ("SUPERSEDES", "CONFLICTS_WITH")
+        assert EPISTEMIC_USER_REPORT == "USER_REPORT"

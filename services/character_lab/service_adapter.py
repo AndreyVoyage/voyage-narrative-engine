@@ -38,10 +38,15 @@ from services.character_core.contract import (
     CharacterSession,
     CharacterSummary,
     CharacterVariantSummary,
+    ConsolidatedMemoryRecordSummary,
     ContextManifestSummary,
     KNOWN_CAPABILITIES,
     ManifestItemSummary,
+    MemoryEventInspection,
+    MemoryEventList,
     MemoryEventSummary,
+    MemoryPromotionCandidateSummary,
+    MemoryRelationSummary,
     MemorySummary,
     RequestCaptureSummary,
     RuntimeStateEntrySummary,
@@ -54,14 +59,23 @@ from services.character_core.contract import (
     WorkspaceSummary,
 )
 
+from services.character_runtime import RuntimeMemoryBackend
+from services.character_runtime.consolidated_memory import (
+    ConsolidatedMemoryBackend,
+    ConsolidatedMemoryError,
+    ELIGIBLE_SOURCE_EVENT_TYPES,
+    PROVENANCE_USER_STATED,
+)
 from services.character_runtime.state import NUMERIC_DOMAINS, SOURCE_OPERATOR_CONFIRMED
 
 from .app import CharacterLabApp
+from .workspace import WorkspaceError
 
 __all__ = [
     "CharacterLabServiceAdapter",
     "CharacterLabDebugAdapter",
     "RuntimeStateMutationError",
+    "MemoryOperationError",
 ]
 
 #: The only character this adapter currently exposes. Not a Core-level
@@ -87,6 +101,68 @@ class RuntimeStateMutationError(RuntimeError):
         super().__init__(message)
         self.code = code
         self.message = message
+
+
+class MemoryOperationError(RuntimeError):
+    """A Consolidated Memory operation was rejected by the authoritative
+    backend (``ConsolidatedMemoryBackend``).
+
+    Carries a deterministic ``code`` (``ineligible_event``, ``unknown_event``,
+    ``already_decided``, ``duplicate_record``, ``self_relation``,
+    ``duplicate_relation``, ``unknown_record``, ``invalid_relation_kind``,
+    ``invalid_memory_kind``, ``invalid_decision``, ``unknown_candidate``,
+    ``cross_workspace``) plus the backend's own safe, deliberately-written
+    ``message``. Never a traceback or SQLite internal.
+    """
+
+    def __init__(self, code: str, message: str) -> None:
+        super().__init__(message)
+        self.code = code
+        self.message = message
+
+
+# Deterministic mapping from the backend's stable, deliberately-written error
+# text (services/character_runtime/consolidated_memory.py) to a client-facing
+# code. Order matters: first matching substring wins.
+_MEMORY_ERROR_RULES = (
+    ("ineligible:", "ineligible_event"),
+    ("not found in this workspace", "unknown_event"),
+    ("already decided", "already_decided"),
+    ("duplicate:", "duplicate_record"),
+    ("cannot relate to itself", "self_relation"),
+    ("duplicate relation", "duplicate_relation"),
+    ("does not exist", "unknown_record"),
+    ("relation kind must be", "invalid_relation_kind"),
+    ("different subject/workspace", "cross_workspace"),
+    ("memory_kind must be", "invalid_memory_kind"),
+    ("decision must be", "invalid_decision"),
+    ("unknown candidate", "unknown_candidate"),
+)
+
+
+def _memory_error(exc: ConsolidatedMemoryError) -> MemoryOperationError:
+    text = str(exc)
+    for needle, code in _MEMORY_ERROR_RULES:
+        if needle in text:
+            return MemoryOperationError(code, text)
+    return MemoryOperationError("memory_operation_rejected", text)
+
+
+def assess_promotion_eligibility(event) -> "tuple[bool, Optional[str]]":
+    """Service-side promotion eligibility view for ONE raw runtime event.
+
+    Reuses the backend's own vocabulary constants
+    (``ELIGIBLE_SOURCE_EVENT_TYPES`` / ``PROVENANCE_USER_STATED``) instead of
+    redefining them. This is an INSPECTION projection only: the backend's
+    ``propose()`` remains the sole authoritative gate at mutation time.
+    """
+    if event.event_type not in ELIGIBLE_SOURCE_EVENT_TYPES:
+        return False, "not_a_user_message"
+    if event.provenance != PROVENANCE_USER_STATED:
+        return False, "not_user_stated"
+    if not str(event.meaning).strip():
+        return False, "empty_content"
+    return True, None
 
 
 def _state_int(value) -> "Optional[int]":
@@ -314,6 +390,188 @@ class CharacterLabServiceAdapter:
         return MemorySummary(
             workspace_id=data["workspace_id"], causal_order=data["causal_order"],
             event_count=data["event_count"], events=events,
+        )
+
+    # -------------------------------------------------- consolidated memory
+    # Operator-driven promotion over the accepted backends. The adapter opens
+    # RuntimeMemoryBackend / ConsolidatedMemoryBackend against the EXPLICIT
+    # workspace's own memory root and never reimplements backend validation.
+
+    def _workspace_memory_root(self, workspace_id: str):
+        """Resolve the explicit workspace's memory root (or KeyError)."""
+        try:
+            workspace = self._app._workspace_manager.get(workspace_id)
+        except WorkspaceError as exc:
+            raise KeyError(f"unknown workspace {workspace_id!r}") from exc
+        return workspace.memory_root
+
+    def list_memory_events(self, workspace_id: str) -> MemoryEventList:
+        root = self._workspace_memory_root(workspace_id)
+        backend = RuntimeMemoryBackend(root, _CHARACTER_ID)
+        try:
+            events = backend.load_events_causal(_CHARACTER_ID)
+        finally:
+            backend.close()
+        inspected = []
+        for e in events:
+            eligible, reason = assess_promotion_eligibility(e)
+            inspected.append(MemoryEventInspection(
+                event_id=e.event_id, seq=e.seq, event_type=e.event_type,
+                provenance=e.provenance or "LEGACY_UNCLASSIFIED", meaning=e.meaning,
+                subject_id=e.subject_id, session_id=e.session_id,
+                eligible_for_promotion=eligible, ineligibility_reason=reason,
+            ))
+        return MemoryEventList(
+            workspace_id=workspace_id, causal_order="seq", events=tuple(inspected),
+        )
+
+    @staticmethod
+    def _candidate_statuses(cons: ConsolidatedMemoryBackend) -> dict:
+        statuses = {}
+        for d in cons.load_decisions():
+            statuses[d.candidate_id] = (
+                "APPROVED" if d.decision == "APPROVE" else "REJECTED"
+            )
+        return statuses
+
+    @staticmethod
+    def _candidate_summary(candidate, status: str) -> MemoryPromotionCandidateSummary:
+        return MemoryPromotionCandidateSummary(
+            candidate_id=candidate.candidate_id,
+            source_event_id=candidate.source_event_id,
+            memory_kind=candidate.memory_kind,
+            epistemic_kind=candidate.epistemic_kind,
+            meaning=candidate.meaning,
+            provenance=candidate.provenance,
+            seq=candidate.seq,
+            decision_status=status,
+        )
+
+    def list_memory_promotion_candidates(
+        self, workspace_id: str
+    ) -> Tuple[MemoryPromotionCandidateSummary, ...]:
+        cons = ConsolidatedMemoryBackend(
+            self._workspace_memory_root(workspace_id), _CHARACTER_ID
+        )
+        try:
+            statuses = self._candidate_statuses(cons)
+            candidates = cons.load_candidates()
+        finally:
+            cons.close()
+        return tuple(
+            self._candidate_summary(c, statuses.get(c.candidate_id, "PENDING"))
+            for c in candidates
+        )
+
+    def propose_memory_promotion(
+        self,
+        workspace_id: str,
+        source_event_id: str,
+        memory_kind: str,
+    ) -> MemoryPromotionCandidateSummary:
+        root = self._workspace_memory_root(workspace_id)
+        mem = RuntimeMemoryBackend(root, _CHARACTER_ID)
+        cons = ConsolidatedMemoryBackend(root, _CHARACTER_ID)
+        try:
+            candidate = cons.propose(
+                memory_backend=mem,
+                source_event_id=source_event_id,
+                memory_kind=memory_kind,
+            )
+        except ConsolidatedMemoryError as exc:
+            raise _memory_error(exc) from exc
+        finally:
+            cons.close()
+            mem.close()
+        return self._candidate_summary(candidate, "PENDING")
+
+    def decide_memory_promotion(
+        self,
+        workspace_id: str,
+        candidate_id: str,
+        decision: str,
+    ) -> MemoryPromotionCandidateSummary:
+        cons = ConsolidatedMemoryBackend(
+            self._workspace_memory_root(workspace_id), _CHARACTER_ID
+        )
+        try:
+            try:
+                cons.decide(candidate_id=candidate_id, decision=decision)
+            except ConsolidatedMemoryError as exc:
+                raise _memory_error(exc) from exc
+            statuses = self._candidate_statuses(cons)
+            candidate = next(
+                (c for c in cons.load_candidates() if c.candidate_id == candidate_id),
+                None,
+            )
+        finally:
+            cons.close()
+        if candidate is None:  # pragma: no cover - decide() already validated
+            raise MemoryOperationError("unknown_candidate", f"unknown candidate {candidate_id!r}")
+        return self._candidate_summary(candidate, statuses[candidate_id])
+
+    def list_consolidated_memory(
+        self, workspace_id: str
+    ) -> Tuple[ConsolidatedMemoryRecordSummary, ...]:
+        cons = ConsolidatedMemoryBackend(
+            self._workspace_memory_root(workspace_id), _CHARACTER_ID
+        )
+        try:
+            records = cons.load_all_records()
+            conflicts = cons.active_conflict_record_ids()
+            relations = cons.load_relations()
+        finally:
+            cons.close()
+        conflict_partners = {}
+        for rel in relations:
+            if rel.kind != "CONFLICTS_WITH":
+                continue
+            if rel.from_record_id in conflicts and rel.to_record_id in conflicts:
+                conflict_partners.setdefault(rel.from_record_id, set()).add(rel.to_record_id)
+                conflict_partners.setdefault(rel.to_record_id, set()).add(rel.from_record_id)
+        return tuple(
+            ConsolidatedMemoryRecordSummary(
+                record_id=r.record_id,
+                memory_kind=r.memory_kind,
+                epistemic_kind=r.epistemic_kind,
+                meaning=r.meaning,
+                source_event_id=r.source_event_id,
+                basis_event_ids=tuple(r.basis_event_ids),
+                provenance=r.provenance,
+                status=r.status,
+                superseded_by_record_id=r.superseded_by_record_id,
+                conflict_record_ids=tuple(sorted(conflict_partners.get(r.record_id, ()))),
+                seq=r.seq,
+            )
+            for r in records
+        )
+
+    def create_consolidated_memory_relation(
+        self,
+        workspace_id: str,
+        from_record_id: str,
+        to_record_id: str,
+        relation_type: str,
+    ) -> MemoryRelationSummary:
+        cons = ConsolidatedMemoryBackend(
+            self._workspace_memory_root(workspace_id), _CHARACTER_ID
+        )
+        try:
+            try:
+                relation = cons.declare_relation(
+                    from_record_id=from_record_id,
+                    to_record_id=to_record_id,
+                    kind=relation_type,
+                )
+            except ConsolidatedMemoryError as exc:
+                raise _memory_error(exc) from exc
+        finally:
+            cons.close()
+        return MemoryRelationSummary(
+            relation_id=relation.relation_id,
+            kind=relation.kind,
+            from_record_id=relation.from_record_id,
+            to_record_id=relation.to_record_id,
         )
 
     # ---------------------------------------------------------- runtime state

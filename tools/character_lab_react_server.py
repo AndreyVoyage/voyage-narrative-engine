@@ -201,6 +201,12 @@ class ReactCharacterLabServer:
                         return self._call(lambda: transport.get_workspace(workspace_id))
                     if len(parts) == 4 and parts[3] == "memory":
                         return self._call(lambda: transport.get_memory(workspace_id))
+                    if len(parts) == 5 and parts[3] == "memory" and parts[4] == "events":
+                        return self._call(lambda: transport.list_memory_events(workspace_id))
+                    if len(parts) == 5 and parts[3] == "memory" and parts[4] == "candidates":
+                        return self._call(lambda: transport.list_memory_promotion_candidates(workspace_id))
+                    if len(parts) == 5 and parts[3] == "memory" and parts[4] == "consolidated":
+                        return self._call(lambda: transport.list_consolidated_memory(workspace_id))
                     if len(parts) == 4 and parts[3] == "runtime-state":
                         return self._call(lambda: transport.get_runtime_state(workspace_id))
 
@@ -216,6 +222,15 @@ class ReactCharacterLabServer:
 
                 elif method == "POST" and parts == ["api", "chat"]:
                     return self._call(lambda: transport.send_message(body))
+
+                elif method == "POST" and parts == ["api", "memory", "candidates"]:
+                    return self._call(lambda: transport.propose_memory_promotion(body))
+
+                elif method == "POST" and parts == ["api", "memory", "candidates", "decision"]:
+                    return self._call(lambda: transport.decide_memory_promotion(body))
+
+                elif method == "POST" and parts == ["api", "memory", "relations"]:
+                    return self._call(lambda: transport.create_consolidated_memory_relation(body))
 
                 elif method == "POST" and parts == ["api", "runtime-state", "set"]:
                     return self._call(lambda: transport.set_runtime_state(body))

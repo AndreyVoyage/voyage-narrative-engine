@@ -434,3 +434,174 @@ class TestMemoryStateHttp:
         assert status == 400
         assert body["error"]["code"] == "invalid_domain"
         assert "Traceback" not in json.dumps(body)
+
+
+class TestConsolidatedMemoryTransport:
+    """Consolidated Memory through ReactTransport -- direct dict-level calls."""
+
+    def _seed(self, transport, text="Я люблю зелёный чай."):
+        ws, session = _new_session(transport)
+        transport.send_message({"sessionId": session["sessionId"], "text": text})
+        return ws["workspaceId"]
+
+    def _eligible_event(self, transport, wid):
+        events = transport.list_memory_events(wid)["events"]
+        return next(e for e in events if e["eligibleForPromotion"])
+
+    def test_list_memory_events_with_backend_eligibility(self, tmp_path):
+        t = _transport(tmp_path)
+        wid = self._seed(t)
+        data = t.list_memory_events(wid)
+        assert data["workspaceId"] == wid
+        assert data["causalOrder"] == "seq"
+        user_event = next(e for e in data["events"] if e["eventType"] == "USER_MESSAGE")
+        char_event = next(e for e in data["events"] if e["eventType"] == "CHARACTER_MESSAGE")
+        assert user_event["eligibleForPromotion"] is True
+        assert char_event["eligibleForPromotion"] is False
+        assert char_event["ineligibilityReason"] == "not_a_user_message"
+
+    def test_full_promotion_flow(self, tmp_path):
+        t = _transport(tmp_path)
+        wid = self._seed(t)
+        event = self._eligible_event(t, wid)
+        candidate = t.propose_memory_promotion({
+            "workspaceId": wid, "sourceEventId": event["eventId"], "memoryKind": "SEMANTIC",
+        })
+        assert candidate["decisionStatus"] == "PENDING"
+        assert candidate["epistemicKind"] == "USER_REPORT"
+        listed = t.list_memory_promotion_candidates(wid)["candidates"]
+        assert [c["candidateId"] for c in listed] == [candidate["candidateId"]]
+        decided = t.decide_memory_promotion({
+            "workspaceId": wid, "candidateId": candidate["candidateId"], "decision": "APPROVE",
+        })
+        assert decided["decisionStatus"] == "APPROVED"
+        records = t.list_consolidated_memory(wid)["records"]
+        assert len(records) == 1
+        assert records[0]["status"] == "ACTIVE"
+        assert records[0]["epistemicKind"] == "USER_REPORT"
+        assert records[0]["meaning"] == "Я люблю зелёный чай."
+
+    def test_character_utterance_promotion_conflict_error(self, tmp_path):
+        t = _transport(tmp_path)
+        wid = self._seed(t)
+        char_event = next(
+            e for e in t.list_memory_events(wid)["events"]
+            if e["eventType"] == "CHARACTER_MESSAGE"
+        )
+        with pytest.raises(ReactTransportError) as exc:
+            t.propose_memory_promotion({
+                "workspaceId": wid,
+                "sourceEventId": char_event["eventId"],
+                "memoryKind": "SEMANTIC",
+            })
+        assert exc.value.status == 409
+        assert exc.value.code == "ineligible_event"
+
+    def test_invalid_payloads_rejected_before_backend(self, tmp_path):
+        t = _transport(tmp_path)
+        with pytest.raises(ReactTransportError) as exc:
+            t.propose_memory_promotion({"workspaceId": "w", "memoryKind": "SEMANTIC"})
+        assert exc.value.status == 400 and exc.value.code == "invalid_request"
+        with pytest.raises(ReactTransportError) as exc:
+            t.propose_memory_promotion({
+                "workspaceId": "w", "sourceEventId": "e", "memoryKind": "NOPE",
+            })
+        assert exc.value.status == 400 and exc.value.code == "invalid_memory_kind"
+        with pytest.raises(ReactTransportError) as exc:
+            t.decide_memory_promotion({
+                "workspaceId": "w", "candidateId": "c", "decision": "MAYBE",
+            })
+        assert exc.value.status == 400 and exc.value.code == "invalid_decision"
+        with pytest.raises(ReactTransportError) as exc:
+            t.create_consolidated_memory_relation({
+                "workspaceId": "w", "fromRecordId": "a", "toRecordId": "b",
+                "relationType": "LIKES",
+            })
+        assert exc.value.status == 400 and exc.value.code == "invalid_relation_kind"
+
+    def test_standalone_relations_through_transport(self, tmp_path):
+        t = _transport(tmp_path)
+        wid = self._seed(t, "Я люблю зелёный чай.")
+        ws2, session2 = None, None
+        # second event in the SAME workspace
+        t2_session = t.create_session({
+            "characterId": "kira", "variantId": "KIRA_BETA_V1_CURRENT",
+            "purpose": "TESTING", "workspaceId": wid,
+        })
+        t.send_message({"sessionId": t2_session["sessionId"], "text": "Я люблю травяной чай."})
+        for e in t.list_memory_events(wid)["events"]:
+            if not e["eligibleForPromotion"]:
+                continue
+            cand = t.propose_memory_promotion({
+                "workspaceId": wid, "sourceEventId": e["eventId"], "memoryKind": "SEMANTIC",
+            })
+            t.decide_memory_promotion({
+                "workspaceId": wid, "candidateId": cand["candidateId"], "decision": "APPROVE",
+            })
+        records = t.list_consolidated_memory(wid)["records"]
+        assert len(records) == 2
+        relation = t.create_consolidated_memory_relation({
+            "workspaceId": wid, "fromRecordId": records[1]["recordId"],
+            "toRecordId": records[0]["recordId"], "relationType": "SUPERSEDES",
+        })
+        assert relation["kind"] == "SUPERSEDES"
+        after = {r["recordId"]: r for r in t.list_consolidated_memory(wid)["records"]}
+        assert after[records[0]["recordId"]]["status"] == "SUPERSEDED"
+        assert after[records[1]["recordId"]]["status"] == "ACTIVE"
+        with pytest.raises(ReactTransportError) as exc:
+            t.create_consolidated_memory_relation({
+                "workspaceId": wid, "fromRecordId": records[0]["recordId"],
+                "toRecordId": records[0]["recordId"], "relationType": "CONFLICTS_WITH",
+            })
+        assert exc.value.status == 409 and exc.value.code == "self_relation"
+
+
+class TestConsolidatedMemoryOverHttp:
+    """The same flow over a real loopback socket (fake provider only)."""
+
+    def test_memory_operator_flow_over_http(self, server):
+        status, ws = _http_post(server.base_url + "/api/workspaces")
+        assert status == 200
+        wid = ws["workspaceId"]
+        status, session = _http_post(server.base_url + "/api/sessions", {
+            "characterId": "kira", "variantId": "KIRA_BETA_V1_CURRENT",
+            "purpose": "TESTING", "workspaceId": wid,
+        })
+        assert status == 200
+        status, _ = _http_post(server.base_url + "/api/chat", {
+            "sessionId": session["sessionId"], "text": "Я люблю зелёный чай.",
+        })
+        assert status == 200
+
+        status, events = _http_get(f"{server.base_url}/api/workspaces/{wid}/memory/events")
+        assert status == 200
+        eligible = [e for e in events["events"] if e["eligibleForPromotion"]]
+        assert len(eligible) == 1
+
+        status, candidate = _http_post(server.base_url + "/api/memory/candidates", {
+            "workspaceId": wid, "sourceEventId": eligible[0]["eventId"],
+            "memoryKind": "EPISODIC",
+        })
+        assert status == 200 and candidate["decisionStatus"] == "PENDING"
+
+        status, listed = _http_get(f"{server.base_url}/api/workspaces/{wid}/memory/candidates")
+        assert status == 200 and listed["candidates"][0]["decisionStatus"] == "PENDING"
+
+        status, decided = _http_post(
+            server.base_url + "/api/memory/candidates/decision",
+            {"workspaceId": wid, "candidateId": candidate["candidateId"], "decision": "APPROVE"},
+        )
+        assert status == 200 and decided["decisionStatus"] == "APPROVED"
+
+        status, consolidated = _http_get(
+            f"{server.base_url}/api/workspaces/{wid}/memory/consolidated"
+        )
+        assert status == 200
+        assert len(consolidated["records"]) == 1
+        assert consolidated["records"][0]["status"] == "ACTIVE"
+
+        status, err = _http_post(server.base_url + "/api/memory/relations", {
+            "workspaceId": wid, "fromRecordId": consolidated["records"][0]["recordId"],
+            "toRecordId": consolidated["records"][0]["recordId"], "relationType": "SUPERSEDES",
+        })
+        assert status == 409 and err["error"]["code"] == "self_relation"

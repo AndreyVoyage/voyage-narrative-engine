@@ -20,6 +20,7 @@ from services.character_lab.app import CharacterLabApp
 from services.character_lab.service_adapter import (
     CharacterLabDebugAdapter,
     CharacterLabServiceAdapter,
+    MemoryOperationError,
     RuntimeStateMutationError,
 )
 
@@ -479,3 +480,180 @@ class TestRuntimeStateMutation:
         svc, _, _ = _adapter(tmp_path)
         with pytest.raises(KeyError):
             svc.set_runtime_state("test-0000000000000000", "FACT", "k", "v")
+
+
+class TestConsolidatedMemory:
+    """Operator-driven Consolidated Memory through the contract adapter.
+
+    Offline, fake provider only. The backend (ConsolidatedMemoryBackend) stays
+    authoritative; the adapter only translates.
+    """
+
+    def _seed_user_event(self, svc, text="Я люблю зелёный чай.", workspace_id=None):
+        session, ws = _testing_session(svc, workspace_id=workspace_id)
+        svc.send_message(session.session_id, text)
+        return ws.workspace_id
+
+    def _events(self, svc, workspace_id):
+        return svc.list_memory_events(workspace_id).events
+
+    def _eligible(self, svc, workspace_id):
+        return next(e for e in self._events(svc, workspace_id) if e.eligible_for_promotion)
+
+    def test_list_memory_events_workspace_scoped_with_eligibility(self, tmp_path):
+        svc, _, _ = _adapter(tmp_path)
+        wid = self._seed_user_event(svc)
+        events = self._events(svc, wid)
+        user_event = next(e for e in events if e.event_type == "USER_MESSAGE")
+        char_event = next(e for e in events if e.event_type == "CHARACTER_MESSAGE")
+        assert user_event.eligible_for_promotion is True
+        assert user_event.ineligibility_reason is None
+        assert char_event.eligible_for_promotion is False
+        assert char_event.ineligibility_reason == "not_a_user_message"
+
+    def test_eligible_user_stated_event_becomes_pending_candidate(self, tmp_path):
+        svc, _, _ = _adapter(tmp_path)
+        wid = self._seed_user_event(svc)
+        event = self._eligible(svc, wid)
+        candidate = svc.propose_memory_promotion(wid, event.event_id, "SEMANTIC")
+        assert candidate.decision_status == "PENDING"
+        assert candidate.source_event_id == event.event_id
+        assert candidate.memory_kind == "SEMANTIC"
+        assert candidate.epistemic_kind == "USER_REPORT"
+        listed = svc.list_memory_promotion_candidates(wid)
+        assert [c.candidate_id for c in listed] == [candidate.candidate_id]
+
+    def test_character_utterance_promotion_rejected(self, tmp_path):
+        svc, _, _ = _adapter(tmp_path)
+        wid = self._seed_user_event(svc)
+        char_event = next(
+            e for e in self._events(svc, wid) if e.event_type == "CHARACTER_MESSAGE"
+        )
+        with pytest.raises(MemoryOperationError) as exc:
+            svc.propose_memory_promotion(wid, char_event.event_id, "SEMANTIC")
+        assert exc.value.code == "ineligible_event"
+
+    def test_missing_event_rejected(self, tmp_path):
+        svc, _, _ = _adapter(tmp_path)
+        wid = self._seed_user_event(svc)
+        with pytest.raises(MemoryOperationError) as exc:
+            svc.propose_memory_promotion(wid, "evt-nope", "SEMANTIC")
+        assert exc.value.code == "unknown_event"
+
+    def test_approve_creates_active_user_report_record(self, tmp_path):
+        svc, _, _ = _adapter(tmp_path)
+        wid = self._seed_user_event(svc)
+        event = self._eligible(svc, wid)
+        candidate = svc.propose_memory_promotion(wid, event.event_id, "EPISODIC")
+        decided = svc.decide_memory_promotion(wid, candidate.candidate_id, "APPROVE")
+        assert decided.decision_status == "APPROVED"
+        records = svc.list_consolidated_memory(wid)
+        assert len(records) == 1
+        rec = records[0]
+        assert rec.status == "ACTIVE"
+        assert rec.epistemic_kind == "USER_REPORT"
+        assert rec.meaning == event.meaning
+        assert rec.basis_event_ids == (event.event_id,)
+
+    def test_reject_creates_no_record(self, tmp_path):
+        svc, _, _ = _adapter(tmp_path)
+        wid = self._seed_user_event(svc)
+        event = self._eligible(svc, wid)
+        candidate = svc.propose_memory_promotion(wid, event.event_id, "SEMANTIC")
+        decided = svc.decide_memory_promotion(wid, candidate.candidate_id, "REJECT")
+        assert decided.decision_status == "REJECTED"
+        assert svc.list_consolidated_memory(wid) == ()
+
+    def test_second_decision_rejected(self, tmp_path):
+        svc, _, _ = _adapter(tmp_path)
+        wid = self._seed_user_event(svc)
+        event = self._eligible(svc, wid)
+        candidate = svc.propose_memory_promotion(wid, event.event_id, "SEMANTIC")
+        svc.decide_memory_promotion(wid, candidate.candidate_id, "REJECT")
+        with pytest.raises(MemoryOperationError) as exc:
+            svc.decide_memory_promotion(wid, candidate.candidate_id, "APPROVE")
+        assert exc.value.code == "already_decided"
+
+    def test_duplicate_active_record_rejected(self, tmp_path):
+        svc, _, _ = _adapter(tmp_path)
+        wid = self._seed_user_event(svc)
+        event = self._eligible(svc, wid)
+        first = svc.propose_memory_promotion(wid, event.event_id, "SEMANTIC")
+        svc.decide_memory_promotion(wid, first.candidate_id, "APPROVE")
+        second = svc.propose_memory_promotion(wid, event.event_id, "SEMANTIC")
+        with pytest.raises(MemoryOperationError) as exc:
+            svc.decide_memory_promotion(wid, second.candidate_id, "APPROVE")
+        assert exc.value.code == "duplicate_record"
+
+    def _two_records(self, svc):
+        wid = self._seed_user_event(svc, "Я люблю зелёный чай.")
+        session, _ = _testing_session(svc, workspace_id=wid)
+        svc.send_message(session.session_id, "Я люблю травяной чай.")
+        for e in self._events(svc, wid):
+            if not e.eligible_for_promotion:
+                continue
+            cand = svc.propose_memory_promotion(wid, e.event_id, "SEMANTIC")
+            svc.decide_memory_promotion(wid, cand.candidate_id, "APPROVE")
+        records = svc.list_consolidated_memory(wid)
+        assert len(records) == 2
+        return wid, records
+
+    def test_standalone_supersedes_marks_target_superseded(self, tmp_path):
+        svc, _, _ = _adapter(tmp_path)
+        wid, records = self._two_records(svc)
+        newer, older = records[1], records[0]
+        relation = svc.create_consolidated_memory_relation(
+            wid, newer.record_id, older.record_id, "SUPERSEDES"
+        )
+        assert relation.kind == "SUPERSEDES"
+        after = {r.record_id: r for r in svc.list_consolidated_memory(wid)}
+        assert after[newer.record_id].status == "ACTIVE"
+        assert after[older.record_id].status == "SUPERSEDED"
+        assert after[older.record_id].superseded_by_record_id == newer.record_id
+
+    def test_standalone_conflicts_with_keeps_both_active(self, tmp_path):
+        svc, _, _ = _adapter(tmp_path)
+        wid, records = self._two_records(svc)
+        a, b = records[0], records[1]
+        svc.create_consolidated_memory_relation(wid, a.record_id, b.record_id, "CONFLICTS_WITH")
+        after = {r.record_id: r for r in svc.list_consolidated_memory(wid)}
+        assert after[a.record_id].status == "ACTIVE"
+        assert after[b.record_id].status == "ACTIVE"
+        assert after[a.record_id].conflict_record_ids == (b.record_id,)
+        assert after[b.record_id].conflict_record_ids == (a.record_id,)
+
+    def test_self_relation_rejected(self, tmp_path):
+        svc, _, _ = _adapter(tmp_path)
+        wid, records = self._two_records(svc)
+        with pytest.raises(MemoryOperationError) as exc:
+            svc.create_consolidated_memory_relation(
+                wid, records[0].record_id, records[0].record_id, "SUPERSEDES"
+            )
+        assert exc.value.code == "self_relation"
+
+    def test_cross_workspace_relation_rejected(self, tmp_path):
+        svc, _, _ = _adapter(tmp_path)
+        _, records_a = self._two_records(svc)
+        wid_b = self._seed_user_event(svc, "В другой области.")
+        foreign = records_a[0].record_id
+        event_b = self._eligible(svc, wid_b)
+        cand_b = svc.propose_memory_promotion(wid_b, event_b.event_id, "SEMANTIC")
+        svc.decide_memory_promotion(wid_b, cand_b.candidate_id, "APPROVE")
+        rec_b = svc.list_consolidated_memory(wid_b)[0]
+        with pytest.raises(MemoryOperationError) as exc:
+            svc.create_consolidated_memory_relation(
+                wid_b, rec_b.record_id, foreign, "SUPERSEDES"
+            )
+        assert exc.value.code == "unknown_record"
+
+    def test_workspace_isolation_preserved(self, tmp_path):
+        svc, _, _ = _adapter(tmp_path)
+        wid_a, _ = self._two_records(svc)
+        wid_b = self._seed_user_event(svc, "В другой области.")
+        assert len(svc.list_consolidated_memory(wid_a)) == 2
+        assert svc.list_consolidated_memory(wid_b) == ()
+
+    def test_unknown_workspace_rejected(self, tmp_path):
+        svc, _, _ = _adapter(tmp_path)
+        with pytest.raises(KeyError):
+            svc.list_memory_events("test-0000000000000000")
