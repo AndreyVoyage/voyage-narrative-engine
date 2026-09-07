@@ -16,19 +16,35 @@ are model outputs, not inputs, and Character Lab does not synthesise them.
 ``render_scene_block`` produces the deterministic Russian system-prompt block
 that ``BetaV1CurrentPolicy`` injects ONLY when a Scene is active. With no Scene,
 Beta v1 provider context is byte-for-byte the historical behaviour.
+
+Additive claim layer (SCENE EPISTEMIC CLAIMS V1): ``SceneEpistemicClaim`` is an
+author-defined claim-level fact attached ``рядом с`` the free-form Scene via the
+``SceneWithClaims`` subtype. The base ``Scene`` keeps EXACTLY its six content
+fields; free-form scene text is NEVER auto-converted into epistemic facts --
+only explicitly authored claims are, via ``scene_epistemic_bridge``.
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
+import math
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Optional, Sequence
 
+from services.character_core.epistemics import EpistemicKind, is_holder_addressable
+
 _ALLOWED_KEYS = frozenset(
     {"scene_id", "title", "location", "participants", "prior_events", "current_situation", "created_at"}
+)
+
+_CLAIM_ALLOWED_KEYS = frozenset(
+    {
+        "claim_id", "meaning", "epistemic_kind", "provenance", "perceiver_ids",
+        "valid_from_seq", "valid_to_seq", "confidence", "holder_id",
+    }
 )
 
 
@@ -70,6 +86,139 @@ class Scene:
             not isinstance(e, str) for e in self.prior_events
         ):
             raise SceneError("prior_events must be a tuple of strings")
+
+
+@dataclass(frozen=True)
+class SceneEpistemicClaim:
+    """One author-defined claim-level epistemic fact attached to a Scene.
+
+    Unlike the free-form Scene text (pure situational prose), a claim carries
+    explicit epistemic metadata so it can be projected into an
+    ``EpistemicEnvelope`` and pass through the SAME Character Core visibility
+    selector as every other epistemic input. Nothing here decides visibility:
+    ``perceiver_ids`` / ``valid_from_seq`` / ``valid_to_seq`` are only carried;
+    Character Core evaluates them.
+
+    Validation is fail-closed and mirrors the Core envelope contract so a
+    malformed claim is rejected at authoring time, not mid-turn.
+    """
+
+    claim_id: str
+    meaning: str
+    epistemic_kind: Any  # EpistemicKind or its string value; coerced below
+    provenance: str
+    perceiver_ids: tuple = ()
+    valid_from_seq: Optional[int] = None
+    valid_to_seq: Optional[int] = None
+    confidence: float = 1.0
+    holder_id: Optional[str] = None
+
+    def __post_init__(self) -> None:
+        for name, value in (
+            ("claim_id", self.claim_id),
+            ("meaning", self.meaning),
+            ("provenance", self.provenance),
+        ):
+            if not isinstance(value, str) or not value.strip():
+                raise SceneError(f"{name} must be a non-empty string")
+
+        kind = self.epistemic_kind
+        if isinstance(kind, str):
+            try:
+                kind = EpistemicKind(kind.strip())
+            except ValueError:
+                kind = None
+        if not isinstance(kind, EpistemicKind):
+            raise SceneError(
+                f"epistemic_kind must be one of {[k.value for k in EpistemicKind]}, "
+                f"got {self.epistemic_kind!r}"
+            )
+        object.__setattr__(self, "epistemic_kind", kind)
+
+        if isinstance(self.perceiver_ids, str) or not isinstance(self.perceiver_ids, tuple):
+            raise SceneError("perceiver_ids must be a tuple of strings")
+        seen: set = set()
+        for pid in self.perceiver_ids:
+            if not isinstance(pid, str) or not pid.strip():
+                raise SceneError("each perceiver id must be a non-empty string")
+            if pid in seen:
+                raise SceneError(f"duplicate perceiver id: {pid!r}")
+            seen.add(pid)
+
+        for name, value in (
+            ("valid_from_seq", self.valid_from_seq),
+            ("valid_to_seq", self.valid_to_seq),
+        ):
+            if value is not None and (isinstance(value, bool) or not isinstance(value, int)):
+                raise SceneError(f"{name} must be an int or None")
+        if (
+            self.valid_from_seq is not None
+            and self.valid_to_seq is not None
+            and self.valid_to_seq < self.valid_from_seq
+        ):
+            raise SceneError("valid_to_seq must be >= valid_from_seq")
+
+        conf = self.confidence
+        if isinstance(conf, bool) or not isinstance(conf, (int, float)):
+            raise SceneError("confidence must be a real number")
+        conf = float(conf)
+        if math.isnan(conf) or math.isinf(conf):
+            raise SceneError("confidence must be a finite number")
+        if not (0.0 <= conf <= 1.0):
+            raise SceneError("confidence must be within [0.0, 1.0] inclusive")
+        object.__setattr__(self, "confidence", conf)
+
+        if self.holder_id is not None and (
+            not isinstance(self.holder_id, str) or not self.holder_id.strip()
+        ):
+            raise SceneError("holder_id (when supplied) must be a non-empty string")
+        if is_holder_addressable(kind) and self.holder_id is None:
+            raise SceneError(
+                f"{kind.value} requires a holder_id -- it is defined as belonging to a subject"
+            )
+
+
+@dataclass(frozen=True)
+class SceneWithClaims(Scene):
+    """A Scene plus author-defined claim-level epistemic facts.
+
+    Purely additive: it IS a ``Scene`` (same six content fields, same
+    rendering, same validation) and additionally carries
+    ``epistemic_claims``. The base ``Scene`` type is deliberately left
+    untouched so every existing ``Scene(...)`` construction and the exact
+    free-form behaviour stay unchanged.
+    """
+
+    epistemic_claims: tuple = ()
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        if not isinstance(self.epistemic_claims, tuple) or any(
+            not isinstance(c, SceneEpistemicClaim) for c in self.epistemic_claims
+        ):
+            raise SceneError("epistemic_claims must be a tuple of SceneEpistemicClaim")
+
+
+def with_epistemic_claims(scene: Scene, claims: Any) -> SceneWithClaims:
+    """Return a ``SceneWithClaims`` copy of ``scene`` carrying ``claims``.
+
+    The scene content is preserved field-for-field; only the claim layer is
+    attached. Free-form text is never reinterpreted.
+    """
+    if not isinstance(scene, Scene):
+        raise SceneError("scene must be a Scene")
+    if isinstance(claims, (str, bytes)) or not isinstance(claims, Sequence):
+        raise SceneError("claims must be a sequence of SceneEpistemicClaim")
+    return SceneWithClaims(
+        scene_id=scene.scene_id,
+        title=scene.title,
+        location=scene.location,
+        participants=scene.participants,
+        prior_events=scene.prior_events,
+        current_situation=scene.current_situation,
+        created_at=scene.created_at,
+        epistemic_claims=tuple(claims),
+    )
 
 
 def _now_iso() -> str:
@@ -117,8 +266,43 @@ def new_scene(
     )
 
 
-def scene_to_jsonable(scene: Scene) -> dict:
+def scene_claim_to_jsonable(claim: SceneEpistemicClaim) -> dict:
+    if not isinstance(claim, SceneEpistemicClaim):
+        raise SceneError("claim must be a SceneEpistemicClaim")
     return {
+        "claim_id": claim.claim_id,
+        "meaning": claim.meaning,
+        "epistemic_kind": claim.epistemic_kind.value,
+        "provenance": claim.provenance,
+        "perceiver_ids": list(claim.perceiver_ids),
+        "valid_from_seq": claim.valid_from_seq,
+        "valid_to_seq": claim.valid_to_seq,
+        "confidence": claim.confidence,
+        "holder_id": claim.holder_id,
+    }
+
+
+def scene_claim_from_jsonable(data: Any) -> SceneEpistemicClaim:
+    if not isinstance(data, dict):
+        raise SceneError("scene claim must be an object")
+    unknown = set(data.keys()) - _CLAIM_ALLOWED_KEYS
+    if unknown:
+        raise SceneError(f"scene claim has unknown field(s): {sorted(unknown)}")
+    return SceneEpistemicClaim(
+        claim_id=data["claim_id"],
+        meaning=data["meaning"],
+        epistemic_kind=data["epistemic_kind"],
+        provenance=data["provenance"],
+        perceiver_ids=tuple(data.get("perceiver_ids") or ()),
+        valid_from_seq=data.get("valid_from_seq"),
+        valid_to_seq=data.get("valid_to_seq"),
+        confidence=data.get("confidence", 1.0),
+        holder_id=data.get("holder_id"),
+    )
+
+
+def scene_to_jsonable(scene: Scene) -> dict:
+    payload = {
         "scene_id": scene.scene_id,
         "title": scene.title,
         "location": scene.location,
@@ -127,23 +311,36 @@ def scene_to_jsonable(scene: Scene) -> dict:
         "current_situation": scene.current_situation,
         "created_at": scene.created_at,
     }
+    # Additive: the claims key appears ONLY when claims exist, so the jsonable
+    # form (and therefore ``scene_hash``) of a claim-less Scene is unchanged.
+    claims = getattr(scene, "epistemic_claims", ()) or ()
+    if claims:
+        payload["epistemic_claims"] = [scene_claim_to_jsonable(c) for c in claims]
+    return payload
 
 
 def scene_from_jsonable(data: Any) -> Scene:
     if not isinstance(data, dict):
         raise SceneError("scene must be an object")
-    unknown = set(data.keys()) - _ALLOWED_KEYS
+    unknown = set(data.keys()) - (_ALLOWED_KEYS | {"epistemic_claims"})
     if unknown:
         raise SceneError(f"scene has unknown field(s): {sorted(unknown)}")
-    return Scene(
-        scene_id=data["scene_id"],
-        title=data.get("title", ""),
-        location=data.get("location", ""),
-        participants=tuple(data.get("participants") or ()),
-        prior_events=tuple(data.get("prior_events") or ()),
-        current_situation=data.get("current_situation", ""),
-        created_at=data["created_at"],
-    )
+    base = {
+        "scene_id": data["scene_id"],
+        "title": data.get("title", ""),
+        "location": data.get("location", ""),
+        "participants": tuple(data.get("participants") or ()),
+        "prior_events": tuple(data.get("prior_events") or ()),
+        "current_situation": data.get("current_situation", ""),
+        "created_at": data["created_at"],
+    }
+    claims_data = data.get("epistemic_claims") or ()
+    if claims_data:
+        return SceneWithClaims(
+            **base,
+            epistemic_claims=tuple(scene_claim_from_jsonable(c) for c in claims_data),
+        )
+    return Scene(**base)
 
 
 def scene_hash(scene: Scene) -> str:

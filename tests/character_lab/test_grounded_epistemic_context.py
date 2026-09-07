@@ -35,6 +35,12 @@ from services.character_lab.runtime_policy import (
     _GROUNDED_V2_EPI_HEADER,
     _GROUNDED_V2_MEMORY_LINE_PREFIX,
 )
+from services.character_lab.scene import (
+    SceneEpistemicClaim,
+    new_scene,
+    render_scene_block,
+    with_epistemic_claims,
+)
 from services.character_lab.source_loader import build_repo_source_loader
 from services.character_runtime import (
     ConsolidatedMemoryBackend,
@@ -457,7 +463,8 @@ def _service():
                           source_loader=build_repo_source_loader(acceptance_root=_ACCEPTED_ROOT))
 
 
-def _turn_request(tmp_path, *, mem_root, policy, turn_id, explicit=(), at_seq=None, state_root=None):
+def _turn_request(tmp_path, *, mem_root, policy, turn_id, explicit=(), at_seq=None, state_root=None,
+                  scene=None):
     cap = TurnCapture(tmp_path / f"cap-{turn_id}")
     _service().turn(
         "kira", policy=policy, history=[], user_message="Что происходит?",
@@ -465,6 +472,7 @@ def _turn_request(tmp_path, *, mem_root, policy, turn_id, explicit=(), at_seq=No
         state_root=state_root, capture=cap, turn_id=turn_id,
         provider_info={"provider_id": "p", "model": "m"},
         explicit_epistemic_envelopes=explicit, epistemic_at_seq=at_seq,
+        scene=scene,
     )
     req = (cap.turn_dir(turn_id) / "request.json").read_text("utf-8")
     data = json.loads(req)
@@ -554,6 +562,139 @@ class TestServiceWiringAndRegression:
         txt, manifest = _turn_request(tmp_path, mem_root=mem, policy=GroundedV2Policy(), turn_id="plain")
         assert "ACCEPTED CHARACTER GROUNDING" in txt
         assert _GROUNDED_V2_EPI_HEADER not in txt
+        assert not any(i["kind"].startswith("system.epistemic_context") for i in manifest["items"])
+
+
+# --------------------------------------------------------------------------
+# SCENE EPISTEMIC CLAIMS V1 -- author-defined scene claims through Grounded v2
+# --------------------------------------------------------------------------
+
+
+def _scene_claim(claim_id, meaning, *, perceivers=("kira",), valid_from=None, valid_to=None):
+    return SceneEpistemicClaim(
+        claim_id=claim_id, meaning=meaning, epistemic_kind="WORLD_FACT",
+        provenance="scene_authored", perceiver_ids=perceivers,
+        valid_from_seq=valid_from, valid_to_seq=valid_to, confidence=1.0,
+    )
+
+
+def _claimed_scene(claims):
+    base = new_scene(
+        title="Терраса", location="крыша", participants=["Кира"],
+        prior_events=["Все поднялись наверх."], current_situation="Ночь, тихо.",
+        scene_id="sc-t", created_at="2026-01-01T00:00:00+00:00",
+    )
+    return with_epistemic_claims(base, claims)
+
+
+class TestSceneClaimsGroundedIntegration:
+    SCENE_FACT = "За дверью террасы включён свет."
+
+    def test_11_visible_scene_claim_appears_in_epistemic_segment(self, tmp_path):
+        scene = _claimed_scene([_scene_claim("sc-claim-1", self.SCENE_FACT, valid_from=1)])
+        txt, manifest = _turn_request(tmp_path, mem_root=tmp_path / "ws",
+                                      policy=GroundedV2Policy(), turn_id="sc-vis",
+                                      scene=scene, at_seq=99)
+        assert _GROUNDED_V2_EPI_HEADER in txt
+        assert f"[WORLD_FACT] {self.SCENE_FACT}" in txt
+        lines = [i for i in manifest["items"] if i["kind"] == "system.epistemic_context_line"]
+        assert [l["text"] for l in lines] == [f"[WORLD_FACT] {self.SCENE_FACT}"]
+        assert lines[0]["meta"]["basis_event_ids"] == ["sc-claim-1"]
+        assert lines[0]["meta"]["provenance"] == "scene_authored"
+        assert lines[0]["meta"]["valid_from_seq"] == 1
+
+    def test_12_hidden_claim_wrong_perceiver_absent(self, tmp_path):
+        scene = _claimed_scene([
+            _scene_claim("sc-claim-1", self.SCENE_FACT, perceivers=("someone-else",)),
+        ])
+        txt, manifest = _turn_request(tmp_path, mem_root=tmp_path / "ws",
+                                      policy=GroundedV2Policy(), turn_id="sc-hid",
+                                      scene=scene, at_seq=99)
+        assert self.SCENE_FACT not in txt
+        assert _GROUNDED_V2_EPI_HEADER not in txt
+        assert not any(i["kind"].startswith("system.epistemic_context") for i in manifest["items"])
+
+    def test_13_future_valid_from_absent(self, tmp_path):
+        scene = _claimed_scene([_scene_claim("sc-claim-1", self.SCENE_FACT, valid_from=50)])
+        txt, _ = _turn_request(tmp_path, mem_root=tmp_path / "ws",
+                               policy=GroundedV2Policy(), turn_id="sc-fut",
+                               scene=scene, at_seq=10)
+        assert self.SCENE_FACT not in txt
+
+    def test_14_inclusive_boundary_at_valid_from(self, tmp_path):
+        scene = _claimed_scene([_scene_claim("sc-claim-1", self.SCENE_FACT, valid_from=10)])
+        txt, _ = _turn_request(tmp_path, mem_root=tmp_path / "ws",
+                               policy=GroundedV2Policy(), turn_id="sc-bnd",
+                               scene=scene, at_seq=10)
+        assert f"[WORLD_FACT] {self.SCENE_FACT}" in txt
+
+    def test_15_expired_valid_to_absent_after_cutoff(self, tmp_path):
+        scene = _claimed_scene([
+            _scene_claim("sc-claim-1", self.SCENE_FACT, valid_from=1, valid_to=5),
+        ])
+        txt_at, _ = _turn_request(tmp_path, mem_root=tmp_path / "wsA",
+                                  policy=GroundedV2Policy(), turn_id="sc-exp5",
+                                  scene=scene, at_seq=5)
+        assert self.SCENE_FACT in txt_at                    # inclusive upper boundary
+        txt_after, _ = _turn_request(tmp_path, mem_root=tmp_path / "wsB",
+                                     policy=GroundedV2Policy(), turn_id="sc-exp9",
+                                     scene=scene, at_seq=9)
+        assert self.SCENE_FACT not in txt_after             # expired
+
+    def test_16_contradictory_visible_claims_both_appear(self, tmp_path):
+        scene = _claimed_scene([
+            _scene_claim("sc-lock", "Дверь заперта."),
+            _scene_claim("sc-open", "Дверь открыта."),
+        ])
+        txt, manifest = _turn_request(tmp_path, mem_root=tmp_path / "ws",
+                                      policy=GroundedV2Policy(), turn_id="sc-contra",
+                                      scene=scene, at_seq=99)
+        assert "[WORLD_FACT] Дверь заперта." in txt
+        assert "[WORLD_FACT] Дверь открыта." in txt         # both, unreconciled
+        lines = [i["text"] for i in manifest["items"] if i["kind"] == "system.epistemic_context_line"]
+        assert lines == ["[WORLD_FACT] Дверь заперта.", "[WORLD_FACT] Дверь открыта."]
+
+    def test_17_free_form_scene_block_present_and_unchanged(self, tmp_path):
+        scene = _claimed_scene([_scene_claim("sc-claim-1", self.SCENE_FACT)])
+        plain = new_scene(
+            title="Терраса", location="крыша", participants=["Кира"],
+            prior_events=["Все поднялись наверх."], current_situation="Ночь, тихо.",
+            scene_id="sc-t", created_at="2026-01-01T00:00:00+00:00",
+        )
+        # the claim layer does not alter the free-form block at all
+        assert render_scene_block(scene) == render_scene_block(plain)
+        txt, manifest = _turn_request(tmp_path, mem_root=tmp_path / "ws",
+                                      policy=GroundedV2Policy(), turn_id="sc-ff",
+                                      scene=scene, at_seq=99)
+        assert render_scene_block(plain) in txt             # block delivered verbatim
+        scene_items = [i for i in manifest["items"] if i["kind"] == "system.scene"]
+        assert len(scene_items) == 1
+        assert scene_items[0]["text"] == render_scene_block(plain)
+        # free-form scene text does NOT leak into the epistemic segment
+        lines = [i["text"] for i in manifest["items"] if i["kind"] == "system.epistemic_context_line"]
+        assert lines == [f"[WORLD_FACT] {self.SCENE_FACT}"]
+
+    def test_18_beta_v1_unchanged_even_with_scene_claims(self, tmp_path):
+        scene = _claimed_scene([_scene_claim("sc-claim-1", self.SCENE_FACT)])
+        txt, manifest = _turn_request(tmp_path, mem_root=tmp_path / "ws",
+                                      policy=BetaV1CurrentPolicy(), turn_id="sc-beta",
+                                      scene=scene, at_seq=99)
+        assert _GROUNDED_V2_EPI_HEADER not in txt
+        assert self.SCENE_FACT not in txt                   # claims never surface in Beta v1
+        assert render_scene_block(scene) in txt             # free-form scene still delivered
+        assert not any(i["kind"].startswith("system.epistemic_context") for i in manifest["items"])
+
+    def test_19_scene_without_claims_preserves_prior_behavior(self, tmp_path):
+        plain = new_scene(
+            title="Терраса", location="крыша", participants=["Кира"],
+            prior_events=[], current_situation="Ночь, тихо.",
+            scene_id="sc-t", created_at="2026-01-01T00:00:00+00:00",
+        )
+        txt, manifest = _turn_request(tmp_path, mem_root=tmp_path / "ws",
+                                      policy=GroundedV2Policy(), turn_id="sc-none",
+                                      scene=plain, at_seq=99)
+        assert _GROUNDED_V2_EPI_HEADER not in txt
+        assert render_scene_block(plain) in txt
         assert not any(i["kind"].startswith("system.epistemic_context") for i in manifest["items"])
 
 

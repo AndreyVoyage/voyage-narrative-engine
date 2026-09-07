@@ -32,6 +32,7 @@ from .epistemic_bridge import build_runtime_epistemic_context
 from .package_extensions import load_character_dimension_set
 from .runtime_policy import KIRA_GROUNDED_V2, RuntimePolicy, build_assembly_hash
 from .scene import scene_hash as _compute_scene_hash
+from .scene_epistemic_bridge import project_scene_claims
 from .turn_capture import TurnCapture
 
 
@@ -359,13 +360,21 @@ class RuntimeService:
                 bridge_runtime_events = self._select_epistemic_runtime_inputs(
                     bounded_raw, active_records, events_by_id
                 )
+                # Author-defined scene claims (Grounded v2 ONLY): explicitly
+                # authored claim-level scene facts are projected and appended
+                # AFTER the caller's explicit envelopes, joining the same
+                # snapshot input. Free-form scene text is never auto-converted
+                # into an epistemic candidate; a scene without claims changes
+                # nothing. Visibility stays entirely with the Core selector.
+                scene_claim_envelopes = project_scene_claims(scene)
                 runtime_context["epistemic_at_seq"] = at_seq
                 runtime_context["epistemic_perceiver_id"] = subject_id
                 runtime_context["epistemic_snapshot"] = build_runtime_epistemic_context(
                     subject_id=subject_id,
                     runtime_events=bridge_runtime_events,
                     consolidated_records=active_records,
-                    explicit_envelopes=tuple(explicit_epistemic_envelopes or ()),
+                    explicit_envelopes=tuple(explicit_epistemic_envelopes or ())
+                    + scene_claim_envelopes,
                     perceiver_id=subject_id,
                     at_seq=at_seq,
                 )
