@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 import shutil
 import subprocess
@@ -28,7 +29,7 @@ from tools.vne_to_renpy import (  # noqa: E402
 def _candidate(source: str = "# fake source\n") -> OrderedProjectCandidate:
     return OrderedProjectCandidate(
         source=source,
-        source_sha256="0" * 64,
+        source_sha256=hashlib.sha256(source.encode("utf-8")).hexdigest(),
         scene_ids=("SC_900",),
         ass_ids=("ass_900",),
         reading_mode="classic_vn",
@@ -323,6 +324,79 @@ def test_sdk_command_missing_surfaced(tmp_path, monkeypatch):
             source_novel_path=source,
             sdk_path=tmp_path,
         )
+
+
+# ---------------------------------------------------------------------------
+# Hash binding
+# ---------------------------------------------------------------------------
+
+def test_invalid_candidate_self_hash_rejected(tmp_path, sdk_command):
+    source = _make_source_project(tmp_path)
+    bad = _candidate("# candidate\n")
+    bad = OrderedProjectCandidate(
+        source=bad.source,
+        source_sha256="0" * 64,  # wrong hash
+        scene_ids=bad.scene_ids,
+        ass_ids=bad.ass_ids,
+        reading_mode=bad.reading_mode,
+        candidate_filename=bad.candidate_filename,
+    )
+    with pytest.raises(OrderedCandidateLintError):
+        lint_ordered_ass_candidate(
+            bad,
+            source_novel_path=source,
+            sdk_path=tmp_path,
+        )
+
+
+def test_malformed_candidate_hash_rejected(tmp_path, sdk_command):
+    source = _make_source_project(tmp_path)
+    bad = OrderedProjectCandidate(
+        source="# candidate\n",
+        source_sha256="NOT-HEX",
+        scene_ids=("SC_900",),
+        ass_ids=("ass_900",),
+        reading_mode="classic_vn",
+        candidate_filename=ORDERED_ASS_CANDIDATE_FILENAME,
+    )
+    with pytest.raises(OrderedCandidateLintError):
+        lint_ordered_ass_candidate(
+            bad,
+            source_novel_path=source,
+            sdk_path=tmp_path,
+        )
+
+
+def test_lint_result_contains_exact_candidate_source_sha256(
+    tmp_path, sdk_command, run_record, copytree_record
+):
+    source = _make_source_project(tmp_path)
+    candidate = _candidate("# candidate\n")
+    result = lint_ordered_ass_candidate(
+        candidate,
+        source_novel_path=source,
+        sdk_path=tmp_path,
+    )
+    assert result.candidate_source_sha256 == candidate.source_sha256
+    assert result.candidate_source_sha256 == hashlib.sha256(
+        candidate.source.encode("utf-8")
+    ).hexdigest()
+
+
+def test_nonzero_lint_result_contains_exact_hash(
+    tmp_path, sdk_command, run_record, copytree_record
+):
+    run_record["returncode"] = 1
+    source = _make_source_project(tmp_path)
+    candidate = _candidate("# candidate\n")
+    with pytest.raises(OrderedCandidateLintError) as excinfo:
+        lint_ordered_ass_candidate(
+            candidate,
+            source_novel_path=source,
+            sdk_path=tmp_path,
+        )
+    assert excinfo.value.result is not None
+    assert excinfo.value.result.candidate_source_sha256 == candidate.source_sha256
 
 
 # ---------------------------------------------------------------------------

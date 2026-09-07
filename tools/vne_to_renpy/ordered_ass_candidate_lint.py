@@ -21,7 +21,9 @@ arbitrary command interpolation, no network, no provider calls.
 
 from __future__ import annotations
 
+import hashlib
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -44,6 +46,18 @@ __all__ = [
 _GAME_DIRNAME = "game"
 _DEFAULT_TIMEOUT_SECONDS = 120
 
+_SHA256_RE = re.compile(r"[0-9a-f]{64}\Z")
+
+
+def _candidate_sha256(candidate: OrderedProjectCandidate) -> str:
+    """Validate and recompute the candidate self-hash (fail closed)."""
+    if not isinstance(candidate.source_sha256, str) or _SHA256_RE.fullmatch(candidate.source_sha256) is None:
+        raise OrderedCandidateLintError("candidate.source_sha256 must be 64 lowercase hex")
+    recomputed = hashlib.sha256(candidate.source.encode("utf-8")).hexdigest()
+    if recomputed != candidate.source_sha256:
+        raise OrderedCandidateLintError("candidate source hash does not match its bytes")
+    return recomputed
+
 
 class OrderedCandidateLintError(Exception):
     """Raised on any candidate lint failure. Carries the completed failed result
@@ -64,9 +78,14 @@ class OrderedCandidateLintError(Exception):
 
 @dataclass(frozen=True)
 class CandidateLintResult:
-    """Immutable result of a candidate lint run."""
+    """Immutable result of a candidate lint run.
+
+    ``candidate_source_sha256`` binds the result to the exact candidate bytes
+    that were linted, so a lint proof can never authorize a different candidate.
+    """
 
     candidate_filename: str
+    candidate_source_sha256: str
     command: tuple[str, ...]
     returncode: int
     stdout: str
@@ -112,6 +131,9 @@ def lint_ordered_ass_candidate(
     """
     if not isinstance(candidate, OrderedProjectCandidate):
         raise OrderedCandidateLintError("candidate must be an OrderedProjectCandidate")
+    if candidate.candidate_filename != ORDERED_ASS_CANDIDATE_FILENAME:
+        raise OrderedCandidateLintError("candidate has an unexpected candidate_filename")
+    candidate_sha = _candidate_sha256(candidate)
     _require_absolute_directory(source_novel_path, "source_novel_path")
     _require_absolute_directory(sdk_path, "sdk_path")
 
@@ -167,6 +189,7 @@ def lint_ordered_ass_candidate(
 
     result = CandidateLintResult(
         candidate_filename=ORDERED_ASS_CANDIDATE_FILENAME,
+        candidate_source_sha256=candidate_sha,
         command=command,
         returncode=returncode,
         stdout=stdout,
