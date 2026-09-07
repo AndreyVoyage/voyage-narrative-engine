@@ -16,8 +16,9 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, Optional, Sequence
 
+from services.character_core.epistemics import EpistemicEnvelope
 from services.character_runtime import (
     RuntimeMemoryBackend,
     RuntimeSession,
@@ -27,6 +28,7 @@ from services.character_runtime.consolidated_memory import ConsolidatedMemoryBac
 from services.character_runtime.state import RuntimeStateBackend
 from services.crp_authoring import compute_package_hash
 
+from .epistemic_bridge import build_runtime_epistemic_context
 from .package_extensions import load_character_dimension_set
 from .runtime_policy import KIRA_GROUNDED_V2, RuntimePolicy, build_assembly_hash
 from .scene import scene_hash as _compute_scene_hash
@@ -155,6 +157,50 @@ class RuntimeService:
         ]
 
     @staticmethod
+    def _load_consolidated_records(memory_root: Path, subject_id: str) -> tuple:
+        """Active (non-superseded) APPROVED Consolidated Memory records as the
+        real ``ConsolidatedMemoryRecord`` objects, for the epistemic bridge
+        (which needs the domain objects, not dicts). Read-only."""
+        backend = ConsolidatedMemoryBackend(Path(memory_root), subject_id)
+        try:
+            return tuple(backend.load_active_records(subject_id))
+        finally:
+            backend.close()
+
+    @staticmethod
+    def _select_epistemic_runtime_inputs(
+        bounded_raw_events, active_consolidated_records, events_by_id: dict
+    ) -> tuple:
+        """The deterministic MINIMAL ``RuntimeEvent`` sequence handed to the
+        epistemic bridge: the already-bounded Grounded raw working-context
+        events, PLUS only the specific source/basis events the active
+        consolidated records need to resolve their original causal ``seq``.
+
+        No unrelated historical event is admitted merely because it exists.
+        Exact ``event_id`` dedupe (a consolidated-basis event already inside
+        the bounded raw set is not added twice); bounded-raw order is kept,
+        then any extra basis events in record order. A basis event that is not
+        resolvable here is simply not added -- the bridge then fails closed on
+        that record (``missing_basis_event``), which is the preserved
+        behavior; ``seq`` is never guessed.
+        """
+        seen: set = set()
+        out: list = []
+        for event in bounded_raw_events:
+            if event.event_id not in seen:
+                seen.add(event.event_id)
+                out.append(event)
+        for record in active_consolidated_records:
+            for basis_id in record.basis_event_ids:
+                if basis_id in seen:
+                    continue
+                event = events_by_id.get(basis_id)
+                if event is not None:
+                    seen.add(basis_id)
+                    out.append(event)
+        return tuple(out)
+
+    @staticmethod
     def _load_consolidated_memory(memory_root: Path, subject_id: str) -> list:
         """Active (non-superseded) APPROVED Consolidated Memory records for this
         workspace, as plain dicts. Read-only; opens and closes its own
@@ -229,6 +275,8 @@ class RuntimeService:
         provider_factory: Optional[ProviderFactory] = None,
         scene=None,
         state_root: Optional[Path] = None,
+        explicit_epistemic_envelopes: Sequence[EpistemicEnvelope] = (),
+        epistemic_at_seq: Optional[int] = None,
     ) -> TurnResult:
         accepted = load_accepted_character(
             subject_id,
@@ -243,6 +291,7 @@ class RuntimeService:
             # Additive keys for grounded variants. Beta v1 ignores them, so its
             # assembled context / manifest / request bytes stay unchanged.
             runtime_context["accepted_package"] = accepted.package
+            prior_events = tuple(backend.load_events_causal(subject_id))
             runtime_context["causal_memory"] = [
                 {
                     "event_id": e.event_id,
@@ -253,7 +302,7 @@ class RuntimeService:
                     "seq": e.seq,
                     "provenance": e.provenance,
                 }
-                for e in backend.load_events_causal(subject_id)
+                for e in prior_events
             ]
             # Explicitly operator-confirmed Runtime State (own per-workspace DB).
             # Additive + already REMOVE-filtered; Beta v1 ignores this key.
@@ -276,6 +325,49 @@ class RuntimeService:
                 # key). Raw Event Log is untouched.
                 runtime_context["consolidated_memory"] = self._load_consolidated_memory(
                     Path(memory_root), subject_id
+                )
+                # Point-in-time epistemic visibility (Grounded v2 ONLY). ``at_seq``
+                # is the causal position of THIS turn: the seq the current user
+                # event will be persisted at == max(existing causal seq) + 1
+                # (single-process runtime). ``epistemic_at_seq`` overrides it for
+                # historical replay / tests -- production always passes None and
+                # the live causal point is computed here. NOT wall-clock, NOT a
+                # session count, NOT approval order, NOT an array index.
+                prior_seqs = [e.seq for e in prior_events if e.seq is not None]
+                at_seq = (
+                    int(epistemic_at_seq)
+                    if epistemic_at_seq is not None
+                    else ((max(prior_seqs) + 1) if prior_seqs else 1)
+                )
+                # BOUNDED bridge input (architectural gate): the epistemic layer
+                # is a VISIBILITY FILTER, not a retrieval engine. Its
+                # runtime-event input is ONLY (a) the already-bounded Grounded
+                # raw working context -- reusing ``policy.select_memory`` so the
+                # 20-event / 6000-char / causal-order rules are NOT reimplemented
+                # -- plus (b) the specific source/basis events the active
+                # consolidated records need for causal-seq resolution. Unrelated
+                # historical events never become epistemic candidates.
+                active_records = self._load_consolidated_records(
+                    Path(memory_root), subject_id
+                )
+                events_by_id = {e.event_id: e for e in prior_events}
+                bounded_raw = [
+                    events_by_id[d["event_id"]]
+                    for d in policy.select_memory(runtime_context, session.session_id)
+                    if d.get("event_id") in events_by_id
+                ]
+                bridge_runtime_events = self._select_epistemic_runtime_inputs(
+                    bounded_raw, active_records, events_by_id
+                )
+                runtime_context["epistemic_at_seq"] = at_seq
+                runtime_context["epistemic_perceiver_id"] = subject_id
+                runtime_context["epistemic_snapshot"] = build_runtime_epistemic_context(
+                    subject_id=subject_id,
+                    runtime_events=bridge_runtime_events,
+                    consolidated_records=active_records,
+                    explicit_envelopes=tuple(explicit_epistemic_envelopes or ()),
+                    perceiver_id=subject_id,
+                    at_seq=at_seq,
                 )
             assembly = policy.assemble_context(
                 runtime_context=runtime_context,

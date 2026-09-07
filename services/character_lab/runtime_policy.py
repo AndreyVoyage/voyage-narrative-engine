@@ -278,6 +278,30 @@ _GROUNDED_V2_CONSMEM_FOOTER = (
     "противоречия здесь не разрешаются автоматически."
 )
 
+# Point-in-time epistemic context (GROUNDED v2 ONLY). This is a VISIBILITY
+# FILTER over material the pipeline already selected/supplied -- never a new
+# retrieval engine and never a way past the raw working-context bounds above.
+# Character Core / the epistemic bridge make every visibility decision; this
+# module only renders what they report visible.
+_GROUNDED_V2_EPI_HEADER = (
+    "ЭПИСТЕМИЧЕСКИЙ КОНТЕКСТ (что персонажу доступно знать/считать на текущий "
+    "причинный момент)"
+)
+_GROUNDED_V2_EPI_KIND_PREFIX = {
+    "WORLD_FACT": "[WORLD_FACT] ",
+    "USER_REPORT": "[USER_REPORT] ",
+    "CHARACTER_BELIEF": "[CHARACTER_BELIEF] ",
+    "CHARACTER_INTERPRETATION": "[CHARACTER_INTERPRETATION] ",
+}
+_GROUNDED_V2_EPI_FOOTER = (
+    "Типы не смешиваются: WORLD_FACT — доступное этому персонажу состояние "
+    "мира; USER_REPORT — со слов, не независимо подтверждённая истина; "
+    "CHARACTER_BELIEF — во что верит этот персонаж, может быть ошибочно; "
+    "CHARACTER_INTERPRETATION — истолкование персонажа, не объективный факт. "
+    "Противоречия здесь не разрешаются: WORLD_FACT не заменяет убеждение, а "
+    "убеждение — факт."
+)
+
 
 def _bounded_newest(items, *, rendered_len, max_items, max_chars):
     """Keep the newest ``items`` (input is oldest->newest) within BOTH a count
@@ -415,6 +439,93 @@ class GroundedV2Policy(RuntimePolicy):
         lines.append(_GROUNDED_V2_CONSMEM_FOOTER)
         return "\n".join(lines)
 
+    # ---------------------------------------------- point-in-time epistemics
+    #
+    # ``runtime_context["epistemic_snapshot"]`` is an ``EpistemicContextSnapshot``
+    # from ``RuntimeService.turn`` (Grounded v2 only). When absent -- e.g. a
+    # test that calls ``assemble_context`` directly, or Beta v1 -- NOTHING here
+    # runs and the request is byte-identical to before. This method never
+    # compares seqs or perceiver ids itself; it consumes the Core selector's
+    # already-computed ``visible_envelopes``.
+
+    @staticmethod
+    def _epistemic_apply(runtime_context, snapshot, selected_mem, selected_consolidated):
+        """Return ``(mem, consolidated, extra, stats)`` after applying the
+        visibility snapshot to the ALREADY-BOUNDED raw / consolidated
+        selections and computing the additional epistemic segment.
+        """
+        visible = tuple(getattr(snapshot, "visible_envelopes", ()) or ())
+        visible_report_source_ids: set = set()
+        for env in visible:
+            if env.epistemic_kind.value == "USER_REPORT":
+                visible_report_source_ids.update(env.basis_event_ids)
+
+        # (1) visibility filter: a raw / consolidated USER_REPORT survives only
+        #     if its projected envelope is visible to the perceiver at at_seq.
+        mem_pre, cons_pre = list(selected_mem), list(selected_consolidated)
+        mem = [e for e in mem_pre if e.get("event_id") in visible_report_source_ids]
+        consolidated = [
+            r for r in cons_pre if r.get("source_event_id") in visible_report_source_ids
+        ]
+        raw_hidden = len(mem_pre) - len(mem)
+        cons_hidden = len(cons_pre) - len(consolidated)
+
+        # (2) exact-source prompt de-duplication (deterministic identity only,
+        #     no fuzzy/semantic match): if the same approved source would appear
+        #     as BOTH a raw line and a delivered consolidated line, keep the
+        #     consolidated one (bridge precedence) and drop the raw line.
+        delivered_cons_src = {r.get("source_event_id") for r in consolidated}
+        before_dedup = len(mem)
+        mem = [e for e in mem if e.get("event_id") not in delivered_cons_src]
+        dedup_removed = before_dedup - len(mem)
+
+        # (3) additional epistemic segment: visible envelopes NOT already
+        #     represented by a delivered raw / consolidated line. A USER_REPORT
+        #     backed by a real prior runtime event that fell OUTSIDE the working
+        #     bounds is NOT resurrected here (bounds stay authoritative).
+        delivered_src = {e.get("event_id") for e in mem} | delivered_cons_src
+        all_prior_ids = {
+            e.get("event_id") for e in (runtime_context.get("causal_memory") or ())
+        }
+        extra: list = []
+        seen_keys: set = set()
+        for env in visible:
+            kind = env.epistemic_kind.value
+            basis = tuple(env.basis_event_ids)
+            if kind == "USER_REPORT":
+                if all(b in delivered_src for b in basis):
+                    continue  # already delivered via raw / consolidated
+                if any(b in all_prior_ids for b in basis):
+                    continue  # bounded-out runtime event -- do not resurrect
+            key = (kind, env.meaning, basis)
+            if key in seen_keys:
+                continue
+            seen_keys.add(key)
+            extra.append(env)
+
+        stats = {
+            "at_seq": runtime_context.get("epistemic_at_seq"),
+            "perceiver_id": runtime_context.get("epistemic_perceiver_id"),
+            "raw_hidden_by_visibility": raw_hidden,
+            "consolidated_hidden_by_visibility": cons_hidden,
+            "raw_dropped_exact_source_dedup": dedup_removed,
+            "visible_envelope_count": len(visible),
+        }
+        return mem, consolidated, tuple(extra), stats
+
+    @staticmethod
+    def _epistemic_line(env) -> str:
+        prefix = _GROUNDED_V2_EPI_KIND_PREFIX.get(env.epistemic_kind.value, "[?] ")
+        return prefix + str(env.meaning).strip()
+
+    def _epistemic_block(self, envelopes) -> str:
+        lines = [_GROUNDED_V2_EPI_HEADER, ""]
+        for env in envelopes:
+            lines.append(self._epistemic_line(env))
+        lines.append("")
+        lines.append(_GROUNDED_V2_EPI_FOOTER)
+        return "\n".join(lines)
+
     def select_state(self, runtime_context):
         # Current operator-confirmed Runtime State only. Already REMOVE-filtered
         # and sorted by (domain, key) by the backend; re-sorted here for a
@@ -482,10 +593,28 @@ class GroundedV2Policy(RuntimePolicy):
         selected_mem = self.select_memory(runtime_context, session_id)
         memory_block = self._memory_block(selected_mem) if selected_mem else None
         selected_consolidated = self.select_consolidated(runtime_context)
+
+        epistemic_extra = ()
+        epistemic_stats = None
+        snapshot = runtime_context.get("epistemic_snapshot")
+        if snapshot is not None:
+            (
+                selected_mem,
+                selected_consolidated,
+                epistemic_extra,
+                epistemic_stats,
+            ) = self._epistemic_apply(
+                runtime_context, snapshot, selected_mem, selected_consolidated
+            )
+            memory_block = self._memory_block(selected_mem) if selected_mem else None
+
         consolidated_block = (
             self._consolidated_block(selected_consolidated)
             if selected_consolidated
             else None
+        )
+        epistemic_block = (
+            self._epistemic_block(epistemic_extra) if epistemic_extra else None
         )
 
         system_messages = [{"role": "system", "content": _GROUNDED_V2_CORE_INSTRUCTION}]
@@ -506,6 +635,8 @@ class GroundedV2Policy(RuntimePolicy):
             system_messages.append({"role": "system", "content": memory_block})
         if consolidated_block is not None:
             system_messages.append({"role": "system", "content": consolidated_block})
+        if epistemic_block is not None:
+            system_messages.append({"role": "system", "content": epistemic_block})
         if scene is not None:
             system_messages.append(
                 {"role": "system", "content": render_scene_block(scene)}
@@ -531,6 +662,8 @@ class GroundedV2Policy(RuntimePolicy):
                     scene,
                     dimension_set,
                     selected_consolidated,
+                    epistemic_extra,
+                    epistemic_stats,
                 )
             ),
         )
@@ -548,6 +681,8 @@ class GroundedV2Policy(RuntimePolicy):
         scene,
         dimension_set=None,
         selected_consolidated=None,
+        epistemic_extra=(),
+        epistemic_stats=None,
     ):
         items = [
             AssemblyItem(
@@ -670,6 +805,44 @@ class GroundedV2Policy(RuntimePolicy):
                             "in_conflict": bool(r.get("in_conflict")),
                             "seq": r.get("seq"),
                             "provenance_display": "user-reported (remembered)",
+                        },
+                    )
+                )
+        if epistemic_extra:
+            stats = epistemic_stats or {}
+            items.append(
+                AssemblyItem(
+                    "system.epistemic_context",
+                    self._epistemic_block(epistemic_extra),
+                    {
+                        "line_count": len(epistemic_extra),
+                        "at_seq": stats.get("at_seq"),
+                        "perceiver_id": stats.get("perceiver_id"),
+                        "kinds": sorted({e.epistemic_kind.value for e in epistemic_extra}),
+                        "raw_hidden_by_visibility": stats.get("raw_hidden_by_visibility"),
+                        "consolidated_hidden_by_visibility": stats.get(
+                            "consolidated_hidden_by_visibility"
+                        ),
+                        "raw_dropped_exact_source_dedup": stats.get(
+                            "raw_dropped_exact_source_dedup"
+                        ),
+                        "visibility_source": "CHARACTER_CORE_SELECTOR",
+                    },
+                )
+            )
+            for env in epistemic_extra:
+                items.append(
+                    AssemblyItem(
+                        "system.epistemic_context_line",
+                        self._epistemic_line(env),
+                        {
+                            "epistemic_kind": env.epistemic_kind.value,
+                            "basis_event_ids": list(env.basis_event_ids),
+                            "provenance": env.provenance,
+                            "holder_id": env.holder_id,
+                            "confidence": env.confidence,
+                            "valid_from_seq": env.valid_from_seq,
+                            "valid_to_seq": env.valid_to_seq,
                         },
                     )
                 )
