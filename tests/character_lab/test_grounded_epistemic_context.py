@@ -32,6 +32,7 @@ from services.character_lab.epistemic_bridge import build_runtime_epistemic_cont
 from services.character_lab.runtime_policy import (
     GROUNDED_V2_RAW_MEMORY_MAX_EVENTS,
     _GROUNDED_V2_CONSMEM_LINE_PREFIX,
+    _GROUNDED_V2_EPI_FOOTER,
     _GROUNDED_V2_EPI_HEADER,
     _GROUNDED_V2_MEMORY_LINE_PREFIX,
 )
@@ -233,6 +234,192 @@ class TestAcceptanceC_FactBeliefContradiction:
         assert "[WORLD_FACT] Собеседник сказал X." not in txt
         assert "[CHARACTER_INTERPRETATION] Возможно, он раздражён." in txt  # not a fact
         assert "[WORLD_FACT] Возможно, он раздражён." not in txt
+
+
+# --------------------------------------------------------------------------
+# CONFLICT POLICY V1 -- immediate-behaviour rule for a visible WORLD_FACT that
+# contradicts the character's own CHARACTER_BELIEF. Prompt-policy only: no
+# belief-revision state, no fact-dominance, no persistent mutation.
+# --------------------------------------------------------------------------
+
+
+class TestConflictPolicyV1:
+    FACT = "Синий конверт находится в шкафу."
+    BELIEF = "Синий конверт находится в ящике стола."
+
+    def _fact(self, meaning, perceivers=()):
+        return EpistemicEnvelope(
+            meaning=meaning, epistemic_kind="WORLD_FACT", provenance="authored",
+            basis_event_ids=("authored-f",), confidence=1.0, perceiver_ids=perceivers,
+        )
+
+    def _belief(self, meaning, holder=A):
+        return EpistemicEnvelope(
+            meaning=meaning, epistemic_kind="CHARACTER_BELIEF", provenance="authored",
+            basis_event_ids=("authored-b",), confidence=0.6, holder_id=holder,
+        )
+
+    # 1 -- four epistemic kinds are still individually defined
+    def test_prompt_still_distinguishes_all_four_kinds(self):
+        for token in (
+            "WORLD_FACT — доступное этому персонажу состояние",
+            "USER_REPORT — со слов",
+            "CHARACTER_BELIEF — во что верит этот персонаж",
+            "CHARACTER_INTERPRETATION — истолкование персонажа",
+        ):
+            assert token in _GROUNDED_V2_EPI_FOOTER
+
+    # 2 -- the "not automatically reconciled" principle is preserved verbatim
+    def test_non_reconciliation_principle_preserved(self):
+        assert "Противоречия здесь не разрешаются" in _GROUNDED_V2_EPI_FOOTER
+        assert "WORLD_FACT не заменяет убеждение" in _GROUNDED_V2_EPI_FOOTER
+        assert "убеждение — факт" in _GROUNDED_V2_EPI_FOOTER
+
+    # 3 -- new rule: a relevant visible WORLD_FACT that contradicts own belief
+    #      must be accounted for in the immediate response/action
+    def test_new_rule_requires_accounting_for_visible_conflicting_fact(self):
+        f = _GROUNDED_V2_EPI_FOOTER
+        assert "доступный WORLD_FACT прямо противоречит собственному убеждению" in f
+        assert "важен для текущего ответа или действия" in f
+        assert "не игнорируй ни одну из сторон" in f
+        assert "доступный WORLD_FACT персонаж учитывает в непосредственном ответе" in f
+        assert "удивление, сомнение или желание проверить" in f
+
+    # 4 -- new rule does NOT create fact-dominance or persistent belief revision
+    def test_new_rule_is_not_fact_dominance_or_belief_mutation(self):
+        f = _GROUNDED_V2_EPI_FOOTER
+        # belief is explicitly kept as subjective state, not erased/rewritten
+        assert "убеждение остаётся субъективным состоянием персонажа" in f
+        assert "молча переписывать убеждение при этом не требуется" in f
+        for forbidden in (
+            "WORLD_FACT всегда",
+            "всегда важнее",
+            "всегда преобладает",
+            "WORLD_FACT заменяет убеждение",       # only the negated form may appear
+            "отменяет убеждение",
+            "удаляет убеждение",
+            "стирает убеждение",
+            "убеждение удаляется",
+            "убеждение стирается",
+            "обнови убеждение",
+            "измени убеждение",
+            "постоянно",
+        ):
+            assert forbidden not in f, forbidden
+
+    # 5 -- both contradictory claims still render together, policy in same segment
+    def test_both_claims_render_with_policy_in_segment(self):
+        asm, txt, _ = _assemble(
+            at_seq=100,
+            explicit=(self._fact(self.FACT, perceivers=(A,)), self._belief(self.BELIEF)),
+        )
+        assert f"[WORLD_FACT] {self.FACT}" in txt
+        assert f"[CHARACTER_BELIEF] {self.BELIEF}" in txt
+        seg = txt.split(_GROUNDED_V2_EPI_HEADER, 1)[1]
+        assert "не игнорируй ни одну из сторон" in seg          # policy travels with the block
+        assert "Противоречия здесь не разрешаются" in seg
+
+    # 6 + 7 -- kinds keep their labels; no relabelling either direction
+    def test_no_epistemic_relabelling_either_direction(self):
+        _, txt, _ = _assemble(
+            at_seq=100,
+            explicit=(self._fact(self.FACT, perceivers=(A,)), self._belief(self.BELIEF)),
+        )
+        assert f"[WORLD_FACT] {self.FACT}" in txt
+        assert f"[CHARACTER_BELIEF] {self.FACT}" not in txt     # fact never becomes belief
+        assert f"[CHARACTER_BELIEF] {self.BELIEF}" in txt
+        assert f"[WORLD_FACT] {self.BELIEF}" not in txt         # belief never becomes fact
+
+    # 8 -- a hidden WORLD_FACT stays absent even with the new policy text present
+    def test_hidden_world_fact_still_absent(self):
+        _, txt, _ = _assemble(
+            at_seq=100,
+            explicit=(self._fact(self.FACT, perceivers=()), self._belief(self.BELIEF)),
+        )
+        assert self.FACT not in txt
+        assert f"[CHARACTER_BELIEF] {self.BELIEF}" in txt       # own belief still delivered
+
+    # 9 -- Beta v1 never carries the new Grounded conflict-policy wording
+    def test_beta_v1_has_none_of_the_new_conflict_policy_wording(self, tmp_path):
+        mem = tmp_path / "ws"
+        mb = RuntimeMemoryBackend(mem, "kira")
+        mb.record_event(RuntimeEvent(event_id="k-0", subject_id="kira", session_id="s",
+                        event_type="USER_MESSAGE", meaning="реплика",
+                        created_at="2026-01-01T00:00:00+00:00"), provenance="USER_STATED")
+        mb.close()
+        shown = EpistemicEnvelope(meaning="Факт для беты.", epistemic_kind="WORLD_FACT",
+                                  provenance="authored", basis_event_ids=("a-1",), confidence=1.0,
+                                  perceiver_ids=("kira",))
+        txt, manifest = _turn_request(tmp_path, mem_root=mem, policy=BetaV1CurrentPolicy(),
+                                      turn_id="beta-conflict", explicit=(shown,), at_seq=99)
+        for token in (
+            "не игнорируй ни одну из сторон",
+            "доступный WORLD_FACT персонаж учитывает",
+            "убеждение остаётся субъективным состоянием персонажа",
+            _GROUNDED_V2_EPI_HEADER,
+        ):
+            assert token not in txt
+        assert not any(i["kind"].startswith("system.epistemic_context") for i in manifest["items"])
+
+    # 10 -- scene / memory / package rendering untouched by the policy change
+    def test_non_epistemic_rendering_unchanged(self, tmp_path):
+        mem = tmp_path / "ws"
+        mb = RuntimeMemoryBackend(mem, "kira")
+        mb.record_event(RuntimeEvent(event_id="k-0", subject_id="kira", session_id="s",
+                        event_type="USER_MESSAGE", meaning="помню про встречу",
+                        created_at="2026-01-01T00:00:00+00:00"), provenance="USER_STATED")
+        mb.close()
+        scene = new_scene(
+            title="Кухня", location="кухня", participants=["Кира"], prior_events=[],
+            current_situation="Чайник кипит.", scene_id="sc-k",
+            created_at="2026-01-01T00:00:00+00:00",
+        )
+        txt, manifest = _turn_request(tmp_path, mem_root=mem, policy=GroundedV2Policy(),
+                                      turn_id="plain-conflict", scene=scene)
+        assert "ACCEPTED CHARACTER GROUNDING" in txt
+        assert render_scene_block(scene) in txt
+        assert f"{_GROUNDED_V2_MEMORY_LINE_PREFIX}помню про встречу" in txt
+        # no epistemic snapshot -> the new footer text never appears
+        assert _GROUNDED_V2_EPI_HEADER not in txt
+        assert "не игнорируй ни одну из сторон" not in txt
+        assert not any(i["kind"].startswith("system.epistemic_context") for i in manifest["items"])
+
+    # A/B offline proof against the committed (read-only) perceiver fixture:
+    # the conflict policy is arm-independent; the only epistemic-content
+    # difference between arms stays the single visible WORLD_FACT line.
+    def test_committed_perceiver_fixture_ab_policy_is_arm_independent(self, tmp_path):
+        from tests.fixtures.character_packages.kira_belief_perceiver_ab_v1 import (
+            AT_SEQ, BELIEF_A, SHARED_USER_INPUT, WORLD, scene_for,
+        )
+
+        def epi_block(arm):
+            cap = TurnCapture(tmp_path / f"cap-{arm}")
+            _service().turn(
+                "kira", policy=GroundedV2Policy(), history=[], user_message=SHARED_USER_INPUT,
+                provider=None, provider_factory=_fake_factory("[OFFLINE]"),
+                memory_root=tmp_path / f"mem-{arm}", state_root=tmp_path / f"st-{arm}",
+                capture=cap, turn_id=arm,
+                provider_info={"provider_id": "fake", "model": "fake"},
+                scene=scene_for("perceiver", arm), epistemic_at_seq=AT_SEQ,
+            )
+            data = json.loads((cap.turn_dir(arm) / "request.json").read_text("utf-8"))
+            sysmsgs = [m["content"] for m in data["messages"] if m["role"] == "system"]
+            return next(s for s in sysmsgs if _GROUNDED_V2_EPI_HEADER in s)
+
+        a, b = epi_block("A"), epi_block("B")
+
+        # arm A: only the belief; arm B: belief + the one visible WORLD_FACT
+        assert WORLD not in a and f"[CHARACTER_BELIEF] {BELIEF_A}" in a
+        assert f"[WORLD_FACT] {WORLD}" in b and f"[CHARACTER_BELIEF] {BELIEF_A}" in b
+
+        # the conflict-policy sentence is present and byte-identical in both arms
+        policy_sentence = _GROUNDED_V2_EPI_FOOTER.split("убеждение — факт.", 1)[1].strip()
+        assert policy_sentence and policy_sentence in a and policy_sentence in b
+
+        # the ONLY difference between the two epistemic blocks is the WORLD_FACT line
+        add = [l for l in b.splitlines() if l not in a.splitlines()]
+        rem = [l for l in a.splitlines() if l not in b.splitlines()]
+        assert add == [f"[WORLD_FACT] {WORLD}"] and rem == []
 
 
 # --------------------------------------------------------------------------
