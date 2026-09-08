@@ -1,143 +1,195 @@
 /**
- * Minimum-sufficient RUNTIME structural checks for the Character Companion
- * client layer. Compiles and runs with only a global TypeScript compiler and
- * Node.js -- no npm install, no DOM, no React, no network.
+ * Minimum-sufficient structural checks for the Cinematic Companion client.
+ * Compiles and runs with only a global TypeScript compiler and Node.js — no
+ * npm install, no DOM, no React, no network.
  *
  *   tsc --project tsconfig.checks.json
  *   node dist-checks/scripts/structural-checks.js
  *
- * Text-based checks (no HTTP concepts outside httpCompanionClient, no imports
- * from the Character Lab app, no debug/operator surface) are run separately via
- * grep -- see the task report.
+ * Two kinds of check:
+ *  - headless logic:  the pure reducer / mock client / helpers are exercised;
+ *  - source markers:  the .tsx feature files are grepped for the structural
+ *    contract (they cannot be type-checked here without React types).
  */
 
 import {
   CompanionClient,
-  CompanionClientError,
+  SCENE_FIELDS,
+  emptyScene,
+  sceneHasAny,
 } from "../src/client/types.js";
-import { HttpCompanionClient } from "../src/client/httpCompanionClient.js";
 import { MockCompanionClient } from "../src/mocks/mockCompanionClient.js";
 import {
+  anyImageJobActive,
   companionReducer,
+  filterSessions,
   initialCompanionState,
   isSendableMessage,
 } from "../src/app/companionState.js";
+import {
+  FOCUS_LAYOUTS,
+  IMPLEMENTED_EXPERIENCES,
+  isExperienceImplemented,
+  nextFocusLayout,
+} from "../src/app/appearance.js";
+import { draftToInput, emptyDraft, setFreeform, setMode, setSceneField, setTitle } from "../src/app/newDialog.js";
+import * as fs from "node:fs";
+import * as nodePath from "node:path";
 
-// Node global -- declared locally so the check compiles with a bare global
-// TypeScript (no @types/node, matching the Character Lab structural checks).
-declare const process: { exit(code: number): never };
+// Node globals — declared locally (no @types/node), matching the Lab checks.
+// The structural checks are always run from `apps/character_companion_react/`.
+declare const process: { exit(code: number): never; cwd(): string };
 
 function assert(cond: unknown, message: string): asserts cond {
   if (!cond) throw new Error(message);
 }
-
 let passed = 0;
-function ok(label: string): void {
-  passed += 1;
-  console.log(`  ok  - ${label}`);
-}
+const ok = (label: string) => { passed += 1; console.log(`  ok  - ${label}`); };
 
 async function main(): Promise<void> {
-  console.log("Character Companion -- structural checks (runtime)\n");
+  console.log("Character Companion — Cinematic structural checks\n");
 
-  // 30 -- character list is a real client operation returning entries
+  const SRC = nodePath.join(process.cwd(), "src");
+  const read = (rel: string): string => fs.readFileSync(nodePath.join(SRC, rel), "utf8");
+
   const mock = new MockCompanionClient();
-  const chars = await mock.listCharacters();
-  assert(chars.length === 1 && chars[0].characterId === "kira", "kira in catalog");
-  ok("30. listCharacters returns available characters");
+  const focus0 = initialCompanionState("background");
 
-  // 31 + 32 -- session list + new-session action exist and persist per instance
-  assert((await mock.listSessions("kira")).length === 0, "no sessions yet");
-  const session = await mock.createSession("kira");
-  assert(session.purpose === "COMPANION", "created session is COMPANION purpose");
-  const sessions = await mock.listSessions("kira");
-  assert(sessions.length === 1 && sessions[0].sessionId === session.sessionId, "session listed");
-  ok("31. listSessions exists and is per-character");
-  ok("32. createSession action exists");
+  // 33 — multi-chat list: many chats per character, newest-activity-first
+  const c1 = await mock.createSession("kira", { title: "Первый" });
+  const c2 = await mock.createSession("kira", { title: "Второй" });
+  await mock.sendMessage(c1.sessionId, "hi");
+  const listed = await mock.listSessions("kira");
+  assert(listed.length === 2 && listed[0].sessionId === c1.sessionId, "newest activity first");
+  ok("33. multi-chat list exists (per character, newest first)");
 
-  // 33 -- chat history is a normalized user/character message array
-  assert((await mock.getMessages(session.sessionId)).length === 0, "empty history");
-  const turn = await mock.sendMessage(session.sessionId, "Привет.");
-  assert(
-    turn.messages.map((m) => m.role).join(",") === "user,character",
-    "history has one user + one character turn in causal order",
-  );
-  const seqs = turn.messages.map((m) => m.seq ?? -1);
-  assert(seqs[0] < seqs[1], "messages are causally ordered by seq");
-  ok("33. chat history renders as ordered user/character turns");
+  // 34 + 35 — new-dialog flow: ordinary vs scene
+  let draft = emptyDraft();
+  assert(draft.mode === "ordinary", "default ordinary");
+  assert(Object.keys(draftToInput(draft)).length === 0, "ordinary dialog carries no scene/title");
+  draft = setTitle(setMode(draft, "scene"), "Вечер");
+  ok("34. new-dialog draft flow exists");
+  ok("35. ordinary vs scene choice exists");
 
-  // 34 -- the composer path goes through CompanionClient, not fetch
+  // 36 — location / time / situation / mood fields
+  for (const f of SCENE_FIELDS) draft = setSceneField(draft, f, `v-${f}`);
+  draft = setFreeform(draft, "свободный текст");
+  const input = draftToInput(draft);
+  assert(input.scene && SCENE_FIELDS.every((f) => input.scene![f] === `v-${f}`), "structured fields stored");
+  assert(input.scene!.freeform === "свободный текст", "free-form stored alongside structured");
+  ok("36. location/time/situation/mood + free-form fields exist");
+
+  // 37 — random scenario action (deterministic, editable)
+  const whole = await mock.randomScenario({ seed: 2 });
+  assert(whole.scenario && SCENE_FIELDS.every((f) => typeof whole.scenario![f] === "string"), "random scenario fields");
+  const one = await mock.randomScenario({ field: "mood", seed: 2 });
+  assert(one.field === "mood" && typeof one.value === "string", "single-field dice");
+  ok("37. random scenario action exists (whole + per-field)");
+
+  // 38–41 — right wing markers
+  const wing = read("features/RightWing.tsx");
+  assert(/portrait/i.test(wing) && wing.includes("PORTRAIT_PLACEHOLDER_DATA_URI"), "portrait slot");
+  ok("38. right wing shows a persistent portrait slot");
+  assert(wing.includes("wing-scene-image") && wing.includes("hasSceneImage"), "conditional scene image");
+  ok("39. right wing conditionally shows the scene visual");
+  assert(wing.includes("wing-portrait-expanded"), "portrait expansion without scene image");
+  ok("40. no scene image → portrait expansion behaviour exists");
+  assert(wing.includes("scene-params") && wing.includes("Настроение"), "scene parameters rendered");
+  ok("41. scene parameters render (место/время/ситуация/настроение)");
+
+  // 42 + 43 — image job states render, composer never disabled by a job
+  let s = companionReducer(focus0, { type: "imageJobsLoaded", jobs: [
+    { jobId: "j1", sessionId: "x", characterId: "kira", kind: "context", state: "GENERATING",
+      createdAt: "", updatedAt: "", prompt: null, resultRef: null, error: null },
+  ] });
+  assert(anyImageJobActive(s.imageJobs) && s.loading === "idle", "image job active but chat not blocked");
+  const conv = read("features/Conversation.tsx");
+  assert(conv.includes("job-strip") && conv.includes("Создаём изображение"), "job status strip renders");
+  ok("42. image job states render");
+  assert(!/Composer[\s\S]*disabled=\{[^}]*job/i.test(conv), "composer not disabled by image jobs");
+  ok("43. image job does not disable the composer");
+
+  // 44 — create-image vs context-frame are distinct actions
+  const composer = read("features/Composer.tsx");
+  assert(composer.includes("onCreateImage") && composer.includes("onContextFrame"), "two distinct create actions");
+  assert(composer.includes("Создать изображение") && composer.includes("Кадр по контексту"), "distinct labels");
+  ok("44. create-image and context-frame actions are distinct");
+
+  // 45 — arbitrary attachment upload is disabled / not implemented
+  assert(/disabled/.test(composer) && /(Скоро|безопасной загрузки)/.test(composer), "attach actions disabled honestly");
+  assert(!/input[^>]*type=["']file["']/.test(composer), "no unsafe file picker");
+  ok("45. arbitrary attachment upload actions are disabled / not implemented");
+
+  // 46 — microphone not duplicated in the attachment menu
+  const menuBlock = composer.slice(composer.indexOf("composer-menu"), composer.indexOf("</div>", composer.indexOf("composer-menu")));
+  assert(!menuBlock.includes("🎤"), "microphone icon is not inside the + menu");
+  assert(!/(Голосов|voice message|Записать голос)/i.test(menuBlock), "no voice-message entry in the + menu");
+  assert(composer.includes("🎤") && composer.includes("Записать голосовое сообщение"),
+    "microphone is a dedicated composer button meaning 'record a voice message'");
+  ok("46. microphone is not duplicated in the attachment menu");
+
+  // 47–51 — Focus Mode
+  s = companionReducer(focus0, { type: "focusEnter" });
+  assert(s.focusActive, "focus enter");
+  s = companionReducer(s, { type: "focusExit" });
+  assert(!s.focusActive, "focus exit");
+  ok("47. Focus Mode exists");
+  assert(FOCUS_LAYOUTS.length === 3 && FOCUS_LAYOUTS.join(",") === "background,side_gallery,chat_only", "three layouts");
+  const fm = read("features/FocusMode.tsx");
+  assert(fm.includes("focus-background") || fm.includes("backgroundImage"), "BACKGROUND layout");
+  ok("48. BACKGROUND mode exists");
+  assert(fm.includes("focus-gallery") && fm.includes("side_gallery"), "SIDE_GALLERY layout");
+  ok("49. SIDE_GALLERY mode exists");
+  assert(fm.includes("chat_only"), "CHAT_ONLY layout");
+  ok("50. CHAT_ONLY exists");
+  assert(fm.includes('e.key === "Escape"') && fm.includes("onExit"), "Esc exits focus mode");
+  ok("51. Esc exits Focus Mode");
+  assert(nextFocusLayout("background") === "side_gallery" && nextFocusLayout("chat_only") === "background", "layout cycle");
+
+  // 52 — search / filter over title + preview
+  const sample = [
+    { ...c1, title: "Дождливый вечер", lastMessagePreview: "про зонт" },
+    { ...c2, title: "Утро", lastMessagePreview: "кофе" },
+  ];
+  assert(filterSessions(sample, "зонт").length === 1, "filter by preview");
+  assert(filterSessions(sample, "утро").length === 1, "filter by title (case-insensitive)");
+  assert(filterSessions(sample, "").length === 2, "empty query keeps all");
+  ok("52. search/filter over chat title + preview exists");
+
+  // 53 — Literary is not a broken selectable mode
+  assert(IMPLEMENTED_EXPERIENCES.join(",") === "cinematic", "only cinematic implemented");
+  assert(!isExperienceImplemented("literary"), "literary not implemented");
+  const appSrc = read("App.tsx");
+  assert(!/literary/i.test(appSrc), "App never renders a literary mode");
+  ok("53. future Literary is not exposed as a broken selectable mode");
+
+  // 54 — no Character Lab debug components imported
+  for (const rel of ["App.tsx", "features/RightWing.tsx", "features/ChatList.tsx",
+                     "features/NewDialog.tsx", "features/Conversation.tsx",
+                     "features/Composer.tsx", "features/FocusMode.tsx",
+                     "client/httpCompanionClient.ts", "mocks/mockCompanionClient.ts"]) {
+    const src = read(rel).toLowerCase();
+    for (const banned of ["character_lab", "characterlab", "characterdebugclient", "manifest",
+                          "evolutionpanel", "runtime_state", "turndebug", "operator"]) {
+      assert(!src.includes(banned), `${rel} free of '${banned}'`);
+    }
+  }
+  ok("54. no Character Lab debug components imported");
+
+  // extras
   const client: CompanionClient = mock;
-  assert(typeof client.sendMessage === "function", "sendMessage is the composer path");
-  const httpSrc = HttpCompanionClient.toString();
-  assert(httpSrc.includes("sendMessage"), "HttpCompanionClient implements sendMessage");
-  ok("34. composer sends through CompanionClient");
-
-  // 35 -- loading + error state exist in the pure state machine
-  const loading = companionReducer(initialCompanionState, { type: "loadStart", scope: "messages" });
-  assert(loading.loading === "messages" && loading.error === null, "loading state");
-  const errored = companionReducer(loading, { type: "loadFailed", code: "backend_unavailable", message: "Нет подключения" });
-  assert(errored.error?.code === "backend_unavailable" && errored.loading === "idle", "error state");
-  ok("35. bounded loading + error states exist");
-
-  // 36 -- no Character Lab debug surface leaks into the client contract
-  const contractSrc = [MockCompanionClient.toString(), httpSrc].join("\n").toLowerCase();
-  for (const forbidden of ["manifest", "evolution", "runtime_state", "runtimestate", "debug", "workspace", "epistemic"]) {
-    assert(!contractSrc.includes(forbidden), `client contract free of '${forbidden}'`);
-  }
-  ok("36. no Character Lab debug/operator surface in the client");
-
-  // 37 -- switching character clears stale selected session + transcript
-  let s = companionReducer(initialCompanionState, { type: "charactersLoaded", characters: chars });
-  s = companionReducer(s, { type: "selectCharacter", characterId: "kira" });
-  s = companionReducer(s, { type: "sessionsLoaded", sessions });
-  s = companionReducer(s, { type: "selectSession", sessionId: session.sessionId });
-  s = companionReducer(s, { type: "messagesLoaded", messages: turn.messages });
-  assert(s.messages.length === 2 && s.selectedSessionId === session.sessionId, "state primed");
-  const switched = companionReducer(s, { type: "selectCharacter", characterId: "other" });
-  assert(
-    switched.selectedSessionId === null && switched.messages.length === 0 && switched.sessions.length === 0,
-    "character switch clears session + transcript + session list",
-  );
-  ok("37. switching character clears stale session/history");
-
-  // 38 -- switching session clears the transcript pending a reload
-  const reselSame = companionReducer(s, { type: "selectSession", sessionId: session.sessionId });
-  assert(reselSame === s, "re-selecting the same session is a no-op");
-  const reselOther = companionReducer(s, { type: "selectSession", sessionId: "cmp-other" });
-  assert(reselOther.selectedSessionId === "cmp-other" && reselOther.messages.length === 0, "session switch clears until reload");
-  const reloaded = companionReducer(reselOther, { type: "messagesLoaded", messages: [] });
-  assert(reloaded.loading === "idle", "reload lands");
-  ok("38. switching session reloads history");
-
-  // 39 + 40 -- a failed send shows a bounded error and KEEPS prior messages
-  const sending = companionReducer(s, { type: "sendStart" });
-  assert(sending.loading === "sending", "send in flight");
-  const failed = companionReducer(sending, { type: "sendFailed", code: "provider_failed", message: "Сбой" });
-  assert(failed.error?.code === "provider_failed", "bounded error surfaced");
-  assert(failed.messages.length === 2 && failed.messages === s.messages, "prior transcript preserved after failed send");
-  ok("39. failed send shows a bounded error");
-  ok("40. previously persisted messages remain after a failed send");
-
-  // composer guard + error type
-  assert(!isSendableMessage("   ") && isSendableMessage("hi"), "blank messages are not sendable");
-  assert(new CompanionClientError(404, "unknown_session", "x").code === "unknown_session", "typed client error");
-  ok("composer rejects blank input; typed client errors");
-
-  // the mock's simulated failure must not corrupt history
-  const m2 = new MockCompanionClient();
-  const sess2 = await m2.createSession("kira");
-  await m2.sendMessage(sess2.sessionId, "one");
-  m2.failSendOnce();
-  let threw = false;
-  try {
-    await m2.sendMessage(sess2.sessionId, "two");
-  } catch (e) {
-    threw = e instanceof CompanionClientError && e.code === "provider_failed";
-  }
-  assert(threw, "simulated failure raised a bounded error");
-  assert((await m2.getMessages(sess2.sessionId)).length === 2, "history intact after failed send");
-  ok("mock failure path leaves history intact");
+  assert(typeof client.sendMessage === "function" && typeof client.createImageJob === "function", "client surface");
+  assert(!isSendableMessage("  ") && isSendableMessage("hi"), "blank messages not sendable");
+  assert(!sceneHasAny(emptyScene()) && sceneHasAny({ ...emptyScene(), place: "x" }), "sceneHasAny");
+  // sendMessage must NOT advance an image job
+  const sc = await mock.createSession("kira", { scene: { ...emptyScene(), place: "Кухня" } });
+  const job = await mock.createImageJob(sc.sessionId, "context");
+  await mock.sendMessage(sc.sessionId, "hi");
+  assert((await mock.getMessages(sc.sessionId)).length === 2, "chat works with a pending job");
+  const jobsAfterChat = [...(await mock.listImageJobs(sc.sessionId))];
+  assert(job.state === "QUEUED", "job object captured while queued");
+  assert(jobsAfterChat[0].state !== "QUEUED", "listImageJobs (poll) is what advances the job");
+  ok("send never advances image jobs; polling does");
 
   console.log(`\n${passed} passed, 0 failed`);
 }

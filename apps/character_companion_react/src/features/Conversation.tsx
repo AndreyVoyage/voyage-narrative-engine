@@ -1,33 +1,50 @@
-import { useState } from "react";
-import type { CompanionMessage } from "../client/types.js";
-import { isSendableMessage } from "../app/companionState.js";
+import type { CompanionMessage, CompanionSession, ImageJob } from "../client/types.js";
+import { anyImageJobActive } from "../app/companionState.js";
+import { Composer } from "./Composer.js";
 
 interface Props {
+  session: CompanionSession | null;
   messages: CompanionMessage[];
+  imageJobs: ImageJob[];
   sending: boolean;
-  active: boolean;
   error: { code: string; message: string } | null;
   onSend: (text: string) => void;
   onRetry: () => void;
+  onCreateImage: () => void;
+  onContextFrame: () => void;
+  onEnterFocus: () => void;
 }
 
-/** Regions C + D + E -- transcript, composer, and bounded connection/error state. */
-export function Conversation({ messages, sending, active, error, onSend, onRetry }: Props) {
-  const [draft, setDraft] = useState("");
-
-  function submit(event: { preventDefault: () => void }) {
-    event.preventDefault();
-    if (!isSendableMessage(draft) || sending) return;
-    onSend(draft.trim());
-    setDraft("");
-  }
-
-  if (!active) {
+/** Center region — transcript + composer + a NON-BLOCKING image-job status
+ * strip + bounded error. Chat stays usable while an image job runs. */
+export function Conversation({
+  session, messages, imageJobs, sending, error,
+  onSend, onRetry, onCreateImage, onContextFrame, onEnterFocus,
+}: Props) {
+  if (!session) {
     return <section className="panel conversation"><p className="empty">Выберите или создайте диалог.</p></section>;
   }
 
+  const lastJob = imageJobs[imageJobs.length - 1];
+  const jobBusy = anyImageJobActive(imageJobs);
+  const lastFailed = lastJob && lastJob.state === "FAILED";
+  const lastReady = lastJob && lastJob.state === "READY";
+
   return (
     <section className="panel conversation" aria-label="Диалог">
+      <header className="conversation-head">
+        <span className="conversation-title">{session.title || session.label}</span>
+        <button type="button" className="btn btn-sm" onClick={onEnterFocus}>Фокус-режим</button>
+      </header>
+
+      {(jobBusy || lastFailed || lastReady) && (
+        <div className="job-strip" aria-live="polite">
+          {jobBusy && "Создаём изображение…"}
+          {!jobBusy && lastReady && "Изображение готово"}
+          {!jobBusy && lastFailed && "Не удалось создать изображение"}
+        </div>
+      )}
+
       <ol className="transcript">
         {messages.map((m, i) => (
           <li key={m.seq ?? i} className={m.role === "user" ? "msg msg-user" : "msg msg-character"}>
@@ -45,18 +62,12 @@ export function Conversation({ messages, sending, active, error, onSend, onRetry
         </div>
       )}
 
-      <form className="composer" onSubmit={submit}>
-        <textarea
-          className="composer-input"
-          placeholder="Сообщение"
-          value={draft}
-          rows={2}
-          onChange={(e) => setDraft(e.target.value)}
-        />
-        <button type="submit" className="btn" disabled={sending || !isSendableMessage(draft)}>
-          {sending ? "…" : "Отправить"}
-        </button>
-      </form>
+      <Composer
+        sending={sending}
+        onSend={onSend}
+        onCreateImage={onCreateImage}
+        onContextFrame={onContextFrame}
+      />
     </section>
   );
 }

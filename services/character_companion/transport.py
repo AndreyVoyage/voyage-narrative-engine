@@ -3,22 +3,25 @@
 """JSON-dict <-> :class:`CompanionService` translation for the Companion client.
 
 Mirrors the Character Lab ``ReactTransport`` pattern: no HTTP, no sockets, no
-character/runtime logic of its own -- every method parses a plain JSON-safe
-dict into a typed service call and serializes the typed result back. Fully
-unit-testable without a server.
+character/runtime logic of its own. Fully unit-testable without a server.
 
-This transport exposes ONLY the five Companion operations. It never exposes any
-Character Lab debug / operator / workspace / memory-editor / evolution surface.
+Exposes ONLY end-user Companion operations: catalog, multi-chat sessions
+(with additive scene metadata), conversation, deterministic random scenario,
+and the async image-job boundary. NEVER any Character Lab debug / operator /
+workspace / memory-editor / evolution surface.
 """
 
 from __future__ import annotations
 
 from typing import Any, Callable, Dict
 
+from .image_jobs import KIND_CONTEXT, KIND_CUSTOM
+from .scenarios import SCENE_FIELDS, random_field, random_scenario
 from .service import (
     CompanionError,
     CompanionMessage,
     CompanionProviderError,
+    CompanionScene,
     CompanionService,
     CompanionSession,
 )
@@ -28,6 +31,7 @@ __all__ = ["CompanionTransportError", "CompanionTransport"]
 _STATUS_BY_CODE = {
     "unknown_character": 404,
     "unknown_session": 404,
+    "unknown_job": 404,
     "empty_message": 400,
     "invalid_request": 400,
     "provider_failed": 502,
@@ -36,9 +40,6 @@ _STATUS_BY_CODE = {
 
 
 class CompanionTransportError(Exception):
-    """Deterministic, JSON-safe transport error. No traceback ever reaches the
-    client; ``message`` is always a short deliberately-written string."""
-
     def __init__(self, status: int, code: str, message: str) -> None:
         super().__init__(message)
         self.status = status
@@ -66,6 +67,15 @@ def _character_to_json(entry) -> dict:
     }
 
 
+def _scene_to_json(scene) -> Dict[str, str] | None:
+    if scene is None:
+        return None
+    return {
+        "place": scene.place, "time": scene.time,
+        "situation": scene.situation, "mood": scene.mood, "freeform": scene.freeform,
+    }
+
+
 def _session_to_json(s: CompanionSession) -> dict:
     return {
         "sessionId": s.session_id,
@@ -74,11 +84,31 @@ def _session_to_json(s: CompanionSession) -> dict:
         "createdAt": s.created_at,
         "updatedAt": s.updated_at,
         "label": s.label,
+        "title": s.title,
+        "scene": _scene_to_json(s.scene),
+        "sceneCoverRef": s.scene_cover_ref,
+        "lastMessagePreview": s.last_message_preview,
+        "lastActivity": s.last_activity,
     }
 
 
 def _message_to_json(m: CompanionMessage) -> dict:
     return {"seq": m.seq, "role": m.role, "text": m.text, "createdAt": m.created_at}
+
+
+def _job_to_json(j) -> dict:
+    return {
+        "jobId": j.job_id,
+        "sessionId": j.session_id,
+        "characterId": j.character_id,
+        "kind": j.kind,
+        "state": j.state,
+        "createdAt": j.created_at,
+        "updatedAt": j.updated_at,
+        "prompt": j.prompt,
+        "resultRef": j.result_ref,
+        "error": j.error,
+    }
 
 
 def _run(fn: Callable[[], Dict[str, Any]]) -> Dict[str, Any]:
@@ -87,11 +117,9 @@ def _run(fn: Callable[[], Dict[str, Any]]) -> Dict[str, Any]:
     except CompanionTransportError:
         raise
     except CompanionProviderError as exc:
-        status = _STATUS_BY_CODE.get(exc.code, 502)
-        raise CompanionTransportError(status, exc.code, exc.message) from exc
+        raise CompanionTransportError(_STATUS_BY_CODE.get(exc.code, 502), exc.code, exc.message) from exc
     except CompanionError as exc:
-        status = _STATUS_BY_CODE.get(exc.code, 400)
-        raise CompanionTransportError(status, exc.code, exc.message) from exc
+        raise CompanionTransportError(_STATUS_BY_CODE.get(exc.code, 400), exc.code, exc.message) from exc
     except Exception as exc:  # noqa: BLE001 -- never leak a traceback
         raise CompanionTransportError(500, "internal_error", "internal server failure") from exc
 
@@ -100,22 +128,43 @@ class CompanionTransport:
     def __init__(self, service: CompanionService) -> None:
         self._service = service
 
+    # ---------------------------------------------------------- catalog
     def list_characters(self) -> dict:
         return _run(lambda: {
             "characters": [_character_to_json(c) for c in self._service.list_characters()]
         })
 
+    # ---------------------------------------------------------- sessions
     def list_sessions(self, character_id: str) -> dict:
         return _run(lambda: {
             "sessions": [_session_to_json(s) for s in self._service.list_sessions(character_id)]
         })
 
+    def get_session(self, session_id: str) -> dict:
+        return _run(lambda: _session_to_json(self._service.get_session(session_id)))
+
     def create_session(self, payload: dict) -> dict:
         if not isinstance(payload, dict):
             raise CompanionTransportError(400, "invalid_request", "request body must be a JSON object")
         character_id = _require_str(payload, "characterId")
-        return _run(lambda: _session_to_json(self._service.create_session(character_id)))
+        title = payload.get("title")
+        scene = payload.get("scene")
+        if title is not None and not isinstance(title, str):
+            raise CompanionTransportError(400, "invalid_request", "'title' must be a string")
+        if scene is not None and not isinstance(scene, dict):
+            raise CompanionTransportError(400, "invalid_request", "'scene' must be an object")
+        return _run(lambda: _session_to_json(
+            self._service.create_session(character_id, title=title, scene=scene)
+        ))
 
+    def set_scene_cover(self, payload: dict) -> dict:
+        if not isinstance(payload, dict):
+            raise CompanionTransportError(400, "invalid_request", "request body must be a JSON object")
+        session_id = _require_str(payload, "sessionId")
+        result_ref = _require_str(payload, "resultRef")
+        return _run(lambda: _session_to_json(self._service.set_scene_cover(session_id, result_ref)))
+
+    # ---------------------------------------------------------- chat
     def get_messages(self, session_id: str) -> dict:
         return _run(lambda: {
             "sessionId": session_id,
@@ -135,7 +184,55 @@ class CompanionTransport:
             return {
                 "sessionId": turn.session_id,
                 "response": turn.response,
+                "scenePresent": turn.scene_present,
                 "messages": [_message_to_json(m) for m in turn.messages],
             }
 
         return _run(op)
+
+    # ---------------------------------------------------------- scenario
+    def random_scenario(self, payload: dict) -> dict:
+        payload = payload if isinstance(payload, dict) else {}
+        field = payload.get("field")
+        seed = payload.get("seed")
+        if seed is not None and not isinstance(seed, int):
+            raise CompanionTransportError(400, "invalid_request", "'seed' must be an integer or null")
+
+        def op():
+            if isinstance(field, str) and field:
+                if field not in SCENE_FIELDS:
+                    raise CompanionError("invalid_request", f"unknown scenario field {field!r}")
+                return {"field": field, "value": random_field(field, seed=seed)}
+            return {"scenario": random_scenario(seed=seed)}
+
+        return _run(op)
+
+    # ---------------------------------------------------------- image jobs
+    def create_image_job(self, payload: dict) -> dict:
+        if not isinstance(payload, dict):
+            raise CompanionTransportError(400, "invalid_request", "request body must be a JSON object")
+        session_id = _require_str(payload, "sessionId")
+        kind = _require_str(payload, "kind")
+        if kind not in (KIND_CUSTOM, KIND_CONTEXT):
+            raise CompanionTransportError(400, "invalid_request", f"'kind' must be one of {KIND_CUSTOM!r}/{KIND_CONTEXT!r}")
+        prompt = payload.get("prompt")
+        if prompt is not None and not isinstance(prompt, str):
+            raise CompanionTransportError(400, "invalid_request", "'prompt' must be a string or null")
+        return _run(lambda: _job_to_json(
+            self._service.create_image_job(session_id, kind=kind, prompt=prompt)
+        ))
+
+    def list_image_jobs(self, session_id: str) -> dict:
+        return _run(lambda: {
+            "sessionId": session_id,
+            "jobs": [_job_to_json(j) for j in self._service.poll_image_jobs(session_id)],
+        })
+
+    def get_image_job(self, job_id: str) -> dict:
+        return _run(lambda: _job_to_json(self._service.get_image_job(job_id)))
+
+    def delete_image_job(self, payload: dict) -> dict:
+        if not isinstance(payload, dict):
+            raise CompanionTransportError(400, "invalid_request", "request body must be a JSON object")
+        job_id = _require_str(payload, "jobId")
+        return _run(lambda: (self._service.delete_image_job(job_id), {"deleted": job_id})[1])

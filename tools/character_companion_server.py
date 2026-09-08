@@ -38,6 +38,10 @@ from services.character_companion import (  # noqa: E402
     LocalLLMConfig,
     resolve_companion_provider_factory,
 )
+from services.character_companion.image_jobs import (  # noqa: E402
+    FakeImageGenerator,
+    UnavailableImageGenerator,
+)
 from services.character_companion.local_provider import (  # noqa: E402
     DEFAULT_LOCAL_BASE_URL,
     DEFAULT_LOCAL_MODEL,
@@ -87,11 +91,18 @@ def build_transport(
         provider_info = {"provider_id": "local", "model": cfg.model}
     else:
         provider_info = {"provider_id": FAKE_PROVIDER_ID, "model": FAKE_MODEL}
+    # This is a dev/fake loopback server: the deterministic FakeImageGenerator is
+    # wired so the async image-job UI path is exercisable end to end. A real
+    # deployment leaves the generator UNAVAILABLE until a pipeline adapter is
+    # bound (COMPANION_IMAGE_GENERATOR=unavailable).
+    gen_mode = (env.get("COMPANION_IMAGE_GENERATOR") or "fake").strip().lower()
+    image_generator = FakeImageGenerator() if gen_mode == "fake" else UnavailableImageGenerator()
     service = CompanionService(
         acceptance_root=acceptance_root or (repo_root / "accepted"),
         data_root=data_root,
         provider_factory=provider_factory,
         provider_info=provider_info,
+        image_generator=image_generator,
     )
     return CompanionTransport(service)
 
@@ -134,6 +145,7 @@ class CompanionServer:
 
     def _make_handler(self):
         transport = self._transport
+        service = transport._service  # noqa: SLF001 -- same-process loopback image serving
 
         class Handler(BaseHTTPRequestHandler):
             server_version = "CharacterCompanion/0.1"
@@ -180,14 +192,53 @@ class CompanionServer:
                     return self._call(lambda: transport.list_sessions(character_id))
                 if method == "POST" and parts == ["api", "companion", "sessions"]:
                     return self._call(lambda: transport.create_session(body))
+                if method == "GET" and parts[:3] == ["api", "companion", "sessions"] and len(parts) == 4:
+                    return self._call(lambda: transport.get_session(urllib.parse.unquote(parts[3])))
                 if method == "GET" and parts[:3] == ["api", "companion", "sessions"] and len(parts) == 5 \
                         and parts[4] == "messages":
                     session_id = urllib.parse.unquote(parts[3])
                     return self._call(lambda: transport.get_messages(session_id))
+                if method == "GET" and parts[:3] == ["api", "companion", "sessions"] and len(parts) == 5 \
+                        and parts[4] == "images":
+                    session_id = urllib.parse.unquote(parts[3])
+                    return self._call(lambda: transport.list_image_jobs(session_id))
                 if method == "POST" and parts == ["api", "companion", "messages"]:
                     return self._call(lambda: transport.send_message(body))
+                if method == "POST" and parts == ["api", "companion", "scenario"]:
+                    return self._call(lambda: transport.random_scenario(body))
+                if method == "POST" and parts == ["api", "companion", "sessions", "cover"]:
+                    return self._call(lambda: transport.set_scene_cover(body))
+                if method == "POST" and parts == ["api", "companion", "images"]:
+                    return self._call(lambda: transport.create_image_job(body))
+                if method == "POST" and parts == ["api", "companion", "images", "delete"]:
+                    return self._call(lambda: transport.delete_image_job(body))
+                if method == "GET" and parts[:3] == ["api", "companion", "images"] and len(parts) == 4:
+                    return self._call(lambda: transport.get_image_job(urllib.parse.unquote(parts[3])))
+                if method == "GET" and parts[:3] == ["api", "companion", "image-file"] and len(parts) >= 4:
+                    return self._serve_image(urllib.parse.unquote("/".join(parts[3:])))
 
                 self._json(404, {"error": {"code": "not_found", "message": "unknown route"}})
+
+            def _serve_image(self, result_ref: str) -> None:
+                # loopback-only, generated-image serving. Fail closed on any ref
+                # that is not exactly a file under <data_root>/images/.
+                if not result_ref.startswith("images/") or ".." in result_ref or "\\" in result_ref:
+                    self._json(400, {"error": {"code": "invalid_request", "message": "bad ref"}})
+                    return
+                images_root = (service._data_root / "images").resolve()  # noqa: SLF001
+                path = (service._data_root / result_ref).resolve()       # noqa: SLF001
+                if images_root not in path.parents or not path.is_file():
+                    self._json(404, {"error": {"code": "not_found", "message": "image not found"}})
+                    return
+                raw = path.read_bytes()
+                self.send_response(200)
+                self.send_header(
+                    "Content-Type",
+                    "image/svg+xml" if path.suffix == ".svg" else "application/octet-stream",
+                )
+                self.send_header("Content-Length", str(len(raw)))
+                self.end_headers()
+                self.wfile.write(raw)
 
             def do_GET(self) -> None:
                 self._route("GET", self.path.split("?", 1)[0], {})

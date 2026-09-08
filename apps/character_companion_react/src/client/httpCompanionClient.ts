@@ -2,9 +2,9 @@
  * The ONLY file in the Companion app with HTTP concepts. Everything else
  * depends on the transport-neutral `CompanionClient` interface.
  *
- * Talks to `tools/character_companion_server.py` (loopback, fake provider) via
- * relative `/api/companion/...` paths -- Vite proxies them in dev, so there is
- * no CORS and no hardcoded host in feature code.
+ * Talks to `tools/character_companion_server.py` (loopback, fake provider,
+ * fake image generator in dev) via relative `/api/companion/...` paths — Vite
+ * proxies them in dev, so no CORS and no hardcoded host in feature code.
  */
 
 import {
@@ -14,6 +14,11 @@ import {
   CompanionMessage,
   CompanionSession,
   CompanionTurn,
+  ImageJob,
+  ImageJobKind,
+  NewDialogInput,
+  RandomScenarioResult,
+  SceneField,
 } from "./types.js";
 
 const BASE = "/api/companion";
@@ -50,31 +55,61 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<T>
 
 export class HttpCompanionClient implements CompanionClient {
   async listCharacters(): Promise<CompanionCharacter[]> {
-    const data = await call<{ characters: CompanionCharacter[] }>("GET", "/characters");
-    return data.characters ?? [];
+    return (await call<{ characters: CompanionCharacter[] }>("GET", "/characters")).characters ?? [];
   }
 
   async listSessions(characterId: string): Promise<CompanionSession[]> {
-    const data = await call<{ sessions: CompanionSession[] }>(
-      "GET",
-      `/characters/${encodeURIComponent(characterId)}/sessions`,
-    );
-    return data.sessions ?? [];
+    return (
+      await call<{ sessions: CompanionSession[] }>(
+        "GET",
+        `/characters/${encodeURIComponent(characterId)}/sessions`,
+      )
+    ).sessions ?? [];
   }
 
-  async createSession(characterId: string): Promise<CompanionSession> {
-    return call<CompanionSession>("POST", "/sessions", { characterId });
+  async getSession(sessionId: string): Promise<CompanionSession> {
+    return call<CompanionSession>("GET", `/sessions/${encodeURIComponent(sessionId)}`);
+  }
+
+  async createSession(characterId: string, input?: NewDialogInput): Promise<CompanionSession> {
+    return call<CompanionSession>("POST", "/sessions", {
+      characterId,
+      title: input?.title,
+      scene: input?.scene,
+    });
   }
 
   async getMessages(sessionId: string): Promise<CompanionMessage[]> {
-    const data = await call<{ messages: CompanionMessage[] }>(
-      "GET",
-      `/sessions/${encodeURIComponent(sessionId)}/messages`,
-    );
-    return data.messages ?? [];
+    return (
+      await call<{ messages: CompanionMessage[] }>(
+        "GET",
+        `/sessions/${encodeURIComponent(sessionId)}/messages`,
+      )
+    ).messages ?? [];
   }
 
   async sendMessage(sessionId: string, text: string): Promise<CompanionTurn> {
     return call<CompanionTurn>("POST", "/messages", { sessionId, text });
+  }
+
+  async randomScenario(opts?: { field?: SceneField; seed?: number }): Promise<RandomScenarioResult> {
+    return call<RandomScenarioResult>("POST", "/scenario", {
+      field: opts?.field,
+      seed: opts?.seed ?? null,
+    });
+  }
+
+  async createImageJob(sessionId: string, kind: ImageJobKind, prompt?: string): Promise<ImageJob> {
+    return call<ImageJob>("POST", "/images", { sessionId, kind, prompt: prompt ?? null });
+  }
+
+  async listImageJobs(sessionId: string): Promise<ImageJob[]> {
+    return (
+      await call<{ jobs: ImageJob[] }>("GET", `/sessions/${encodeURIComponent(sessionId)}/images`)
+    ).jobs ?? [];
+  }
+
+  async setSceneCover(sessionId: string, resultRef: string): Promise<CompanionSession> {
+    return call<CompanionSession>("POST", "/sessions/cover", { sessionId, resultRef });
   }
 }

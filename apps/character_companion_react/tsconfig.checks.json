@@ -12,10 +12,14 @@
     "rootDir": "."
   },
   "include": [
+    "scripts/node-min.d.ts",
     "scripts/structural-checks.ts",
     "src/client/types.ts",
     "src/client/httpCompanionClient.ts",
     "src/mocks/mockCompanionClient.ts",
-    "src/app/companionState.ts"
+    "src/app/companionState.ts",
+    "src/app/appearance.ts",
+    "src/app/newDialog.ts",
+    "src/assets/portraitPlaceholder.ts"
   ]
 }
