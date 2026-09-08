@@ -368,3 +368,12 @@ textarea:disabled {
   color: var(--clab-text-muted);
   overflow-wrap: anywhere;
 }
+
+
+.clab-evolution-candidate {
+  border: 1px solid var(--clab-border, #46505c);
+  border-radius: 8px;
+  padding: 16px;
+  margin-block: 12px;
+  overflow-wrap: anywhere;
+}

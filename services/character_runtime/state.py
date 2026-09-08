@@ -32,6 +32,7 @@ under the caller-supplied ``root``.
 from __future__ import annotations
 
 import re
+from contextlib import contextmanager
 import sqlite3
 import uuid
 from dataclasses import dataclass
@@ -206,6 +207,33 @@ class RuntimeStateBackend:
     def db_path(self) -> Path:
         return self._db_path
 
+    @contextmanager
+    def transaction(self):
+        """Share one atomic write with sibling stores in this workspace DB.
+
+        IMMEDIATE serializes read-modify-write approvals across connections.
+        Nested state writes use savepoints and never commit the outer decision.
+        """
+        if self._conn is None:
+            raise RuntimeStateError("runtime state backend is already closed")
+        conn = self._conn
+        nested = conn.in_transaction
+        savepoint = "state_" + uuid.uuid4().hex
+        conn.execute(f"SAVEPOINT {savepoint}" if nested else "BEGIN IMMEDIATE")
+        try:
+            yield conn
+            if nested:
+                conn.execute(f"RELEASE SAVEPOINT {savepoint}")
+            else:
+                conn.commit()
+        except BaseException:
+            if nested:
+                conn.execute(f"ROLLBACK TO SAVEPOINT {savepoint}")
+                conn.execute(f"RELEASE SAVEPOINT {savepoint}")
+            else:
+                conn.rollback()
+            raise
+
     # ------------------------------------------------------------------- write
     def _append(
         self,
@@ -261,28 +289,28 @@ class RuntimeStateBackend:
             created_at=created_at or _now_iso(),
         )
         try:
-            cursor = self._conn.execute(
-                "INSERT INTO runtime_state_events"
-                " (event_id, subject_id, domain, key, action, value,"
-                "  source_kind, source_ref, created_at)"
-                " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (
-                    event.event_id,
-                    event.subject_id,
-                    event.domain,
-                    event.key,
-                    event.action,
-                    event.value,
-                    event.source_kind,
-                    event.source_ref,
-                    event.created_at,
-                ),
-            )
-            self._conn.execute(
-                "UPDATE runtime_state_events SET seq = ? WHERE event_id = ?",
-                (cursor.lastrowid, event.event_id),
-            )
-            self._conn.commit()
+            with self.transaction():
+                cursor = self._conn.execute(
+                    "INSERT INTO runtime_state_events"
+                    " (event_id, subject_id, domain, key, action, value,"
+                    "  source_kind, source_ref, created_at)"
+                    " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        event.event_id,
+                        event.subject_id,
+                        event.domain,
+                        event.key,
+                        event.action,
+                        event.value,
+                        event.source_kind,
+                        event.source_ref,
+                        event.created_at,
+                    ),
+                )
+                self._conn.execute(
+                    "UPDATE runtime_state_events SET seq = ? WHERE event_id = ?",
+                    (cursor.lastrowid, event.event_id),
+                )
         except sqlite3.IntegrityError as exc:
             raise RuntimeStateError(
                 f"duplicate runtime state event_id {event.event_id!r}"
@@ -384,28 +412,29 @@ class RuntimeStateBackend:
             )
         step = _coerce_state_int(delta)
         key = _validate_numeric_key(domain, (key or "").strip())
-        current = self.current_numeric(domain, key)
-        if current is None:
-            raise RuntimeStateError(
-                f"{domain} key {key!r} is not initialized; SET an absolute "
-                f"value first"
+        with self.transaction():
+            current = self.current_numeric(domain, key)
+            if current is None:
+                raise RuntimeStateError(
+                    f"{domain} key {key!r} is not initialized; SET an absolute "
+                    f"value first"
+                )
+            new_value = current + step
+            if not (NUMERIC_STATE_MIN <= new_value <= NUMERIC_STATE_MAX):
+                raise RuntimeStateError(
+                    f"adjusted value {new_value} out of range "
+                    f"[{NUMERIC_STATE_MIN}, {NUMERIC_STATE_MAX}]; state unchanged"
+                )
+            return self._append(
+                domain=domain,
+                key=key,
+                action=ACTION_SET,
+                value=str(new_value),
+                source_kind=source_kind,
+                source_ref=source_ref,
+                event_id=event_id,
+                created_at=created_at,
             )
-        new_value = current + step
-        if not (NUMERIC_STATE_MIN <= new_value <= NUMERIC_STATE_MAX):
-            raise RuntimeStateError(
-                f"adjusted value {new_value} out of range "
-                f"[{NUMERIC_STATE_MIN}, {NUMERIC_STATE_MAX}]; state unchanged"
-            )
-        return self._append(
-            domain=domain,
-            key=key,
-            action=ACTION_SET,
-            value=str(new_value),
-            source_kind=source_kind,
-            source_ref=source_ref,
-            event_id=event_id,
-            created_at=created_at,
-        )
 
     # -------------------------------------------------------------------- read
     def load_events(self, subject_id: str) -> Tuple[RuntimeStateEvent, ...]:

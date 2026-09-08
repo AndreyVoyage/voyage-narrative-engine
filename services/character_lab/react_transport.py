@@ -36,6 +36,10 @@ Scene / Debug are NOT exposed here yet.
 
 from __future__ import annotations
 
+from services.character_runtime.evolution import EvolutionCandidateError
+from services.character_runtime.evolution_store import EvolutionConflictError, EvolutionNotFoundError
+from services.character_runtime.state import RuntimeStateError
+
 from typing import Any, Callable, Dict, Optional
 
 from services.character_core.contract import (
@@ -333,6 +337,14 @@ def _run(operation: str, fn: Callable[[], Dict[str, Any]]) -> Dict[str, Any]:
             f"SessionPurpose.{exc.purpose.value} is recognized but not "
             "implemented by this desktop integration",
         ) from exc
+    except EvolutionNotFoundError as exc:
+        raise ReactTransportError(404, "unknown_evolution_candidate", str(exc)) from exc
+    except EvolutionConflictError as exc:
+        raise ReactTransportError(409, "evolution_conflict", str(exc)) from exc
+    except EvolutionCandidateError as exc:
+        raise ReactTransportError(400, "invalid_evolution_candidate", str(exc)) from exc
+    except RuntimeStateError as exc:
+        raise ReactTransportError(409, "evolution_state_conflict", str(exc)) from exc
     except RuntimeStateMutationError as exc:
         # Canonical backend rejection of a Runtime State mutation. Invalid
         # input (domain/key/value) is a client error (400); anything the
@@ -560,6 +572,40 @@ class ReactTransport:
         return _run("workspace", op)
 
     # ---------------------------------------------------------- runtime state
+
+    def list_evolution_candidates(self, workspace_id: str) -> dict:
+        return _run("workspace", lambda: {"candidates":
+                    self._adapter.list_evolution_candidates(workspace_id)})
+
+    def create_evolution_candidate(self, payload: dict) -> dict:
+        workspace_id = _require_str_field(payload, "workspaceId")
+        allowed = {"workspaceId", "domain", "key", "operation", "reason",
+                   "basisEventIds", "confidence", "timescale", "proposedValue", "proposedDelta"}
+        if set(payload) - allowed:
+            raise _invalid_request("unknown candidate fields")
+        fields = {name: _require_str_field(payload, name) for name in
+                  ("domain", "key", "operation", "reason", "timescale")}
+        basis = payload.get("basisEventIds")
+        if not isinstance(basis, list):
+            raise _invalid_request("basisEventIds must be an array")
+        fields.update(basis_event_ids=basis, confidence=payload.get("confidence"),
+                      proposed_value=payload.get("proposedValue"),
+                      proposed_delta=payload.get("proposedDelta"))
+        return _run("workspace", lambda:
+                    self._adapter.create_evolution_candidate(workspace_id, **fields))
+
+    def decide_evolution_candidate(self, payload: dict) -> dict:
+        workspace_id = _require_str_field(payload, "workspaceId")
+        candidate_id = _require_str_field(payload, "candidateId")
+        decision = _require_str_field(payload, "decision")
+        decided_by = _require_str_field(payload, "decidedBy")
+        if set(payload) - {"workspaceId", "candidateId", "decision", "decidedBy", "reason"}:
+            raise _invalid_request("unknown decision fields")
+        reason = payload.get("reason")
+        if reason is not None and not isinstance(reason, str):
+            raise _invalid_request("reason must be a string or null")
+        return _run("workspace", lambda: self._adapter.decide_evolution_candidate(
+            workspace_id, candidate_id, decision=decision, decided_by=decided_by, reason=reason))
 
     def get_runtime_state(self, workspace_id: str) -> dict:
         def op():

@@ -1,3 +1,4 @@
+import type { EvolutionCandidate, EvolutionProposal } from "./types.js";
 /**
  * HttpCharacterClient -- the local loopback HTTP/JSON transport adapter for
  * `CharacterClient`, talking to `tools/character_lab_react_server.py`'s
@@ -259,6 +260,23 @@ function toRelationSummary(json: any): MemoryRelationSummary {
 }
 
 export class HttpCharacterClient implements CharacterClient {
+  async listEvolutionCandidates(workspaceId: string): Promise<readonly EvolutionCandidate[]> {
+    const data = await requestJson(`/api/workspaces/${encodeURIComponent(workspaceId)}/evolution/candidates`) as { candidates: EvolutionCandidate[] };
+    return data.candidates;
+  }
+
+  async createEvolutionCandidate(workspaceId: string, proposal: EvolutionProposal): Promise<EvolutionCandidate> {
+    return await requestJson("/api/evolution/candidates", {
+      method: "POST", body: JSON.stringify({ ...proposal, workspaceId }),
+    }) as EvolutionCandidate;
+  }
+
+  async decideEvolutionCandidate(workspaceId: string, candidateId: string, decision: "APPROVE" | "REJECT", decidedBy: string, reason?: string): Promise<EvolutionCandidate> {
+    return await requestJson("/api/evolution/candidates/decision", {
+      method: "POST", body: JSON.stringify({ workspaceId, candidateId, decision, decidedBy, reason }),
+    }) as EvolutionCandidate;
+  }
+
   // ------------------------------------------------------------- catalog
 
   async listCharacters(): Promise<readonly CharacterSummary[]> {

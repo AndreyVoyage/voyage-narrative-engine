@@ -1,3 +1,4 @@
+import type { EvolutionCandidate, EvolutionProposal } from "./types.js";
 /**
  * CharacterClient -- the TypeScript client representation of the already
  * committed logical `CharacterService` Python contract
@@ -45,6 +46,10 @@ import type {
 } from "./types.js";
 
 export interface CharacterClient {
+  listEvolutionCandidates(workspaceId: string): Promise<readonly EvolutionCandidate[]>;
+  createEvolutionCandidate(workspaceId: string, proposal: EvolutionProposal): Promise<EvolutionCandidate>;
+  decideEvolutionCandidate(workspaceId: string, candidateId: string, decision: "APPROVE" | "REJECT", decidedBy: string, reason?: string): Promise<EvolutionCandidate>;
+
   // ------------------------------------------------------------- catalog
   listCharacters(): Promise<readonly CharacterSummary[]>;
   getCharacter(characterId: string): Promise<CharacterSummary>;

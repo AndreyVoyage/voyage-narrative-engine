@@ -30,6 +30,10 @@ mapping them to TESTING.
 from __future__ import annotations
 
 from typing import Optional, Sequence, Tuple
+from dataclasses import asdict
+
+from services.character_runtime.state import RuntimeStateBackend
+from services.character_runtime.evolution_store import EvolutionCandidateStore
 
 from services.character_core.contract import (
     CapabilitySet,
@@ -577,6 +581,45 @@ class CharacterLabServiceAdapter:
     # ---------------------------------------------------------- runtime state
     # Runtime State is workspace-scoped (existing Character Lab semantics
     # exactly), same as memory.
+
+    # Lab-local extension; does not change the Character Core protocol.
+    def _evolution_backend(self, workspace_id):
+        try:
+            workspace = self._app._workspace_manager.get(workspace_id)
+        except WorkspaceError as exc:
+            raise KeyError(f"unknown workspace {workspace_id!r}") from exc
+        return RuntimeStateBackend(workspace.state_root, _CHARACTER_ID)
+
+    @staticmethod
+    def _evolution_summary(row):
+        candidate, decision, event_id = row
+        return {**asdict(candidate),
+                "decision": asdict(decision) if decision else None,
+                "state_event_id": event_id}
+
+    def list_evolution_candidates(self, workspace_id, *, status=None):
+        backend = self._evolution_backend(workspace_id)
+        try:
+            return tuple(self._evolution_summary(row) for row in
+                         EvolutionCandidateStore(backend).list_candidates(status=status))
+        finally:
+            backend.close()
+
+    def create_evolution_candidate(self, workspace_id, **fields):
+        backend = self._evolution_backend(workspace_id)
+        try:
+            candidate = EvolutionCandidateStore(backend).create_candidate(**fields)
+            return self._evolution_summary((candidate, None, None))
+        finally:
+            backend.close()
+
+    def decide_evolution_candidate(self, workspace_id, candidate_id, **fields):
+        backend = self._evolution_backend(workspace_id)
+        try:
+            return self._evolution_summary(
+                EvolutionCandidateStore(backend).decide_candidate(candidate_id, **fields))
+        finally:
+            backend.close()
 
     def get_runtime_state(self, workspace_id: str) -> RuntimeStateSummary:
         self._ensure_current_workspace(workspace_id)

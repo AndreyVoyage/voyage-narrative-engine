@@ -170,6 +170,8 @@ class EvolutionCandidate:
             )
 
         # basis_event_ids -- explicit, immutable, non-empty, unique, no blanks
+        if not isinstance(self.basis_event_ids, (list, tuple)):
+            raise EvolutionCandidateError("basis_event_ids must be a list or tuple")
         basis = tuple(self.basis_event_ids or ())
         if not basis:
             raise EvolutionCandidateError("basis_event_ids must be non-empty")
@@ -316,7 +318,7 @@ class EvolutionCandidateWorkflow:
             key=key,
             operation=operation,
             reason=reason,
-            basis_event_ids=tuple(basis_event_ids or ()),
+            basis_event_ids=basis_event_ids,
             confidence=confidence,
             timescale=timescale,
             proposed_value=proposed_value,
@@ -422,6 +424,13 @@ class EvolutionCandidateWorkflow:
         # defensive re-validation of the candidate shape before any write
         _revalidate(cand)
 
+        decision = EvolutionDecision(
+            candidate_id=candidate_id,
+            decision=DECISION_APPROVE,
+            decided_by=decided_by,
+            reason=reason,
+            decided_at=decided_at or _now_iso(),
+        )
         source_ref = f"{SOURCE_REF_PREFIX}{cand.candidate_id}"
         if cand.operation == OPERATION_SET:
             state_event = state_backend.record_set(
@@ -440,13 +449,6 @@ class EvolutionCandidateWorkflow:
                 source_ref=source_ref,
             )
 
-        decision = EvolutionDecision(
-            candidate_id=candidate_id,
-            decision=DECISION_APPROVE,
-            decided_by=decided_by,
-            reason=reason,
-            decided_at=decided_at or _now_iso(),
-        )
         self._candidates[candidate_id] = _with_status(cand, CANDIDATE_STATUS_APPROVED)
         self._decisions.append(decision)
         return EvolutionApproval(

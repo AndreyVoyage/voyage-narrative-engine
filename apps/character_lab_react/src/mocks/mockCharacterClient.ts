@@ -1,3 +1,4 @@
+import type { EvolutionCandidate, EvolutionProposal } from "../client/types.js";
 /**
  * MockCharacterClient -- an in-memory, deterministic `CharacterClient`
  * implementation. Lets React UI be built and exercised before any transport
@@ -8,6 +9,7 @@
 
 import type { CharacterClient } from "../client/characterClient.js";
 import {
+  NotIntegratedInTransportError,
   SessionPurpose,
   SessionPurposeNotImplementedError,
   isSessionPurposeSupported,
@@ -51,6 +53,16 @@ function nextId(prefix: string): string {
 }
 
 export class MockCharacterClient implements CharacterClient {
+  async listEvolutionCandidates(_workspaceId: string): Promise<readonly EvolutionCandidate[]> {
+    throw new NotIntegratedInTransportError("evolution");
+  }
+  async createEvolutionCandidate(_workspaceId: string, _proposal: EvolutionProposal): Promise<EvolutionCandidate> {
+    throw new NotIntegratedInTransportError("evolution");
+  }
+  async decideEvolutionCandidate(_workspaceId: string, _candidateId: string, _decision: "APPROVE" | "REJECT", _decidedBy: string, _reason?: string): Promise<EvolutionCandidate> {
+    throw new NotIntegratedInTransportError("evolution");
+  }
+
   private readonly workspaces = new Map<string, WorkspaceSummary>();
   private readonly sessions = new Map<string, CharacterSession>();
   private readonly memoryByWorkspace = new Map<string, MemoryEventSummary[]>();

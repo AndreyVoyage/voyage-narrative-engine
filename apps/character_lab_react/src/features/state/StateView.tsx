@@ -3,6 +3,7 @@ import { useAppState } from "../../app/AppState";
 import { RuntimeStateGroups } from "../../components/devtools";
 import { EmptyState, Panel, Toolbar } from "../../components/primitives";
 import type { RuntimeStateSummary } from "../../client/types";
+import { EvolutionPanel } from "./EvolutionPanel";
 import { StateEditor } from "./StateEditor";
 
 /** Developer/debug view: Runtime State (FACT / RELATIONSHIP / PSYCHOLOGY),
@@ -10,8 +11,14 @@ import { StateEditor } from "./StateEditor";
  * CharacterClient and edits it through SET / ADJUST / REMOVE -- never mock
  * data. */
 export function StateView() {
+  const { state } = useAppState();
+  return state.selectedWorkspaceId
+    ? <WorkspaceState key={state.selectedWorkspaceId} workspaceId={state.selectedWorkspaceId} />
+    : <Panel><EmptyState title="Рабочая область ещё не готова" /></Panel>;
+}
+
+function WorkspaceState({ workspaceId }: { readonly workspaceId: string }) {
   const { state, client } = useAppState();
-  const workspaceId = state.selectedWorkspaceId;
   const [runtimeState, setRuntimeState] = useState<RuntimeStateSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,6 +55,7 @@ export function StateView() {
     return (
       <Panel>
         <EmptyState title="Ошибка состояния">Ошибка: {error}</EmptyState>
+        <button onClick={() => void reload()}>Повторить загрузку</button>
       </Panel>
     );
   }
@@ -63,6 +71,9 @@ export function StateView() {
         <EmptyState title="Загрузка состояния…" />
       ) : (
         <RuntimeStateGroups current={runtimeState?.current ?? []} />
+      )}
+      {state.clientMode === "local" && (
+        <EvolutionPanel key={workspaceId} client={client} workspaceId={workspaceId} onChanged={reload} />
       )}
       <StateEditor
         client={client}

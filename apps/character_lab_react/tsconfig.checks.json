@@ -13,6 +13,7 @@
   },
   "include": [
     "scripts/structural-checks.ts",
+    "scripts/evolution-checks.ts",
     "src/client/types.ts",
     "src/client/characterClient.ts",
     "src/client/characterDebugClient.ts",

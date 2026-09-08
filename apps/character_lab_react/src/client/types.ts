@@ -371,3 +371,38 @@ export interface MemoryRelationSummary {
   readonly fromRecordId: string;
   readonly toRecordId: string;
 }
+
+// Lab-local evolution operator flow. Confidence is metadata, never authority.
+export interface EvolutionProposal {
+  readonly domain: "RELATIONSHIP" | "PSYCHOLOGY";
+  readonly key: string;
+  readonly operation: "SET" | "ADJUST";
+  readonly reason: string;
+  readonly basisEventIds: readonly string[];
+  readonly confidence: number;
+  readonly timescale: "FAST" | "MEDIUM" | "SLOW" | "AUTHOR_ONLY";
+  readonly proposedValue?: number;
+  readonly proposedDelta?: number;
+}
+export interface EvolutionCandidate {
+  readonly candidate_id: string;
+  readonly subject_id: string;
+  readonly domain: EvolutionProposal["domain"];
+  readonly key: string;
+  readonly operation: EvolutionProposal["operation"];
+  readonly reason: string;
+  readonly basis_event_ids: readonly string[];
+  readonly confidence: number;
+  readonly timescale: EvolutionProposal["timescale"];
+  readonly proposed_value: number | null;
+  readonly proposed_delta: number | null;
+  readonly status: "PENDING" | "APPROVED" | "REJECTED";
+  readonly created_at: string;
+  readonly state_event_id: string | null;
+  readonly decision: {
+    readonly decision: "APPROVE" | "REJECT";
+    readonly decided_by: string;
+    readonly decided_at: string;
+    readonly reason: string | null;
+  } | null;
+}
