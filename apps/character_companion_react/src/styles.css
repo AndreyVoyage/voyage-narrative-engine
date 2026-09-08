@@ -1,0 +1,36 @@
+/* Minimal NEUTRAL functional styling only -- no final visual design, no color
+   system, no branding. Enough structure to validate the product flow. The
+   owner will choose the visual direction later. */
+
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, sans-serif; font-size: 14px; color: #111; background: #fff; }
+button { font: inherit; }
+
+.app { display: flex; flex-direction: column; height: 100vh; }
+.app-bar { display: flex; gap: 12px; align-items: baseline; padding: 8px 12px; border-bottom: 1px solid #ccc; }
+.hint { color: #666; font-size: 12px; }
+
+.columns { display: grid; grid-template-columns: 200px 240px 1fr; flex: 1; min-height: 0; }
+.panel { border-right: 1px solid #ccc; padding: 8px; overflow: auto; }
+.panel:last-child { border-right: none; }
+.panel-head { display: flex; align-items: center; justify-content: space-between; }
+.panel-title { font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; margin: 4px 0 8px; }
+
+.list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.row { display: block; width: 100%; text-align: left; padding: 6px 8px; border: 1px solid #ccc; background: #fafafa; cursor: pointer; }
+.row-selected { border-color: #111; background: #eee; }
+.btn { padding: 4px 10px; border: 1px solid #888; background: #f0f0f0; cursor: pointer; }
+.btn:disabled { opacity: 0.5; cursor: default; }
+.empty { color: #777; font-size: 13px; }
+
+.conversation { display: flex; flex-direction: column; }
+.transcript { list-style: none; margin: 0; padding: 0; flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 8px; }
+.msg { display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; border: 1px solid #ddd; max-width: 70ch; }
+.msg-user { align-self: flex-end; background: #f4f4f4; }
+.msg-character { align-self: flex-start; background: #fff; }
+.msg-role { font-size: 11px; color: #666; }
+.msg-text { white-space: pre-wrap; }
+
+.error { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid #b00; color: #b00; margin: 8px 0; }
+.composer { display: flex; gap: 8px; padding-top: 8px; border-top: 1px solid #ccc; }
+.composer-input { flex: 1; font: inherit; padding: 6px; resize: vertical; }

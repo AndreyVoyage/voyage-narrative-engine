@@ -1,0 +1,26 @@
+{
+  "name": "character-companion-react",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "End-user Companion client (MVP). Separate app from Character Lab; reuses the Lab app's installed React/Vite toolchain via sibling node_modules (no separate install).",
+  "scripts": {
+    "dev": "vite --mode mock",
+    "dev:local": "vite",
+    "build": "vite build",
+    "typecheck": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.node.json --noEmit",
+    "check": "npm run typecheck && npm run structural-checks",
+    "structural-checks": "tsc --project tsconfig.checks.json && node dist-checks/scripts/structural-checks.js"
+  },
+  "dependencies": {
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.7",
+    "@vitejs/plugin-react": "6.1.1",
+    "typescript": "7.0.2",
+    "vite": "8.2.2"
+  }
+}

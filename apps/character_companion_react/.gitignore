@@ -1,0 +1,5 @@
+node_modules/
+dist/
+dist-checks/
+*.local
+.companion-dev-data/
