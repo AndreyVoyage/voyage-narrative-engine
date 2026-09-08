@@ -87,7 +87,8 @@ def _run(fn: Callable[[], Dict[str, Any]]) -> Dict[str, Any]:
     except CompanionTransportError:
         raise
     except CompanionProviderError as exc:
-        raise CompanionTransportError(502, "provider_failed", exc.message) from exc
+        status = _STATUS_BY_CODE.get(exc.code, 502)
+        raise CompanionTransportError(status, exc.code, exc.message) from exc
     except CompanionError as exc:
         status = _STATUS_BY_CODE.get(exc.code, 400)
         raise CompanionTransportError(status, exc.code, exc.message) from exc

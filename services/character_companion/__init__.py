@@ -22,9 +22,25 @@ from .service import (
     CompanionSession,
     CompanionTurn,
 )
+from .local_provider import (
+    PROVIDER_FAKE,
+    PROVIDER_LOCAL,
+    LocalLLMConfig,
+    LocalLLMProviderError,
+    assert_loopback_url,
+    build_local_llm_provider_factory,
+    resolve_companion_provider_factory,
+)
 from .transport import CompanionTransport, CompanionTransportError
 
 __all__ = [
+    "PROVIDER_FAKE",
+    "PROVIDER_LOCAL",
+    "LocalLLMConfig",
+    "LocalLLMProviderError",
+    "assert_loopback_url",
+    "build_local_llm_provider_factory",
+    "resolve_companion_provider_factory",
     "CompanionCatalog",
     "CompanionCharacterEntry",
     "build_default_catalog",

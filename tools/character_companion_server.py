@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import threading
 import urllib.parse
@@ -31,7 +32,16 @@ from typing import Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from services.character_companion import CompanionService, CompanionTransport  # noqa: E402
+from services.character_companion import (  # noqa: E402
+    CompanionService,
+    CompanionTransport,
+    LocalLLMConfig,
+    resolve_companion_provider_factory,
+)
+from services.character_companion.local_provider import (  # noqa: E402
+    DEFAULT_LOCAL_BASE_URL,
+    DEFAULT_LOCAL_MODEL,
+)
 from services.character_companion.transport import CompanionTransportError  # noqa: E402
 
 BIND_HOST = "127.0.0.1"
@@ -55,13 +65,33 @@ def build_fake_provider_factory(response: str = DEFAULT_FAKE_REPLY):
     return factory
 
 
-def build_transport(*, data_root, acceptance_root=None, response: str = DEFAULT_FAKE_REPLY) -> CompanionTransport:
+def build_transport(
+    *,
+    data_root,
+    acceptance_root=None,
+    response: str = DEFAULT_FAKE_REPLY,
+    env: Optional[dict] = None,
+) -> CompanionTransport:
+    """Compose the Companion service. Provider selection is explicit via
+    ``COMPANION_PROVIDER`` (``fake`` default | ``local``); there is no cloud
+    mode and no automatic fallback. ``local`` uses ``LOCAL_LLM_BASE_URL`` /
+    ``LOCAL_LLM_MODEL`` / ``LOCAL_LLM_TIMEOUT`` (loopback only, no credentials)."""
     repo_root = Path(__file__).resolve().parents[1]
+    env = env if env is not None else dict(os.environ)
+    provider_factory = resolve_companion_provider_factory(
+        env, fake_factory=build_fake_provider_factory(response)
+    )
+    mode = (env.get("COMPANION_PROVIDER") or "fake").strip().lower()
+    if mode == "local":
+        cfg = LocalLLMConfig.from_env(env)
+        provider_info = {"provider_id": "local", "model": cfg.model}
+    else:
+        provider_info = {"provider_id": FAKE_PROVIDER_ID, "model": FAKE_MODEL}
     service = CompanionService(
         acceptance_root=acceptance_root or (repo_root / "accepted"),
         data_root=data_root,
-        provider_factory=build_fake_provider_factory(response),
-        provider_info={"provider_id": FAKE_PROVIDER_ID, "model": FAKE_MODEL},
+        provider_factory=provider_factory,
+        provider_info=provider_info,
     )
     return CompanionTransport(service)
 

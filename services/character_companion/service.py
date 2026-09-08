@@ -42,6 +42,7 @@ from services.character_lab.source_loader import build_repo_source_loader
 from services.character_runtime import RuntimeMemoryBackend
 
 from .catalog import CompanionCatalog, CompanionCharacterEntry, build_default_catalog
+from .local_provider import LocalLLMProviderError
 
 PURPOSE_COMPANION = "COMPANION"
 
@@ -250,6 +251,11 @@ class CompanionService:
         except CompanionError:
             raise
         except Exception as exc:  # noqa: BLE001 -- fail-closed, do not leak internals
+            local = _find_local_provider_error(exc)
+            if local is not None and local.code == "provider_unavailable":
+                raise CompanionProviderError(
+                    "provider_unavailable", "Локальная модель недоступна."
+                ) from exc
             raise CompanionProviderError(
                 "provider_failed", "the character response could not be generated"
             ) from exc
@@ -265,6 +271,19 @@ class CompanionService:
             response=result.response,
             messages=self._history(entry.character_id, session_id),
         )
+
+
+def _find_local_provider_error(exc: BaseException) -> Optional[LocalLLMProviderError]:
+    """Walk the exception cause chain for a LocalLLMProviderError so its
+    deterministic ``code`` can be preserved for the client."""
+    seen = set()
+    cur: Optional[BaseException] = exc
+    while cur is not None and id(cur) not in seen:
+        seen.add(id(cur))
+        if isinstance(cur, LocalLLMProviderError):
+            return cur
+        cur = cur.__cause__ or cur.__context__
+    return None
 
 
 def _session_from_row(row: dict) -> CompanionSession:
