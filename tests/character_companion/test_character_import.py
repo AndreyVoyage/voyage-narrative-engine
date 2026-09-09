@@ -437,3 +437,92 @@ def test_37_catalog_surfaces_visual_snapshot_version_additively(tmp_path):
     assert kira1.available is True and kira1.visual_snapshot_version == "v1"
     # accepted-package identity is untouched by the visual import
     assert kira1.package_id == kira0.package_id and kira1.source_hash == kira0.source_hash
+
+
+# ============================ CANON→COMPANION CHARACTER-ID MAPPING V1
+def test_38_canon_to_companion_id_mapping_kira_shape(tmp_path):
+    """Real KIRA shape: Canon id 'KIRA', Companion id 'kira'."""
+    svc = _service(tmp_path)
+    canon = make_canon(tmp_path, character_id="KIRA", dirname="kira_canon")
+    res = svc.import_character(canon, "kira", "add", source_character_id="KIRA")
+
+    assert res.status == IMPORTED and res.snapshot_version == "v1"
+    assert res.character_id == "kira" and res.active_version == "v1"
+
+    chars_dir = tmp_path / "companion-data" / "characters"
+    entries = sorted(p.name for p in chars_dir.iterdir())
+    assert entries == ["kira"]                            # NO characters/KIRA dir
+    vdir = chars_dir / "kira" / "snapshots" / "v1"
+    assert (vdir / "manifest.json").is_file()
+    assert (vdir / "references.manifest.json").is_file()
+    assert (chars_dir / "kira" / "snapshots" / "ACTIVE").read_text().strip() == "v1"
+
+    # loaders / catalog are Companion-ID based ('kira')
+    snap = svc.load_snapshot("kira", "v1")
+    assert svc.load_active_snapshot("kira").snapshot_hash == snap.snapshot_hash
+    assert svc.active_version("kira") == "v1"
+
+    # persisted Companion identity is lowercase everywhere
+    assert snap.character_id == "kira"
+    manifest = json.loads((vdir / "manifest.json").read_text())
+    assert manifest["characterId"] == "kira"
+    for r in json.loads((vdir / "references.manifest.json").read_text())["references"]:
+        assert r["character_id"] == "kira"               # local ownership crossed the boundary
+    assert all(sr.roles or True for sr in snap.references)
+
+    # exact Canon source identity is preserved as provenance only
+    assert snap.source_canon["sourceCharacterId"] == "KIRA"
+    assert snap.source_canon["sourceRef"] == (
+        "AI_CHARACTERS/KIRA/10_notes/KIRA_REFERENCE_PRESETS.json"
+    )
+    assert snap.source_canon["status"] == "APPROVED_AS_CANON"
+    # no absolute Canon path anywhere in the runtime manifest
+    assert str(tmp_path) not in json.dumps(manifest)
+
+
+def test_39_omitted_mapping_against_uppercase_canon_stays_strict(tmp_path):
+    """No hidden case conversion: omitting source_character_id keeps the exact
+    Canon identity check, so 'kira' vs a Canon that declares 'KIRA' fails."""
+    svc = _service(tmp_path)
+    canon = make_canon(tmp_path, character_id="KIRA", dirname="kira_canon")
+    with pytest.raises(AmbiguousCharacterError):
+        svc.import_character(canon, "kira", "add")        # source_character_id defaults to "kira"
+    assert svc.list_snapshot_versions("kira") == () and svc.active_version("kira") is None
+
+
+def test_40_mismatched_source_character_id_fails_closed(tmp_path):
+    svc = _service(tmp_path)
+    canon = make_canon(tmp_path, character_id="KIRA", declared_character="SOMEONE_ELSE",
+                       dirname="kira_canon")
+    with pytest.raises(AmbiguousCharacterError):
+        svc.import_character(canon, "kira", "add", source_character_id="KIRA")
+    assert svc.active_version("kira") is None
+
+
+def test_41_same_id_default_backward_compatible(tmp_path):
+    """Generic caller: omitting source_character_id == source_character_id == character_id."""
+    svc = _service(tmp_path)
+    res = svc.import_character(make_canon(tmp_path, character_id="TESTCHAR"), "TESTCHAR", "add")
+    assert res.status == IMPORTED
+    snap = svc.load_active_snapshot("TESTCHAR")
+    assert snap.character_id == "TESTCHAR"
+    assert snap.source_canon["sourceCharacterId"] == "TESTCHAR"
+
+
+def test_42_mapping_update_flow(tmp_path):
+    svc = _service(tmp_path)
+    svc.import_character(make_canon(tmp_path, character_id="KIRA", dirname="c1"), "kira", "add",
+                        source_character_id="KIRA")
+    noop = svc.import_character(make_canon(tmp_path, character_id="KIRA", dirname="c2"), "kira",
+                               "update", source_character_id="KIRA")
+    assert noop.status == NO_OP_UNCHANGED and svc.list_snapshot_versions("kira") == ("v1",)
+
+    changed = make_canon(
+        tmp_path, character_id="KIRA", dirname="c3",
+        identity=dict(_DEFAULT_IDENTITY, height_cm=181, hair_direction="short"),
+    )
+    upd = svc.import_character(changed, "kira", "update", source_character_id="KIRA")
+    assert upd.status == UPDATED_NEW_VERSION and upd.snapshot_version == "v2"
+    assert svc.active_version("kira") == "v1"             # UPDATE never auto-activates
+    assert svc.list_snapshot_versions("kira") == ("v1", "v2")
+    assert svc.load_snapshot("kira", "v2").source_canon["sourceCharacterId"] == "KIRA"

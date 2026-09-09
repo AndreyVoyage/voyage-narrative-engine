@@ -35,6 +35,18 @@ Classifications:
 | `local_snapshot.py` | — | COMPANION-OWNED (new) | No source code copied. `CharacterLocalSnapshot` + `SnapshotStore` (versioned `snapshots/vN/`, `ACTIVE` pointer, fail-closed load validation). |
 | `service.py` | — (composes the above; selection rule referenced) | COMPANION-OWNED (new) | `_active_canon_references` re-implements the `character_visual_conditioning/selection.py::_active_references` rule (drop `scene:` variants, dedupe by path, preserve `active_canon` order). Role mapping is from Canon **keys**, never filenames. |
 
+**Character-ID boundary (CANON_TO_COMPANION_CHARACTER_ID_MAPPING_V1):** the
+Companion-local `character_id` (storage path, `manifest.characterId`,
+`ReferenceRecord.character_id`, `SnapshotStore` lookup, catalog discovery) is
+**distinct** from the exact Character Canon `source_character_id` (source folder
+/ preset filename / `payload["character"]` production gate). `import_character`
+takes both (`source_character_id` defaults to `character_id`, never
+case-folded). The vendored `canon_reader` receives only `source_character_id`,
+so its exact-identity semantics are unchanged; the vendored `reference_importer`
+receives only `character_id`, so imported bytes are owned by the Companion id.
+`sourceCanon.sourceCharacterId` records the Canon identity as provenance and is
+part of the snapshot semantic hash.
+
 ## Not vendored in Slice A
 
 `services/ass/**`, `services/scene_interpretation/**`, `services/mediaplan/**`,

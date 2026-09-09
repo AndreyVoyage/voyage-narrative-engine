@@ -11,7 +11,11 @@ normal runtime.
 Public surface:
 
     CharacterImportService(data_root)
-        .import_character(canon_root, character_id, operation="add"|"update")
+        .import_character(canon_root, character_id, operation="add"|"update",
+                         *, source_character_id=None)
+            # character_id      = Companion-local identity (storage / catalog / manifest)
+            # source_character_id = exact Character Canon identity (source boundary
+            #                       only; defaults to character_id; never case-folded)
         .list_snapshot_versions(character_id)
         .load_snapshot(character_id, version)
         .load_active_snapshot(character_id)

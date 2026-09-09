@@ -146,6 +146,7 @@ class CharacterLocalSnapshot:
         )
         return {
             "characterId": self.character_id,
+            "sourceCanonCharacterId": self.source_canon.get("sourceCharacterId"),
             "sourceCanonContentHash": self.source_canon.get("contentHash"),
             "sourceCanonStatus": self.source_canon.get("status"),
             "sourcePresetSha256": self.source_preset_sha256,

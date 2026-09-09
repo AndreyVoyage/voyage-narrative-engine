@@ -147,10 +147,32 @@ class CharacterImportService:
 
     # ---- controlled import --------------------------------------
     def import_character(
-        self, canon_root: Path, character_id: str, operation: str
+        self,
+        canon_root: Path,
+        character_id: str,
+        operation: str = "add",
+        *,
+        source_character_id: Optional[str] = None,
     ) -> ImportResult:
+        """Import one character from Character Canon into a Companion-owned
+        versioned local snapshot.
+
+        ``character_id`` is the **Companion-local** stable identity: it alone
+        controls the storage path ``<data_root>/characters/<character_id>/``,
+        the persisted ``manifest.characterId`` / ``ReferenceRecord.character_id``,
+        the ``SnapshotStore`` lookup key, and catalog discovery.
+
+        ``source_character_id`` is the **exact Character Canon identity** used
+        ONLY at the source boundary (``read_character_canon`` folder / preset
+        filename / ``payload["character"]`` production gate). It is never derived
+        by case-folding -- when omitted it defaults to ``character_id`` (the
+        pre-mapping same-id behaviour). Pass e.g. ``character_id="kira",
+        source_character_id="KIRA"`` for real KIRA.
+        """
         if operation not in ("add", "update"):
             raise SnapshotOperationError("operation must be 'add' or 'update'")
+        if source_character_id is None:
+            source_character_id = character_id
 
         active = self._store.read_active_version(character_id)
         if operation == "add" and active is not None:
@@ -164,12 +186,14 @@ class CharacterImportService:
 
         canon_root = Path(canon_root)
 
-        # 1. read Canon (production gate: APPROVED_AS_CANON only) -- READ ONLY
-        canon_snapshot = read_character_canon(canon_root, character_id, "production")
+        # 1. read Canon (production gate: APPROVED_AS_CANON only) -- READ ONLY.
+        #    ONLY source_character_id crosses this boundary: exact folder, exact
+        #    preset filename, exact payload["character"] check, no case folding.
+        canon_snapshot = read_character_canon(canon_root, source_character_id, "production")
 
         preset_path = (
-            canon_root / "AI_CHARACTERS" / character_id / "10_notes"
-            / f"{character_id}_REFERENCE_PRESETS.json"
+            canon_root / "AI_CHARACTERS" / source_character_id / "10_notes"
+            / f"{source_character_id}_REFERENCE_PRESETS.json"
         )
         try:
             preset_bytes = preset_path.read_bytes()
@@ -178,7 +202,7 @@ class CharacterImportService:
         source_preset_sha256 = compute_sha256(preset_bytes)
         preset_json = json.loads(preset_bytes.decode("utf-8"))
         physical = physical_profile_from_preset(
-            preset_json, character_id, source_preset_sha256=source_preset_sha256
+            preset_json, source_character_id, source_preset_sha256=source_preset_sha256
         )
 
         # 2. NO-OP identity check for UPDATE (hashes, never timestamps)
@@ -246,6 +270,9 @@ class CharacterImportService:
                 "sourceHash": canon_snapshot.provenance.source_hash,
                 "contentHash": canon_snapshot.content_hash,
                 "status": canon_snapshot.status,
+                # exact Canon identity this snapshot was imported from; the
+                # Companion-local characterId above may differ (e.g. "kira").
+                "sourceCharacterId": source_character_id,
             }
             if canon_snapshot.active_version is not None:
                 source_canon["activeVersion"] = canon_snapshot.active_version
