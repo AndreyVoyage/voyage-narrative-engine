@@ -222,7 +222,7 @@ class CompanionService:
             acceptance_root=self._acceptance_root, source_loader=self._source_loader
         )
         self._catalog = catalog or build_default_catalog(
-            self._acceptance_root, self._source_loader
+            self._acceptance_root, self._source_loader, data_root=self._data_root
         )
         self._images = ImageJobService(
             self._data_root, image_generator or UnavailableImageGenerator()
