@@ -97,6 +97,37 @@ export interface NewDialogInput {
 }
 
 // ---- secure provider settings ----------------------------------------
+
+/** Canonical model-role ids (DIALOGUE is the only runtime-wired one). */
+export const MODEL_ROLES = [
+  "DIALOGUE", "VISION", "IMAGE_GENERATION", "VIDEO_GENERATION",
+  "STT", "TTS", "REALTIME", "LOCAL_ALTERNATIVE",
+] as const;
+export type ModelRole = (typeof MODEL_ROLES)[number];
+
+export type RoleReadiness =
+  | "READY"
+  | "CONFIGURED_CREDENTIAL_MISSING"
+  | "NOT_CONFIGURED"
+  | "UNSUPPORTED"
+  | "FUTURE_NOT_WIRED";
+
+/** One entry in a provider's data-driven model catalog. */
+export interface ModelView {
+  modelId: string;
+  displayName: string;
+  capabilities: string[];
+  roles: string[];
+  status: "available" | "unverified" | "deprecated" | string;
+  notes: string;
+  contentPolicyProfile: string;
+  supportsReferenceImage: boolean | null;
+  supportsImageToImage: boolean | null;
+  supportsCharacterReference: boolean | null;
+  supportsVideo: boolean | null;
+  maxDurationSeconds: number | null;
+}
+
 export interface ProviderCardView {
   providerId: string;
   displayName: string;
@@ -106,13 +137,34 @@ export interface ProviderCardView {
   defaultBaseUrl: string;
   supportedRoles: string[];
   runtimeWiredRoles: string[];
-  modelCatalog: string[];
+  capabilities: string[];
+  modelCatalog: string[];          // backward-compatible id list
+  models: ModelView[];
   defaultModel: string;
   notes: string;
   connected: boolean;
   configuredModel: string;
   maskedTail: string | null;
   lastTestStatus: string | null;
+}
+
+/** Provider-call-free resolution metadata for one model role. */
+export interface RoleResolution {
+  role: string;
+  runtimeWired: boolean;
+  providerId: string | null;
+  modelId: string | null;
+  providerConnected: boolean;
+  credentialRequired: boolean;
+  maskedTail: string | null;
+  capabilities: string[];
+  contentPolicyProfile: string;
+  modelStatus: string | null;
+  readiness: RoleReadiness;
+}
+
+export interface RoleCatalogEntry extends RoleResolution {
+  providerIds: string[];           // providers whose catalog can serve this role
 }
 
 export interface LocalSettingsView {
@@ -128,7 +180,9 @@ export interface LocalSettingsView {
 export interface CompanionSettingsView {
   providers: ProviderCardView[];
   roles: Record<string, { providerId: string; modelId: string }>;
+  roleCatalog: RoleCatalogEntry[];
   allRoles: string[];
+  roleDisplayOrder: string[];
   runtimeWiredRoles: string[];
   local: LocalSettingsView;
   allowCloudFallback: boolean;
@@ -178,5 +232,6 @@ export interface CompanionClient {
   storeCredential(providerId: string, secret: string): Promise<CompanionSettingsView>;
   deleteCredential(providerId: string): Promise<CompanionSettingsView>;
   testProvider(providerId: string, modelId?: string): Promise<ProviderTestResult>;
+  resolveRole(role: string): Promise<RoleResolution>;
   getReleaseInfo(): Promise<ReleaseInfo>;
 }

@@ -63,14 +63,17 @@ from .local_provider import LocalLLMProviderError
 from .provider_registry import (
     ALL_ROLES,
     ROLE_DIALOGUE,
+    ROLE_DISPLAY_ORDER,
     RUNTIME_WIRED_ROLES,
     ProviderRegistryError,
     all_providers,
     get_provider,
+    providers_supporting_role,
 )
 from .provider_resolution import (
     CompanionConfigError,
     resolve_dialogue_provider_factory,
+    resolve_role_config,
     test_provider_connection,
 )
 from .settings import (
@@ -589,11 +592,19 @@ class CompanionService:
                 masked_tail=(m.masked_tail if m else None),
                 last_test_status=(m.last_test_status if m else None),
             ))
+        role_catalog = []
+        for role in ROLE_DISPLAY_ORDER:
+            resolution = resolve_role_config(role, settings, vault)
+            resolution["providerIds"] = list(providers_supporting_role(role))
+            role_catalog.append(resolution)
+
         return {
             "providers": providers,
             "roles": {r: {"providerId": a.provider_id, "modelId": a.model_id}
                       for r, a in settings.roles.items()},
+            "roleCatalog": role_catalog,
             "allRoles": list(ALL_ROLES),
+            "roleDisplayOrder": list(ROLE_DISPLAY_ORDER),
             "runtimeWiredRoles": list(RUNTIME_WIRED_ROLES),
             "local": {
                 "numCtx": settings.local_num_ctx,
@@ -619,6 +630,15 @@ class CompanionService:
         except SettingsError as exc:
             raise CompanionError(exc.code, exc.message) from exc
         return self.settings_view()
+
+    def resolve_media_role(self, role: str) -> dict:
+        """Provider-call-free resolution metadata for one model role (foundation
+        for future media adapters). Never returns a raw credential."""
+        store, vault = self._require_secure_config()
+        try:
+            return resolve_role_config(role, store.load(), vault)
+        except CompanionConfigError as exc:
+            raise CompanionError(exc.code, exc.message) from exc
 
     def set_local_num_ctx(self, num_ctx) -> dict:
         store, _ = self._require_secure_config()

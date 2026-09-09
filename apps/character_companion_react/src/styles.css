@@ -303,3 +303,15 @@ img { max-width: 100%; }
 .pill-bad { border-color: var(--c-danger); color: var(--c-danger); }
 .settings .field select, .settings .field input { padding: var(--sp-2); background: var(--c-bg); border: 1px solid var(--c-border); border-radius: var(--radius); color: inherit; font: inherit; }
 .profile-avatar-status { border-left: 2px solid var(--c-border-strong); padding-left: var(--sp-2); }
+
+/* --- models by task (media model roles) --- */
+.provider-card-caps { display: flex; flex-wrap: wrap; gap: 4px; }
+.cap-chip { font-size: 10px; letter-spacing: 0.04em; padding: 1px 6px; border: 1px solid var(--c-border); border-radius: 999px; color: var(--c-text-dim); }
+.role-rows { display: flex; flex-direction: column; gap: var(--sp-2); }
+.role-row { border: 1px solid var(--c-border); border-radius: var(--radius); padding: var(--sp-2) var(--sp-3); }
+.role-row-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); }
+.role-row-name { font-weight: 600; }
+.role-row-selects { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); margin-top: var(--sp-1); }
+.role-row-future { color: var(--c-text-faint); }
+.settings-model-change-note { border-left: 2px solid var(--c-border-strong); padding-left: var(--sp-2); }
+@media (max-width: 640px) { .role-row-selects { grid-template-columns: 1fr; } }

@@ -18,10 +18,13 @@ import {
   ImageJob,
   ImageJobKind,
   NewDialogInput,
+  ModelView,
   ProviderCardView,
   ProviderTestResult,
   RandomScenarioResult,
   ReleaseInfo,
+  RoleCatalogEntry,
+  RoleResolution,
   SCENE_FIELDS,
   SceneField,
   emptyScene,
@@ -42,6 +45,86 @@ const POOLS: Record<SceneField, string[]> = {
   situation: ["Случайная встреча", "Разговор за чаем", "Пережидают дождь"],
   mood: ["Спокойное", "Лёгкое", "Задумчивое"],
 };
+
+// ---- media model-role catalog (compact mirror of the backend registry) ----
+const MOCK_ROLE_ORDER = [
+  "DIALOGUE", "VISION", "IMAGE_GENERATION", "VIDEO_GENERATION",
+  "STT", "TTS", "REALTIME", "LOCAL_ALTERNATIVE",
+];
+const CAP_TO_ROLE: Record<string, string> = {
+  DIALOGUE: "DIALOGUE", VISION: "VISION", IMAGE_GENERATION: "IMAGE_GENERATION",
+  VIDEO_GENERATION: "VIDEO_GENERATION", STT: "STT", TTS: "TTS", REALTIME: "REALTIME",
+};
+
+function mv(
+  modelId: string, displayName: string, capabilities: string[],
+  status: ModelView["status"], contentPolicyProfile: string,
+  media: Partial<Pick<ModelView, "supportsReferenceImage" | "supportsImageToImage" | "supportsCharacterReference" | "supportsVideo" | "maxDurationSeconds">> = {},
+): ModelView {
+  const roles = [...new Set(capabilities.map((c) => CAP_TO_ROLE[c]).filter(Boolean))];
+  return {
+    modelId, displayName, capabilities, roles, status, notes: "",
+    contentPolicyProfile,
+    supportsReferenceImage: media.supportsReferenceImage ?? null,
+    supportsImageToImage: media.supportsImageToImage ?? null,
+    supportsCharacterReference: media.supportsCharacterReference ?? null,
+    supportsVideo: media.supportsVideo ?? null,
+    maxDurationSeconds: media.maxDurationSeconds ?? null,
+  };
+}
+
+interface MockProviderDef {
+  displayName: string;
+  kind: "cloud" | "local";
+  transport: string;
+  credentialRequired: boolean;
+  baseUrl: string;
+  models: ModelView[];
+}
+
+const MOCK_CATALOG: Record<string, MockProviderDef> = {
+  deepseek: { displayName: "DeepSeek", kind: "cloud", transport: "openai_compat", credentialRequired: true, baseUrl: "https://api.deepseek.com", models: [
+    mv("deepseek-chat", "DeepSeek Chat", ["DIALOGUE", "CLOUD"], "available", "PROVIDER_POLICY_DEPENDENT"),
+    mv("deepseek-reasoner", "DeepSeek Reasoner", ["DIALOGUE", "CLOUD"], "available", "PROVIDER_POLICY_DEPENDENT"),
+  ] },
+  openai: { displayName: "OpenAI", kind: "cloud", transport: "openai_compat", credentialRequired: true, baseUrl: "https://api.openai.com", models: [
+    mv("gpt-4o-mini", "GPT-4o mini", ["DIALOGUE", "VISION", "CLOUD"], "available", "PROVIDER_POLICY_DEPENDENT"),
+    mv("gpt-4o", "GPT-4o", ["DIALOGUE", "VISION", "CLOUD"], "available", "PROVIDER_POLICY_DEPENDENT"),
+    mv("gpt-image-1", "GPT Image 1", ["IMAGE_GENERATION", "IMAGE_TO_IMAGE", "CLOUD"], "unverified", "PROVIDER_POLICY_DEPENDENT", { supportsImageToImage: true, supportsReferenceImage: true }),
+    mv("sora-2", "Sora 2", ["VIDEO_GENERATION", "CLOUD"], "unverified", "PROVIDER_POLICY_DEPENDENT", { supportsVideo: true }),
+    mv("whisper-1", "Whisper", ["STT", "CLOUD"], "unverified", "PROVIDER_POLICY_DEPENDENT"),
+    mv("gpt-4o-mini-tts", "GPT-4o mini TTS", ["TTS", "CLOUD"], "unverified", "PROVIDER_POLICY_DEPENDENT"),
+    mv("gpt-4o-realtime-preview", "GPT-4o Realtime", ["REALTIME", "CLOUD"], "unverified", "PROVIDER_POLICY_DEPENDENT"),
+  ] },
+  qwen: { displayName: "Qwen", kind: "cloud", transport: "openai_compat", credentialRequired: true, baseUrl: "https://dashscope.aliyuncs.com/compatible-mode", models: [
+    mv("qwen-plus", "Qwen Plus", ["DIALOGUE", "CLOUD"], "available", "PROVIDER_POLICY_DEPENDENT"),
+    mv("qwen-max", "Qwen Max", ["DIALOGUE", "CLOUD"], "available", "PROVIDER_POLICY_DEPENDENT"),
+    mv("qwen-vl-plus", "Qwen-VL Plus", ["VISION", "CLOUD"], "unverified", "PROVIDER_POLICY_DEPENDENT"),
+  ] },
+  local: { displayName: "Local (Ollama)", kind: "local", transport: "ollama_native", credentialRequired: false, baseUrl: "http://127.0.0.1:11434", models: [
+    mv("llama3", "Llama 3", ["DIALOGUE", "LOCAL"], "available", "LOCAL_MODEL_POLICY"),
+    mv("llama3.1", "Llama 3.1", ["DIALOGUE", "LOCAL"], "available", "LOCAL_MODEL_POLICY"),
+    mv("qwen2.5", "Qwen 2.5", ["DIALOGUE", "LOCAL"], "available", "LOCAL_MODEL_POLICY"),
+    mv("llava", "LLaVA", ["VISION", "LOCAL"], "unverified", "LOCAL_MODEL_POLICY"),
+  ] },
+  fake: { displayName: "Fake (dev)", kind: "local", transport: "fake", credentialRequired: false, baseUrl: "", models: [
+    mv("fake", "Fake", ["DIALOGUE", "LOCAL"], "available", "STANDARD_ONLY"),
+  ] },
+};
+
+function mockModelSupportsRole(m: ModelView, role: string): boolean {
+  if (role === "LOCAL_ALTERNATIVE") return m.capabilities.includes("DIALOGUE") && m.capabilities.includes("LOCAL");
+  return m.roles.includes(role);
+}
+
+function mockProviderSupportedRoles(providerId: string): string[] {
+  const c = MOCK_CATALOG[providerId];
+  if (!c) return [];
+  const set = new Set<string>();
+  for (const m of c.models) for (const r of m.roles) set.add(r);
+  if (c.kind === "local" && set.has("DIALOGUE")) set.add("LOCAL_ALTERNATIVE");
+  return MOCK_ROLE_ORDER.filter((r) => set.has(r));
+}
 
 interface Row {
   session: CompanionSession;
@@ -203,7 +286,7 @@ export class MockCompanionClient implements CompanionClient {
     return { ...row.session };
   }
 
-  // -------- secure provider settings (in-memory; secrets never re-exposed) --
+  // -------- secure provider settings + media model roles (in-memory) -------
   private readonly secrets = new Map<string, string>(); // provider -> raw (never returned)
   private readonly roles: Record<string, { providerId: string; modelId: string }> = {
     DIALOGUE: { providerId: "fake", modelId: "fake" },
@@ -212,31 +295,80 @@ export class MockCompanionClient implements CompanionClient {
   private localBaseUrl = "http://127.0.0.1:11434";
 
   private providerCatalog(): ProviderCardView[] {
-    const base: Omit<ProviderCardView, "connected" | "configuredModel" | "maskedTail" | "lastTestStatus">[] = [
-      { providerId: "deepseek", displayName: "DeepSeek", kind: "cloud", transport: "openai_compat", credentialRequired: true, defaultBaseUrl: "https://api.deepseek.com", supportedRoles: ["DIALOGUE"], runtimeWiredRoles: ["DIALOGUE"], modelCatalog: ["deepseek-chat", "deepseek-reasoner"], defaultModel: "deepseek-chat", notes: "Сильная работа с диалогом." },
-      { providerId: "openai", displayName: "OpenAI", kind: "cloud", transport: "openai_compat", credentialRequired: true, defaultBaseUrl: "https://api.openai.com", supportedRoles: ["DIALOGUE", "VISION", "IMAGE_GENERATION", "STT", "TTS", "REALTIME"], runtimeWiredRoles: ["DIALOGUE"], modelCatalog: ["gpt-4o-mini", "gpt-4o"], defaultModel: "gpt-4o-mini", notes: "Широкий мультимодальный набор (метаданные)." },
-      { providerId: "qwen", displayName: "Qwen", kind: "cloud", transport: "openai_compat", credentialRequired: true, defaultBaseUrl: "https://dashscope.aliyuncs.com/compatible-mode", supportedRoles: ["DIALOGUE", "VISION"], runtimeWiredRoles: ["DIALOGUE"], modelCatalog: ["qwen-plus", "qwen-max"], defaultModel: "qwen-plus", notes: "Совместимый OpenAI-протокол." },
-      { providerId: "local", displayName: "Local (Ollama)", kind: "local", transport: "ollama_native", credentialRequired: false, defaultBaseUrl: "http://127.0.0.1:11434", supportedRoles: ["DIALOGUE", "LOCAL_ALTERNATIVE"], runtimeWiredRoles: ["DIALOGUE"], modelCatalog: ["llama3", "llama3.1", "qwen2.5"], defaultModel: "llama3", notes: "Приватность / без оплаты за токены." },
-      { providerId: "fake", displayName: "Fake (dev)", kind: "local", transport: "fake", credentialRequired: false, defaultBaseUrl: "", supportedRoles: ["DIALOGUE"], runtimeWiredRoles: ["DIALOGUE"], modelCatalog: ["fake"], defaultModel: "fake", notes: "Детерминированная заглушка. Никогда не автоматический fallback." },
-    ];
-    return base.map((p) => {
-      const connected = p.credentialRequired ? this.secrets.has(p.providerId) : true;
-      const raw = this.secrets.get(p.providerId);
+    return Object.entries(MOCK_CATALOG).map(([providerId, c]) => {
+      const connected = c.credentialRequired ? this.secrets.has(providerId) : true;
+      const raw = this.secrets.get(providerId);
+      const supportedRoles = mockProviderSupportedRoles(providerId);
+      const capabilities = [...new Set([c.kind === "local" ? "LOCAL" : "CLOUD", ...c.models.flatMap((m) => m.capabilities)])];
+      const assigned = Object.values(this.roles).find((a) => a.providerId === providerId);
       return {
-        ...p,
+        providerId,
+        displayName: c.displayName,
+        kind: c.kind,
+        transport: c.transport,
+        credentialRequired: c.credentialRequired,
+        defaultBaseUrl: c.baseUrl,
+        supportedRoles,
+        runtimeWiredRoles: supportedRoles.filter((r) => r === "DIALOGUE"),
+        capabilities,
+        modelCatalog: c.models.map((m) => m.modelId),
+        models: c.models,
+        defaultModel: c.models[0]?.modelId ?? "",
+        notes: "",
         connected,
-        configuredModel: this.roles.DIALOGUE.providerId === p.providerId ? this.roles.DIALOGUE.modelId : p.defaultModel,
+        configuredModel: assigned ? assigned.modelId : (c.models[0]?.modelId ?? ""),
         maskedTail: raw ? "…" + raw.slice(-4) : null,
         lastTestStatus: null,
       };
     });
   }
 
+  private providersForRole(role: string): string[] {
+    return Object.keys(MOCK_CATALOG).filter((pid) => mockProviderSupportedRoles(pid).includes(role));
+  }
+
+  private resolveRoleConfig(role: string): RoleResolution {
+    const runtimeWired = role === "DIALOGUE";
+    const a = this.roles[role];
+    const base: RoleResolution = {
+      role, runtimeWired, providerId: null, modelId: null, providerConnected: false,
+      credentialRequired: false, maskedTail: null, capabilities: [],
+      contentPolicyProfile: "UNKNOWN", modelStatus: null, readiness: "NOT_CONFIGURED",
+    };
+    if (!a) return base;
+    base.providerId = a.providerId;
+    base.modelId = a.modelId;
+    const c = MOCK_CATALOG[a.providerId];
+    const m = c?.models.find((x) => x.modelId === a.modelId);
+    if (!c || !m || !mockModelSupportsRole(m, role)) {
+      base.readiness = "UNSUPPORTED";
+      return base;
+    }
+    const raw = this.secrets.get(a.providerId);
+    const connected = c.credentialRequired ? this.secrets.has(a.providerId) : true;
+    base.credentialRequired = c.credentialRequired;
+    base.providerConnected = connected;
+    base.maskedTail = raw ? "…" + raw.slice(-4) : null;
+    base.capabilities = m.capabilities;
+    base.contentPolicyProfile = m.contentPolicyProfile;
+    base.modelStatus = m.status;
+    base.readiness = c.credentialRequired && !connected
+      ? "CONFIGURED_CREDENTIAL_MISSING"
+      : runtimeWired ? "READY" : "FUTURE_NOT_WIRED";
+    return base;
+  }
+
   async getSettings(): Promise<CompanionSettingsView> {
+    const roleCatalog: RoleCatalogEntry[] = MOCK_ROLE_ORDER.map((role) => ({
+      ...this.resolveRoleConfig(role),
+      providerIds: this.providersForRole(role),
+    }));
     return {
       providers: this.providerCatalog(),
       roles: { ...this.roles },
-      allRoles: ["DIALOGUE", "VISION", "IMAGE_GENERATION", "STT", "TTS", "REALTIME", "LOCAL_ALTERNATIVE"],
+      roleCatalog,
+      allRoles: [...MOCK_ROLE_ORDER],
+      roleDisplayOrder: [...MOCK_ROLE_ORDER],
       runtimeWiredRoles: ["DIALOGUE"],
       local: {
         numCtx: this.localNumCtx,
@@ -253,13 +385,26 @@ export class MockCompanionClient implements CompanionClient {
   }
 
   async setRole(role: string, providerId: string, modelId: string): Promise<CompanionSettingsView> {
-    const p = this.providerCatalog().find((x) => x.providerId === providerId);
-    if (!p) throw new CompanionClientError(404, "unknown_provider", "Неизвестный провайдер.");
-    if (!p.supportedRoles.includes(role)) {
+    const c = MOCK_CATALOG[providerId];
+    if (!c) throw new CompanionClientError(404, "unknown_provider", "Неизвестный провайдер.");
+    if (!mockProviderSupportedRoles(providerId).includes(role)) {
       throw new CompanionClientError(400, "unsupported_role", "Провайдер не поддерживает эту роль.");
     }
-    this.roles[role] = { providerId, modelId: modelId || p.defaultModel };
+    const wanted = (modelId || "").trim() || (c.models.find((m) => mockModelSupportsRole(m, role))?.modelId ?? "");
+    const model = c.models.find((m) => m.modelId === wanted);
+    if (!model) throw new CompanionClientError(400, "unknown_model", "Модель не найдена в каталоге провайдера.");
+    if (!mockModelSupportsRole(model, role)) {
+      throw new CompanionClientError(400, "unsupported_model_role", "Модель не поддерживает эту задачу.");
+    }
+    this.roles[role] = { providerId, modelId: wanted };
     return this.getSettings();
+  }
+
+  async resolveRole(role: string): Promise<RoleResolution> {
+    if (!MOCK_ROLE_ORDER.includes(role)) {
+      throw new CompanionClientError(400, "unknown_role", "Неизвестная роль модели.");
+    }
+    return this.resolveRoleConfig(role);
   }
 
   async setLocalSettings(input: { numCtx?: number | null; baseUrl?: string | null }): Promise<CompanionSettingsView> {

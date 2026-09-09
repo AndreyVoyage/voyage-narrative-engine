@@ -2,9 +2,15 @@ import { useEffect, useState } from "react";
 import type { CompanionClient } from "../client/types.js";
 import type { CompanionSettingsView, ProviderCardView, ProviderTestResult } from "../client/types.js";
 import {
+  MODEL_ROLE_ORDER,
   autoFallbackDefault,
   localContextWarning,
+  modelsForRole,
   providerActions,
+  providersForRole,
+  readinessLabelKey,
+  roleIsConfiguredButNotImplemented,
+  roleLabelKey,
   secretDraftAfterSubmit,
 } from "../app/settingsState.js";
 import type { LocalUserProfile } from "../app/userProfile.js";
@@ -66,8 +72,6 @@ export function SettingsPanel({ client, profile, onProfileChange, onClose }: Pro
     );
   }
 
-  const dialogue = view.roles.DIALOGUE;
-
   function saveSecret(card: ProviderCardView) {
     const secret = (secretDrafts[card.providerId] ?? "").trim();
     if (!secret) return;
@@ -124,6 +128,11 @@ export function SettingsPanel({ client, profile, onProfileChange, onClose }: Pro
             <p className="provider-card-notes">{card.notes}</p>
             <p className="provider-card-model">{t("settings.providerModel", { model: card.configuredModel })}</p>
             <p className="provider-card-roles">{t("settings.providerRoles", { roles: card.supportedRoles.join(", ") })}</p>
+            <div className="provider-card-caps">
+              {card.capabilities.filter((c) => c !== "CLOUD" && c !== "LOCAL").map((c) => (
+                <span key={c} className="cap-chip">{c}</span>
+              ))}
+            </div>
             {card.maskedTail && <p className="provider-card-tail">{t("settings.providerKey", { tail: card.maskedTail })}</p>}
 
             {card.credentialRequired && (
@@ -163,34 +172,68 @@ export function SettingsPanel({ client, profile, onProfileChange, onClose }: Pro
         ))}
       </div>
 
-      {/* Model roles */}
-      <h3 className="settings-section">{t("settings.section.roles")}</h3>
+      {/* Models by task — data-driven role -> provider -> model configuration */}
+      <h3 className="settings-section">{t("settings.section.modelRoles")}</h3>
       <p className="settings-hint">{t("settings.rolesHint")}</p>
-      <label className="field">
-        <span>{t("settings.dialogueProvider")}</span>
-        <select
-          value={dialogue.providerId}
-          onChange={(e) => {
-            const pid = e.target.value;
-            const p = view.providers.find((x) => x.providerId === pid);
-            guard(client.setRole("DIALOGUE", pid, p?.defaultModel ?? "")).then(setView);
-          }}
-        >
-          {view.providers.filter((p) => p.supportedRoles.includes("DIALOGUE")).map((p) => (
-            <option key={p.providerId} value={p.providerId}>{p.displayName}</option>
-          ))}
-        </select>
-      </label>
-      <label className="field">
-        <span>{t("settings.dialogueModel")}</span>
-        <select
-          value={dialogue.modelId}
-          onChange={(e) => guard(client.setRole("DIALOGUE", dialogue.providerId, e.target.value)).then(setView)}
-        >
-          {(view.providers.find((p) => p.providerId === dialogue.providerId)?.modelCatalog ?? [dialogue.modelId])
-            .map((m) => <option key={m} value={m}>{m}</option>)}
-        </select>
-      </label>
+      <p className="settings-hint">{t("settings.modelRolesHint")}</p>
+      <div className="role-rows">
+        {MODEL_ROLE_ORDER.map((role) => {
+          const entry = view.roleCatalog.find((r) => r.role === role);
+          const roleProviders = providersForRole(view, role);
+          const selectedProviderId = entry?.providerId ?? "";
+          const providerCard = view.providers.find((p) => p.providerId === selectedProviderId);
+          const roleModels = modelsForRole(providerCard, role);
+          const readiness = entry?.readiness ?? "NOT_CONFIGURED";
+          const runtimeWired = Boolean(entry?.runtimeWired);
+          return (
+            <div className="role-row" key={role}>
+              <div className="role-row-head">
+                <span className="role-row-name">{t(roleLabelKey(role))}</span>
+                {runtimeWired
+                  ? <span className="pill pill-ok">{t("settings.runtimeWiredBadge")}</span>
+                  : <span className="pill">{t(readinessLabelKey(readiness))}</span>}
+              </div>
+              {roleProviders.length === 0 ? (
+                <p className="settings-hint">{t("settings.roleNoProvider")}</p>
+              ) : (
+                <div className="role-row-selects">
+                  <label className="field">
+                    <span>{t("settings.roleProvider")}</span>
+                    <select
+                      value={selectedProviderId}
+                      onChange={(e) => guard(client.setRole(role, e.target.value, "")).then(setView)}
+                    >
+                      {!selectedProviderId && <option value="" disabled>—</option>}
+                      {roleProviders.map((p) => (
+                        <option key={p.providerId} value={p.providerId}>{p.displayName}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="field">
+                    <span>{t("settings.roleModel")}</span>
+                    <select
+                      value={entry?.modelId ?? ""}
+                      disabled={!selectedProviderId}
+                      onChange={(e) => guard(client.setRole(role, selectedProviderId, e.target.value)).then(setView)}
+                    >
+                      {!entry?.modelId && <option value="" disabled>—</option>}
+                      {roleModels.map((m) => (
+                        <option key={m.modelId} value={m.modelId}>
+                          {m.displayName}{m.status === "unverified" ? ` · ${t("settings.modelUnverified")}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              )}
+              {roleIsConfiguredButNotImplemented(readiness, runtimeWired) && (
+                <p className="settings-hint role-row-future">{t("readiness.FUTURE_NOT_WIRED")}</p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <p className="settings-hint settings-model-change-note">{t("settings.modelChangeNote")}</p>
 
       {/* Local model */}
       <h3 className="settings-section">{t("settings.section.local")}</h3>

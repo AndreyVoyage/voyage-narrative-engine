@@ -263,6 +263,8 @@ class CompanionServer:
                     return self._call(lambda: transport.delete_credential(urllib.parse.unquote(parts[4])))
                 if method == "POST" and parts == ["api", "companion", "settings", "test"]:
                     return self._call(lambda: transport.test_provider(body))
+                if method == "GET" and parts[:4] == ["api", "companion", "settings", "resolve"] and len(parts) == 5:
+                    return self._call(lambda: transport.resolve_role(urllib.parse.unquote(parts[4])))
 
                 # static SPA (release mode): anything not an /api or /health route
                 if method == "GET" and web_root is not None and (not parts or parts[0] not in ("api",)):

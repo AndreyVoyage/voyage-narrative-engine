@@ -3,7 +3,47 @@
  * beyond "clear the input after submit". Structural checks exercise these.
  */
 
-import { CompanionSettingsView, ProviderCardView } from "../client/types.js";
+import { CompanionSettingsView, ModelView, ProviderCardView } from "../client/types.js";
+import type { TranslationKey } from "../i18n/index.js";
+
+/** Canonical presentation order for the "models by task" section. */
+export const MODEL_ROLE_ORDER = [
+  "DIALOGUE", "VISION", "IMAGE_GENERATION", "VIDEO_GENERATION",
+  "STT", "TTS", "REALTIME", "LOCAL_ALTERNATIVE",
+] as const;
+
+/** i18n key for a model-role display name (falls back to the raw id). */
+export function roleLabelKey(role: string): TranslationKey {
+  return (`role.${role}`) as TranslationKey;
+}
+
+/** i18n key for a role-readiness status. */
+export function readinessLabelKey(readiness: string): TranslationKey {
+  return (`readiness.${readiness}`) as TranslationKey;
+}
+
+/** Providers (by id) from the catalog that can serve a given role -- data-driven,
+ * never a hardcoded `provider === "openai" && role === ...` check. */
+export function providersForRole(view: CompanionSettingsView, role: string): ProviderCardView[] {
+  return view.providers.filter((p) => p.supportedRoles.includes(role));
+}
+
+/** Models offered by one provider that satisfy a given role, filtered by the
+ * model's own capability list. */
+export function modelsForRole(card: ProviderCardView | undefined, role: string): ModelView[] {
+  if (!card) return [];
+  return card.models.filter((m) => {
+    if (role === "LOCAL_ALTERNATIVE") {
+      return m.capabilities.includes("DIALOGUE") && m.capabilities.includes("LOCAL");
+    }
+    return m.roles.includes(role);
+  });
+}
+
+/** A configured media role is NOT the same as an implemented feature. */
+export function roleIsConfiguredButNotImplemented(readiness: string, runtimeWired: boolean): boolean {
+  return !runtimeWired && (readiness === "FUTURE_NOT_WIRED" || readiness === "CONFIGURED_CREDENTIAL_MISSING");
+}
 
 /** A secret input is single-use: after a successful submit it is cleared and
  * the raw value is never held again. */

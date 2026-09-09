@@ -39,6 +39,8 @@ _STATUS_BY_CODE = {
     "invalid_num_ctx": 400,
     "unknown_role": 400,
     "unsupported_role": 400,
+    "unknown_model": 400,
+    "unsupported_model_role": 400,
     "provider_failed": 502,
     "provider_unavailable": 503,
     "missing_credential": 409,
@@ -301,6 +303,12 @@ class CompanionTransport:
         provider_id = _require_str(payload, "providerId")
         model_id = payload.get("modelId")
         return _run(lambda: self._service.test_connection(provider_id, model_id or ""))
+
+    def resolve_role(self, role: str) -> dict:
+        role = (role or "").strip()
+        if not role:
+            raise CompanionTransportError(400, "invalid_request", "'role' must be a non-empty string")
+        return _run(lambda: self._service.resolve_media_role(role))
 
     def get_release_info(self) -> dict:
         return _run(self._service.release_info)

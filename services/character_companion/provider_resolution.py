@@ -22,11 +22,14 @@ from .credentials import CredentialError
 from .local_provider import LocalLLMConfig, build_local_llm_provider_factory
 from .provider_registry import (
     ROLE_DIALOGUE,
+    RUNTIME_WIRED_ROLES,
     TRANSPORT_FAKE,
     TRANSPORT_OLLAMA_NATIVE,
     TRANSPORT_OPENAI_COMPAT,
     ProviderRegistryError,
     get_provider,
+    is_known_role,
+    require_model_supported,
     require_role_supported,
 )
 from .settings import CompanionSettings
@@ -34,8 +37,21 @@ from .settings import CompanionSettings
 __all__ = [
     "CompanionConfigError",
     "resolve_dialogue_provider_factory",
+    "resolve_role_config",
     "test_provider_connection",
+    "READINESS_READY",
+    "READINESS_CREDENTIAL_MISSING",
+    "READINESS_NOT_CONFIGURED",
+    "READINESS_UNSUPPORTED",
+    "READINESS_FUTURE_NOT_WIRED",
 ]
+
+# ---- role readiness (presentation only; never gates DIALOGUE runtime) ----
+READINESS_READY = "READY"
+READINESS_CREDENTIAL_MISSING = "CONFIGURED_CREDENTIAL_MISSING"
+READINESS_NOT_CONFIGURED = "NOT_CONFIGURED"
+READINESS_UNSUPPORTED = "UNSUPPORTED"
+READINESS_FUTURE_NOT_WIRED = "FUTURE_NOT_WIRED"
 
 _PROBE_MESSAGES = [{"role": "user", "content": "ping"}]
 
@@ -108,6 +124,71 @@ def resolve_dialogue_provider_factory(
         settings, vault, a.provider_id, a.model_id,
         fake_factory=fake_factory, http_post_local=http_post_local, http_post_cloud=http_post_cloud,
     )
+
+
+def resolve_role_config(role: str, settings: CompanionSettings, vault) -> dict:
+    """Narrow, provider-call-free resolver for ANY model role.
+
+    Returns configuration/resolution METADATA only -- provider id, model id,
+    connection state, masked tail, capability list, content-policy profile and a
+    readiness verdict. It NEVER builds an executable adapter for a media role and
+    NEVER exposes a raw credential. It performs NO cross-provider fallback: the
+    result reflects exactly the one assignment the user stored (or its absence).
+
+    For ``DIALOGUE`` this mirrors what :func:`resolve_dialogue_provider_factory`
+    would select, but the runtime keeps using that function unchanged.
+    """
+    if not is_known_role(role):
+        raise CompanionConfigError("unknown_role", f"unknown model role {role!r}")
+
+    runtime_wired = role in RUNTIME_WIRED_ROLES
+    meta = vault.list_metadata()
+    assignment = settings.roles.get(role)
+
+    base = {
+        "role": role,
+        "runtimeWired": runtime_wired,
+        "providerId": None,
+        "modelId": None,
+        "providerConnected": False,
+        "credentialRequired": False,
+        "maskedTail": None,
+        "capabilities": [],
+        "contentPolicyProfile": "UNKNOWN",
+        "modelStatus": None,
+        "readiness": READINESS_NOT_CONFIGURED,
+    }
+    if assignment is None:
+        return base
+
+    base["providerId"] = assignment.provider_id
+    base["modelId"] = assignment.model_id
+    try:
+        entry, model = require_model_supported(assignment.provider_id, assignment.model_id, role)
+    except ProviderRegistryError:
+        base["readiness"] = READINESS_UNSUPPORTED
+        return base
+
+    m = meta.get(entry.provider_id)
+    connected = (m.connected if m else False) or (not entry.credential_required)
+    base.update({
+        "providerId": entry.provider_id,
+        "modelId": model.model_id,
+        "credentialRequired": entry.credential_required,
+        "providerConnected": bool(connected),
+        "maskedTail": (m.masked_tail if m else None),
+        "capabilities": list(model.capabilities),
+        "contentPolicyProfile": model.content_policy_profile,
+        "modelStatus": model.status,
+    })
+
+    if entry.credential_required and not connected:
+        base["readiness"] = READINESS_CREDENTIAL_MISSING
+    elif not runtime_wired:
+        base["readiness"] = READINESS_FUTURE_NOT_WIRED
+    else:
+        base["readiness"] = READINESS_READY
+    return base
 
 
 def test_provider_connection(

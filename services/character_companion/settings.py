@@ -19,9 +19,11 @@ from typing import Dict, Optional
 from .provider_registry import (
     ALL_ROLES,
     ROLE_DIALOGUE,
+    ProviderRegistryError,
     get_provider,
     is_known_provider,
     is_known_role,
+    require_model_supported,
 )
 
 _SETTINGS_FILENAME = "companion_settings.json"
@@ -158,9 +160,15 @@ class SettingsStore:
         if not is_known_provider(provider_id):
             raise SettingsError("unknown_provider", f"unknown provider {provider_id!r}")
         entry = get_provider(provider_id)
-        if role not in entry.supported_roles:
-            raise SettingsError("unsupported_role", f"provider {entry.provider_id!r} does not support {role!r}")
-        model_id = (model_id or entry.default_model).strip()
+        # empty model -> the first catalog model that actually supports this role
+        model_id = (model_id or "").strip() or entry.default_model_for_role(role)
+        # the model catalog is authoritative: provider must support the role AND
+        # the chosen model's capabilities must satisfy it. A cloud credential is
+        # NOT required merely to save configuration.
+        try:
+            _, _ = require_model_supported(entry.provider_id, model_id, role)
+        except ProviderRegistryError as exc:
+            raise SettingsError(exc.code, exc.message) from exc
         settings = self.load()
         settings.roles[role] = RoleAssignment(entry.provider_id, model_id)
         return self.save(settings)

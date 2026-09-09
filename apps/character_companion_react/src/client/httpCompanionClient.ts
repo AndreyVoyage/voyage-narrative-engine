@@ -21,6 +21,7 @@ import {
   ProviderTestResult,
   RandomScenarioResult,
   ReleaseInfo,
+  RoleResolution,
   SceneField,
 } from "./types.js";
 
@@ -139,6 +140,10 @@ export class HttpCompanionClient implements CompanionClient {
 
   async testProvider(providerId: string, modelId?: string): Promise<ProviderTestResult> {
     return call<ProviderTestResult>("POST", "/settings/test", { providerId, modelId });
+  }
+
+  async resolveRole(role: string): Promise<RoleResolution> {
+    return call<RoleResolution>("GET", `/settings/resolve/${encodeURIComponent(role)}`);
   }
 
   async getReleaseInfo(): Promise<ReleaseInfo> {

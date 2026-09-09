@@ -271,8 +271,8 @@ async function main(): Promise<void> {
   ok("raw secret is not rendered after save");
   ok("connected state visible on the provider card");
 
-  // role selector — DIALOGUE configurable; others are foundation only
-  assert(/DIALOGUE/.test(settings) && /setRole\("DIALOGUE"/.test(settings), "DIALOGUE role selector");
+  // role selector — data-driven, DIALOGUE configurable; others are foundation only
+  assert(settings.includes("MODEL_ROLE_ORDER") && settings.includes("client.setRole(role,"), "data-driven role selector");
   assert(view.runtimeWiredRoles.length === 1 && view.runtimeWiredRoles[0] === "DIALOGUE", "only DIALOGUE is runtime-wired");
   const afterRole = await settingsMock.setRole("DIALOGUE", "local", "llama3.1");
   assert(afterRole.roles.DIALOGUE.providerId === "local", "role assignment applied");
@@ -525,6 +525,112 @@ async function main(): Promise<void> {
     assert(!/type=["']file["']/.test(read(rel)), `${rel} introduces no file input`);
   }
   ok("V2.32 no unsafe file input introduced");
+
+  // ================================================================
+  // MEDIA PROVIDERS AND MODEL ROLES V1
+  // ================================================================
+  const mediaSettings = read("features/SettingsPanel.tsx");
+  const ru2 = ru as Record<string, string>;
+  const stMod2 = await import("../src/app/settingsState.js");
+  const roleView = await new MockCompanionClient().getSettings();
+
+  // 1 — a dedicated "models by task" section exists
+  assert(mediaSettings.includes('t("settings.section.modelRoles")') && mediaSettings.includes("MODEL_ROLE_ORDER"),
+    "SettingsPanel has a models-by-task section");
+  assert(stMod2.MODEL_ROLE_ORDER.join(",") === "DIALOGUE,VISION,IMAGE_GENERATION,VIDEO_GENERATION,STT,TTS,REALTIME,LOCAL_ALTERNATIVE",
+    "canonical role order incl. VIDEO_GENERATION");
+  ok("MPR.1 model-role configuration section exists");
+
+  // 2 — every canonical role is visible in the catalog + has a localized label
+  for (const role of ["DIALOGUE", "VISION", "IMAGE_GENERATION", "VIDEO_GENERATION", "STT", "TTS", "REALTIME"]) {
+    assert(roleView.roleCatalog.some((r) => r.role === role), `roleCatalog has ${role}`);
+    assert(typeof ru2[`role.${role}`] === "string" && ru2[`role.${role}`].length > 0, `role.${role} localized`);
+  }
+  ok("MPR.2 DIALOGUE + VISION + IMAGE_GENERATION + VIDEO_GENERATION + STT + TTS + REALTIME visible");
+
+  // 3 — provider dropdown is data-driven (no hardcoded provider===... in components)
+  assert(mediaSettings.includes("providersForRole(view, role)") && !/provider(Id)?\s*===\s*["']openai["']/.test(mediaSettings),
+    "provider options come from the catalog, not a hardcoded check");
+  const imgProviders = stMod2.providersForRole(roleView, "IMAGE_GENERATION").map((p) => p.providerId);
+  assert(imgProviders.includes("openai") && !imgProviders.includes("deepseek"),
+    "IMAGE_GENERATION providers are catalog-filtered");
+  ok("MPR.3 provider dropdown data-driven");
+
+  // 4 — model dropdown is filtered by the model's own capabilities
+  const openaiCard = roleView.providers.find((p) => p.providerId === "openai")!;
+  const visionModels = stMod2.modelsForRole(openaiCard, "VISION").map((m) => m.modelId);
+  const imageModels = stMod2.modelsForRole(openaiCard, "IMAGE_GENERATION").map((m) => m.modelId);
+  assert(visionModels.includes("gpt-4o-mini") && !visionModels.includes("gpt-image-1"), "VISION models filtered by capability");
+  assert(imageModels.includes("gpt-image-1") && !imageModels.includes("gpt-4o-mini"), "IMAGE_GENERATION models filtered by capability");
+  assert(mediaSettings.includes("modelsForRole(providerCard, role)"), "SettingsPanel filters the model dropdown by role");
+  ok("MPR.4 model dropdown filtered by capability");
+
+  // 5 — readiness / future status is visible
+  assert(mediaSettings.includes("readinessLabelKey(readiness)") && mediaSettings.includes('t("settings.runtimeWiredBadge")'),
+    "role rows show a readiness / runtime-wired status");
+  for (const k of ["READY", "CONFIGURED_CREDENTIAL_MISSING", "NOT_CONFIGURED", "UNSUPPORTED", "FUTURE_NOT_WIRED"]) {
+    assert(typeof ru2[`readiness.${k}`] === "string", `readiness.${k} localized`);
+  }
+  ok("MPR.5 readiness / future status visible");
+
+  // 6 — "configured" is explicitly not "implemented"
+  const settingsMockB = new MockCompanionClient();
+  await settingsMockB.setRole("IMAGE_GENERATION", "openai", "gpt-image-1");
+  await settingsMockB.storeCredential("openai", "sk-media-check-RAW-0001");
+  const imgRes = await settingsMockB.resolveRole("IMAGE_GENERATION");
+  assert(imgRes.runtimeWired === false && imgRes.readiness === "FUTURE_NOT_WIRED",
+    "configured image role resolves but is not runtime-wired");
+  assert(stMod2.roleIsConfiguredButNotImplemented(imgRes.readiness, imgRes.runtimeWired),
+    "helper flags configured-but-not-implemented");
+  assert(mediaSettings.includes("roleIsConfiguredButNotImplemented("), "UI surfaces the configured != implemented distinction");
+  ok("MPR.6 configured vs implemented distinction visible");
+
+  // 7 — no automatic fallback: resolver returns ONLY the selected provider
+  const stt = await (async () => { const c = new MockCompanionClient(); await c.setRole("STT", "openai", "whisper-1"); return c.resolveRole("STT"); })();
+  assert(stt.providerId === "openai" && JSON.stringify(stt).indexOf("qwen") === -1 && JSON.stringify(stt).indexOf("deepseek") === -1,
+    "role resolver names only the selected provider");
+  ok("MPR.7 no automatic cross-provider fallback");
+
+  // 8 — provider connection state visible; no raw key ever rendered
+  assert(/provider-card-caps|cap-chip/.test(mediaSettings), "provider cards show a capability summary");
+  assert(!/\{card\.(secret|apiKey|rawKey)\}/.test(mediaSettings) && !/sk-[A-Za-z0-9]{6,}/.test(mediaSettings),
+    "no raw API key rendered in the settings panel");
+  const savedView = await settingsMockB.getSettings();
+  assert(JSON.stringify(savedView).indexOf("sk-media-check-RAW-0001") === -1, "stored key never re-exposed in the settings view");
+  const oc = savedView.providers.find((p) => p.providerId === "openai")!;
+  assert(oc.connected === true && (oc.maskedTail ?? "").indexOf("RAW") === -1, "connection state shown via masked tail only");
+  ok("MPR.8 provider connection state visible; no raw key");
+
+  // 9 — one provider credential serves several roles
+  const multi = new MockCompanionClient();
+  for (const [r, m] of [["VISION", "gpt-4o-mini"], ["IMAGE_GENERATION", "gpt-image-1"], ["TTS", "gpt-4o-mini-tts"]] as const) {
+    await multi.setRole(r, "openai", m);
+  }
+  await multi.storeCredential("openai", "sk-one-key-many-roles-0002");
+  for (const r of ["VISION", "IMAGE_GENERATION", "TTS"]) {
+    const res = await multi.resolveRole(r);
+    assert(res.providerId === "openai" && res.providerConnected === true, `${r} reuses the one openai credential`);
+  }
+  ok("MPR.9 one provider credential reused across roles");
+
+  // 10 — model-change warning + all new strings go through i18n
+  assert(mediaSettings.includes('t("settings.modelChangeNote")') && ru2["settings.modelChangeNote"].length > 0,
+    "a localized 'model availability can change' note exists");
+  for (const loc of [en, es, zhCN, pt]) {
+    assert(typeof (loc as Record<string, string>)["settings.section.modelRoles"] === "string"
+      && typeof (loc as Record<string, string>)["role.VIDEO_GENERATION"] === "string"
+      && typeof (loc as Record<string, string>)["readiness.FUTURE_NOT_WIRED"] === "string",
+      "every locale has the media-role strings");
+  }
+  assert(!/["']Модели по задачам["']|["']Models by task["']/.test(mediaSettings), "no hardcoded role-section string in the component");
+  ok("MPR.10 model-change warning + i18n for all new strings");
+
+  // 11 — Focus Mode V2 + Local Profile UX preserved
+  const appMedia = read("App.tsx");
+  for (const f of ["FocusMode", "SettingsPanel"]) assert(appMedia.includes(f), `${f} still wired`);
+  assert(read("features/FocusMode.tsx").includes("focus-canvas") && read("features/SettingsPanel.tsx").includes('t("profile.section")'),
+    "Focus Mode centered canvas and the Local Profile section are untouched");
+  ok("MPR.11 Focus Mode V2 / Local Profile UX preserved");
 
   console.log(`\n${passed} passed, 0 failed`);
 }
