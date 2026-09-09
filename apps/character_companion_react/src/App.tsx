@@ -159,6 +159,7 @@ export function App() {
     return (
       <FocusMode
         layout={state.focusLayout}
+        characterId={state.selectedCharacterId}
         messages={state.messages}
         sending={state.loading === "sending"}
         coverUrl={coverUrl}
@@ -236,6 +237,7 @@ export function App() {
         )}
 
         <RightWing
+          characterId={state.selectedCharacterId}
           characterName={characterName}
           scene={selectedSession?.scene ?? null}
           coverRef={selectedSession?.sceneCoverRef ?? null}

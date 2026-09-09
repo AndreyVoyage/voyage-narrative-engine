@@ -1,7 +1,8 @@
 import type { CompanionScene, ImageJob } from "../client/types.js";
-import { PORTRAIT_PLACEHOLDER_DATA_URI } from "../assets/portraitPlaceholder.js";
+import { portraitFor } from "../assets/portrait.js";
 
 interface Props {
+  characterId: string | null;
   characterName: string;
   scene: CompanionScene | null;
   coverRef: string | null;
@@ -20,7 +21,7 @@ const NOT_SET = "Не задано";
  * With no scene image the portrait expands to fill the visual area.
  */
 export function RightWing({
-  characterName, scene, coverRef, imageUrl, readyImages, activeJob,
+  characterId, characterName, scene, coverRef, imageUrl, readyImages, activeJob,
   onMakeCover, onCreateImage, onContextFrame,
 }: Props) {
   const shownImage = coverRef ?? readyImages[readyImages.length - 1]?.resultRef ?? null;
@@ -28,8 +29,9 @@ export function RightWing({
 
   return (
     <aside className="wing" aria-label="Персонаж и сцена">
+      {/* identity portrait -- never replaced by a Scene/generated image */}
       <div className={hasSceneImage ? "wing-portrait" : "wing-portrait wing-portrait-expanded"}>
-        <img src={PORTRAIT_PLACEHOLDER_DATA_URI} alt={`Портрет: ${characterName}`} />
+        <img src={portraitFor(characterId)} alt={`Портрет: ${characterName}`} />
       </div>
 
       {hasSceneImage && shownImage && (

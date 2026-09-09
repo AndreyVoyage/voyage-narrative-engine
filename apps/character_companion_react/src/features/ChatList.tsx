@@ -1,5 +1,5 @@
 import type { CompanionSession } from "../client/types.js";
-import { PORTRAIT_PLACEHOLDER_DATA_URI } from "../assets/portraitPlaceholder.js";
+import { portraitFor } from "../assets/portrait.js";
 import { filterSessions } from "../app/companionState.js";
 
 interface Props {
@@ -55,7 +55,7 @@ export function ChatList({
               >
                 <img
                   className="chat-card-cover"
-                  src={s.sceneCoverRef ? imageUrl(s.sceneCoverRef) : PORTRAIT_PLACEHOLDER_DATA_URI}
+                  src={s.sceneCoverRef ? imageUrl(s.sceneCoverRef) : portraitFor(s.characterId)}
                   alt=""
                 />
                 <span className="chat-card-body">

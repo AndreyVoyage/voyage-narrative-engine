@@ -88,8 +88,26 @@ async function main(): Promise<void> {
 
   // 38–41 — right wing markers
   const wing = read("features/RightWing.tsx");
-  assert(/portrait/i.test(wing) && wing.includes("PORTRAIT_PLACEHOLDER_DATA_URI"), "portrait slot");
+  assert(/portrait/i.test(wing) && wing.includes("portraitFor("), "portrait slot resolves via portraitFor()");
   ok("38. right wing shows a persistent portrait slot");
+
+  // KIRA identity portrait binding (owner-approved release asset)
+  const portraitMod = await import("../src/assets/portrait.js");
+  const kiraPortrait = portraitMod.portraitFor("kira");
+  assert(kiraPortrait === "/characters/kira/KIRA_release_portrait_v1_APPROVED.png",
+    "KIRA resolves to the approved release portrait");
+  assert(portraitMod.hasReleasePortrait("kira") === true, "KIRA has a bound release portrait");
+  const fallback = portraitMod.portraitFor("some-future-character");
+  assert(fallback.startsWith("data:image/svg+xml") && portraitMod.hasReleasePortrait("x") === false,
+    "unknown / future character falls back to the neutral placeholder");
+  const wingSrc = read("features/RightWing.tsx");
+  assert(wingSrc.includes('alt={`Портрет:') && wingSrc.includes("wing-scene-image"),
+    "identity portrait and Scene image are separate slots");
+  // the portrait <img> src is always portraitFor(...), never a Scene resultRef
+  assert(wingSrc.includes("<img src={portraitFor(characterId)}"), "portrait src is portraitFor(characterId)");
+  const portraitImgLine = wingSrc.split("\n").find((l) => l.includes("portraitFor(characterId)")) ?? "";
+  assert(!portraitImgLine.includes("imageUrl("), "portrait line does not use imageUrl()");
+  ok("KIRA identity portrait bound; distinct from Scene image; fallback preserved");
   assert(wing.includes("wing-scene-image") && wing.includes("hasSceneImage"), "conditional scene image");
   ok("39. right wing conditionally shows the scene visual");
   assert(wing.includes("wing-portrait-expanded"), "portrait expansion without scene image");

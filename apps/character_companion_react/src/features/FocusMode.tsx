@@ -2,11 +2,12 @@ import { useEffect } from "react";
 import type { CompanionMessage, ImageJob } from "../client/types.js";
 import type { FocusLayout } from "../app/appearance.js";
 import { FOCUS_LAYOUTS, nextFocusLayout } from "../app/appearance.js";
-import { PORTRAIT_PLACEHOLDER_DATA_URI } from "../assets/portraitPlaceholder.js";
+import { portraitFor } from "../assets/portrait.js";
 import { Composer } from "./Composer.js";
 
 interface Props {
   layout: FocusLayout;
+  characterId: string | null;
   messages: CompanionMessage[];
   sending: boolean;
   coverUrl: string | null;
@@ -27,7 +28,7 @@ const LAYOUT_LABEL: Record<FocusLayout, string> = {
 
 /** Distraction-free mode. BACKGROUND / SIDE_GALLERY / CHAT_ONLY. Esc exits. */
 export function FocusMode(props: Props) {
-  const { layout, messages, sending, coverUrl, readyImages, imageUrl, onSetLayout, onExit } = props;
+  const { layout, characterId, messages, sending, coverUrl, readyImages, imageUrl, onSetLayout, onExit } = props;
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -65,7 +66,7 @@ export function FocusMode(props: Props) {
       <div className="focus-body">
         {layout === "side_gallery" && (
           <aside className="focus-gallery">
-            <img src={PORTRAIT_PLACEHOLDER_DATA_URI} alt="Портрет" />
+            <img src={portraitFor(characterId)} alt="Портрет" />
             {coverUrl && <img src={coverUrl} alt="Обложка" />}
             {readyImages.map((j) => (
               <img key={j.jobId} src={j.resultRef ? imageUrl(j.resultRef) : ""} alt="Кадр" />
