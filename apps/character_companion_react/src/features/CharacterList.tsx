@@ -1,4 +1,5 @@
 import type { CompanionCharacter } from "../client/types.js";
+import { useLocale } from "../i18n/react.js";
 
 interface Props {
   characters: CompanionCharacter[];
@@ -8,11 +9,12 @@ interface Props {
 
 /** Region A -- character selection. Neutral functional list, no visual design. */
 export function CharacterList({ characters, selectedCharacterId, onSelect }: Props) {
+  const { t } = useLocale();
   return (
-    <nav className="panel" aria-label="Персонажи">
-      <h2 className="panel-title">Персонажи</h2>
+    <nav className="panel" aria-label={t("nav.characters")}>
+      <h2 className="panel-title">{t("nav.characters")}</h2>
       {characters.length === 0 ? (
-        <p className="empty">Нет доступных персонажей.</p>
+        <p className="empty">{t("characters.empty")}</p>
       ) : (
         <ul className="list">
           {characters.map((c) => (

@@ -21,7 +21,16 @@
     "src/app/appearance.ts",
     "src/app/newDialog.ts",
     "src/app/settingsState.ts",
+    "src/app/userProfile.ts",
+    "src/app/focusBackground.ts",
+    "src/app/focusGallery.ts",
     "src/assets/portraitPlaceholder.ts",
-    "src/assets/portrait.ts"
+    "src/assets/portrait.ts",
+    "src/i18n/index.ts",
+    "src/i18n/ru.ts",
+    "src/i18n/en.ts",
+    "src/i18n/es.ts",
+    "src/i18n/zhCN.ts",
+    "src/i18n/pt.ts"
   ]
 }

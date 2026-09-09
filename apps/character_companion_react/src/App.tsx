@@ -16,6 +16,8 @@ import {
 } from "./app/companionState.js";
 import { loadAppearance, rememberFocusLayout, type FocusLayout } from "./app/appearance.js";
 import { draftToInput } from "./app/newDialog.js";
+import { loadUserProfile, saveUserProfile, type LocalUserProfile } from "./app/userProfile.js";
+import { useLocale } from "./i18n/react.js";
 
 const client: CompanionClient =
   import.meta.env.MODE === "mock" ? new MockCompanionClient() : new HttpCompanionClient();
@@ -25,16 +27,28 @@ const imageUrl = (resultRef: string) => IMAGE_FILE_BASE + encodeURIComponent(res
 
 function errorOf(e: unknown): { code: string; message: string } {
   if (e instanceof CompanionClientError) return { code: e.code, message: e.message };
-  return { code: "unexpected", message: "Непредвиденная ошибка." };
+  return { code: "unexpected", message: "unexpected" };
 }
 
 export function App() {
+  const { t, locale, setLocale } = useLocale();
   const appearance = useMemo(loadAppearance, []);
   const [state, dispatch] = useReducer(companionReducer, appearance.focusModeLayout, initialCompanionState);
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [release, setRelease] = useState<import("./client/types.js").ReleaseInfo | null>(null);
+  const [userProfile, setUserProfile] = useState<LocalUserProfile>(loadUserProfile);
   const pollRef = useRef<number | null>(null);
+
+  // one-time reconcile: honour a locale that was only stored on the profile
+  useEffect(() => {
+    if (userProfile.locale !== locale) setLocale(userProfile.locale);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const updateProfile = useCallback((next: LocalUserProfile) => {
+    setUserProfile(saveUserProfile(next));
+  }, []);
 
   // ---- loaders -------------------------------------------------------
   useEffect(() => {
@@ -121,7 +135,7 @@ export function App() {
   function createImageJob(kind: ImageJobKind) {
     const sessionId = state.selectedSessionId;
     if (!sessionId) return;
-    const prompt = kind === "custom" ? (window.prompt("Опишите изображение") ?? "").trim() : "";
+    const prompt = kind === "custom" ? (window.prompt(t("app.describeImage")) ?? "").trim() : "";
     if (kind === "custom" && !prompt) return;
     client
       .createImageJob(sessionId, kind, kind === "custom" ? prompt : undefined)
@@ -160,16 +174,22 @@ export function App() {
       <FocusMode
         layout={state.focusLayout}
         characterId={state.selectedCharacterId}
+        characterName={characterName}
+        sessionId={selectedSession.sessionId}
         messages={state.messages}
         sending={state.loading === "sending"}
         coverUrl={coverUrl}
+        coverRef={selectedSession.sceneCoverRef ?? null}
         readyImages={readyImages}
         imageUrl={imageUrl}
+        userProfile={userProfile}
+        t={t}
         onSetLayout={setFocusLayout}
         onSend={send}
         onCreateImage={() => createImageJob("custom")}
         onContextFrame={() => createImageJob("context")}
         onExit={() => dispatch({ type: "focusExit" })}
+        onMakeCover={makeCover}
       />
     );
   }
@@ -177,22 +197,27 @@ export function App() {
   return (
     <div className="app">
       <header className="app-bar">
-        <span>{release ? release.release.name : "Companion · Cinematic"}</span>
+        <span>{release ? release.release.name : t("app.brandFallback")}</span>
         {providerNeedsConfig && (
           <button type="button" className="hint app-bar-config-needed" onClick={() => setShowSettings(true)}>
-            Провайдер диалога не настроен — открыть Настройки
+            {t("app.providerNeedsConfig")}
           </button>
         )}
-        {state.loading !== "idle" && <span className="hint">Загрузка…</span>}
-        {anyImageJobActive(state.imageJobs) && <span className="hint">Изображение создаётся…</span>}
+        {state.loading !== "idle" && <span className="hint">{t("app.loading")}</span>}
+        {anyImageJobActive(state.imageJobs) && <span className="hint">{t("app.imageWorking")}</span>}
         <button type="button" className="btn btn-sm app-bar-settings" onClick={() => setShowSettings(true)}>
-          Настройки
+          {t("app.settings")}
         </button>
       </header>
 
       {showSettings && (
         <div className="settings-overlay">
-          <SettingsPanel client={client} onClose={() => setShowSettings(false)} />
+          <SettingsPanel
+            client={client}
+            profile={userProfile}
+            onProfileChange={updateProfile}
+            onClose={() => setShowSettings(false)}
+          />
         </div>
       )}
 

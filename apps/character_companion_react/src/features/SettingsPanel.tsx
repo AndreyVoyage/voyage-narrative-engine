@@ -5,22 +5,28 @@ import {
   autoFallbackDefault,
   localContextWarning,
   providerActions,
-  providerStatusLabel,
   secretDraftAfterSubmit,
 } from "../app/settingsState.js";
+import type { LocalUserProfile } from "../app/userProfile.js";
+import { useLocale } from "../i18n/react.js";
+import { LOCALE_LABELS, UI_LOCALES, type UiLocale } from "../i18n/index.js";
 
 interface Props {
   client: CompanionClient;
+  profile: LocalUserProfile;
+  onProfileChange: (profile: LocalUserProfile) => void;
   onClose: () => void;
 }
 
-/** Companion Settings — A. Providers  B. Model roles  C. Local model  D. Security.
- * No raw key is ever rendered. Attachment upload stays disabled elsewhere. */
-export function SettingsPanel({ client, onClose }: Props) {
+/** Companion Settings — Profile · Providers · Model roles · Local model · Security.
+ * No raw key is ever rendered. Attachment upload stays disabled; no file input. */
+export function SettingsPanel({ client, profile, onProfileChange, onClose }: Props) {
+  const { t, locale, setLocale } = useLocale();
   const [view, setView] = useState<CompanionSettingsView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [secretDrafts, setSecretDrafts] = useState<Record<string, string>>({});
   const [testResults, setTestResults] = useState<Record<string, ProviderTestResult>>({});
+  const [nameDraft, setNameDraft] = useState(profile.displayName);
 
   function load() {
     client.getSettings().then(setView).catch((e) => setError(String(e?.message ?? e)));
@@ -35,12 +41,27 @@ export function SettingsPanel({ client, onClose }: Props) {
     });
   }
 
+  function statusLabel(card: ProviderCardView): string {
+    if (!card.credentialRequired) return t("settings.status.ready");
+    return card.connected ? t("settings.status.connected") : t("settings.status.disconnected");
+  }
+
+  function commitName() {
+    const next = { ...profile, displayName: nameDraft.trim().slice(0, 40) };
+    onProfileChange(next);
+  }
+
+  function changeLanguage(next: UiLocale) {
+    setLocale(next);
+    onProfileChange({ ...profile, locale: next });
+  }
+
   if (!view) {
     return (
       <section className="panel settings">
-        <div className="settings-head"><h2 className="panel-title">Настройки</h2>
-          <button type="button" className="btn btn-sm" onClick={onClose}>Закрыть</button></div>
-        {error ? <p className="error" role="alert">{error}</p> : <p className="empty">Загрузка…</p>}
+        <div className="settings-head"><h2 className="panel-title">{t("settings.title")}</h2>
+          <button type="button" className="btn btn-sm" onClick={onClose}>{t("settings.close")}</button></div>
+        {error ? <p className="error" role="alert">{error}</p> : <p className="empty">{t("app.loading")}</p>}
       </section>
     );
   }
@@ -52,7 +73,6 @@ export function SettingsPanel({ client, onClose }: Props) {
     if (!secret) return;
     guard(client.storeCredential(card.providerId, secret)).then((v) => {
       setView(v);
-      // single-use: clear the input, never keep the raw value
       setSecretDrafts((d) => ({ ...d, [card.providerId]: secretDraftAfterSubmit() }));
     });
   }
@@ -60,44 +80,67 @@ export function SettingsPanel({ client, onClose }: Props) {
   return (
     <section className="panel settings">
       <div className="settings-head">
-        <h2 className="panel-title">Настройки</h2>
-        <button type="button" className="btn btn-sm" onClick={onClose}>Закрыть</button>
+        <h2 className="panel-title">{t("settings.title")}</h2>
+        <button type="button" className="btn btn-sm" onClick={onClose}>{t("settings.close")}</button>
       </div>
       {error && <p className="error" role="alert">{error}</p>}
 
+      {/* Profile — presentation-only Local User Profile */}
+      <h3 className="settings-section">{t("profile.section")}</h3>
+      <label className="field">
+        <span>{t("profile.displayName")}</span>
+        <input
+          value={nameDraft}
+          maxLength={40}
+          placeholder={t("profile.defaultName")}
+          onChange={(e) => setNameDraft(e.target.value)}
+          onBlur={commitName}
+        />
+      </label>
+      <p className="settings-hint">{t("profile.displayNameHint")}</p>
+      <p className="settings-hint profile-avatar-status">{t("profile.avatarComingSoon")}</p>
+      <label className="field">
+        <span>{t("profile.language")}</span>
+        <select value={locale} onChange={(e) => changeLanguage(e.target.value as UiLocale)}>
+          {UI_LOCALES.map((l) => (
+            <option key={l} value={l}>{LOCALE_LABELS[l]}</option>
+          ))}
+        </select>
+      </label>
+
       <p className="settings-note">{view.dataRoutingNote}</p>
 
-      {/* A. Providers */}
-      <h3 className="settings-section">Провайдеры</h3>
+      {/* Providers */}
+      <h3 className="settings-section">{t("settings.section.providers")}</h3>
       <div className="provider-cards">
         {view.providers.filter((p) => p.providerId !== "fake").map((card) => (
           <div className="provider-card" key={card.providerId}>
             <div className="provider-card-head">
               <strong>{card.displayName}</strong>
               <span className={card.connected || !card.credentialRequired ? "pill pill-ok" : "pill"}>
-                {providerStatusLabel(card)}
+                {statusLabel(card)}
               </span>
             </div>
             <p className="provider-card-notes">{card.notes}</p>
-            <p className="provider-card-model">Модель: {card.configuredModel}</p>
-            <p className="provider-card-roles">Роли: {card.supportedRoles.join(", ")}</p>
-            {card.maskedTail && <p className="provider-card-tail">Ключ: {card.maskedTail}</p>}
+            <p className="provider-card-model">{t("settings.providerModel", { model: card.configuredModel })}</p>
+            <p className="provider-card-roles">{t("settings.providerRoles", { roles: card.supportedRoles.join(", ") })}</p>
+            {card.maskedTail && <p className="provider-card-tail">{t("settings.providerKey", { tail: card.maskedTail })}</p>}
 
             {card.credentialRequired && (
               <div className="provider-card-secret">
                 <input
                   type="password"
-                  placeholder={card.connected ? "Заменить ключ API" : "Ключ API"}
+                  placeholder={card.connected ? t("settings.keyReplacePlaceholder") : t("settings.keyPlaceholder")}
                   value={secretDrafts[card.providerId] ?? ""}
                   onChange={(e) => setSecretDrafts((d) => ({ ...d, [card.providerId]: e.target.value }))}
                 />
                 <button type="button" className="btn btn-sm" onClick={() => saveSecret(card)}>
-                  {card.connected ? "Заменить" : "Подключить"}
+                  {card.connected ? t("settings.replace") : t("settings.connect")}
                 </button>
                 {card.connected && (
                   <button type="button" className="btn btn-sm" onClick={() =>
                     guard(client.deleteCredential(card.providerId)).then(setView)}>
-                    Удалить ключ
+                    {t("settings.deleteKey")}
                   </button>
                 )}
               </div>
@@ -106,8 +149,8 @@ export function SettingsPanel({ client, onClose }: Props) {
               {providerActions(card).includes("Проверить") && (
                 <button type="button" className="btn btn-sm" onClick={() =>
                   guard(client.testProvider(card.providerId)).then((r) =>
-                    setTestResults((t) => ({ ...t, [card.providerId]: r })))}>
-                  Проверить соединение
+                    setTestResults((t2) => ({ ...t2, [card.providerId]: r })))}>
+                  {t("settings.testConnection")}
                 </button>
               )}
               {testResults[card.providerId] && (
@@ -120,13 +163,11 @@ export function SettingsPanel({ client, onClose }: Props) {
         ))}
       </div>
 
-      {/* B. Model roles */}
-      <h3 className="settings-section">Роли моделей</h3>
-      <p className="settings-hint">
-        В этом релизе используется роль <strong>DIALOGUE</strong>. Остальные роли — задел на будущее.
-      </p>
+      {/* Model roles */}
+      <h3 className="settings-section">{t("settings.section.roles")}</h3>
+      <p className="settings-hint">{t("settings.rolesHint")}</p>
       <label className="field">
-        <span>DIALOGUE — провайдер</span>
+        <span>{t("settings.dialogueProvider")}</span>
         <select
           value={dialogue.providerId}
           onChange={(e) => {
@@ -141,7 +182,7 @@ export function SettingsPanel({ client, onClose }: Props) {
         </select>
       </label>
       <label className="field">
-        <span>DIALOGUE — модель</span>
+        <span>{t("settings.dialogueModel")}</span>
         <select
           value={dialogue.modelId}
           onChange={(e) => guard(client.setRole("DIALOGUE", dialogue.providerId, e.target.value)).then(setView)}
@@ -151,19 +192,20 @@ export function SettingsPanel({ client, onClose }: Props) {
         </select>
       </label>
 
-      {/* C. Local model */}
-      <h3 className="settings-section">Локальная модель</h3>
+      {/* Local model */}
+      <h3 className="settings-section">{t("settings.section.local")}</h3>
       <label className="field">
-        <span>Базовый URL</span>
+        <span>{t("settings.localBaseUrl")}</span>
         <input
           defaultValue={view.local.baseUrl}
           onBlur={(e) => guard(client.setLocalSettings({ baseUrl: e.target.value })).then(setView)}
         />
       </label>
       <label className="field">
-        <span>Размер контекста (num_ctx)</span>
+        <span>{t("settings.localNumCtx")}</span>
         <input
           type="number"
+          name="num_ctx"
           min={view.local.numCtxMin}
           max={view.local.numCtxMax}
           defaultValue={view.local.numCtx ?? ""}
@@ -174,18 +216,22 @@ export function SettingsPanel({ client, onClose }: Props) {
           }}
         />
       </label>
-      {localContextWarning(view) && <p className="settings-warn" role="alert">{localContextWarning(view)}</p>}
+      {localContextWarning(view) && (
+        <p className="settings-warn" role="alert">
+          {t("settings.contextWarn", { hint: view.local.kiraSafeHint })}
+        </p>
+      )}
 
-      {/* D. Security status */}
-      <h3 className="settings-section">Безопасность</h3>
+      {/* Security status */}
+      <h3 className="settings-section">{t("settings.section.security")}</h3>
       <ul className="settings-security">
-        <li>Ключи API хранятся в защищённом хранилище ОС и не попадают в интерфейс, историю или логи.</li>
+        <li>{t("settings.security.keys")}</li>
         <li>
-          Автоматический переход на облачного провайдера при сбое:{" "}
-          <strong>{view.allowCloudFallback ? "включён" : "выключен"}</strong>
-          {" "}({autoFallbackDefault() ? "" : "по умолчанию выключен"}).
+          {t("settings.security.fallback")}{" "}
+          <strong>{view.allowCloudFallback ? t("settings.security.fallbackOn") : t("settings.security.fallbackOff")}</strong>
+          {" "}({autoFallbackDefault() ? "" : t("settings.security.fallbackDefault")}).
         </li>
-        <li>Загрузка произвольных файлов недоступна: модуль безопасной обработки вложений ещё не подключён.</li>
+        <li>{t("settings.security.upload")}</li>
       </ul>
     </section>
   );

@@ -17,6 +17,18 @@
   --c-accent-contrast: #14151a;
   --c-danger: #d9534f;
 
+  /* custom scrollbars */
+  --c-scroll-track: #101216;
+  --c-scroll-thumb: #3a3e47;
+  --c-scroll-thumb-hover: #565f6d;
+
+  /* focus mode V2 */
+  --focus-canvas-max: 1040px;
+  --focus-gutter: 28px;
+  --focus-scrim: 0.72;          /* base darkening over the background image */
+  --focus-scrim-strong: 0.86;   /* stronger darkening beneath the chat column */
+  --focus-msg-surface: rgba(19, 21, 25, 0.66);
+
   --sp-1: 4px;
   --sp-2: 8px;
   --sp-3: 12px;
@@ -29,6 +41,15 @@
 }
 
 * { box-sizing: border-box; }
+
+/* --- beautiful scrolling (never fully hidden) --- */
+* { scrollbar-width: thin; scrollbar-color: var(--c-scroll-thumb) var(--c-scroll-track); }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--c-scroll-track); border-radius: 999px; }
+::-webkit-scrollbar-thumb { background: var(--c-scroll-thumb); border-radius: 999px; border: 2px solid var(--c-scroll-track); }
+::-webkit-scrollbar-thumb:hover { background: var(--c-scroll-thumb-hover); }
+::-webkit-scrollbar-corner { background: var(--c-scroll-track); }
+.panel, .transcript, .focus-scroll, .focus-rail, .settings-overlay, .provider-cards { scrollbar-width: thin; }
 body {
   margin: 0;
   font-family: var(--font);
@@ -159,20 +180,106 @@ button { font: inherit; color: inherit; }
 .scene-fields-head { display: flex; align-items: center; justify-content: space-between; }
 .new-dialog-actions { display: flex; gap: var(--sp-2); justify-content: flex-end; }
 
-/* --- focus mode --- */
-.focus { position: fixed; inset: 0; background: var(--c-bg); display: flex; flex-direction: column; z-index: 50; }
-.focus-background { background-size: cover; background-position: center; }
-.focus-background .focus-chat { background: rgba(14, 15, 18, 0.72); backdrop-filter: blur(2px); }
-.focus-bar { display: flex; align-items: center; justify-content: space-between; padding: var(--sp-2) var(--sp-4); border-bottom: 1px solid var(--c-border); }
-.focus-layouts { display: flex; gap: var(--sp-2); }
+/* --- focus mode V2 --- */
+.focus { position: fixed; inset: 0; background: var(--c-bg); display: flex; flex-direction: column; z-index: 50; overflow: hidden; }
+
+/* BACKGROUND: fullscreen atmospheric image + readability scrim. Source pixels
+ * are never modified — only CSS scale/blur/darkening. */
+.focus-bg-layer {
+  position: absolute; inset: 0;
+  background-size: cover; background-position: center; background-repeat: no-repeat;
+  transform: scale(1.06); filter: blur(2px) saturate(1.05) brightness(0.92);
+  z-index: 0;
+}
+.focus-bg-scrim {
+  position: absolute; inset: 0; z-index: 1;
+  background:
+    linear-gradient(90deg, rgba(10,11,14,var(--focus-scrim-strong)) 0%, rgba(10,11,14,var(--focus-scrim)) 34%,
+                           rgba(10,11,14,var(--focus-scrim)) 66%, rgba(10,11,14,var(--focus-scrim-strong)) 100%),
+    linear-gradient(180deg, rgba(10,11,14,0.55) 0%, rgba(10,11,14,0.35) 30%, rgba(10,11,14,0.6) 78%, rgba(10,11,14,0.9) 100%);
+}
+.focus > .focus-bar, .focus > .focus-body { position: relative; z-index: 2; }
+
+/* compact top bar */
+.focus-bar {
+  display: flex; align-items: center; gap: var(--sp-3);
+  padding: 6px var(--sp-4); min-height: 44px;
+  border-bottom: 1px solid var(--c-border);
+  background: rgba(14, 15, 18, 0.55);
+}
+.focus-identity { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
+.focus-identity-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.focus-layouts { display: flex; gap: var(--sp-2); margin: 0 auto; }
+.focus-exit { margin-left: auto; }
+
 .focus-body { flex: 1; display: flex; min-height: 0; }
-.focus-gallery { width: 120px; padding: var(--sp-2); display: flex; flex-direction: column; gap: var(--sp-2); overflow: auto; border-right: 1px solid var(--c-border); }
-.focus-gallery img { width: 100%; border-radius: 6px; }
-.focus-chat { flex: 1; display: flex; flex-direction: column; padding: var(--sp-4); overflow: hidden; }
-.focus-side_gallery .focus-chat { max-width: none; }
-.focus-chat_only .focus-gallery { display: none; }
+
+/* SIDE_GALLERY left visual rail */
+.focus-rail {
+  width: 32%; max-width: 360px; min-width: 220px;
+  padding: var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-2);
+  overflow-y: auto; border-right: 1px solid var(--c-border);
+  background: rgba(14, 15, 18, 0.5);
+}
+.focus-rail-stage { border: 1px solid var(--c-border); border-radius: var(--radius); overflow: hidden; background: var(--c-bg); }
+.focus-rail-stage img { display: block; width: 100%; max-height: 46vh; object-fit: cover; }
+.focus-rail-controls { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); }
+.focus-rail-counter { font-size: 12px; color: var(--c-text-dim); font-variant-numeric: tabular-nums; }
+.focus-rail-actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+.focus-rail-strip { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--sp-1); }
+.focus-chat_only .focus-rail, .focus-background .focus-rail { display: none; }
+
+/* centered conversation canvas — shared by all three layouts */
+.focus-chat { flex: 1; display: flex; min-height: 0; }
+.focus-canvas {
+  width: 100%; max-width: var(--focus-canvas-max); margin: 0 auto;
+  padding: var(--sp-4) var(--focus-gutter);
+  display: flex; flex-direction: column; min-height: 0; position: relative;
+}
+.focus-scroll { flex: 1; overflow-y: auto; padding-right: 4px; scroll-behavior: smooth; }
+.focus-transcript { list-style: none; margin: 0; padding: var(--sp-2) 0; display: flex; flex-direction: column; gap: var(--sp-4); }
+
+.focus-group { display: flex; flex-direction: column; gap: 4px; max-width: 78%; }
+.focus-group-character { align-self: flex-start; }
+.focus-group-user { align-self: flex-end; align-items: flex-end; }
+.focus-group-head { display: flex; align-items: center; gap: var(--sp-2); }
+.focus-group-user .focus-group-head { flex-direction: row-reverse; }
+.focus-group-name { font-size: 12px; color: var(--c-text-dim); letter-spacing: 0.02em; }
+
+.focus-avatar {
+  width: 32px; height: 32px; border-radius: 50%; object-fit: cover;
+  border: 1px solid var(--c-border-strong); background: var(--c-bg-raised); flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; color: var(--c-text-dim);
+}
+.focus-avatar-ring { border-color: var(--c-accent); }
+.focus-avatar-user { color: var(--c-accent); border-color: var(--c-accent); }
+
+.focus-msg {
+  margin: 0; padding: var(--sp-2) var(--sp-3);
+  background: var(--focus-msg-surface); border: 1px solid var(--c-border);
+  border-radius: var(--radius); backdrop-filter: blur(3px);
+}
+.focus-group-user .focus-msg { background: rgba(30, 27, 20, 0.66); border-color: var(--c-border-strong); }
+.focus-msg .msg-text { white-space: pre-wrap; }
+.focus-chat_only .focus-msg { backdrop-filter: none; }
+
+.focus-new-messages {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  bottom: 92px; z-index: 5; box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  background: var(--c-accent); color: var(--c-accent-contrast); border-color: var(--c-accent);
+}
+.focus-composer { padding-top: var(--sp-2); }
+.focus-composer .composer { border-top-color: var(--c-border-strong); }
 
 img { max-width: 100%; }
+
+@media (max-width: 1100px) {
+  .focus-canvas { padding-left: var(--sp-4); padding-right: var(--sp-4); }
+  .focus-group { max-width: 88%; }
+  .focus-rail { min-width: 180px; }
+  .focus-layouts { margin: 0; }
+}
 
 /* --- settings (secure provider foundations) --- */
 .app-bar-settings { margin-left: auto; }
@@ -195,3 +302,4 @@ img { max-width: 100%; }
 .pill-ok { border-color: var(--c-accent); color: var(--c-accent); }
 .pill-bad { border-color: var(--c-danger); color: var(--c-danger); }
 .settings .field select, .settings .field input { padding: var(--sp-2); background: var(--c-bg); border: 1px solid var(--c-border); border-radius: var(--radius); color: inherit; font: inherit; }
+.profile-avatar-status { border-left: 2px solid var(--c-border-strong); padding-left: var(--sp-2); }

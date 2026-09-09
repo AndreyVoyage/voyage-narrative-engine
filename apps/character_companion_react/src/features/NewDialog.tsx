@@ -11,6 +11,8 @@ import {
   setSceneField,
   setTitle,
 } from "../app/newDialog.js";
+import { useLocale } from "../i18n/react.js";
+import type { TranslationKey } from "../i18n/index.js";
 
 interface Props {
   busy: boolean;
@@ -20,15 +22,16 @@ interface Props {
   onStart: (input: ReturnType<typeof draftToInput>) => void;
 }
 
-const FIELD_LABEL: Record<SceneField, string> = {
-  place: "Место",
-  time: "Время",
-  situation: "Ситуация",
-  mood: "Настроение",
+const FIELD_KEY: Record<SceneField, TranslationKey> = {
+  place: "scene.place",
+  time: "scene.time",
+  situation: "scene.situation",
+  mood: "scene.mood",
 };
 
-/** "Новый диалог" — A. Обычный разговор  |  B. Начать со сцены. */
+/** "New dialogue" — A. Ordinary conversation  |  B. Start from a scene. */
 export function NewDialog({ busy, rollField, rollScenario, onCancel, onStart }: Props) {
+  const { t } = useLocale();
   const [draft, setDraft] = useState<NewDialogDraft>(emptyDraft());
 
   async function diceAll() {
@@ -42,8 +45,8 @@ export function NewDialog({ busy, rollField, rollScenario, onCancel, onStart }: 
   }
 
   return (
-    <section className="new-dialog panel" aria-label="Новый диалог">
-      <h2 className="panel-title">Новый диалог</h2>
+    <section className="new-dialog panel" aria-label={t("newDialog.title")}>
+      <h2 className="panel-title">{t("newDialog.title")}</h2>
 
       <div className="mode-choice">
         <label>
@@ -53,7 +56,7 @@ export function NewDialog({ busy, rollField, rollScenario, onCancel, onStart }: 
             checked={draft.mode === "ordinary"}
             onChange={() => setDraft((d) => setMode(d, "ordinary"))}
           />
-          Обычный разговор
+          {t("newDialog.modeOrdinary")}
         </label>
         <label>
           <input
@@ -62,26 +65,26 @@ export function NewDialog({ busy, rollField, rollScenario, onCancel, onStart }: 
             checked={draft.mode === "scene"}
             onChange={() => setDraft((d) => setMode(d, "scene"))}
           />
-          Начать со сцены
+          {t("newDialog.modeScene")}
         </label>
       </div>
 
       <label className="field">
-        <span>Название (необязательно)</span>
+        <span>{t("newDialog.name")}</span>
         <input value={draft.title} onChange={(e) => setDraft((d) => setTitle(d, e.target.value))} />
       </label>
 
       {draft.mode === "scene" && (
         <div className="scene-fields">
           <div className="scene-fields-head">
-            <span>Сцена</span>
+            <span>{t("newDialog.scene")}</span>
             <button type="button" className="btn btn-sm" onClick={diceAll} disabled={busy}>
-              🎲 Случайный сценарий
+              {t("newDialog.randomScenario")}
             </button>
           </div>
           {SCENE_FIELDS.map((f) => (
             <label className="field" key={f}>
-              <span>{FIELD_LABEL[f]}</span>
+              <span>{t(FIELD_KEY[f])}</span>
               <span className="field-row">
                 <input
                   value={draft.scene[f]}
@@ -92,7 +95,7 @@ export function NewDialog({ busy, rollField, rollScenario, onCancel, onStart }: 
             </label>
           ))}
           <label className="field">
-            <span>Опишите обстоятельства</span>
+            <span>{t("newDialog.describe")}</span>
             <textarea
               rows={3}
               value={draft.scene.freeform}
@@ -103,9 +106,9 @@ export function NewDialog({ busy, rollField, rollScenario, onCancel, onStart }: 
       )}
 
       <div className="new-dialog-actions">
-        <button type="button" className="btn" onClick={onCancel}>Отмена</button>
+        <button type="button" className="btn" onClick={onCancel}>{t("newDialog.cancel")}</button>
         <button type="button" className="btn btn-primary" disabled={busy} onClick={() => onStart(draftToInput(draft))}>
-          Начать
+          {t("newDialog.start")}
         </button>
       </div>
     </section>

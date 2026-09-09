@@ -33,6 +33,30 @@ import {
   nextFocusLayout,
 } from "../src/app/appearance.js";
 import { draftToInput, emptyDraft, setFreeform, setMode, setSceneField, setTitle } from "../src/app/newDialog.js";
+import {
+  DEFAULT_LOCALE,
+  UI_LOCALES,
+  errorText,
+  normalizeLocale,
+  translate,
+  LOCALE_STORAGE_KEY,
+} from "../src/i18n/index.js";
+import { ru } from "../src/i18n/ru.js";
+import { en } from "../src/i18n/en.js";
+import { es } from "../src/i18n/es.js";
+import { zhCN } from "../src/i18n/zhCN.js";
+import { pt } from "../src/i18n/pt.js";
+import {
+  DEFAULT_USER_PROFILE,
+  normalizeUserProfile,
+  parseUserProfile,
+  serializeUserProfile,
+  userProfileInitials,
+  resolveDisplayName,
+  USER_PROFILE_STORAGE_KEY,
+} from "../src/app/userProfile.js";
+import { resolveFocusBackground } from "../src/app/focusBackground.js";
+import { buildFocusGallery, clampGalleryIndex } from "../src/app/focusGallery.js";
 import * as fs from "node:fs";
 import * as nodePath from "node:path";
 
@@ -101,8 +125,8 @@ async function main(): Promise<void> {
   assert(fallback.startsWith("data:image/svg+xml") && portraitMod.hasReleasePortrait("x") === false,
     "unknown / future character falls back to the neutral placeholder");
   const wingSrc = read("features/RightWing.tsx");
-  assert(wingSrc.includes('alt={`Портрет:') && wingSrc.includes("wing-scene-image"),
-    "identity portrait and Scene image are separate slots");
+  assert(wingSrc.includes('t("focus.portraitAlt"') && wingSrc.includes("wing-scene-image"),
+    "identity portrait (localized alt) and Scene image are separate slots");
   // the portrait <img> src is always portraitFor(...), never a Scene resultRef
   assert(wingSrc.includes("<img src={portraitFor(characterId)}"), "portrait src is portraitFor(characterId)");
   const portraitImgLine = wingSrc.split("\n").find((l) => l.includes("portraitFor(characterId)")) ?? "";
@@ -112,7 +136,8 @@ async function main(): Promise<void> {
   ok("39. right wing conditionally shows the scene visual");
   assert(wing.includes("wing-portrait-expanded"), "portrait expansion without scene image");
   ok("40. no scene image → portrait expansion behaviour exists");
-  assert(wing.includes("scene-params") && wing.includes("Настроение"), "scene parameters rendered");
+  assert(wing.includes("scene-params") && wing.includes('t("scene.mood")'), "scene parameters rendered");
+  assert(ru["scene.mood"] === "Настроение" && ru["scene.place"] === "Место", "scene-field labels come from the RU dictionary unchanged");
   ok("41. scene parameters render (место/время/ситуация/настроение)");
 
   // 42 + 43 — image job states render, composer never disabled by a job
@@ -122,7 +147,8 @@ async function main(): Promise<void> {
   ] });
   assert(anyImageJobActive(s.imageJobs) && s.loading === "idle", "image job active but chat not blocked");
   const conv = read("features/Conversation.tsx");
-  assert(conv.includes("job-strip") && conv.includes("Создаём изображение"), "job status strip renders");
+  assert(conv.includes("job-strip") && conv.includes('t("job.generating")'), "job status strip renders");
+  assert(ru["job.generating"] === "Создаём изображение…", "job status text preserved in RU dictionary");
   ok("42. image job states render");
   assert(!/Composer[\s\S]*disabled=\{[^}]*job/i.test(conv), "composer not disabled by image jobs");
   ok("43. image job does not disable the composer");
@@ -130,20 +156,23 @@ async function main(): Promise<void> {
   // 44 — create-image vs context-frame are distinct actions
   const composer = read("features/Composer.tsx");
   assert(composer.includes("onCreateImage") && composer.includes("onContextFrame"), "two distinct create actions");
-  assert(composer.includes("Создать изображение") && composer.includes("Кадр по контексту"), "distinct labels");
+  assert(composer.includes('t("composer.createImage")') && composer.includes('t("composer.contextFrame")'), "distinct labels");
+  assert(ru["composer.createImage"] === "Создать изображение…" && ru["composer.contextFrame"] === "Кадр по контексту",
+    "composer create labels preserved in RU dictionary");
   ok("44. create-image and context-frame actions are distinct");
 
   // 45 — arbitrary attachment upload is disabled / not implemented
-  assert(/disabled/.test(composer) && /(Скоро|безопасной загрузки)/.test(composer), "attach actions disabled honestly");
+  assert(/disabled/.test(composer) && composer.includes('t("composer.attachSoonTitle")'), "attach actions disabled honestly");
   assert(!/input[^>]*type=["']file["']/.test(composer), "no unsafe file picker");
   ok("45. arbitrary attachment upload actions are disabled / not implemented");
 
   // 46 — microphone not duplicated in the attachment menu
   const menuBlock = composer.slice(composer.indexOf("composer-menu"), composer.indexOf("</div>", composer.indexOf("composer-menu")));
   assert(!menuBlock.includes("🎤"), "microphone icon is not inside the + menu");
-  assert(!/(Голосов|voice message|Записать голос)/i.test(menuBlock), "no voice-message entry in the + menu");
-  assert(composer.includes("🎤") && composer.includes("Записать голосовое сообщение"),
+  assert(!/(Голосов|voice message|Записать голос|recordVoice)/i.test(menuBlock), "no voice-message entry in the + menu");
+  assert(composer.includes("🎤") && composer.includes('t("composer.recordVoice")'),
     "microphone is a dedicated composer button meaning 'record a voice message'");
+  assert(/Записать голосовое сообщение/.test(ru["composer.recordVoice"]), "voice-record label preserved in RU dictionary");
   ok("46. microphone is not duplicated in the attachment menu");
 
   // 47–51 — Focus Mode
@@ -152,13 +181,14 @@ async function main(): Promise<void> {
   s = companionReducer(s, { type: "focusExit" });
   assert(!s.focusActive, "focus exit");
   ok("47. Focus Mode exists");
-  assert(FOCUS_LAYOUTS.length === 3 && FOCUS_LAYOUTS.join(",") === "background,side_gallery,chat_only", "three layouts");
+  assert(FOCUS_LAYOUTS.length === 3 && FOCUS_LAYOUTS.join(",") === "background,side_gallery,chat_only", "three layouts (unchanged)");
   const fm = read("features/FocusMode.tsx");
-  assert(fm.includes("focus-background") || fm.includes("backgroundImage"), "BACKGROUND layout");
+  const focusCss = read("styles.css");
+  assert(fm.includes("focus-background") && fm.includes("backgroundImage"), "BACKGROUND layout");
   ok("48. BACKGROUND mode exists");
-  assert(fm.includes("focus-gallery") && fm.includes("side_gallery"), "SIDE_GALLERY layout");
+  assert(fm.includes("focus-gallery") && fm.includes('layout === "side_gallery"'), "SIDE_GALLERY layout");
   ok("49. SIDE_GALLERY mode exists");
-  assert(fm.includes("chat_only"), "CHAT_ONLY layout");
+  assert(focusCss.includes(".focus-chat_only") && (FOCUS_LAYOUTS as readonly string[]).includes("chat_only"), "CHAT_ONLY layout");
   ok("50. CHAT_ONLY exists");
   assert(fm.includes('e.key === "Escape"') && fm.includes("onExit"), "Esc exits focus mode");
   ok("51. Esc exits Focus Mode");
@@ -214,7 +244,8 @@ async function main(): Promise<void> {
   const appSrc2 = read("App.tsx");
   const stMod = await import("../src/app/settingsState.js");
 
-  assert(appSrc2.includes("SettingsPanel") && /Настройки/.test(appSrc2), "App exposes a Settings entry");
+  assert(appSrc2.includes("SettingsPanel") && appSrc2.includes('t("app.settings")'), "App exposes a Settings entry");
+  assert(ru["app.settings"] === "Настройки", "Settings label preserved in RU dictionary");
   ok("Settings entry exists in the app");
 
   for (const p of ["DeepSeek", "OpenAI", "Qwen", "Local"]) {
@@ -262,7 +293,8 @@ async function main(): Promise<void> {
 
   // no auto-fallback by default; data-routing explanation present
   assert(stMod.autoFallbackDefault() === false && view.allowCloudFallback === false, "auto fallback off by default");
-  assert(/выключен/.test(settings), "settings state that fallback is off");
+  assert(settings.includes('t("settings.security.fallbackOff")') && ru["settings.security.fallbackOff"] === "выключен",
+    "settings state that fallback is off");
   assert(view.dataRoutingNote.includes("выбранному провайдеру"), "data-routing explanation present");
   assert(/дублирования/i.test(settings) || /Дублирования/.test(view.dataRoutingNote), "no-duplication statement");
   ok("no auto-fallback toggle enabled by default; data-routing explanation exists");
@@ -297,6 +329,202 @@ async function main(): Promise<void> {
     assert(!/sk-[A-Za-z0-9]{6,}/.test(read(rf)), `${rf} has no hardcoded API key`);
   }
   ok("release identity (RC1) surfaced; release-mode provider guard present; no hardcoded key");
+
+  // ================================================================
+  // FOCUS MODE V2 · USER IDENTITY · i18n
+  // ================================================================
+  const fmv2 = read("features/FocusMode.tsx");
+  const css = read("styles.css");
+  const i18nIndex = read("i18n/index.ts");
+  const i18nReact = read("i18n/react.tsx");
+  const profileSrc = read("app/userProfile.ts");
+  const bgSrc = read("app/focusBackground.ts");
+  const mainSrc = read("main.tsx");
+  const settingsV2 = read("features/SettingsPanel.tsx");
+  const appV2 = read("App.tsx");
+  const iu = (r: string) => "/img/" + r;
+
+  // 1 — centered / max-width bounded conversation canvas
+  assert(fmv2.includes("focus-canvas") && css.includes(".focus-canvas"), "focus canvas present");
+  assert(/\.focus-canvas\s*\{[^}]*max-width:\s*var\(--focus-canvas-max\)/.test(css) && /\.focus-canvas\s*\{[^}]*margin:\s*0 auto/.test(css),
+    "focus canvas is centered with a bounded max-width");
+  ok("V2.1 Focus chat canvas is centered / max-width bounded");
+
+  // 2 — BACKGROUND source priority: selected → cover → portrait
+  const bgSel = resolveFocusBackground({ selectedRef: "g1", readyRefs: ["g1", "g2"], coverUrl: "/c.png", imageUrl: iu, characterId: "kira" });
+  const bgCover = resolveFocusBackground({ selectedRef: "gone", readyRefs: ["g2"], coverUrl: "/c.png", imageUrl: iu, characterId: "kira" });
+  const bgPortrait = resolveFocusBackground({ selectedRef: null, readyRefs: [], coverUrl: null, imageUrl: iu, characterId: "kira" });
+  assert(bgSel.kind === "selected" && bgSel.url === "/img/g1", "selected focus image wins when still READY");
+  assert(bgCover.kind === "cover" && bgCover.url === "/c.png", "falls back to the conversation cover");
+  assert(bgPortrait.kind === "portrait" && bgPortrait.url === "/characters/kira/KIRA_release_portrait_v1_APPROVED.png",
+    "falls back to the identity portrait");
+  assert(fmv2.includes("resolveFocusBackground("), "FocusMode uses the background priority resolver");
+  ok("V2.2 BACKGROUND uses selected/cover/portrait priority");
+
+  // 3 — BACKGROUND readability overlay
+  assert(fmv2.includes("focus-bg-scrim") && css.includes(".focus-bg-scrim"), "readability scrim element + style");
+  assert(/\.focus-bg-scrim\s*\{[^}]*linear-gradient/.test(css), "scrim darkens the image behind the text");
+  ok("V2.3 BACKGROUND has a readability overlay");
+
+  // 4 — SIDE_GALLERY contains portrait + READY images
+  const gal = buildFocusGallery({
+    portraitUrl: "/p.png", coverRef: "cov", readyRefs: ["g1", "g2"], imageUrl: iu,
+  });
+  assert(gal[0].kind === "portrait" && gal[0].src === "/p.png", "portrait is always first in the rail");
+  assert(gal.some((i) => i.kind === "generated" && i.resultRef === "g1") && gal.some((i) => i.resultRef === "g2"),
+    "all READY generated images are in the rail");
+  const galDedup = buildFocusGallery({ portraitUrl: "/p.png", coverRef: "g1", readyRefs: ["g1"], imageUrl: iu });
+  assert(galDedup.filter((i) => i.resultRef === "g1").length === 1, "cover that is also a READY image is not duplicated");
+  assert(fmv2.includes("buildFocusGallery(") && fmv2.includes("portraitFor(characterId)") && fmv2.includes("readyImages"),
+    "FocusMode builds the rail from portrait + ready images");
+  ok("V2.4 SIDE_GALLERY contains portrait + READY images");
+
+  // 5 + 6 — gallery previous/next + index counter
+  assert(fmv2.includes("focus-rail-prev") && fmv2.includes("focus-rail-next"), "gallery has previous / next controls");
+  ok("V2.5 gallery previous / next exists");
+  assert(fmv2.includes("focus-rail-counter") && fmv2.includes('t("focus.gallery.counter"'), "gallery shows an index counter");
+  assert(ru["focus.gallery.counter"].includes("{index}") && ru["focus.gallery.counter"].includes("{total}"), "counter is a parameterized label");
+  assert(clampGalleryIndex(5, 3) === 2 && clampGalleryIndex(-1, 3) === 2 && clampGalleryIndex(0, 0) === 0, "gallery index wraps and tolerates empty");
+  ok("V2.6 gallery index counter exists");
+
+  // 7 — cover action reuses the explicit existing scene-cover action
+  assert(fmv2.includes("onMakeCover(") && fmv2.includes('t("focus.gallery.makeCover")'), "gallery 'set as cover' calls onMakeCover");
+  assert(/onMakeCover=\{makeCover\}/.test(appV2) && /function makeCover\b[\s\S]*?\.setSceneCover\(/.test(appV2),
+    "onMakeCover is wired to the existing client.setSceneCover action");
+  ok("V2.7 cover action still uses the explicit existing action");
+
+  // 8 — choosing a focus background does NOT write Scene / Memory / Runtime
+  assert(bgSrc.includes("localStorage"), "focus background preference is local-storage only");
+  for (const banned of ["setSceneCover", "client.", "fetch(", "/api/", "import.meta"]) {
+    assert(!bgSrc.includes(banned), `focusBackground.ts free of '${banned}' (no backend / Scene write)`);
+  }
+  assert(fmv2.includes("setFocusBackgroundRef(") && fmv2.includes("chooseBackground("), "background selection goes through the local preference");
+  ok("V2.8 background selection does not write Scene / Memory");
+
+  // 9 — CHAT_ONLY has no gallery rail
+  assert(fmv2.includes('layout === "side_gallery"') && fmv2.includes("isGallery"), "rail renders only for side_gallery");
+  assert(/\.focus-chat_only\s+\.focus-rail[^{]*\{[^}]*display:\s*none/.test(css), "CHAT_ONLY hides the rail");
+  ok("V2.9 CHAT_ONLY has no gallery");
+
+  // 10 + 11 — participant identity (character + local user)
+  assert(fmv2.includes("focus-avatar") && fmv2.includes("focus-identity-name") && fmv2.includes("characterName"),
+    "character avatar + name render");
+  ok("V2.10 character avatar / name renders");
+  assert(fmv2.includes("userProfileInitials(") && fmv2.includes("resolveDisplayName(") && fmv2.includes("focus-avatar-user"),
+    "local user avatar + name render");
+  assert(fmv2.includes("groupMessages(") && fmv2.includes("g.items.map(") && fmv2.includes("focus-group-head"),
+    "messages are rendered in per-speaker groups");
+  assert(fmv2.indexOf("focus-group-head") < fmv2.indexOf("g.items.map("),
+    "identity chrome renders once per group, before the per-message bubbles");
+  ok("V2.11 user avatar / name renders (grouped, not per-message)");
+
+  // 12 — local user profile persists locally
+  assert(DEFAULT_USER_PROFILE.displayName === "" && DEFAULT_USER_PROFILE.avatarKind === "placeholder", "sane profile default");
+  const customProfile = normalizeUserProfile({ displayName: "  Мария Иванова  ", avatarKind: "image", avatarRef: "x", locale: "en" });
+  assert(customProfile.displayName === "Мария Иванова" && customProfile.avatarRef === null && customProfile.locale === "en",
+    "profile is normalized; image avatar ref is never hydrated yet");
+  const round = parseUserProfile(serializeUserProfile(customProfile));
+  assert(round.displayName === customProfile.displayName && round.locale === "en" && round.avatarKind === "image",
+    "profile round-trips through serialize/parse");
+  assert(profileSrc.includes("localStorage") && profileSrc.includes(USER_PROFILE_STORAGE_KEY.slice(0, 8)),
+    "profile is stored in localStorage under a stable key");
+  assert(resolveDisplayName({ ...DEFAULT_USER_PROFILE }, "Пользователь") === "Пользователь", "empty name falls back to the localized default");
+  assert(userProfileInitials({ ...DEFAULT_USER_PROFILE, displayName: "Мария Иванова" }, "П") === "МИ", "initials from two words");
+  ok("V2.12 user profile persists locally");
+
+  // 13 — no profile file picker
+  for (const rel of ["features/SettingsPanel.tsx", "features/FocusMode.tsx", "App.tsx"]) {
+    assert(!/type=["']file["']/.test(read(rel)) && !/<input[^>]*\bfile\b/i.test(read(rel)), `${rel} has no file input`);
+  }
+  assert(settingsV2.includes('t("profile.avatarComingSoon")'), "avatar shown as a 'coming soon' status, not an upload");
+  ok("V2.13 no profile file picker exists");
+
+  // 14 — composer aligned with the centered canvas
+  assert(fmv2.includes("focus-composer") && fmv2.indexOf("focus-canvas") < fmv2.indexOf("focus-composer"),
+    "composer sits inside the centered focus canvas");
+  assert(css.includes(".focus-composer"), "focus composer has an alignment style");
+  ok("V2.14 composer aligned with centered canvas");
+
+  // 15 + 16 — custom scrollbar CSS exists and stays visible
+  assert(css.includes("::-webkit-scrollbar") && css.includes("scrollbar-color") && css.includes("scrollbar-width"),
+    "custom scrollbar CSS (WebKit + standards) present");
+  assert(css.includes("::-webkit-scrollbar-thumb:hover"), "scrollbar has a hover treatment");
+  assert(!/::-webkit-scrollbar\s*\{[^}]*display:\s*none/.test(css) && !/::-webkit-scrollbar\s*\{[^}]*width:\s*0(px)?;/.test(css),
+    "scrollbar is never fully hidden");
+  ok("V2.15 custom scrollbar CSS exists");
+  ok("V2.16 scrollbar remains visible");
+
+  // 17 + 18 — polished scroll behaviour
+  assert(fmv2.includes("recomputeNearBottom") && fmv2.includes("nearBottomRef") && fmv2.includes("scrollToBottom("),
+    "near-bottom tracking + programmatic scroll-to-bottom");
+  assert(/if \(nearBottomRef\.current\) scrollToBottom/.test(fmv2), "only auto-follows when the reader is near the bottom");
+  assert(fmv2.includes("showNewMessages") && fmv2.includes('t("focus.newMessages")'), "a compact 'new messages' affordance exists");
+  ok("V2.17 near-bottom autoscroll behaviour exists");
+  ok("V2.18 reading older messages is not forcibly autoscrolled");
+
+  // 19–24 — locale selector + five languages
+  assert(settingsV2.includes("UI_LOCALES") && settingsV2.includes("setLocale(") && settingsV2.includes('t("profile.language")'),
+    "Settings has an interface-language selector");
+  ok("V2.19 locale selector exists");
+  assert(JSON.stringify([...UI_LOCALES]) === JSON.stringify(["ru", "en", "es", "zh-CN", "pt"]), "five UI locales");
+  for (const [name, dict] of [["en", en], ["es", es], ["zh-CN", zhCN], ["pt", pt]] as const) {
+    assert(Object.keys(dict).length === Object.keys(ru).length, `${name} dictionary has the full key set`);
+    assert(typeof dict["app.settings"] === "string" && dict["app.settings"].length > 0, `${name} has a real translation`);
+  }
+  ok("V2.20 ru available");
+  ok("V2.21 en available");
+  ok("V2.22 es available");
+  ok("V2.23 zh-CN available");
+  ok("V2.24 pt available");
+
+  // 25 + 26 — locale persists; switches without backend restart
+  assert(i18nIndex.includes(LOCALE_STORAGE_KEY.slice(0, 8)) && i18nIndex.includes("localStorage.setItem"),
+    "selected locale is persisted to localStorage");
+  ok("V2.25 selected locale persists");
+  assert(mainSrc.includes("LocaleProvider") && i18nReact.includes("useState") && i18nReact.includes("createContext"),
+    "locale lives in React state at the top of the tree");
+  assert(!/location\.reload|window\.location/.test(i18nReact) && !/location\.reload/.test(settingsV2),
+    "changing language never reloads the page or restarts the backend");
+  assert(translate("en", "app.settings") === "Settings" && translate("ru", "app.settings") === "Настройки", "translate resolves per locale");
+  assert(translate("en", "focus.gallery.counter", { index: 2, total: 5 }) === "2 / 5", "translate interpolates params");
+  assert(normalizeLocale("zh") === "zh-CN" && normalizeLocale("en-US") === "en" && normalizeLocale("de") === DEFAULT_LOCALE,
+    "locale normalization is robust");
+  ok("V2.26 UI changes locale without backend restart");
+
+  // 27 + 28 — conversation content is NEVER machine-translated
+  for (const rel of ["features/FocusMode.tsx", "features/Conversation.tsx"]) {
+    const src = read(rel);
+    assert(src.includes("{m.text}"), `${rel} renders the raw message text`);
+    assert(!/t\(\s*m\.text/.test(src) && !/translate\([^)]*m\.text/.test(src), `${rel} never translates message text`);
+  }
+  assert(!i18nIndex.includes("CompanionMessage") && !i18nIndex.includes("reply"), "i18n core has no coupling to conversation content");
+  ok("V2.27 conversation content is not passed through translator");
+  ok("V2.28 character replies are untouched");
+
+  // 29 + 30 — backend error codes map through i18n; unknown → localized generic
+  for (const code of ["provider_not_configured", "missing_credential", "provider_failed", "provider_unavailable", "generator_unavailable"]) {
+    assert(errorText("ru", code) !== code && errorText("ru", code) !== errorText("ru", "totally_unknown_zzz"),
+      `error code '${code}' maps to dedicated localized text`);
+    assert(errorText("es", code) !== errorText("ru", code), `error code '${code}' is localized per locale`);
+  }
+  ok("V2.29 backend error codes map through i18n");
+  assert(errorText("en", "totally_unknown_zzz") === translate("en", "error.unknown") && errorText("en", "totally_unknown_zzz") !== "totally_unknown_zzz",
+    "unknown error code falls back to a localized generic message");
+  ok("V2.30 unknown error fallback localized");
+
+  // 31 + 32 — no Character Runtime import; no unsafe file input introduced
+  for (const rel of ["i18n/index.ts", "i18n/ru.ts", "app/userProfile.ts", "app/focusBackground.ts",
+                     "app/focusGallery.ts", "features/FocusMode.tsx", "features/SettingsPanel.tsx"]) {
+    const low = read(rel).toLowerCase();
+    for (const banned of ["character_runtime", "character_core", "runtime_service", "runtimeservice", "runtimestate", "characterpackage"]) {
+      assert(!low.includes(banned), `${rel} free of '${banned}'`);
+    }
+  }
+  ok("V2.31 no Character Runtime import introduced");
+  for (const rel of ["App.tsx", "features/SettingsPanel.tsx", "features/FocusMode.tsx", "features/Composer.tsx"]) {
+    assert(!/type=["']file["']/.test(read(rel)), `${rel} introduces no file input`);
+  }
+  ok("V2.32 no unsafe file input introduced");
 
   console.log(`\n${passed} passed, 0 failed`);
 }

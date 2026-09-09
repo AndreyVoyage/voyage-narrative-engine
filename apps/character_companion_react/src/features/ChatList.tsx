@@ -1,6 +1,7 @@
 import type { CompanionSession } from "../client/types.js";
 import { portraitFor } from "../assets/portrait.js";
 import { filterSessions } from "../app/companionState.js";
+import { useLocale } from "../i18n/react.js";
 
 interface Props {
   sessions: CompanionSession[];
@@ -22,28 +23,29 @@ function sessionTitle(s: CompanionSession): string {
 export function ChatList({
   sessions, selectedSessionId, search, disabled, imageUrl, onSearch, onSelect, onNewDialog,
 }: Props) {
+  const { t } = useLocale();
   const visible = filterSessions(sessions, search);
   return (
-    <nav className="panel chat-list" aria-label="Диалоги">
+    <nav className="panel chat-list" aria-label={t("nav.dialogues")}>
       <div className="panel-head">
-        <h2 className="panel-title">Диалоги</h2>
+        <h2 className="panel-title">{t("nav.dialogues")}</h2>
         <button type="button" className="btn" onClick={onNewDialog} disabled={disabled}>
-          Новый диалог
+          {t("dialogues.new")}
         </button>
       </div>
 
       <input
         className="chat-search"
         type="search"
-        placeholder="Поиск по диалогам"
+        placeholder={t("dialogues.search")}
         value={search}
         onChange={(e) => onSearch(e.target.value)}
       />
 
       {sessions.length === 0 ? (
-        <p className="empty">Диалогов пока нет.</p>
+        <p className="empty">{t("dialogues.empty")}</p>
       ) : visible.length === 0 ? (
-        <p className="empty">Ничего не найдено.</p>
+        <p className="empty">{t("dialogues.noResults")}</p>
       ) : (
         <ul className="chat-cards">
           {visible.map((s) => (
@@ -60,7 +62,7 @@ export function ChatList({
                 />
                 <span className="chat-card-body">
                   <span className="chat-card-title">{sessionTitle(s)}</span>
-                  <span className="chat-card-preview">{s.lastMessagePreview || "Новый диалог"}</span>
+                  <span className="chat-card-preview">{s.lastMessagePreview || t("dialogues.previewEmpty")}</span>
                   <span className="chat-card-time">{s.updatedAt.replace("T", " ").split("+")[0]}</span>
                 </span>
               </button>
