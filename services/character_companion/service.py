@@ -57,7 +57,30 @@ from .image_jobs import (
     ImageJobService,
     UnavailableImageGenerator,
 )
+from .cloud_provider import CloudProviderError
+from .credentials import CredentialError, CredentialVault
 from .local_provider import LocalLLMProviderError
+from .provider_registry import (
+    ALL_ROLES,
+    ROLE_DIALOGUE,
+    RUNTIME_WIRED_ROLES,
+    ProviderRegistryError,
+    all_providers,
+    get_provider,
+)
+from .provider_resolution import (
+    CompanionConfigError,
+    resolve_dialogue_provider_factory,
+    test_provider_connection,
+)
+from .settings import (
+    NUM_CTX_KIRA_SAFE_HINT,
+    NUM_CTX_MAX,
+    NUM_CTX_MIN,
+    CompanionSettings,
+    SettingsError,
+    SettingsStore,
+)
 
 PURPOSE_COMPANION = "COMPANION"
 
@@ -172,6 +195,10 @@ class CompanionService:
         source_loader=None,
         catalog: Optional[CompanionCatalog] = None,
         image_generator=None,
+        settings_store: Optional[SettingsStore] = None,
+        credential_vault: Optional[CredentialVault] = None,
+        http_post_local=None,
+        http_post_cloud=None,
     ) -> None:
         self._acceptance_root = Path(acceptance_root)
         self._data_root = Path(data_root)
@@ -192,6 +219,18 @@ class CompanionService:
         self._images = ImageJobService(
             self._data_root, image_generator or UnavailableImageGenerator()
         )
+        # Secure provider configuration (optional). When BOTH a settings store
+        # and a credential vault are present, send_message resolves the DIALOGUE
+        # provider factory from settings each turn. Otherwise the injected
+        # ``provider_factory`` is used unchanged (existing tests / fake server).
+        self._settings_store = settings_store
+        self._vault = credential_vault
+        self._http_post_local = http_post_local
+        self._http_post_cloud = http_post_cloud
+
+    @property
+    def _secure_config_enabled(self) -> bool:
+        return self._settings_store is not None and self._vault is not None
 
     # ------------------------------------------------------------- catalog
     def list_characters(self) -> Tuple[CompanionCharacterEntry, ...]:
@@ -379,28 +418,33 @@ class CompanionService:
             {"role": _HISTORY_ROLE[m.role], "content": m.text}
             for m in self._history(entry.character_id, session_id)
         ]
+        # ONE deterministically-chosen factory. No retry, no second provider.
+        try:
+            factory = self._dialogue_factory()
+        except (CompanionConfigError, SettingsError, ProviderRegistryError) as exc:
+            raise CompanionError(getattr(exc, "code", "provider_config"), exc.message) from exc
+
         try:
             result = self._runtime.turn(
                 entry.subject_id,
                 policy=GroundedV2Policy(),
                 history=history,
                 user_message=text.strip(),
-                provider=self._provider_factory(None),
-                provider_factory=self._provider_factory,
+                provider=factory(None),
+                provider_factory=factory,
                 memory_root=char_root / "memory",
                 state_root=char_root / "state",
                 session_id=session_id,
-                provider_info=self._provider_info,
+                provider_info=self._dialogue_provider_info(),
                 scene=scene,
             )
         except CompanionError:
             raise
         except Exception as exc:  # noqa: BLE001 -- fail-closed, do not leak internals
-            local = _find_local_provider_error(exc)
-            if local is not None and local.code == "provider_unavailable":
-                raise CompanionProviderError(
-                    "provider_unavailable", "Локальная модель недоступна."
-                ) from exc
+            if _has_unavailable_cause(exc):
+                local = _find_local_provider_error(exc)
+                msg = "Локальная модель недоступна." if local is not None else "Выбранный провайдер недоступен."
+                raise CompanionProviderError("provider_unavailable", msg) from exc
             raise CompanionProviderError(
                 "provider_failed", "the character response could not be generated"
             ) from exc
@@ -476,6 +520,145 @@ class CompanionService:
 
     def image_path(self, result_ref: str) -> Path:
         return self._data_root / result_ref
+
+    # ------------------------------------------------- provider settings
+    def _dialogue_factory(self):
+        if not self._secure_config_enabled:
+            return self._provider_factory
+        return resolve_dialogue_provider_factory(
+            self._settings_store.load(), self._vault,
+            fake_factory=self._provider_factory,
+            http_post_local=self._http_post_local,
+            http_post_cloud=self._http_post_cloud,
+        )
+
+    def _dialogue_provider_info(self) -> dict:
+        if not self._secure_config_enabled:
+            return dict(self._provider_info)
+        a = self._settings_store.load().dialogue()
+        return {"provider_id": a.provider_id, "model": a.model_id}
+
+    def _require_secure_config(self):
+        if not self._secure_config_enabled:
+            raise CompanionError("settings_unavailable", "provider settings are not enabled for this service")
+        return self._settings_store, self._vault
+
+    def settings_view(self) -> dict:
+        store, vault = self._require_secure_config()
+        settings = store.load()
+        meta = {pid: m for pid, m in vault.list_metadata().items()}
+        providers = []
+        for e in all_providers(include_fake=True):
+            m = meta.get(e.provider_id)
+            assigned_model = None
+            for role, a in settings.roles.items():
+                if a.provider_id == e.provider_id:
+                    assigned_model = a.model_id
+            providers.append(e.to_json(
+                connected=(m.connected if m else (not e.credential_required)),
+                configured_model=assigned_model,
+                masked_tail=(m.masked_tail if m else None),
+                last_test_status=(m.last_test_status if m else None),
+            ))
+        return {
+            "providers": providers,
+            "roles": {r: {"providerId": a.provider_id, "modelId": a.model_id}
+                      for r, a in settings.roles.items()},
+            "allRoles": list(ALL_ROLES),
+            "runtimeWiredRoles": list(RUNTIME_WIRED_ROLES),
+            "local": {
+                "numCtx": settings.local_num_ctx,
+                "baseUrl": settings.base_urls.get("local") or get_provider("local").default_base_url,
+                "model": settings.roles.get(ROLE_DIALOGUE).model_id
+                if settings.roles.get(ROLE_DIALOGUE) and settings.roles[ROLE_DIALOGUE].provider_id == "local"
+                else get_provider("local").default_model,
+                "numCtxMin": NUM_CTX_MIN,
+                "numCtxMax": NUM_CTX_MAX,
+                "kiraSafeHint": NUM_CTX_KIRA_SAFE_HINT,
+                "numCtxWarning": bool(settings.local_num_ctx is not None
+                                     and settings.local_num_ctx < NUM_CTX_KIRA_SAFE_HINT),
+            },
+            "allowCloudFallback": settings.allow_cloud_fallback,
+            "dataRoutingNote": "Сообщения для этой роли отправляются выбранному провайдеру. "
+                               "Дублирования между провайдерами нет.",
+        }
+
+    def set_role(self, role: str, provider_id: str, model_id: str) -> dict:
+        store, _ = self._require_secure_config()
+        try:
+            store.set_role(role, provider_id, model_id)
+        except SettingsError as exc:
+            raise CompanionError(exc.code, exc.message) from exc
+        return self.settings_view()
+
+    def set_local_num_ctx(self, num_ctx) -> dict:
+        store, _ = self._require_secure_config()
+        try:
+            store.set_local_num_ctx(num_ctx)
+        except SettingsError as exc:
+            raise CompanionError(exc.code, exc.message) from exc
+        return self.settings_view()
+
+    def set_provider_base_url(self, provider_id: str, base_url) -> dict:
+        store, _ = self._require_secure_config()
+        try:
+            store.set_base_url(provider_id, base_url)
+        except SettingsError as exc:
+            raise CompanionError(exc.code, exc.message) from exc
+        return self.settings_view()
+
+    def store_credential(self, provider_id: str, secret: str) -> dict:
+        _, vault = self._require_secure_config()
+        try:
+            entry = get_provider(provider_id)
+        except ProviderRegistryError as exc:
+            raise CompanionError(exc.code, exc.message) from exc
+        if not entry.credential_required:
+            raise CompanionError("no_credential_needed", f"{entry.display_name} не требует ключа API")
+        try:
+            vault.store(entry.provider_id, secret)
+        except CredentialError as exc:
+            raise CompanionError(exc.code, exc.message) from exc  # message is secret-free by construction
+        return self.settings_view()
+
+    def delete_credential(self, provider_id: str) -> dict:
+        _, vault = self._require_secure_config()
+        try:
+            get_provider(provider_id)
+            vault.delete(provider_id)
+        except (ProviderRegistryError, CredentialError) as exc:
+            raise CompanionError(exc.code, exc.message) from exc
+        return self.settings_view()
+
+    def test_connection(self, provider_id: str, model_id: str = "") -> dict:
+        store, vault = self._require_secure_config()
+        try:
+            entry = get_provider(provider_id)
+        except ProviderRegistryError as exc:
+            raise CompanionError(exc.code, exc.message) from exc
+        result = test_provider_connection(
+            entry.provider_id, model_id or entry.default_model, store.load(), vault,
+            fake_factory=self._provider_factory,
+            http_post_local=self._http_post_local, http_post_cloud=self._http_post_cloud,
+        )
+        # record status without ever touching the stored secret
+        if hasattr(vault, "set_test_status"):
+            vault.set_test_status(entry.provider_id, "ok" if result.get("ok") else "failed")
+        return {"providerId": entry.provider_id, **result}
+
+
+def _has_unavailable_cause(exc: BaseException) -> bool:
+    seen = set()
+    cur: Optional[BaseException] = exc
+    while cur is not None and id(cur) not in seen:
+        seen.add(id(cur))
+        code = getattr(cur, "code", None)
+        if code == "provider_unavailable":
+            return True
+        if isinstance(cur, (LocalLLMProviderError, CloudProviderError)) and getattr(cur, "code", "") == "provider_unavailable":
+            return True
+        cur = cur.__cause__ or cur.__context__
+    return False
 
 
 def _find_local_provider_error(exc: BaseException) -> Optional[LocalLLMProviderError]:

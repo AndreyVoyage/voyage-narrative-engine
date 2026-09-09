@@ -5,6 +5,7 @@ import { Conversation } from "./features/Conversation.js";
 import { NewDialog } from "./features/NewDialog.js";
 import { RightWing } from "./features/RightWing.js";
 import { FocusMode } from "./features/FocusMode.js";
+import { SettingsPanel } from "./features/SettingsPanel.js";
 import { HttpCompanionClient } from "./client/httpCompanionClient.js";
 import { MockCompanionClient } from "./mocks/mockCompanionClient.js";
 import { CompanionClient, CompanionClientError, ImageJobKind, SceneField } from "./client/types.js";
@@ -31,6 +32,7 @@ export function App() {
   const appearance = useMemo(loadAppearance, []);
   const [state, dispatch] = useReducer(companionReducer, appearance.focusModeLayout, initialCompanionState);
   const [showNewDialog, setShowNewDialog] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const pollRef = useRef<number | null>(null);
 
   // ---- loaders -------------------------------------------------------
@@ -173,7 +175,16 @@ export function App() {
         <span>Companion · Cinematic</span>
         {state.loading !== "idle" && <span className="hint">Загрузка…</span>}
         {anyImageJobActive(state.imageJobs) && <span className="hint">Изображение создаётся…</span>}
+        <button type="button" className="btn btn-sm app-bar-settings" onClick={() => setShowSettings(true)}>
+          Настройки
+        </button>
       </header>
+
+      {showSettings && (
+        <div className="settings-overlay">
+          <SettingsPanel client={client} onClose={() => setShowSettings(false)} />
+        </div>
+      )}
 
       <main className="columns">
         <CharacterList

@@ -32,10 +32,21 @@ _STATUS_BY_CODE = {
     "unknown_character": 404,
     "unknown_session": 404,
     "unknown_job": 404,
+    "unknown_provider": 404,
     "empty_message": 400,
     "invalid_request": 400,
+    "invalid_secret": 400,
+    "invalid_num_ctx": 400,
+    "unknown_role": 400,
+    "unsupported_role": 400,
     "provider_failed": 502,
     "provider_unavailable": 503,
+    "missing_credential": 409,
+    "no_credential_needed": 409,
+    "provider_config": 409,
+    "settings_unavailable": 409,
+    "secret_in_settings": 500,
+    "vault_unavailable": 503,
 }
 
 
@@ -236,3 +247,56 @@ class CompanionTransport:
             raise CompanionTransportError(400, "invalid_request", "request body must be a JSON object")
         job_id = _require_str(payload, "jobId")
         return _run(lambda: (self._service.delete_image_job(job_id), {"deleted": job_id})[1])
+
+    # ---------------------------------------------------- provider settings
+    def get_settings(self) -> dict:
+        return _run(self._service.settings_view)
+
+    def set_role(self, payload: dict) -> dict:
+        if not isinstance(payload, dict):
+            raise CompanionTransportError(400, "invalid_request", "request body must be a JSON object")
+        role = _require_str(payload, "role")
+        provider_id = _require_str(payload, "providerId")
+        model_id = payload.get("modelId")
+        if model_id is not None and not isinstance(model_id, str):
+            raise CompanionTransportError(400, "invalid_request", "'modelId' must be a string or null")
+        return _run(lambda: self._service.set_role(role, provider_id, model_id or ""))
+
+    def set_local_settings(self, payload: dict) -> dict:
+        if not isinstance(payload, dict):
+            raise CompanionTransportError(400, "invalid_request", "request body must be a JSON object")
+        out = None
+        if "numCtx" in payload:
+            n = payload.get("numCtx")
+            if n is not None and (isinstance(n, bool) or not isinstance(n, int)):
+                raise CompanionTransportError(400, "invalid_num_ctx", "'numCtx' must be an integer or null")
+            out = _run(lambda: self._service.set_local_num_ctx(n))
+        if "baseUrl" in payload:
+            url = payload.get("baseUrl")
+            if url is not None and not isinstance(url, str):
+                raise CompanionTransportError(400, "invalid_request", "'baseUrl' must be a string or null")
+            out = _run(lambda: self._service.set_provider_base_url("local", url))
+        if out is None:
+            return _run(self._service.settings_view)
+        return out
+
+    def store_credential(self, payload: dict) -> dict:
+        if not isinstance(payload, dict):
+            raise CompanionTransportError(400, "invalid_request", "request body must be a JSON object")
+        provider_id = _require_str(payload, "providerId")
+        secret = payload.get("secret")
+        if not isinstance(secret, str) or not secret.strip():
+            raise CompanionTransportError(400, "invalid_secret", "'secret' must be a non-empty string")
+        # NOTE: the secret is handed straight to the vault; it is never echoed,
+        # logged, or included in the response (settings_view has no secret).
+        return _run(lambda: self._service.store_credential(provider_id, secret))
+
+    def delete_credential(self, provider_id: str) -> dict:
+        return _run(lambda: self._service.delete_credential(provider_id))
+
+    def test_provider(self, payload: dict) -> dict:
+        if not isinstance(payload, dict):
+            raise CompanionTransportError(400, "invalid_request", "request body must be a JSON object")
+        provider_id = _require_str(payload, "providerId")
+        model_id = payload.get("modelId")
+        return _run(lambda: self._service.test_connection(provider_id, model_id or ""))

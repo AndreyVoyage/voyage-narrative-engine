@@ -20,6 +20,7 @@
     "src/app/companionState.ts",
     "src/app/appearance.ts",
     "src/app/newDialog.ts",
+    "src/app/settingsState.ts",
     "src/assets/portraitPlaceholder.ts"
   ]
 }

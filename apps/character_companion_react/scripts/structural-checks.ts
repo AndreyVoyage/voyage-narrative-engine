@@ -191,6 +191,80 @@ async function main(): Promise<void> {
   assert(jobsAfterChat[0].state !== "QUEUED", "listImageJobs (poll) is what advances the job");
   ok("send never advances image jobs; polling does");
 
+  // ---- SECURE COMPANION DESKTOP FOUNDATIONS (Settings) ----
+  const settings = read("features/SettingsPanel.tsx");
+  const appSrc2 = read("App.tsx");
+  const stMod = await import("../src/app/settingsState.js");
+
+  assert(appSrc2.includes("SettingsPanel") && /Настройки/.test(appSrc2), "App exposes a Settings entry");
+  ok("Settings entry exists in the app");
+
+  for (const p of ["DeepSeek", "OpenAI", "Qwen", "Local"]) {
+    assert(settings.includes("provider-card"), "provider cards");
+  }
+  const settingsMock = new MockCompanionClient();
+  const view = await settingsMock.getSettings();
+  const cardIds = view.providers.map((p) => p.providerId);
+  for (const id of ["deepseek", "openai", "qwen", "local"]) assert(cardIds.includes(id), `provider ${id} present`);
+  ok("provider cards exist for DeepSeek / OpenAI / Qwen / Local");
+
+  assert(/type="password"/.test(settings), "credential input is a password field");
+  assert(settings.includes("secretDraftAfterSubmit"), "secret input cleared after submit");
+  assert(stMod.secretDraftAfterSubmit() === "", "post-submit secret draft is empty");
+  ok("secret input clears after submit");
+
+  // no raw secret is ever rendered — the view only carries a masked tail
+  const saved = await settingsMock.storeCredential("deepseek", "sk-secret-RAWVALUE-0001");
+  const dsCard = saved.providers.find((p) => p.providerId === "deepseek")!;
+  assert(dsCard.connected === true && !("secret" in (dsCard as unknown as Record<string, unknown>)), "no secret field on card");
+  assert((dsCard.maskedTail ?? "").indexOf("RAWVALUE") === -1, "masked tail is not the raw key");
+  assert(!/\{card\.(secret|apiKey|rawKey)\}/.test(settings), "panel never renders a raw key");
+  ok("raw secret is not rendered after save");
+  ok("connected state visible on the provider card");
+
+  // role selector — DIALOGUE configurable; others are foundation only
+  assert(/DIALOGUE/.test(settings) && /setRole\("DIALOGUE"/.test(settings), "DIALOGUE role selector");
+  assert(view.runtimeWiredRoles.length === 1 && view.runtimeWiredRoles[0] === "DIALOGUE", "only DIALOGUE is runtime-wired");
+  const afterRole = await settingsMock.setRole("DIALOGUE", "local", "llama3.1");
+  assert(afterRole.roles.DIALOGUE.providerId === "local", "role assignment applied");
+  let unsupported = false;
+  try { await settingsMock.setRole("STT", "deepseek", "x"); } catch { unsupported = true; }
+  assert(unsupported, "unsupported role rejected");
+  ok("role selector exists; DIALOGUE configurable; unsupported role rejected");
+
+  // local model config + num_ctx
+  assert(/num_ctx/i.test(settings) && /baseUrl/.test(settings), "local base URL + num_ctx fields");
+  const lc = await settingsMock.setLocalSettings({ numCtx: 4096 });
+  assert(lc.local.numCtx === 4096 && lc.local.numCtxWarning === true, "num_ctx set + KIRA-safe warning");
+  assert(stMod.localContextWarning(lc) !== null, "context warning surfaces");
+  let badCtx = false;
+  try { await settingsMock.setLocalSettings({ numCtx: -1 }); } catch { badCtx = true; }
+  assert(badCtx, "invalid num_ctx rejected");
+  ok("Local model config + num_ctx field exist");
+
+  // no auto-fallback by default; data-routing explanation present
+  assert(stMod.autoFallbackDefault() === false && view.allowCloudFallback === false, "auto fallback off by default");
+  assert(/выключен/.test(settings), "settings state that fallback is off");
+  assert(view.dataRoutingNote.includes("выбранному провайдеру"), "data-routing explanation present");
+  assert(/дублирования/i.test(settings) || /Дублирования/.test(view.dataRoutingNote), "no-duplication statement");
+  ok("no auto-fallback toggle enabled by default; data-routing explanation exists");
+
+  // upload actions still disabled (unchanged Composer) + Cinematic preserved
+  assert(/disabled/.test(composer) && !/input[^>]*type=["']file["']/.test(composer), "upload still disabled");
+  assert(!/type="file"/.test(settings), "Settings adds no file input");
+  const appHasCinematic = read("App.tsx");
+  for (const f of ["ChatList", "RightWing", "FocusMode", "Conversation", "NewDialog"]) {
+    assert(appHasCinematic.includes(f), `Cinematic component ${f} still wired`);
+  }
+  ok("arbitrary attachment upload still disabled; Cinematic layout preserved");
+
+  // no Character Lab debug surface leaked into Settings
+  const sLow = settings.toLowerCase();
+  for (const banned of ["character_lab", "manifest", "evolutionpanel", "turndebug", "operator"]) {
+    assert(!sLow.includes(banned), `SettingsPanel free of '${banned}'`);
+  }
+  ok("Settings panel free of Character Lab debug surface");
+
   console.log(`\n${passed} passed, 0 failed`);
 }
 

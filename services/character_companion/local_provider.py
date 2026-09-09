@@ -52,6 +52,10 @@ _LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
 DEFAULT_LOCAL_BASE_URL = "http://127.0.0.1:11434"
 DEFAULT_LOCAL_MODEL = "llama3"
 DEFAULT_LOCAL_TIMEOUT_S = 120.0
+#: Ollama `options.num_ctx` bounds -- modest; no giant default. Unset => the
+#: request shape is unchanged (server default context).
+NUM_CTX_MIN = 512
+NUM_CTX_MAX = 131072
 
 
 class LocalLLMProviderError(RuntimeError):
@@ -91,6 +95,7 @@ class LocalLLMConfig:
     base_url: str = DEFAULT_LOCAL_BASE_URL
     model: str = DEFAULT_LOCAL_MODEL
     timeout_s: float = DEFAULT_LOCAL_TIMEOUT_S
+    num_ctx: Optional[int] = None   # when set -> Ollama options.num_ctx
 
     def __post_init__(self) -> None:
         assert_loopback_url(self.base_url)
@@ -100,6 +105,13 @@ class LocalLLMConfig:
             raise LocalLLMProviderError("provider_failed", "LOCAL_LLM_TIMEOUT must be a number")
         if self.timeout_s <= 0:
             raise LocalLLMProviderError("provider_failed", "LOCAL_LLM_TIMEOUT must be greater than zero")
+        if self.num_ctx is not None:
+            if isinstance(self.num_ctx, bool) or not isinstance(self.num_ctx, int) or self.num_ctx <= 0:
+                raise LocalLLMProviderError("provider_failed", "LOCAL_LLM_NUM_CTX must be a positive integer")
+            if not (NUM_CTX_MIN <= self.num_ctx <= NUM_CTX_MAX):
+                raise LocalLLMProviderError(
+                    "provider_failed", f"LOCAL_LLM_NUM_CTX must be within [{NUM_CTX_MIN}, {NUM_CTX_MAX}]"
+                )
 
     @classmethod
     def from_env(cls, env: Optional[dict] = None) -> "LocalLLMConfig":
@@ -109,10 +121,18 @@ class LocalLLMConfig:
             timeout_s = float(raw_timeout) if raw_timeout not in (None, "") else DEFAULT_LOCAL_TIMEOUT_S
         except (TypeError, ValueError):
             raise LocalLLMProviderError("provider_failed", f"LOCAL_LLM_TIMEOUT is not a number: {raw_timeout!r}")
+        raw_ctx = env.get("LOCAL_LLM_NUM_CTX")
+        num_ctx: Optional[int] = None
+        if raw_ctx not in (None, ""):
+            try:
+                num_ctx = int(raw_ctx)
+            except (TypeError, ValueError):
+                raise LocalLLMProviderError("provider_failed", f"LOCAL_LLM_NUM_CTX is not an integer: {raw_ctx!r}")
         return cls(
             base_url=(env.get("LOCAL_LLM_BASE_URL") or DEFAULT_LOCAL_BASE_URL).strip(),
             model=(env.get("LOCAL_LLM_MODEL") or DEFAULT_LOCAL_MODEL).strip(),
             timeout_s=timeout_s,
+            num_ctx=num_ctx,
         )
 
 
@@ -180,6 +200,9 @@ def build_local_llm_provider_factory(
             if not isinstance(messages, list) or not messages:
                 raise LocalLLMProviderError("provider_failed", "provider request must be a non-empty message list")
             payload = {"model": config.model, "messages": messages, "stream": False}
+            if config.num_ctx is not None:
+                # unset -> request shape unchanged; set -> Ollama options.num_ctx
+                payload["options"] = {"num_ctx": config.num_ctx}
             if recorder is not None:
                 recorder({"event": "request", "payload": {"model": config.model, "messages": messages}, "body": payload})
             data = post(url, payload, config.timeout_s)

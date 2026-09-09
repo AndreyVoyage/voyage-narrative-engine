@@ -13,10 +13,12 @@ import {
   CompanionClientError,
   CompanionMessage,
   CompanionSession,
+  CompanionSettingsView,
   CompanionTurn,
   ImageJob,
   ImageJobKind,
   NewDialogInput,
+  ProviderTestResult,
   RandomScenarioResult,
   SceneField,
 } from "./types.js";
@@ -111,5 +113,30 @@ export class HttpCompanionClient implements CompanionClient {
 
   async setSceneCover(sessionId: string, resultRef: string): Promise<CompanionSession> {
     return call<CompanionSession>("POST", "/sessions/cover", { sessionId, resultRef });
+  }
+
+  async getSettings(): Promise<CompanionSettingsView> {
+    return call<CompanionSettingsView>("GET", "/settings");
+  }
+
+  async setRole(role: string, providerId: string, modelId: string): Promise<CompanionSettingsView> {
+    return call<CompanionSettingsView>("POST", "/settings/roles", { role, providerId, modelId });
+  }
+
+  async setLocalSettings(input: { numCtx?: number | null; baseUrl?: string | null }): Promise<CompanionSettingsView> {
+    return call<CompanionSettingsView>("POST", "/settings/local", input);
+  }
+
+  async storeCredential(providerId: string, secret: string): Promise<CompanionSettingsView> {
+    // the secret is sent once and never requested back
+    return call<CompanionSettingsView>("POST", "/settings/credentials", { providerId, secret });
+  }
+
+  async deleteCredential(providerId: string): Promise<CompanionSettingsView> {
+    return call<CompanionSettingsView>("DELETE", `/settings/credentials/${encodeURIComponent(providerId)}`);
+  }
+
+  async testProvider(providerId: string, modelId?: string): Promise<ProviderTestResult> {
+    return call<ProviderTestResult>("POST", "/settings/test", { providerId, modelId });
   }
 }

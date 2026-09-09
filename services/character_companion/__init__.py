@@ -26,7 +26,49 @@ from .image_jobs import (
     ImageJobService,
     UnavailableImageGenerator,
 )
+from .attachments import (
+    AUTHORITY_USER_ATTACHMENT_DATA,
+    AcceptedAttachment,
+    AttachmentError,
+    AttachmentSecurityGateway,
+)
+from .cloud_provider import (
+    CloudProviderConfig,
+    CloudProviderError,
+    build_openai_compat_provider_factory,
+)
+from .credentials import (
+    CredentialError,
+    CredentialMetadata,
+    CredentialVault,
+    InMemoryCredentialVault,
+    WindowsDpapiCredentialVault,
+    build_default_credential_vault,
+)
+from .provider_registry import (
+    ALL_ROLES,
+    ROLE_DIALOGUE,
+    RUNTIME_WIRED_ROLES,
+    ProviderEntry,
+    ProviderRegistryError,
+    all_providers,
+    get_provider,
+)
+from .provider_resolution import (
+    CompanionConfigError,
+    resolve_dialogue_provider_factory,
+    test_provider_connection,
+)
 from .scenarios import SCENE_FIELDS, random_field, random_scenario
+from .settings import (
+    NUM_CTX_KIRA_SAFE_HINT,
+    NUM_CTX_MAX,
+    NUM_CTX_MIN,
+    CompanionSettings,
+    RoleAssignment,
+    SettingsError,
+    SettingsStore,
+)
 from .service import (
     PURPOSE_COMPANION,
     CompanionError,
@@ -83,4 +125,34 @@ __all__ = [
     "SCENE_FIELDS",
     "random_scenario",
     "random_field",
+    "CredentialError",
+    "CredentialMetadata",
+    "CredentialVault",
+    "InMemoryCredentialVault",
+    "WindowsDpapiCredentialVault",
+    "build_default_credential_vault",
+    "CompanionSettings",
+    "RoleAssignment",
+    "SettingsError",
+    "SettingsStore",
+    "NUM_CTX_MIN",
+    "NUM_CTX_MAX",
+    "NUM_CTX_KIRA_SAFE_HINT",
+    "ProviderEntry",
+    "ProviderRegistryError",
+    "all_providers",
+    "get_provider",
+    "ALL_ROLES",
+    "ROLE_DIALOGUE",
+    "RUNTIME_WIRED_ROLES",
+    "CompanionConfigError",
+    "resolve_dialogue_provider_factory",
+    "test_provider_connection",
+    "CloudProviderConfig",
+    "CloudProviderError",
+    "build_openai_compat_provider_factory",
+    "AttachmentSecurityGateway",
+    "AttachmentError",
+    "AcceptedAttachment",
+    "AUTHORITY_USER_ATTACHMENT_DATA",
 ]

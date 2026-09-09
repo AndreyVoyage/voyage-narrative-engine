@@ -36,6 +36,10 @@ from services.character_companion import (  # noqa: E402
     CompanionService,
     CompanionTransport,
     LocalLLMConfig,
+    RoleAssignment,
+    ROLE_DIALOGUE,
+    SettingsStore,
+    build_default_credential_vault,
     resolve_companion_provider_factory,
 )
 from services.character_companion.image_jobs import (  # noqa: E402
@@ -75,34 +79,55 @@ def build_transport(
     acceptance_root=None,
     response: str = DEFAULT_FAKE_REPLY,
     env: Optional[dict] = None,
+    credential_vault=None,
 ) -> CompanionTransport:
-    """Compose the Companion service. Provider selection is explicit via
-    ``COMPANION_PROVIDER`` (``fake`` default | ``local``); there is no cloud
-    mode and no automatic fallback. ``local`` uses ``LOCAL_LLM_BASE_URL`` /
-    ``LOCAL_LLM_MODEL`` / ``LOCAL_LLM_TIMEOUT`` (loopback only, no credentials)."""
+    """Compose the Companion service with secure provider configuration.
+
+    The DIALOGUE provider is chosen from persisted settings (``companion_settings.json``,
+    no secrets) + the credential vault. Legacy ``COMPANION_PROVIDER`` env
+    (``fake`` default | ``local``) seeds the DIALOGUE role on first start so
+    existing local integration keeps working. There is no cloud mode env and no
+    automatic fallback."""
     repo_root = Path(__file__).resolve().parents[1]
     env = env if env is not None else dict(os.environ)
-    provider_factory = resolve_companion_provider_factory(
-        env, fake_factory=build_fake_provider_factory(response)
-    )
-    mode = (env.get("COMPANION_PROVIDER") or "fake").strip().lower()
+    data_root = Path(data_root)
+    data_root.mkdir(parents=True, exist_ok=True)
+
+    settings_store = SettingsStore(data_root)
+    mode = (env.get("COMPANION_PROVIDER") or "").strip().lower()
     if mode == "local":
+        # legacy env path: env is authoritative and re-applied every start.
         cfg = LocalLLMConfig.from_env(env)
-        provider_info = {"provider_id": "local", "model": cfg.model}
-    else:
-        provider_info = {"provider_id": FAKE_PROVIDER_ID, "model": FAKE_MODEL}
-    # This is a dev/fake loopback server: the deterministic FakeImageGenerator is
-    # wired so the async image-job UI path is exercisable end to end. A real
-    # deployment leaves the generator UNAVAILABLE until a pipeline adapter is
-    # bound (COMPANION_IMAGE_GENERATOR=unavailable).
+        seeded = settings_store.load()
+        seeded.roles[ROLE_DIALOGUE] = RoleAssignment("local", cfg.model)
+        seeded.local_num_ctx = cfg.num_ctx
+        if cfg.base_url:
+            seeded.base_urls["local"] = cfg.base_url
+        settings_store.save(seeded)
+    elif not settings_store.path.exists():
+        # default first start -> DIALOGUE = fake; thereafter persisted settings win.
+        seeded = settings_store.load()
+        seeded.roles[ROLE_DIALOGUE] = RoleAssignment("fake", "fake")
+        settings_store.save(seeded)
+
+    vault = credential_vault
+    if vault is None:
+        try:
+            vault = build_default_credential_vault(data_root)
+        except Exception:  # noqa: BLE001 -- platform without a secure store
+            vault = None
+
     gen_mode = (env.get("COMPANION_IMAGE_GENERATOR") or "fake").strip().lower()
     image_generator = FakeImageGenerator() if gen_mode == "fake" else UnavailableImageGenerator()
+
     service = CompanionService(
         acceptance_root=acceptance_root or (repo_root / "accepted"),
         data_root=data_root,
-        provider_factory=provider_factory,
-        provider_info=provider_info,
+        provider_factory=build_fake_provider_factory(response),
+        provider_info={"provider_id": FAKE_PROVIDER_ID, "model": FAKE_MODEL},
         image_generator=image_generator,
+        settings_store=settings_store,
+        credential_vault=vault,
     )
     return CompanionTransport(service)
 
@@ -217,6 +242,20 @@ class CompanionServer:
                 if method == "GET" and parts[:3] == ["api", "companion", "image-file"] and len(parts) >= 4:
                     return self._serve_image(urllib.parse.unquote("/".join(parts[3:])))
 
+                # ---- provider settings (no raw-secret GET anywhere) ----
+                if method == "GET" and parts == ["api", "companion", "settings"]:
+                    return self._call(transport.get_settings)
+                if method == "POST" and parts == ["api", "companion", "settings", "roles"]:
+                    return self._call(lambda: transport.set_role(body))
+                if method == "POST" and parts == ["api", "companion", "settings", "local"]:
+                    return self._call(lambda: transport.set_local_settings(body))
+                if method == "POST" and parts == ["api", "companion", "settings", "credentials"]:
+                    return self._call(lambda: transport.store_credential(body))
+                if method == "DELETE" and parts[:4] == ["api", "companion", "settings", "credentials"] and len(parts) == 5:
+                    return self._call(lambda: transport.delete_credential(urllib.parse.unquote(parts[4])))
+                if method == "POST" and parts == ["api", "companion", "settings", "test"]:
+                    return self._call(lambda: transport.test_provider(body))
+
                 self._json(404, {"error": {"code": "not_found", "message": "unknown route"}})
 
             def _serve_image(self, result_ref: str) -> None:
@@ -245,6 +284,9 @@ class CompanionServer:
 
             def do_POST(self) -> None:
                 self._route("POST", self.path.split("?", 1)[0], self._read_json())
+
+            def do_DELETE(self) -> None:
+                self._route("DELETE", self.path.split("?", 1)[0], {})
 
         return Handler
 

@@ -96,6 +96,52 @@ export interface NewDialogInput {
   scene?: CompanionScene;
 }
 
+// ---- secure provider settings ----------------------------------------
+export interface ProviderCardView {
+  providerId: string;
+  displayName: string;
+  kind: "cloud" | "local";
+  transport: string;
+  credentialRequired: boolean;
+  defaultBaseUrl: string;
+  supportedRoles: string[];
+  runtimeWiredRoles: string[];
+  modelCatalog: string[];
+  defaultModel: string;
+  notes: string;
+  connected: boolean;
+  configuredModel: string;
+  maskedTail: string | null;
+  lastTestStatus: string | null;
+}
+
+export interface LocalSettingsView {
+  numCtx: number | null;
+  baseUrl: string;
+  model: string;
+  numCtxMin: number;
+  numCtxMax: number;
+  kiraSafeHint: number;
+  numCtxWarning: boolean;
+}
+
+export interface CompanionSettingsView {
+  providers: ProviderCardView[];
+  roles: Record<string, { providerId: string; modelId: string }>;
+  allRoles: string[];
+  runtimeWiredRoles: string[];
+  local: LocalSettingsView;
+  allowCloudFallback: boolean;
+  dataRoutingNote: string;
+}
+
+export interface ProviderTestResult {
+  providerId: string;
+  ok: boolean;
+  status: string;
+  message?: string;
+}
+
 export class CompanionClientError extends Error {
   readonly code: string;
   readonly status: number;
@@ -118,4 +164,10 @@ export interface CompanionClient {
   createImageJob(sessionId: string, kind: ImageJobKind, prompt?: string): Promise<ImageJob>;
   listImageJobs(sessionId: string): Promise<ImageJob[]>;
   setSceneCover(sessionId: string, resultRef: string): Promise<CompanionSession>;
+  getSettings(): Promise<CompanionSettingsView>;
+  setRole(role: string, providerId: string, modelId: string): Promise<CompanionSettingsView>;
+  setLocalSettings(input: { numCtx?: number | null; baseUrl?: string | null }): Promise<CompanionSettingsView>;
+  storeCredential(providerId: string, secret: string): Promise<CompanionSettingsView>;
+  deleteCredential(providerId: string): Promise<CompanionSettingsView>;
+  testProvider(providerId: string, modelId?: string): Promise<ProviderTestResult>;
 }
