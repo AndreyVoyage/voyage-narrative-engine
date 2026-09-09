@@ -41,6 +41,10 @@ _STATUS_BY_CODE = {
     "unsupported_role": 400,
     "unknown_model": 400,
     "unsupported_model_role": 400,
+    "unknown_message": 404,
+    "invalid_draft": 400,
+    "assistant_not_configured": 409,
+    "assistant_failed": 502,
     "provider_failed": 502,
     "provider_unavailable": 503,
     "missing_credential": 409,
@@ -103,6 +107,9 @@ def _session_to_json(s: CompanionSession) -> dict:
         "sceneCoverRef": s.scene_cover_ref,
         "lastMessagePreview": s.last_message_preview,
         "lastActivity": s.last_activity,
+        "titleOverride": s.title_override,
+        "hidden": s.hidden,
+        "hiddenMessageIds": list(s.hidden_message_ids),
     }
 
 
@@ -177,6 +184,50 @@ class CompanionTransport:
         session_id = _require_str(payload, "sessionId")
         result_ref = _require_str(payload, "resultRef")
         return _run(lambda: _session_to_json(self._service.set_scene_cover(session_id, result_ref)))
+
+    # ---- presentation controls (durable metadata; Character Memory untouched) ----
+    def rename_session(self, payload: dict) -> dict:
+        if not isinstance(payload, dict):
+            raise CompanionTransportError(400, "invalid_request", "request body must be a JSON object")
+        session_id = _require_str(payload, "sessionId")
+        title = payload.get("title")
+        if title is not None and not isinstance(title, str):
+            raise CompanionTransportError(400, "invalid_request", "'title' must be a string or null")
+        return _run(lambda: _session_to_json(self._service.rename_session(session_id, title)))
+
+    def set_session_visibility(self, payload: dict) -> dict:
+        if not isinstance(payload, dict):
+            raise CompanionTransportError(400, "invalid_request", "request body must be a JSON object")
+        session_id = _require_str(payload, "sessionId")
+        hidden = payload.get("hidden")
+        if not isinstance(hidden, bool):
+            raise CompanionTransportError(400, "invalid_request", "'hidden' must be a boolean")
+        return _run(lambda: _session_to_json(self._service.set_session_visibility(session_id, hidden)))
+
+    def set_message_visibility(self, payload: dict) -> dict:
+        if not isinstance(payload, dict):
+            raise CompanionTransportError(400, "invalid_request", "request body must be a JSON object")
+        session_id = _require_str(payload, "sessionId")
+        message_id = payload.get("messageId")
+        hidden = payload.get("hidden")
+        if isinstance(message_id, bool) or not isinstance(message_id, int):
+            raise CompanionTransportError(400, "invalid_request", "'messageId' must be an integer")
+        if not isinstance(hidden, bool):
+            raise CompanionTransportError(400, "invalid_request", "'hidden' must be a boolean")
+        return _run(lambda: _session_to_json(self._service.set_message_visibility(session_id, message_id, hidden)))
+
+    def writing_assistant_rewrite(self, payload: dict) -> dict:
+        if not isinstance(payload, dict):
+            raise CompanionTransportError(400, "invalid_request", "request body must be a JSON object")
+        draft = payload.get("draft")
+        if not isinstance(draft, str) or not draft.strip():
+            raise CompanionTransportError(400, "invalid_draft", "'draft' must be a non-empty string")
+        locale_hint = payload.get("localeHint")
+        if locale_hint is not None and not isinstance(locale_hint, str):
+            raise CompanionTransportError(400, "invalid_request", "'localeHint' must be a string or null")
+        # NOTE: no conversation history, no Character Package, no KIRA memory is
+        # sent -- the assistant works only from this draft.
+        return _run(lambda: self._service.writing_assistant_rewrite(draft, locale_hint=locale_hint))
 
     # ---------------------------------------------------------- chat
     def get_messages(self, session_id: str) -> dict:

@@ -22,10 +22,24 @@ import { MockCompanionClient } from "../src/mocks/mockCompanionClient.js";
 import {
   anyImageJobActive,
   companionReducer,
+  displaySessionTitle,
   filterSessions,
+  hiddenMessageCount,
+  hiddenSessions,
   initialCompanionState,
   isSendableMessage,
+  visibleMessages,
+  visibleSessions,
 } from "../src/app/companionState.js";
+import {
+  beginRewrite,
+  canRestoreOriginal,
+  initialAssistantState,
+  restoreOriginal,
+  rewriteFailed,
+  rewriteSucceeded,
+  sourceDraftFor,
+} from "../src/app/composerAssistant.js";
 import {
   FOCUS_LAYOUTS,
   IMPLEMENTED_EXPERIENCES,
@@ -537,8 +551,8 @@ async function main(): Promise<void> {
   // 1 — a dedicated "models by task" section exists
   assert(mediaSettings.includes('t("settings.section.modelRoles")') && mediaSettings.includes("MODEL_ROLE_ORDER"),
     "SettingsPanel has a models-by-task section");
-  assert(stMod2.MODEL_ROLE_ORDER.join(",") === "DIALOGUE,VISION,IMAGE_GENERATION,VIDEO_GENERATION,STT,TTS,REALTIME,LOCAL_ALTERNATIVE",
-    "canonical role order incl. VIDEO_GENERATION");
+  assert(stMod2.MODEL_ROLE_ORDER.join(",") === "DIALOGUE,VISION,IMAGE_GENERATION,VIDEO_GENERATION,STT,TTS,REALTIME,WRITING_ASSISTANT,LOCAL_ALTERNATIVE",
+    "canonical role order incl. VIDEO_GENERATION + WRITING_ASSISTANT");
   ok("MPR.1 model-role configuration section exists");
 
   // 2 — every canonical role is visible in the catalog + has a localized label
@@ -631,6 +645,161 @@ async function main(): Promise<void> {
   assert(read("features/FocusMode.tsx").includes("focus-canvas") && read("features/SettingsPanel.tsx").includes('t("profile.section")'),
     "Focus Mode centered canvas and the Local Profile section are untouched");
   ok("MPR.11 Focus Mode V2 / Local Profile UX preserved");
+
+  // ================================================================
+  // CHAT CONTROL AND COMPOSER ASSISTANT V1
+  // ================================================================
+  const composerSrc = read("features/Composer.tsx");
+  const convSrc = read("features/Conversation.tsx");
+  const focusSrc = read("features/FocusMode.tsx");
+  const chatSrc = read("features/ChatList.tsx");
+  const msgActSrc = read("features/MessageActions.tsx");
+  const appSrcCC = read("App.tsx");
+  const ccRu = ru as Record<string, string>;
+  const ccMock = new MockCompanionClient();
+
+  // 1 — WRITING_ASSISTANT role is additive, in the settings section, not runtime-wired
+  const ccView = await ccMock.getSettings();
+  assert(ccView.roleCatalog.some((r) => r.role === "WRITING_ASSISTANT"), "roleCatalog has WRITING_ASSISTANT");
+  assert(stMod2.MODEL_ROLE_ORDER.includes("WRITING_ASSISTANT" as (typeof stMod2.MODEL_ROLE_ORDER)[number]), "role order includes it");
+  assert(ccView.runtimeWiredRoles.length === 1 && ccView.runtimeWiredRoles[0] === "DIALOGUE", "still only DIALOGUE runtime-wired");
+  for (const loc of [ru, en, es, zhCN, pt]) {
+    assert(typeof (loc as Record<string, string>)["role.WRITING_ASSISTANT"] === "string", "role.WRITING_ASSISTANT localized");
+  }
+  ok("CCA.1 WRITING_ASSISTANT role added additively, localized, not runtime-wired");
+
+  // 2 — ✨ exists in the composer and never sends automatically
+  assert(composerSrc.includes("✨") && composerSrc.includes("runAssistant") && composerSrc.includes("composer-assist"),
+    "composer has a ✨ assistant control");
+  assert(/setDraft\(suggestion\)/.test(composerSrc), "suggestion replaces the composer value in place");
+  const submitBody = composerSrc.slice(composerSrc.indexOf("function submit"), composerSrc.indexOf("function editDraft"));
+  assert(!submitBody.includes("assistant") && !/runAssistant[\s\S]{0,200}onSend/.test(composerSrc),
+    "the assistant path never calls onSend");
+  ok("CCA.2 ✨ exists; suggestion replaces composer text; never auto-sends");
+
+  // 3 — no modal / dialog for the suggestion
+  assert(!/role=["']dialog["']/.test(composerSrc) && !/class(Name)?=["'][^"']*modal/.test(composerSrc),
+    "no modal suggestion UI");
+  ok("CCA.3 no modal suggestion window");
+
+  // 4 — disabled with a blank draft or an unconfigured assistant
+  assert(/canAssist\s*=\s*assistantReady\s*&&\s*isSendableMessage\(draft\)/.test(composerSrc)
+    && composerSrc.includes("disabled={!canAssist}"), "✨ disabled unless a non-blank draft + configured assistant");
+  ok("CCA.4 ✨ disabled for blank draft / unconfigured role");
+
+  // 5 — original draft preserved + regenerate from the ORIGINAL source
+  let a0 = initialAssistantState();
+  assert(a0.originalDraft === null, "fresh assistant state has no original draft");
+  a0 = beginRewrite(a0, "прив я устал");
+  assert(a0.originalDraft === "прив я устал" && a0.running === true, "beginRewrite captures the original + marks running");
+  a0 = rewriteSucceeded(a0);
+  a0 = beginRewrite(a0, "Привет, я устал.");             // user then pressed ✨ again on the suggestion
+  assert(sourceDraftFor(a0, "Привет, я устал.") === "прив я устал", "regenerate uses the ORIGINAL draft, not the suggestion");
+  assert(canRestoreOriginal(a0, "Привет, я устал.") === true, "restore affordance is offered");
+  const undo = restoreOriginal(a0);
+  assert(undo.draft === "прив я устал" && undo.state.originalDraft === null, "undo restores the exact original draft");
+  ok("CCA.5 original draft preserved; regenerate from original; undo works");
+
+  // 6 — draft is kept on assistant failure
+  let a1 = rewriteFailed(beginRewrite(initialAssistantState(), "черновик"), "assistant_failed");
+  assert(a1.running === false && a1.error === "assistant_failed" && a1.originalDraft === "черновик",
+    "failure keeps the draft and records a bounded code");
+  assert(composerSrc.includes("rewriteFailed") && !/catch[\s\S]{0,120}setDraft\(""\)/.test(composerSrc),
+    "composer never clears the draft on failure");
+  ok("CCA.6 draft remains after assistant failure");
+
+  // 7 — assistant resolves only the configured provider/model; unconfigured -> bounded
+  let unconfigured = false;
+  try { await new MockCompanionClient().rewriteDraft("привет"); } catch (e) {
+    unconfigured = (e as { code?: string }).code === "assistant_not_configured";
+  }
+  assert(unconfigured, "rewrite without a configured role fails with assistant_not_configured");
+  const cc2 = new MockCompanionClient();
+  await cc2.setRole("WRITING_ASSISTANT", "fake", "fake");
+  const sug = await cc2.rewriteDraft("прив я сегодня устал давай просто поговорим");
+  assert(sug.suggestion && sug.provider === "fake" && sug.model === "fake", "configured fake assistant returns a suggestion");
+  ok("CCA.7 assistant resolves only the configured role; no fallback");
+
+  // 8 — error codes localized in all five locales
+  for (const code of ["assistant_not_configured", "assistant_failed"]) {
+    assert(errorText("ru", code) !== code && errorText("en", code) !== errorText("ru", code),
+      `error '${code}' mapped + localized`);
+  }
+  ok("CCA.8 assistant error codes map through i18n");
+
+  // 9 — message ⋯ menu: copy + hide, NO functional sent-message edit
+  assert(msgActSrc.includes("msg-actions") && msgActSrc.includes('t("message.copy")') && msgActSrc.includes('t("message.hide")'),
+    "MessageActions exposes copy + hide");
+  {
+    const menuOnly = msgActSrc.slice(msgActSrc.indexOf('className="msg-actions-menu"'));
+    assert(!/message\.edit/.test(msgActSrc) && !/(Редактировать|Editar|编辑)/.test(menuOnly) && !/>\s*Edit\s*</.test(menuOnly),
+      "no functional sent-message edit command in the menu");
+  }
+  assert(convSrc.includes("MessageActions") && convSrc.includes("navigator.clipboard.writeText"),
+    "Conversation wires the menu + real clipboard copy");
+  ok("CCA.9 message ⋯ menu: copy + hide only; edit deferred");
+
+  // 10 — hidden messages are omitted in EVERY transcript presentation mode
+  const sampleMsgs = [
+    { seq: 1, role: "user" as const, text: "a", createdAt: "" },
+    { seq: 2, role: "character" as const, text: "b", createdAt: "" },
+    { seq: 3, role: "user" as const, text: "c", createdAt: "" },
+  ];
+  assert(visibleMessages(sampleMsgs, [2]).length === 2 && !visibleMessages(sampleMsgs, [2]).some((m) => m.seq === 2),
+    "visibleMessages drops hidden ids");
+  assert(visibleMessages(sampleMsgs, [2], true).length === 3, "show-hidden override restores them");
+  assert(hiddenMessageCount(sampleMsgs, [2, 3]) === 2, "hiddenMessageCount counts present hidden seqs");
+  assert(convSrc.includes("visibleMessages(messages") && focusSrc.includes("visibleMessages(messages"),
+    "both Conversation and FocusMode filter through visibleMessages");
+  assert(focusSrc.includes("groupMessages(shownMessages)"), "FocusMode groups the FILTERED messages (all 3 layouts)");
+  ok("CCA.10 hidden messages omitted in normal + all Focus layouts");
+
+  // 11 — hidden conversations omitted from the normal list; recovery path exists
+  const sampleSessions = [
+    { ...(await ccMock.createSession("kira", { title: "A" })) },
+    { ...(await ccMock.createSession("kira", { title: "B" })) },
+  ];
+  sampleSessions[1].hidden = true;
+  assert(visibleSessions(sampleSessions).length === 1 && hiddenSessions(sampleSessions).length === 1,
+    "visibleSessions / hiddenSessions split on the hidden flag");
+  assert(chatSrc.includes("visibleSessions(sessions)") && chatSrc.includes("hiddenSessions(sessions)")
+    && chatSrc.includes('t("chat.restore")'), "ChatList hides hidden chats and offers Restore");
+  ok("CCA.11 hidden conversations omitted from normal list; recovery exists");
+
+  // 12 — rename: titleOverride wins; empty falls back; no AI
+  const renamed = await ccMock.renameSession(sampleSessions[0].sessionId, "  Мой вечер  ");
+  assert(renamed.titleOverride === "Мой вечер", "rename trims + stores an override");
+  assert(displaySessionTitle({ ...renamed }) === "Мой вечер", "override wins in the list");
+  const cleared = await ccMock.renameSession(sampleSessions[0].sessionId, "   ");
+  assert(cleared.titleOverride === null && displaySessionTitle({ ...cleared, title: "", label: "L" }) === "L",
+    "empty rename falls back to the automatic label");
+  assert(chatSrc.includes('t("chat.rename")') && !/rewriteDraft|assistant/.test(chatSrc), "rename UI has no AI");
+  ok("CCA.12 rename persists; empty falls back; no AI");
+
+  // 13 — hide is presentation privacy, not erasure (honest wording)
+  for (const loc of [ru, en, es, zhCN, pt]) {
+    const L = loc as Record<string, string>;
+    for (const k of ["message.hide", "chat.hide", "chat.restore", "message.showHidden"]) {
+      assert(typeof L[k] === "string" && L[k].length > 0, `${k} localized`);
+    }
+    assert(!/Безвозвратно|securely delet|permanently eras/i.test(L["chat.hide"] + L["message.hide"]),
+      "hide labels never promise secure erasure");
+  }
+  ok("CCA.13 hide wording is presentation-privacy, not deletion");
+
+  // 14 — client surface + no unsafe file input introduced
+  const cc: CompanionClient = ccMock;
+  assert(typeof cc.rewriteDraft === "function" && typeof cc.renameSession === "function"
+    && typeof cc.setSessionHidden === "function" && typeof cc.setMessageHidden === "function", "client surface extended");
+  for (const rel of ["features/Composer.tsx", "features/MessageActions.tsx", "features/ChatList.tsx", "App.tsx"]) {
+    assert(!/type=["']file["']/.test(read(rel)), `${rel} introduces no file input`);
+  }
+  ok("CCA.14 client surface extended; no unsafe file input");
+
+  // 15 — Focus V2 + custom scrolling preserved
+  assert(focusSrc.includes("focus-canvas") && focusSrc.includes("recomputeNearBottom") && css.includes("::-webkit-scrollbar"),
+    "Focus Mode V2 canvas + polished scrolling still present");
+  ok("CCA.15 Focus V2 and custom scrolling preserved");
 
   console.log(`\n${passed} passed, 0 failed`);
 }

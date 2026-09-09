@@ -239,6 +239,14 @@ class CompanionServer:
                     return self._call(lambda: transport.send_message(body))
                 if method == "POST" and parts == ["api", "companion", "scenario"]:
                     return self._call(lambda: transport.random_scenario(body))
+                if method == "POST" and parts == ["api", "companion", "sessions", "rename"]:
+                    return self._call(lambda: transport.rename_session(body))
+                if method == "POST" and parts == ["api", "companion", "sessions", "visibility"]:
+                    return self._call(lambda: transport.set_session_visibility(body))
+                if method == "POST" and parts == ["api", "companion", "messages", "visibility"]:
+                    return self._call(lambda: transport.set_message_visibility(body))
+                if method == "POST" and parts == ["api", "companion", "writing-assistant", "rewrite"]:
+                    return self._call(lambda: transport.writing_assistant_rewrite(body))
                 if method == "POST" and parts == ["api", "companion", "sessions", "cover"]:
                     return self._call(lambda: transport.set_scene_cover(body))
                 if method == "POST" and parts == ["api", "companion", "images"]:

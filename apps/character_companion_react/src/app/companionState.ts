@@ -156,3 +156,40 @@ export function filterSessions(sessions: CompanionSession[], query: string): Com
 export function anyImageJobActive(jobs: ImageJob[]): boolean {
   return jobs.some((j) => j.state === "QUEUED" || j.state === "GENERATING");
 }
+
+// ---- presentation visibility (UI-only; never affects Character Memory) -----
+
+/** The conversation title actually shown: a user override wins, else the
+ * existing automatic behaviour. */
+export function displaySessionTitle(session: CompanionSession): string {
+  return session.titleOverride?.trim() || session.title || session.label;
+}
+
+/** Sessions shown in the normal list — hidden ones are filtered out here, not
+ * deleted anywhere. */
+export function visibleSessions(sessions: CompanionSession[]): CompanionSession[] {
+  return sessions.filter((s) => !s.hidden);
+}
+
+export function hiddenSessions(sessions: CompanionSession[]): CompanionSession[] {
+  return sessions.filter((s) => s.hidden);
+}
+
+/** Messages shown in a transcript. `hiddenIds` come from the session's durable
+ * presentation metadata; the underlying history/event log is unchanged and the
+ * Runtime never sees this filter. */
+export function visibleMessages(
+  messages: CompanionMessage[],
+  hiddenIds: number[] | undefined,
+  showHidden = false,
+): CompanionMessage[] {
+  if (showHidden || !hiddenIds || hiddenIds.length === 0) return messages;
+  const hidden = new Set(hiddenIds);
+  return messages.filter((m) => m.seq === null || !hidden.has(m.seq));
+}
+
+export function hiddenMessageCount(messages: CompanionMessage[], hiddenIds: number[] | undefined): number {
+  if (!hiddenIds || hiddenIds.length === 0) return 0;
+  const hidden = new Set(hiddenIds);
+  return messages.filter((m) => m.seq !== null && hidden.has(m.seq)).length;
+}

@@ -23,6 +23,7 @@ import {
   ReleaseInfo,
   RoleResolution,
   SceneField,
+  WritingAssistantResult,
 } from "./types.js";
 
 const BASE = "/api/companion";
@@ -83,6 +84,18 @@ export class HttpCompanionClient implements CompanionClient {
     });
   }
 
+  async renameSession(sessionId: string, title: string): Promise<CompanionSession> {
+    return call<CompanionSession>("POST", "/sessions/rename", { sessionId, title });
+  }
+
+  async setSessionHidden(sessionId: string, hidden: boolean): Promise<CompanionSession> {
+    return call<CompanionSession>("POST", "/sessions/visibility", { sessionId, hidden });
+  }
+
+  async setMessageHidden(sessionId: string, messageId: number, hidden: boolean): Promise<CompanionSession> {
+    return call<CompanionSession>("POST", "/messages/visibility", { sessionId, messageId, hidden });
+  }
+
   async getMessages(sessionId: string): Promise<CompanionMessage[]> {
     return (
       await call<{ messages: CompanionMessage[] }>(
@@ -94,6 +107,13 @@ export class HttpCompanionClient implements CompanionClient {
 
   async sendMessage(sessionId: string, text: string): Promise<CompanionTurn> {
     return call<CompanionTurn>("POST", "/messages", { sessionId, text });
+  }
+
+  async rewriteDraft(draft: string, opts?: { localeHint?: string }): Promise<WritingAssistantResult> {
+    return call<WritingAssistantResult>("POST", "/writing-assistant/rewrite", {
+      draft,
+      localeHint: opts?.localeHint ?? null,
+    });
   }
 
   async randomScenario(opts?: { field?: SceneField; seed?: number }): Promise<RandomScenarioResult> {

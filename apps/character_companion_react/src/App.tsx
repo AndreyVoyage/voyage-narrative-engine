@@ -18,6 +18,7 @@ import { loadAppearance, rememberFocusLayout, type FocusLayout } from "./app/app
 import { draftToInput } from "./app/newDialog.js";
 import { loadUserProfile, saveUserProfile, type LocalUserProfile } from "./app/userProfile.js";
 import { useLocale } from "./i18n/react.js";
+import type { ComposerAssistant } from "./features/Composer.js";
 
 const client: CompanionClient =
   import.meta.env.MODE === "mock" ? new MockCompanionClient() : new HttpCompanionClient();
@@ -38,7 +39,26 @@ export function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [release, setRelease] = useState<import("./client/types.js").ReleaseInfo | null>(null);
   const [userProfile, setUserProfile] = useState<LocalUserProfile>(loadUserProfile);
+  const [assistantReady, setAssistantReady] = useState(false);
   const pollRef = useRef<number | null>(null);
+
+  const refreshAssistantReady = useCallback(() => {
+    client.getSettings()
+      .then((view) => {
+        const wa = view.roleCatalog.find((r) => r.role === "WRITING_ASSISTANT");
+        setAssistantReady(Boolean(wa && wa.readiness !== "NOT_CONFIGURED" && wa.readiness !== "UNSUPPORTED"));
+      })
+      .catch(() => setAssistantReady(false));
+  }, []);
+  useEffect(refreshAssistantReady, [refreshAssistantReady]);
+
+  const assistant: ComposerAssistant = useMemo(() => ({
+    available: assistantReady,
+    rewrite: async (source: string) => {
+      const res = await client.rewriteDraft(source, { localeHint: locale });
+      return res.suggestion;
+    },
+  }), [assistantReady, locale]);
 
   // one-time reconcile: honour a locale that was only stored on the profile
   useEffect(() => {
@@ -157,6 +177,31 @@ export function App() {
     dispatch({ type: "focusSetLayout", layout });
   }
 
+  // ---- presentation controls (durable metadata; never touch Character Memory)
+  function hideMessage(seq: number, hidden: boolean) {
+    const sessionId = state.selectedSessionId;
+    if (!sessionId) return;
+    client
+      .setMessageHidden(sessionId, seq, hidden)
+      .then((session) => dispatch({ type: "sessionUpdated", session }))
+      .catch((e) => dispatch({ type: "sendFailed", ...errorOf(e) }));
+  }
+  function renameChat(sessionId: string, title: string) {
+    client
+      .renameSession(sessionId, title)
+      .then((session) => dispatch({ type: "sessionUpdated", session }))
+      .catch((e) => dispatch({ type: "loadFailed", ...errorOf(e) }));
+  }
+  function hideChat(sessionId: string, hidden: boolean) {
+    client
+      .setSessionHidden(sessionId, hidden)
+      .then((session) => {
+        dispatch({ type: "sessionUpdated", session });
+        if (hidden && sessionId === state.selectedSessionId) dispatch({ type: "selectSession", sessionId: "" });
+      })
+      .catch((e) => dispatch({ type: "loadFailed", ...errorOf(e) }));
+  }
+
   const selectedSession =
     state.sessions.find((s) => s.sessionId === state.selectedSessionId) ?? null;
   const characterName =
@@ -177,7 +222,9 @@ export function App() {
         characterName={characterName}
         sessionId={selectedSession.sessionId}
         messages={state.messages}
+        hiddenMessageIds={selectedSession.hiddenMessageIds ?? []}
         sending={state.loading === "sending"}
+        assistant={assistant}
         coverUrl={coverUrl}
         coverRef={selectedSession.sceneCoverRef ?? null}
         readyImages={readyImages}
@@ -216,7 +263,7 @@ export function App() {
             client={client}
             profile={userProfile}
             onProfileChange={updateProfile}
-            onClose={() => setShowSettings(false)}
+            onClose={() => { setShowSettings(false); refreshAssistantReady(); }}
           />
         </div>
       )}
@@ -236,6 +283,8 @@ export function App() {
           onSearch={(value) => dispatch({ type: "setSearch", value })}
           onSelect={selectSession}
           onNewDialog={() => setShowNewDialog(true)}
+          onRename={renameChat}
+          onHideChat={hideChat}
         />
 
         {showNewDialog && state.selectedCharacterId ? (
@@ -253,11 +302,13 @@ export function App() {
             imageJobs={state.imageJobs}
             sending={state.loading === "sending"}
             error={state.error}
+            assistant={assistant}
             onSend={send}
             onRetry={retry}
             onCreateImage={() => createImageJob("custom")}
             onContextFrame={() => createImageJob("context")}
             onEnterFocus={() => dispatch({ type: "focusEnter" })}
+            onHideMessage={hideMessage}
           />
         )}
 

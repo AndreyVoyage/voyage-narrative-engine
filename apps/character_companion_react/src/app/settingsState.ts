@@ -9,7 +9,7 @@ import type { TranslationKey } from "../i18n/index.js";
 /** Canonical presentation order for the "models by task" section. */
 export const MODEL_ROLE_ORDER = [
   "DIALOGUE", "VISION", "IMAGE_GENERATION", "VIDEO_GENERATION",
-  "STT", "TTS", "REALTIME", "LOCAL_ALTERNATIVE",
+  "STT", "TTS", "REALTIME", "WRITING_ASSISTANT", "LOCAL_ALTERNATIVE",
 ] as const;
 
 /** i18n key for a model-role display name (falls back to the raw id). */

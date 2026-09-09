@@ -85,6 +85,8 @@ const ERROR_CODE_KEYS: Record<string, TranslationKey> = {
   generator_unavailable: "error.generator_unavailable",
   backend_unavailable: "error.backend_unavailable",
   empty_message: "error.empty_message",
+  assistant_not_configured: "error.assistant_not_configured",
+  assistant_failed: "error.assistant_failed",
 };
 
 export function errorText(locale: UiLocale, code: string | null | undefined): string {

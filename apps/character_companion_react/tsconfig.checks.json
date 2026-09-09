@@ -24,6 +24,7 @@
     "src/app/userProfile.ts",
     "src/app/focusBackground.ts",
     "src/app/focusGallery.ts",
+    "src/app/composerAssistant.ts",
     "src/assets/portraitPlaceholder.ts",
     "src/assets/portrait.ts",
     "src/i18n/index.ts",

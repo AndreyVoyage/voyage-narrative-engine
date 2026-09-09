@@ -12,8 +12,9 @@ import {
   setFocusBackgroundRef,
 } from "../app/focusBackground.js";
 import { buildFocusGallery, clampGalleryIndex } from "../app/focusGallery.js";
+import { visibleMessages } from "../app/companionState.js";
 import type { TFunction } from "../i18n/react.js";
-import { Composer } from "./Composer.js";
+import { Composer, type ComposerAssistant } from "./Composer.js";
 
 interface Props {
   layout: FocusLayout;
@@ -21,7 +22,9 @@ interface Props {
   characterName: string;
   sessionId: string | null;
   messages: CompanionMessage[];
+  hiddenMessageIds: number[];
   sending: boolean;
+  assistant?: ComposerAssistant;
   coverUrl: string | null;
   coverRef: string | null;
   readyImages: ImageJob[];
@@ -65,9 +68,15 @@ const NEAR_BOTTOM_PX = 120;
  */
 export function FocusMode(props: Props) {
   const {
-    layout, characterId, characterName, sessionId, messages, sending,
+    layout, characterId, characterName, sessionId, messages, hiddenMessageIds, sending, assistant,
     coverUrl, coverRef, readyImages, imageUrl, userProfile, t, onSetLayout, onExit, onMakeCover,
   } = props;
+  // hidden messages are omitted from every focus layout's transcript; the
+  // underlying history and Runtime context are never filtered.
+  const shownMessages = useMemo(
+    () => visibleMessages(messages, hiddenMessageIds, false),
+    [messages, hiddenMessageIds],
+  );
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -123,7 +132,7 @@ export function FocusMode(props: Props) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const nearBottomRef = useRef(true);
   const [showNewMessages, setShowNewMessages] = useState(false);
-  const prevCountRef = useRef(messages.length);
+  const prevCountRef = useRef(shownMessages.length);
 
   function recomputeNearBottom() {
     const el = scrollRef.current;
@@ -150,14 +159,14 @@ export function FocusMode(props: Props) {
   // new message: only auto-follow if the reader is already near the bottom;
   // otherwise surface a compact affordance and keep their scroll position.
   useEffect(() => {
-    const grew = messages.length > prevCountRef.current;
-    prevCountRef.current = messages.length;
+    const grew = shownMessages.length > prevCountRef.current;
+    prevCountRef.current = shownMessages.length;
     if (!grew) return;
     if (nearBottomRef.current) scrollToBottom("smooth");
     else setShowNewMessages(true);
-  }, [messages.length]);
+  }, [shownMessages.length]);
 
-  const groups = useMemo(() => groupMessages(messages), [messages]);
+  const groups = useMemo(() => groupMessages(shownMessages), [shownMessages]);
   const userName = resolveDisplayName(userProfile, t("profile.defaultName"));
   const userInitials = userProfileInitials(userProfile, t("profile.defaultName"));
   const isBackground = layout === "background";
@@ -297,7 +306,7 @@ export function FocusMode(props: Props) {
                     </li>
                   );
                 })}
-                {messages.length === 0 && <li className="empty">{t("conversation.empty")}</li>}
+                {shownMessages.length === 0 && <li className="empty">{t("conversation.empty")}</li>}
               </ol>
             </div>
 
@@ -311,6 +320,7 @@ export function FocusMode(props: Props) {
               <Composer
                 sending={sending}
                 t={t}
+                assistant={assistant}
                 onSend={props.onSend}
                 onCreateImage={props.onCreateImage}
                 onContextFrame={props.onContextFrame}

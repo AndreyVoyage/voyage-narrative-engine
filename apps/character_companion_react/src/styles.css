@@ -315,3 +315,39 @@ img { max-width: 100%; }
 .role-row-future { color: var(--c-text-faint); }
 .settings-model-change-note { border-left: 2px solid var(--c-border-strong); padding-left: var(--sp-2); }
 @media (max-width: 640px) { .role-row-selects { grid-template-columns: 1fr; } }
+
+/* --- composer writing assistant --- */
+.composer-field { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.composer-field .composer-input { flex: 1; width: 100%; }
+.composer-assist-bar { display: flex; align-items: center; gap: var(--sp-2); font-size: 12px; }
+.composer-assist-error { color: var(--c-danger); }
+.composer-assist:not(:disabled) { border-color: var(--c-accent); color: var(--c-accent); }
+
+/* --- message action menu + hidden state --- */
+.msg { position: relative; }
+.msg-actions { position: absolute; top: 4px; right: 4px; }
+.msg-actions-trigger {
+  border: none; background: transparent; color: var(--c-text-faint);
+  cursor: pointer; padding: 0 4px; line-height: 1; border-radius: 4px; font-size: 14px;
+}
+.msg:hover .msg-actions-trigger, .msg-actions-trigger[aria-expanded="true"] { color: var(--c-text); }
+.msg-actions-menu, .chat-rename {
+  position: absolute; right: 0; top: 20px; z-index: 30; min-width: 180px;
+  background: var(--c-bg-raised); border: 1px solid var(--c-border-strong);
+  border-radius: var(--radius); padding: var(--sp-1); display: flex; flex-direction: column; gap: 2px;
+}
+.msg-actions-menu button { text-align: left; padding: var(--sp-1) var(--sp-2); background: none; border: none; border-radius: 4px; cursor: pointer; color: inherit; }
+.msg-actions-menu button:hover { background: var(--c-bg-panel); }
+.msg-hidden { opacity: 0.55; border-style: dashed; }
+
+/* --- chat list: per-card menu, rename, hidden section --- */
+.chat-card-row { display: flex; align-items: flex-start; gap: 2px; position: relative; }
+.chat-card-row .chat-card { flex: 1; }
+.chat-card-menu { position: relative; }
+.chat-card-menu .msg-actions-menu, .chat-card-menu .chat-rename { top: 22px; }
+.chat-rename { flex-direction: row; align-items: center; gap: var(--sp-1); min-width: 220px; }
+.chat-rename input { flex: 1; padding: var(--sp-1) var(--sp-2); background: var(--c-bg); border: 1px solid var(--c-border); border-radius: 6px; color: inherit; }
+.chat-hidden-section { margin-top: var(--sp-3); border-top: 1px solid var(--c-border); padding-top: var(--sp-2); }
+.chat-cards-hidden { margin-top: var(--sp-2); }
+.chat-card-muted { display: block; padding: var(--sp-2); color: var(--c-text-dim); border: 1px dashed var(--c-border); border-radius: var(--radius); }
+.chat-hidden-toggle { margin-bottom: var(--sp-2); }

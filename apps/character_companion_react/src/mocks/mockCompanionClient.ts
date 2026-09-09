@@ -27,6 +27,7 @@ import {
   RoleResolution,
   SCENE_FIELDS,
   SceneField,
+  WritingAssistantResult,
   emptyScene,
   sceneHasAny,
 } from "../client/types.js";
@@ -49,7 +50,7 @@ const POOLS: Record<SceneField, string[]> = {
 // ---- media model-role catalog (compact mirror of the backend registry) ----
 const MOCK_ROLE_ORDER = [
   "DIALOGUE", "VISION", "IMAGE_GENERATION", "VIDEO_GENERATION",
-  "STT", "TTS", "REALTIME", "LOCAL_ALTERNATIVE",
+  "STT", "TTS", "REALTIME", "WRITING_ASSISTANT", "LOCAL_ALTERNATIVE",
 ];
 const CAP_TO_ROLE: Record<string, string> = {
   DIALOGUE: "DIALOGUE", VISION: "VISION", IMAGE_GENERATION: "IMAGE_GENERATION",
@@ -114,6 +115,7 @@ const MOCK_CATALOG: Record<string, MockProviderDef> = {
 
 function mockModelSupportsRole(m: ModelView, role: string): boolean {
   if (role === "LOCAL_ALTERNATIVE") return m.capabilities.includes("DIALOGUE") && m.capabilities.includes("LOCAL");
+  if (role === "WRITING_ASSISTANT") return m.capabilities.includes("DIALOGUE");
   return m.roles.includes(role);
 }
 
@@ -123,7 +125,18 @@ function mockProviderSupportedRoles(providerId: string): string[] {
   const set = new Set<string>();
   for (const m of c.models) for (const r of m.roles) set.add(r);
   if (c.kind === "local" && set.has("DIALOGUE")) set.add("LOCAL_ALTERNATIVE");
+  if (set.has("DIALOGUE")) set.add("WRITING_ASSISTANT");
   return MOCK_ROLE_ORDER.filter((r) => set.has(r));
+}
+
+/** Deterministic offline "polish": trim, collapse spaces, capitalize, end with
+ * punctuation. Good enough for structural checks; the real assistant is a model. */
+function mockPolish(draft: string): string {
+  let s = draft.trim().replace(/\s+/g, " ");
+  if (!s) return s;
+  s = s[0].toUpperCase() + s.slice(1);
+  if (!/[.!?…]$/.test(s)) s += ".";
+  return s;
 }
 
 interface Row {
@@ -194,6 +207,9 @@ export class MockCompanionClient implements CompanionClient {
       sceneCoverRef: null,
       lastMessagePreview: "",
       lastActivity: `${String(this.activity).padStart(6, "0")}`,
+      titleOverride: null,
+      hidden: false,
+      hiddenMessageIds: [],
     };
     this.rows.set(session.sessionId, { session, messages: [] });
     return { ...session };
@@ -206,7 +222,48 @@ export class MockCompanionClient implements CompanionClient {
   }
 
   async getMessages(sessionId: string): Promise<CompanionMessage[]> {
+    // NOTE: the transcript read is NEVER filtered by hidden ids -- presentation
+    // filtering is the UI's job; the underlying history is returned in full.
     return [...this.requireRow(sessionId).messages];
+  }
+
+  async renameSession(sessionId: string, title: string): Promise<CompanionSession> {
+    const row = this.requireRow(sessionId);
+    const clean = (title ?? "").trim().slice(0, 120);
+    row.session = { ...row.session, titleOverride: clean || null };
+    return { ...row.session };
+  }
+
+  async setSessionHidden(sessionId: string, hidden: boolean): Promise<CompanionSession> {
+    const row = this.requireRow(sessionId);
+    row.session = { ...row.session, hidden: Boolean(hidden) };
+    return { ...row.session };
+  }
+
+  async setMessageHidden(sessionId: string, messageId: number, hidden: boolean): Promise<CompanionSession> {
+    const row = this.requireRow(sessionId);
+    if (hidden && !row.messages.some((m) => m.seq === messageId)) {
+      throw new CompanionClientError(404, "unknown_message", "Сообщение не найдено.");
+    }
+    const set = new Set(row.session.hiddenMessageIds);
+    if (hidden) set.add(messageId); else set.delete(messageId);
+    row.session = { ...row.session, hiddenMessageIds: [...set].sort((a, b) => a - b) };
+    return { ...row.session };
+  }
+
+  async rewriteDraft(draft: string, _opts?: { localeHint?: string }): Promise<WritingAssistantResult> {
+    if (typeof draft !== "string" || !draft.trim()) {
+      throw new CompanionClientError(400, "invalid_draft", "Пустой черновик.");
+    }
+    const a = this.roles.WRITING_ASSISTANT;
+    if (!a) {
+      throw new CompanionClientError(409, "assistant_not_configured", "Помощник написания не настроен.");
+    }
+    const c = MOCK_CATALOG[a.providerId];
+    if (c?.credentialRequired && !this.secrets.has(a.providerId)) {
+      throw new CompanionClientError(409, "missing_credential", "Нет ключа для выбранного провайдера.");
+    }
+    return { suggestion: mockPolish(draft), provider: a.providerId, model: a.modelId };
   }
 
   async sendMessage(sessionId: string, text: string): Promise<CompanionTurn> {

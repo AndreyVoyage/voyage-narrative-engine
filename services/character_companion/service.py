@@ -145,6 +145,10 @@ class CompanionSession:
     scene_cover_ref: Optional[str] = None
     last_message_preview: str = ""
     last_activity: str = ""
+    # ---- durable PRESENTATION metadata (never touches Character Memory) ----
+    title_override: Optional[str] = None
+    hidden: bool = False
+    hidden_message_ids: Tuple[int, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -339,6 +343,13 @@ class CompanionService:
                     preview = preview[: _PREVIEW_MAX_CHARS - 1].rstrip() + "…"
         except CompanionError:
             pass
+        pres = row.get("presentation") if isinstance(row.get("presentation"), dict) else {}
+        override = pres.get("titleOverride")
+        override = override.strip() if isinstance(override, str) and override.strip() else None
+        hidden_ids = tuple(
+            int(x) for x in (pres.get("hiddenMessageIds") or [])
+            if isinstance(x, int) and not isinstance(x, bool)
+        )
         return CompanionSession(
             session_id=row["session_id"],
             character_id=row["character_id"],
@@ -351,7 +362,64 @@ class CompanionService:
             scene_cover_ref=row.get("scene_cover_ref"),
             last_message_preview=preview,
             last_activity=updated,
+            title_override=override,
+            hidden=bool(pres.get("hidden")),
+            hidden_message_ids=hidden_ids,
         )
+
+    # ---- durable presentation metadata (UI-only; Character Memory untouched) --
+    def _merge_presentation(self, session_id: str, patch: Dict) -> CompanionSession:
+        row = self._session_row(session_id)
+        pres = dict(row.get("presentation") or {})
+        pres.update(patch)
+        return self._enrich(self._mutate_row(session_id, {"presentation": pres}))
+
+    def rename_session(self, session_id: str, title) -> CompanionSession:
+        """Set a presentation title override. Empty -> clear it (fall back to the
+        automatic label). Does NOT touch Memory or Scene facts; no AI."""
+        clean = str(title or "").strip()[:_PREVIEW_MAX_CHARS] if title is not None else ""
+        return self._merge_presentation(session_id, {"titleOverride": clean or None})
+
+    def set_session_visibility(self, session_id: str, hidden: bool) -> CompanionSession:
+        """Hide/restore a conversation in the UI list. The session, its history,
+        generated media, cover and all Runtime effects remain exactly as before.
+        This is presentation privacy, not erasure."""
+        return self._merge_presentation(session_id, {"hidden": bool(hidden)})
+
+    def set_message_visibility(self, session_id: str, message_id: int, hidden: bool) -> CompanionSession:
+        """Hide/restore one message in the UI transcript. The underlying Memory
+        event is NOT deleted, updated or filtered from Runtime retrieval -- only
+        its presentation visibility changes."""
+        if isinstance(message_id, bool) or not isinstance(message_id, int):
+            raise CompanionError("invalid_request", "messageId must be an integer event seq")
+        row = self._session_row(session_id)
+        if hidden:
+            known = {m.seq for m in self._history(row["character_id"], session_id) if m.seq is not None}
+            if message_id not in known:
+                raise CompanionError("unknown_message", f"no message with seq {message_id} in this session")
+        pres = dict(row.get("presentation") or {})
+        current = [int(x) for x in (pres.get("hiddenMessageIds") or []) if isinstance(x, int) and not isinstance(x, bool)]
+        if hidden and message_id not in current:
+            current.append(message_id)
+        if not hidden:
+            current = [x for x in current if x != message_id]
+        pres["hiddenMessageIds"] = sorted(set(current))
+        return self._enrich(self._mutate_row(session_id, {"presentation": pres}))
+
+    def writing_assistant_rewrite(self, draft: str, *, locale_hint: Optional[str] = None) -> dict:
+        """Rewrite a composer draft with the configured WRITING_ASSISTANT model.
+        Never routes through Character Runtime / Memory; works only from `draft`."""
+        store, vault = self._require_secure_config()
+        from .writing_assistant import WritingAssistantError, rewrite_draft
+        try:
+            return rewrite_draft(
+                draft, settings=store.load(), vault=vault,
+                fake_factory=self._provider_factory,
+                http_post_local=self._http_post_local, http_post_cloud=self._http_post_cloud,
+                locale_hint=locale_hint,
+            )
+        except WritingAssistantError as exc:
+            raise CompanionError(exc.code, exc.message) from exc
 
     def _mutate_row(self, session_id: str, changes: Dict) -> dict:
         registry = self._load_registry()

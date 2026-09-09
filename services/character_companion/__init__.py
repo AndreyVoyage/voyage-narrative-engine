@@ -57,6 +57,7 @@ from .provider_registry import (
     ROLE_TTS,
     ROLE_VIDEO_GENERATION,
     ROLE_VISION,
+    ROLE_WRITING_ASSISTANT,
     RUNTIME_WIRED_ROLES,
     ModelEntry,
     ProviderEntry,
@@ -78,6 +79,11 @@ from .provider_resolution import (
     resolve_dialogue_provider_factory,
     resolve_role_config,
     test_provider_connection,
+)
+from .writing_assistant import (
+    WRITING_ASSISTANT_SYSTEM_PROMPT,
+    WritingAssistantError,
+    rewrite_draft,
 )
 from .release import (
     COMPANION_MODES,
@@ -188,8 +194,12 @@ __all__ = [
     "ROLE_TTS",
     "ROLE_REALTIME",
     "ROLE_LOCAL_ALTERNATIVE",
+    "ROLE_WRITING_ASSISTANT",
     "ROLE_DISPLAY_ORDER",
     "RUNTIME_WIRED_ROLES",
+    "WRITING_ASSISTANT_SYSTEM_PROMPT",
+    "WritingAssistantError",
+    "rewrite_draft",
     "CompanionConfigError",
     "resolve_dialogue_provider_factory",
     "resolve_role_config",

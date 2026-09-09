@@ -32,10 +32,13 @@ ROLE_STT = "STT"
 ROLE_TTS = "TTS"
 ROLE_REALTIME = "REALTIME"
 ROLE_LOCAL_ALTERNATIVE = "LOCAL_ALTERNATIVE"
+#: Application utility role -- an in-app text helper (composer Writing Assistant).
+#: NOT wired to Character Runtime; never speaks as a character.
+ROLE_WRITING_ASSISTANT = "WRITING_ASSISTANT"
 
 ALL_ROLES: Tuple[str, ...] = (
     ROLE_DIALOGUE, ROLE_VISION, ROLE_IMAGE_GENERATION, ROLE_VIDEO_GENERATION,
-    ROLE_STT, ROLE_TTS, ROLE_REALTIME, ROLE_LOCAL_ALTERNATIVE,
+    ROLE_STT, ROLE_TTS, ROLE_REALTIME, ROLE_LOCAL_ALTERNATIVE, ROLE_WRITING_ASSISTANT,
 )
 #: Roles this release actually routes at runtime. Everything else is foundation.
 RUNTIME_WIRED_ROLES: Tuple[str, ...] = (ROLE_DIALOGUE,)
@@ -43,7 +46,7 @@ RUNTIME_WIRED_ROLES: Tuple[str, ...] = (ROLE_DIALOGUE,)
 #: Canonical presentation order for the "models by task" settings section.
 ROLE_DISPLAY_ORDER: Tuple[str, ...] = (
     ROLE_DIALOGUE, ROLE_VISION, ROLE_IMAGE_GENERATION, ROLE_VIDEO_GENERATION,
-    ROLE_STT, ROLE_TTS, ROLE_REALTIME, ROLE_LOCAL_ALTERNATIVE,
+    ROLE_STT, ROLE_TTS, ROLE_REALTIME, ROLE_WRITING_ASSISTANT, ROLE_LOCAL_ALTERNATIVE,
 )
 
 # ---- capabilities -----------------------------------------------------
@@ -129,6 +132,9 @@ class ModelEntry:
     def supports_role(self, role: str) -> bool:
         if role == ROLE_LOCAL_ALTERNATIVE:
             return CAP_DIALOGUE in self.capabilities and CAP_LOCAL in self.capabilities
+        if role == ROLE_WRITING_ASSISTANT:
+            # any text (DIALOGUE-capable) model can serve the in-app writing helper
+            return CAP_DIALOGUE in self.capabilities
         return role in self.roles()
 
     def to_json(self) -> dict:
@@ -177,6 +183,9 @@ class ProviderEntry:
         # a local provider that can do DIALOGUE can also serve LOCAL_ALTERNATIVE
         if self.kind == KIND_LOCAL and ROLE_DIALOGUE in seen and ROLE_LOCAL_ALTERNATIVE not in seen:
             seen.append(ROLE_LOCAL_ALTERNATIVE)
+        # any DIALOGUE-capable provider can serve the in-app Writing Assistant
+        if ROLE_DIALOGUE in seen and ROLE_WRITING_ASSISTANT not in seen:
+            seen.append(ROLE_WRITING_ASSISTANT)
         return tuple(r for r in ROLE_DISPLAY_ORDER if r in seen)
 
     @property

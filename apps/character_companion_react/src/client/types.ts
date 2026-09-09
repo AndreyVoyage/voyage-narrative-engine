@@ -51,6 +51,10 @@ export interface CompanionSession {
   sceneCoverRef: string | null;
   lastMessagePreview: string;
   lastActivity: string;
+  // ---- durable presentation metadata (never affects Character Memory) ----
+  titleOverride: string | null;
+  hidden: boolean;
+  hiddenMessageIds: number[];
 }
 
 export type CompanionRole = "user" | "character";
@@ -101,9 +105,16 @@ export interface NewDialogInput {
 /** Canonical model-role ids (DIALOGUE is the only runtime-wired one). */
 export const MODEL_ROLES = [
   "DIALOGUE", "VISION", "IMAGE_GENERATION", "VIDEO_GENERATION",
-  "STT", "TTS", "REALTIME", "LOCAL_ALTERNATIVE",
+  "STT", "TTS", "REALTIME", "WRITING_ASSISTANT", "LOCAL_ALTERNATIVE",
 ] as const;
 export type ModelRole = (typeof MODEL_ROLES)[number];
+
+/** Result of one composer Writing Assistant rewrite. */
+export interface WritingAssistantResult {
+  suggestion: string;
+  provider: string;
+  model: string;
+}
 
 export type RoleReadiness =
   | "READY"
@@ -220,8 +231,12 @@ export interface CompanionClient {
   listSessions(characterId: string): Promise<CompanionSession[]>;
   getSession(sessionId: string): Promise<CompanionSession>;
   createSession(characterId: string, input?: NewDialogInput): Promise<CompanionSession>;
+  renameSession(sessionId: string, title: string): Promise<CompanionSession>;
+  setSessionHidden(sessionId: string, hidden: boolean): Promise<CompanionSession>;
+  setMessageHidden(sessionId: string, messageId: number, hidden: boolean): Promise<CompanionSession>;
   getMessages(sessionId: string): Promise<CompanionMessage[]>;
   sendMessage(sessionId: string, text: string): Promise<CompanionTurn>;
+  rewriteDraft(draft: string, opts?: { localeHint?: string }): Promise<WritingAssistantResult>;
   randomScenario(opts?: { field?: SceneField; seed?: number }): Promise<RandomScenarioResult>;
   createImageJob(sessionId: string, kind: ImageJobKind, prompt?: string): Promise<ImageJob>;
   listImageJobs(sessionId: string): Promise<ImageJob[]>;
