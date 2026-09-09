@@ -199,6 +199,7 @@ class CompanionService:
         credential_vault: Optional[CredentialVault] = None,
         http_post_local=None,
         http_post_cloud=None,
+        mode: str = "dev",
     ) -> None:
         self._acceptance_root = Path(acceptance_root)
         self._data_root = Path(data_root)
@@ -227,6 +228,8 @@ class CompanionService:
         self._vault = credential_vault
         self._http_post_local = http_post_local
         self._http_post_cloud = http_post_cloud
+        from .release import normalize_mode
+        self._mode = normalize_mode(mode)
 
     @property
     def _secure_config_enabled(self) -> bool:
@@ -522,7 +525,24 @@ class CompanionService:
         return self._data_root / result_ref
 
     # ------------------------------------------------- provider settings
+    @property
+    def mode(self) -> str:
+        return self._mode
+
+    def _dialogue_provider_id(self) -> str:
+        if not self._secure_config_enabled:
+            return str(self._provider_info.get("provider_id") or "fake")
+        return self._settings_store.load().dialogue().provider_id
+
     def _dialogue_factory(self):
+        # Release mode never silently answers as FakeKIRA: a real DIALOGUE
+        # provider must be configured (Local Ollama or a cloud key in the vault).
+        if self._mode == "release" and self._dialogue_provider_id() == "fake":
+            raise CompanionError(
+                "provider_not_configured",
+                "Провайдер диалога не настроен. Откройте Настройки и выберите "
+                "локальную модель или облачного провайдера.",
+            )
         if not self._secure_config_enabled:
             return self._provider_factory
         return resolve_dialogue_provider_factory(
@@ -531,6 +551,15 @@ class CompanionService:
             http_post_local=self._http_post_local,
             http_post_cloud=self._http_post_cloud,
         )
+
+    def release_info(self, *, frontend_build_id=None) -> dict:
+        from .release import build_release_manifest
+        manifest = build_release_manifest(
+            acceptance_root=self._acceptance_root, frontend_build_id=frontend_build_id
+        )
+        manifest["mode"] = self._mode
+        manifest["dialogueProvider"] = self._dialogue_provider_id()
+        return manifest
 
     def _dialogue_provider_info(self) -> dict:
         if not self._secure_config_enabled:

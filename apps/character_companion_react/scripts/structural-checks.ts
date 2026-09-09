@@ -265,6 +265,21 @@ async function main(): Promise<void> {
   }
   ok("Settings panel free of Character Lab debug surface");
 
+  // ---- KIRA COMPANION RELEASE ASSEMBLY (RC1) ----
+  assert(typeof settingsMock.getReleaseInfo === "function", "client exposes getReleaseInfo");
+  const rel = await settingsMock.getReleaseInfo();
+  assert(rel.release.name === "KIRA Companion MVP RC1" && rel.release.version === "0.1.0-rc1", "RC1 identity");
+  assert(rel.acceptedCharacter.characterId === "kira", "release info names accepted KIRA");
+  assert(rel.localContext.recommendedMinNumCtx === 16384, "release info carries the num_ctx hint");
+  const appSrc3 = read("App.tsx");
+  assert(appSrc3.includes("getReleaseInfo") && appSrc3.includes("release.release.name"), "App shows the release name");
+  assert(/mode === "release"[\s\S]*dialogueProvider === "fake"/.test(appSrc3), "App has a release-mode 'provider not configured' guard");
+  // release must not hardcode a raw key anywhere in the client bundle sources
+  for (const rf of ["App.tsx", "client/httpCompanionClient.ts", "mocks/mockCompanionClient.ts"]) {
+    assert(!/sk-[A-Za-z0-9]{6,}/.test(read(rf)), `${rf} has no hardcoded API key`);
+  }
+  ok("release identity (RC1) surfaced; release-mode provider guard present; no hardcoded key");
+
   console.log(`\n${passed} passed, 0 failed`);
 }
 

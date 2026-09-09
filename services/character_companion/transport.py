@@ -44,6 +44,7 @@ _STATUS_BY_CODE = {
     "missing_credential": 409,
     "no_credential_needed": 409,
     "provider_config": 409,
+    "provider_not_configured": 409,
     "settings_unavailable": 409,
     "secret_in_settings": 500,
     "vault_unavailable": 503,
@@ -300,3 +301,6 @@ class CompanionTransport:
         provider_id = _require_str(payload, "providerId")
         model_id = payload.get("modelId")
         return _run(lambda: self._service.test_connection(provider_id, model_id or ""))
+
+    def get_release_info(self) -> dict:
+        return _run(self._service.release_info)

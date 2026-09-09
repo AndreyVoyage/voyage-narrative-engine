@@ -80,6 +80,7 @@ def build_transport(
     response: str = DEFAULT_FAKE_REPLY,
     env: Optional[dict] = None,
     credential_vault=None,
+    mode: str = "dev",
 ) -> CompanionTransport:
     """Compose the Companion service with secure provider configuration.
 
@@ -94,8 +95,8 @@ def build_transport(
     data_root.mkdir(parents=True, exist_ok=True)
 
     settings_store = SettingsStore(data_root)
-    mode = (env.get("COMPANION_PROVIDER") or "").strip().lower()
-    if mode == "local":
+    provider_env = (env.get("COMPANION_PROVIDER") or "").strip().lower()
+    if provider_env == "local":
         # legacy env path: env is authoritative and re-applied every start.
         cfg = LocalLLMConfig.from_env(env)
         seeded = settings_store.load()
@@ -128,6 +129,7 @@ def build_transport(
         image_generator=image_generator,
         settings_store=settings_store,
         credential_vault=vault,
+        mode=mode,
     )
     return CompanionTransport(service)
 
@@ -135,10 +137,12 @@ def build_transport(
 class CompanionServer:
     """Loopback-only HTTP server wrapping a :class:`CompanionTransport`."""
 
-    def __init__(self, transport: CompanionTransport, bind: str = BIND_HOST, port: int = DEFAULT_PORT) -> None:
+    def __init__(self, transport: CompanionTransport, bind: str = BIND_HOST,
+                 port: int = DEFAULT_PORT, web_root: Optional[Path] = None) -> None:
         if bind != "127.0.0.1":
             raise ValueError("CompanionServer must bind to 127.0.0.1 only")
         self._transport = transport
+        self._web_root = Path(web_root).resolve() if web_root else None
         self._httpd = ThreadingHTTPServer((bind, port), self._make_handler())
         self._thread: Optional[threading.Thread] = None
 
@@ -171,6 +175,7 @@ class CompanionServer:
     def _make_handler(self):
         transport = self._transport
         service = transport._service  # noqa: SLF001 -- same-process loopback image serving
+        web_root = self._web_root
 
         class Handler(BaseHTTPRequestHandler):
             server_version = "CharacterCompanion/0.1"
@@ -207,8 +212,11 @@ class CompanionServer:
                 parts = [p for p in path.split("/") if p]
 
                 if method == "GET" and parts == ["health"]:
-                    self._json(200, {"status": "ready", "provider": "fake", "client": "companion"})
+                    self._json(200, {"status": "ready", "client": "companion",
+                                     "mode": getattr(service, "mode", "dev")})
                     return
+                if method == "GET" and parts == ["api", "companion", "release"]:
+                    return self._call(transport.get_release_info)
                 if method == "GET" and parts == ["api", "companion", "characters"]:
                     return self._call(transport.list_characters)
                 if method == "GET" and parts[:3] == ["api", "companion", "characters"] and len(parts) == 5 \
@@ -256,7 +264,38 @@ class CompanionServer:
                 if method == "POST" and parts == ["api", "companion", "settings", "test"]:
                     return self._call(lambda: transport.test_provider(body))
 
+                # static SPA (release mode): anything not an /api or /health route
+                if method == "GET" and web_root is not None and (not parts or parts[0] not in ("api",)):
+                    return self._serve_static("/".join(parts))
+
                 self._json(404, {"error": {"code": "not_found", "message": "unknown route"}})
+
+            def _serve_static(self, rel: str) -> None:
+                rel = rel.strip("/")
+                candidate = (web_root / rel).resolve() if rel else (web_root / "index.html")
+                # path-traversal guard + SPA fallback to index.html
+                if web_root not in candidate.parents and candidate != web_root / "index.html" \
+                        and not str(candidate).startswith(str(web_root)):
+                    candidate = web_root / "index.html"
+                if candidate.is_dir():
+                    candidate = candidate / "index.html"
+                if not candidate.is_file():
+                    candidate = web_root / "index.html"
+                if not candidate.is_file():
+                    self._json(404, {"error": {"code": "not_built", "message": "frontend build not found"}})
+                    return
+                ctype = {
+                    ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8",
+                    ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8",
+                    ".svg": "image/svg+xml", ".png": "image/png", ".woff2": "font/woff2",
+                    ".ico": "image/x-icon", ".map": "application/json",
+                }.get(candidate.suffix, "application/octet-stream")
+                raw = candidate.read_bytes()
+                self.send_response(200)
+                self.send_header("Content-Type", ctype)
+                self.send_header("Content-Length", str(len(raw)))
+                self.end_headers()
+                self.wfile.write(raw)
 
             def _serve_image(self, result_ref: str) -> None:
                 # loopback-only, generated-image serving. Fail closed on any ref
@@ -293,16 +332,28 @@ class CompanionServer:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
-        description="Character Companion local server (127.0.0.1 only, fake provider only)"
+        description="Character Companion local server (127.0.0.1 only)"
     )
-    parser.add_argument("--port", type=int, default=DEFAULT_PORT)
+    parser.add_argument("--port", type=int, default=DEFAULT_PORT, help="0 = ephemeral")
+    parser.add_argument("--port-file", default=None, help="write the bound port here")
     parser.add_argument("--data-root", required=True, help="durable Companion data root")
+    parser.add_argument("--web-root", default=None, help="serve the built Companion SPA from here")
+    parser.add_argument("--mode", default="dev", choices=["dev", "release"])
     parser.add_argument("--reply", default=DEFAULT_FAKE_REPLY)
     args = parser.parse_args(argv)
 
-    transport = build_transport(data_root=Path(args.data_root), response=args.reply)
-    server = CompanionServer(transport, port=args.port)
-    print(f"[character_companion_server] listening on {server.base_url} (fake provider)")
+    web_root = Path(args.web_root) if args.web_root else None
+    if web_root is not None and not (web_root / "index.html").is_file():
+        print(f"[character_companion_server] ERROR: no built frontend at {web_root} "
+              f"(run tools/build_character_companion_release.ps1)")
+        return 2
+
+    transport = build_transport(data_root=Path(args.data_root), response=args.reply, mode=args.mode)
+    server = CompanionServer(transport, port=args.port, web_root=web_root)
+    if args.port_file:
+        Path(args.port_file).write_text(str(server.port), encoding="utf-8")
+    served = "SPA + /api" if web_root else "/api only"
+    print(f"[character_companion_server] listening on {server.base_url} (mode={args.mode}, {served})")
     server.start()
     try:
         while True:

@@ -20,6 +20,7 @@ import {
   NewDialogInput,
   ProviderTestResult,
   RandomScenarioResult,
+  ReleaseInfo,
   SceneField,
 } from "./types.js";
 
@@ -138,5 +139,9 @@ export class HttpCompanionClient implements CompanionClient {
 
   async testProvider(providerId: string, modelId?: string): Promise<ProviderTestResult> {
     return call<ProviderTestResult>("POST", "/settings/test", { providerId, modelId });
+  }
+
+  async getReleaseInfo(): Promise<ReleaseInfo> {
+    return call<ReleaseInfo>("GET", "/release");
   }
 }

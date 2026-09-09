@@ -142,6 +142,14 @@ export interface ProviderTestResult {
   message?: string;
 }
 
+export interface ReleaseInfo {
+  release: { name: string; version: string; channel: string };
+  mode: "dev" | "release";
+  dialogueProvider: string;
+  acceptedCharacter: { characterId: string; packageId: string; sourceHash: string };
+  localContext: { recommendedMinNumCtx: number; kiraGroundedObservedPromptTokens: number };
+}
+
 export class CompanionClientError extends Error {
   readonly code: string;
   readonly status: number;
@@ -170,4 +178,5 @@ export interface CompanionClient {
   storeCredential(providerId: string, secret: string): Promise<CompanionSettingsView>;
   deleteCredential(providerId: string): Promise<CompanionSettingsView>;
   testProvider(providerId: string, modelId?: string): Promise<ProviderTestResult>;
+  getReleaseInfo(): Promise<ReleaseInfo>;
 }

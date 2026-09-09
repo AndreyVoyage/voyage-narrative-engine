@@ -33,6 +33,7 @@ export function App() {
   const [state, dispatch] = useReducer(companionReducer, appearance.focusModeLayout, initialCompanionState);
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [release, setRelease] = useState<import("./client/types.js").ReleaseInfo | null>(null);
   const pollRef = useRef<number | null>(null);
 
   // ---- loaders -------------------------------------------------------
@@ -42,7 +43,10 @@ export function App() {
       .listCharacters()
       .then((characters) => dispatch({ type: "charactersLoaded", characters }))
       .catch((e) => dispatch({ type: "loadFailed", ...errorOf(e) }));
+    client.getReleaseInfo().then(setRelease).catch(() => undefined);
   }, []);
+
+  const providerNeedsConfig = release?.mode === "release" && release.dialogueProvider === "fake";
 
   const loadSessions = useCallback((characterId: string) => {
     dispatch({ type: "loadStart", scope: "sessions" });
@@ -172,7 +176,12 @@ export function App() {
   return (
     <div className="app">
       <header className="app-bar">
-        <span>Companion · Cinematic</span>
+        <span>{release ? release.release.name : "Companion · Cinematic"}</span>
+        {providerNeedsConfig && (
+          <button type="button" className="hint app-bar-config-needed" onClick={() => setShowSettings(true)}>
+            Провайдер диалога не настроен — открыть Настройки
+          </button>
+        )}
         {state.loading !== "idle" && <span className="hint">Загрузка…</span>}
         {anyImageJobActive(state.imageJobs) && <span className="hint">Изображение создаётся…</span>}
         <button type="button" className="btn btn-sm app-bar-settings" onClick={() => setShowSettings(true)}>

@@ -59,6 +59,17 @@ from .provider_resolution import (
     resolve_dialogue_provider_factory,
     test_provider_connection,
 )
+from .release import (
+    COMPANION_MODES,
+    KIRA_GROUNDED_OBSERVED_PROMPT_TOKENS,
+    MODE_DEV,
+    MODE_RELEASE,
+    RELEASE_NAME,
+    RELEASE_VERSION,
+    ReleaseManifestError,
+    build_release_manifest,
+    normalize_mode,
+)
 from .scenarios import SCENE_FIELDS, random_field, random_scenario
 from .settings import (
     NUM_CTX_KIRA_SAFE_HINT,
@@ -155,4 +166,13 @@ __all__ = [
     "AttachmentError",
     "AcceptedAttachment",
     "AUTHORITY_USER_ATTACHMENT_DATA",
+    "RELEASE_NAME",
+    "RELEASE_VERSION",
+    "MODE_DEV",
+    "MODE_RELEASE",
+    "COMPANION_MODES",
+    "KIRA_GROUNDED_OBSERVED_PROMPT_TOKENS",
+    "ReleaseManifestError",
+    "build_release_manifest",
+    "normalize_mode",
 ]

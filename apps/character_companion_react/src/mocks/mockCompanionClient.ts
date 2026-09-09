@@ -21,6 +21,7 @@ import {
   ProviderCardView,
   ProviderTestResult,
   RandomScenarioResult,
+  ReleaseInfo,
   SCENE_FIELDS,
   SceneField,
   emptyScene,
@@ -294,5 +295,19 @@ export class MockCompanionClient implements CompanionClient {
       return { providerId, ok: false, status: "missing_credential" }; // credential NOT erased
     }
     return { providerId, ok: true, status: "ok" };
+  }
+
+  async getReleaseInfo(): Promise<ReleaseInfo> {
+    return {
+      release: { name: "KIRA Companion MVP RC1", version: "0.1.0-rc1", channel: "release-candidate" },
+      mode: "dev",
+      dialogueProvider: this.roles.DIALOGUE.providerId,
+      acceptedCharacter: {
+        characterId: "kira",
+        packageId: "kira-mock-package",
+        sourceHash: "mock-source-hash",
+      },
+      localContext: { recommendedMinNumCtx: 16384, kiraGroundedObservedPromptTokens: 10014 },
+    };
   }
 }
