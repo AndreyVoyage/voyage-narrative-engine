@@ -51,6 +51,7 @@ from services.character_companion.local_provider import (  # noqa: E402
     DEFAULT_LOCAL_MODEL,
 )
 from services.character_companion.transport import CompanionTransportError  # noqa: E402
+from services.character_companion.provider_registry import ROLE_WRITING_ASSISTANT, get_provider  # noqa: E402
 
 BIND_HOST = "127.0.0.1"
 DEFAULT_PORT = 8788  # Lab React server uses 8787; keep distinct
@@ -133,9 +134,15 @@ def build_transport(
             seeded.base_urls["local"] = cfg.base_url
         settings_store.save(seeded)
     elif not settings_store.path.exists():
-        # default first start -> DIALOGUE = fake; thereafter persisted settings win.
+        # Только новое release-хранилище получает облачные текстовые defaults.
+        # Явный fake и dev сохраняют офлайн-поведение; сохранённые настройки выше.
         seeded = settings_store.load()
-        seeded.roles[ROLE_DIALOGUE] = RoleAssignment("fake", "fake")
+        if mode == "release" and provider_env != "fake":
+            entry = get_provider("deepseek")
+            for role in (ROLE_DIALOGUE, ROLE_WRITING_ASSISTANT):
+                seeded.roles[role] = RoleAssignment(entry.provider_id, entry.default_model_for_role(role))
+        else:
+            seeded.roles[ROLE_DIALOGUE] = RoleAssignment("fake", "fake")
         settings_store.save(seeded)
 
     vault = credential_vault

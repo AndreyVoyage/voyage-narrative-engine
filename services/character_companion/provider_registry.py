@@ -142,7 +142,7 @@ class ModelEntry:
             "modelId": self.model_id,
             "displayName": self.display_name,
             "capabilities": list(self.capabilities),
-            "roles": list(self.roles()),
+            "roles": [r for r in ROLE_DISPLAY_ORDER if self.supports_role(r)],
             "status": self.status,
             "notes": self.notes,
             "contentPolicyProfile": self.content_policy_profile,
@@ -208,6 +208,16 @@ class ProviderEntry:
         return tuple(m for m in self.models if m.supports_role(role))
 
     def default_model_for_role(self, role: str) -> str:
+        default = self.get_model(self.default_model)
+        if default is not None and default.supports_role(role):
+            return default.model_id
+        # Текстовые роли используют явный default; ошибка каталога не выбирает
+        # другую модель. Для media сохраняется существующий подбор по роли.
+        if role in (ROLE_DIALOGUE, ROLE_WRITING_ASSISTANT):
+            raise ProviderRegistryError(
+                "unknown_model" if default is None else "unsupported_model_role",
+                f"provider {self.provider_id!r} has no compatible default model for {role!r}",
+            )
         for m in self.models:
             if m.supports_role(role):
                 return m.model_id
@@ -252,12 +262,12 @@ _ENTRIES: Tuple[ProviderEntry, ...] = (
         credential_required=True,
         default_base_url="https://api.deepseek.com",
         models=(
-            ModelEntry("deepseek-chat", "DeepSeek Chat", (CAP_DIALOGUE, CAP_CLOUD),
+            ModelEntry("deepseek-v4-pro", "DeepSeek V4 Pro", (CAP_DIALOGUE, CAP_CLOUD),
                        content_policy_profile=POLICY_PROVIDER_POLICY_DEPENDENT),
-            ModelEntry("deepseek-reasoner", "DeepSeek Reasoner", (CAP_DIALOGUE, CAP_CLOUD),
+            ModelEntry("deepseek-v4-flash", "DeepSeek V4 Flash", (CAP_DIALOGUE, CAP_CLOUD),
                        content_policy_profile=POLICY_PROVIDER_POLICY_DEPENDENT),
         ),
-        default_model="deepseek-chat",
+        default_model="deepseek-v4-pro",
         notes="Сильная работа с характером и диалогом.",
     ),
     ProviderEntry(

@@ -19,6 +19,7 @@ from typing import Dict, Optional
 from .provider_registry import (
     ALL_ROLES,
     ROLE_DIALOGUE,
+    ROLE_WRITING_ASSISTANT,
     ProviderRegistryError,
     get_provider,
     is_known_provider,
@@ -50,6 +51,14 @@ class RoleAssignment:
     model_id: str
 
 
+def _normalize_legacy_text_model(role: str, provider_id: str, model_id: str) -> str:
+    # Миграция настроек, не fallback при выполнении; явный Flash сохраняется.
+    if (provider_id == "deepseek" and role in (ROLE_DIALOGUE, ROLE_WRITING_ASSISTANT)
+            and model_id in ("deepseek-chat", "deepseek-reasoner")):
+        return "deepseek-v4-pro"
+    return model_id
+
+
 @dataclass
 class CompanionSettings:
     # role -> assignment (only DIALOGUE is runtime-wired this release)
@@ -73,7 +82,9 @@ class CompanionSettings:
     def to_row(self) -> dict:
         return {
             "version": 1,
-            "roles": {r: {"providerId": a.provider_id, "modelId": a.model_id} for r, a in self.roles.items()},
+            "roles": {r: {"providerId": a.provider_id,
+                          "modelId": _normalize_legacy_text_model(r, a.provider_id, a.model_id)}
+                      for r, a in self.roles.items()},
             "baseUrls": dict(self.base_urls),
             "localNumCtx": self.local_num_ctx,
             "allowCloudFallback": bool(self.allow_cloud_fallback),
@@ -93,8 +104,10 @@ class CompanionSettings:
                     continue
                 pid = str(a.get("providerId") or "").strip().lower()
                 mid = str(a.get("modelId") or "").strip()
-                if is_known_provider(pid) and mid:
-                    roles[role] = RoleAssignment(pid, mid)
+                # Ошибочное текстовое назначение сохраняется для fail-closed
+                # проверки вместо подмены на fake; media-загрузка не меняется.
+                if role in (ROLE_DIALOGUE, ROLE_WRITING_ASSISTANT) or (is_known_provider(pid) and mid):
+                    roles[role] = RoleAssignment(pid, _normalize_legacy_text_model(role, pid, mid))
         base_urls: Dict[str, str] = {}
         raw_urls = data.get("baseUrls")
         if isinstance(raw_urls, dict):
@@ -160,12 +173,12 @@ class SettingsStore:
         if not is_known_provider(provider_id):
             raise SettingsError("unknown_provider", f"unknown provider {provider_id!r}")
         entry = get_provider(provider_id)
-        # empty model -> the first catalog model that actually supports this role
-        model_id = (model_id or "").strip() or entry.default_model_for_role(role)
         # the model catalog is authoritative: provider must support the role AND
         # the chosen model's capabilities must satisfy it. A cloud credential is
         # NOT required merely to save configuration.
         try:
+            model_id = (model_id or "").strip() or entry.default_model_for_role(role)
+            model_id = _normalize_legacy_text_model(role, entry.provider_id, model_id)
             _, _ = require_model_supported(entry.provider_id, model_id, role)
         except ProviderRegistryError as exc:
             raise SettingsError(exc.code, exc.message) from exc

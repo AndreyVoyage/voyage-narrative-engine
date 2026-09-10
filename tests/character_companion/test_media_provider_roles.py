@@ -139,7 +139,7 @@ def test_old_settings_load_when_media_roles_absent(tmp_path):
         "localNumCtx": 20480,
     }), encoding="utf-8")
     s = SettingsStore(tmp_path).load()
-    assert s.roles["DIALOGUE"] == RoleAssignment("deepseek", "deepseek-chat")
+    assert s.roles["DIALOGUE"] == RoleAssignment("deepseek", "deepseek-v4-pro")
     assert "VISION" not in s.roles              # media roles simply default unconfigured
     assert s.local_num_ctx == 20480
 
@@ -150,7 +150,7 @@ def test_dialogue_assignment_preserved_across_media_edits(tmp_path):
     store.set_role(ROLE_IMAGE_GENERATION, "openai", "gpt-image-1")
     store.set_role(ROLE_VISION, "openai", "gpt-4o-mini")
     s = store.load()
-    assert s.roles[ROLE_DIALOGUE] == RoleAssignment("deepseek", "deepseek-chat")  # untouched
+    assert s.roles[ROLE_DIALOGUE] == RoleAssignment("deepseek", "deepseek-v4-pro")  # migrated; media edits preserve it
     assert s.roles[ROLE_IMAGE_GENERATION] == RoleAssignment("openai", "gpt-image-1")
     assert s.roles[ROLE_VISION] == RoleAssignment("openai", "gpt-4o-mini")
 

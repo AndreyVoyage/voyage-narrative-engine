@@ -30,7 +30,6 @@ from .provider_registry import (
     get_provider,
     is_known_role,
     require_model_supported,
-    require_role_supported,
 )
 from .settings import CompanionSettings
 
@@ -82,12 +81,12 @@ def _factory_for(
     http_post_cloud: Optional[Callable] = None,
 ):
     try:
-        entry = require_role_supported(provider_id, role)
+        entry, selected_model = require_model_supported(provider_id, model_id, role)
     except ProviderRegistryError as exc:
         raise CompanionConfigError(exc.code, exc.message) from exc
 
     base_url = _base_url_for(settings, entry.provider_id)
-    model = (model_id or entry.default_model).strip()
+    model = selected_model.model_id
 
     if entry.transport == TRANSPORT_FAKE:
         return fake_factory

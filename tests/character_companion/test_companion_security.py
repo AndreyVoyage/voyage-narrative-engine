@@ -298,11 +298,11 @@ def test_22_provider_test_does_not_expose_secret(fake_cloud, tmp_path, capsys):
     vault = InMemoryCredentialVault(); vault.store("deepseek", FAKE_KEY)
     store = _store(tmp_path)
     store.set_base_url("deepseek", fake_cloud)
-    res = probe_provider_connection("deepseek", "deepseek-chat", store.load(), vault,
+    res = probe_provider_connection("deepseek", "deepseek-v4-pro", store.load(), vault,
                                    fake_factory=make_fake_factory())
     assert res["ok"] is True
     _FakeCloud.status = 401
-    res2 = probe_provider_connection("deepseek", "deepseek-chat", store.load(), vault,
+    res2 = probe_provider_connection("deepseek", "deepseek-v4-pro", store.load(), vault,
                                     fake_factory=make_fake_factory())
     assert res2["ok"] is False and vault.has("deepseek")      # failure does not erase credential
     out = capsys.readouterr()

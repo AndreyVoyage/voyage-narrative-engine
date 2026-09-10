@@ -45,7 +45,7 @@ def test_dict_roundtrip_providers_roles_credentials(tmp_path):
     # save role mapping (DIALOGUE only is runtime-wired)
     assert "DIALOGUE" in view["runtimeWiredRoles"]
     t.set_role({"role": "DIALOGUE", "providerId": "deepseek", "modelId": "deepseek-chat"})
-    assert t.get_settings()["roles"]["DIALOGUE"] == {"providerId": "deepseek", "modelId": "deepseek-chat"}
+    assert t.get_settings()["roles"]["DIALOGUE"] == {"providerId": "deepseek", "modelId": "deepseek-v4-pro"}
 
     # save credential -> connected=true, NEVER the raw key in any response
     saved = t.store_credential({"providerId": "deepseek", "secret": KEY})
@@ -169,7 +169,7 @@ def test_loopback_restart_retains_settings_and_secure_secret(tmp_path):
     s2.start()
     try:
         _, view = _http(s2.base_url, "GET", "/api/companion/settings")
-        assert view["roles"]["DIALOGUE"] == {"providerId": "deepseek", "modelId": "deepseek-reasoner"}
+        assert view["roles"]["DIALOGUE"] == {"providerId": "deepseek", "modelId": "deepseek-v4-pro"}
         assert view["local"]["numCtx"] == 20480
         ds = next(p for p in view["providers"] if p["providerId"] == "deepseek")
         assert ds["connected"] is True          # DPAPI-encrypted secret survived the restart
