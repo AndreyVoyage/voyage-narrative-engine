@@ -81,6 +81,8 @@ from .provider_resolution import (
 )
 from .settings import (
     DIALOGUE_CONTEXT_BUDGET_DEFAULT,
+    DIALOGUE_CONTEXT_BUDGET_MAX,
+    DIALOGUE_CONTEXT_BUDGET_MIN,
     NUM_CTX_KIRA_SAFE_HINT,
     NUM_CTX_MAX,
     NUM_CTX_MIN,
@@ -741,6 +743,15 @@ class CompanionService:
                 "numCtxWarning": bool(settings.local_num_ctx is not None
                                      and settings.local_num_ctx < NUM_CTX_KIRA_SAFE_HINT),
             },
+            # Provider-independent DIALOGUE operational context budget (V1C
+            # backend). ESTIMATED tokens -- not an exact provider token count and
+            # not the Ollama local ``num_ctx``.
+            "dialogueContextBudget": {
+                "estTokens": settings.dialogue_context_budget_est_tokens,
+                "min": DIALOGUE_CONTEXT_BUDGET_MIN,
+                "default": DIALOGUE_CONTEXT_BUDGET_DEFAULT,
+                "max": DIALOGUE_CONTEXT_BUDGET_MAX,
+            },
             "allowCloudFallback": settings.allow_cloud_fallback,
             "dataRoutingNote": "Сообщения для этой роли отправляются выбранному провайдеру. "
                                "Дублирования между провайдерами нет.",
@@ -767,6 +778,16 @@ class CompanionService:
         store, _ = self._require_secure_config()
         try:
             store.set_local_num_ctx(num_ctx)
+        except SettingsError as exc:
+            raise CompanionError(exc.code, exc.message) from exc
+        return self.settings_view()
+
+    def set_dialogue_context_budget(self, value) -> dict:
+        """Persist the DIALOGUE operational context budget (estimated tokens).
+        Delegates to the committed V1C store setter; no silent clamp/round."""
+        store, _ = self._require_secure_config()
+        try:
+            store.set_dialogue_context_budget_est_tokens(value)
         except SettingsError as exc:
             raise CompanionError(exc.code, exc.message) from exc
         return self.settings_view()

@@ -381,3 +381,50 @@ def test_ctx_budget_mandatory_overflow_before_provider_and_persistence(tmp_path)
         assert [(m.role, m.text) for m in svc.get_messages(session.session_id)] == prior  # nothing persisted
     finally:
         srv.stop()
+
+
+def test_ctx_budget_transport_set_takes_effect_next_turn_no_restart(tmp_path):
+    """COMPANION_CONTEXT_UI_V1D: setting the budget through the transport takes
+    effect on the NEXT dialogue turn in the SAME process (no restart); a small
+    accepted budget vs a large one yields a materially different history window;
+    the persisted conversation stays complete."""
+    from services.character_companion import CompanionTransport, InMemoryCredentialVault
+    from services.character_companion.settings import SettingsStore
+
+    data_root = tmp_path / "companion-data"
+    store = SettingsStore(data_root)
+    srv = _OllamaServer().start()
+    try:
+        svc = CompanionService(
+            acceptance_root=ACCEPTED_ROOT, data_root=data_root,
+            provider_factory=_local_factory(srv.base_url),
+            provider_info={"provider_id": "local", "model": "llama3"},
+            settings_store=store, credential_vault=InMemoryCredentialVault(),
+        )
+        t = CompanionTransport(svc)
+        session = svc.create_session("kira")
+        big = "деталь " * 260
+        for i in range(16):
+            svc.send_message(session.session_id, f"ход {i}: {big}")
+        persisted_before = [(m.role, m.text) for m in svc.get_messages(session.session_id)]
+        assert len(persisted_before) == 32
+
+        # small accepted budget -> next turn's history window is tightly bounded
+        assert t.set_dialogue_context_budget({"budgetEstTokens": 16384})["dialogueContextBudget"]["estTokens"] == 16384
+        _FakeOllama.seen = []
+        svc.send_message(session.session_id, "коротко: ещё")     # same process, no restart
+        small_hist = len(_sent_dialogue(_FakeOllama.seen)) - 1
+
+        # large accepted budget on the SAME service -> materially larger window
+        assert t.set_dialogue_context_budget({"budgetEstTokens": 131072})["dialogueContextBudget"]["estTokens"] == 131072
+        _FakeOllama.seen = []
+        svc.send_message(session.session_id, "коротко: снова")
+        large_hist = len(_sent_dialogue(_FakeOllama.seen)) - 1
+
+        assert small_hist < large_hist                          # the setting actually changed assembly
+        assert small_hist % 2 == 0 and large_hist % 2 == 0      # whole turns only
+        # persisted log grew only by the two real turns and is otherwise intact
+        after = [(m.role, m.text) for m in svc.get_messages(session.session_id)]
+        assert after[:32] == persisted_before and len(after) == 36
+    finally:
+        srv.stop()

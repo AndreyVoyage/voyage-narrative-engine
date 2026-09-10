@@ -165,6 +165,10 @@ export class HttpCompanionClient implements CompanionClient {
     return call<CompanionSettingsView>("POST", "/settings/local", input);
   }
 
+  async setDialogueContextBudget(value: number): Promise<CompanionSettingsView> {
+    return call<CompanionSettingsView>("POST", "/settings/dialogue-context", { budgetEstTokens: value });
+  }
+
   async storeCredential(providerId: string, secret: string): Promise<CompanionSettingsView> {
     // the secret is sent once and never requested back
     return call<CompanionSettingsView>("POST", "/settings/credentials", { providerId, secret });

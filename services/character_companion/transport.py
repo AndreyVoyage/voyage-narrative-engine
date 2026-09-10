@@ -37,6 +37,7 @@ _STATUS_BY_CODE = {
     "invalid_request": 400,
     "invalid_secret": 400,
     "invalid_num_ctx": 400,
+    "invalid_context_budget": 400,
     "unknown_role": 400,
     "unsupported_role": 400,
     "unknown_model": 400,
@@ -382,6 +383,18 @@ class CompanionTransport:
         if out is None:
             return _run(self._service.settings_view)
         return out
+
+    def set_dialogue_context_budget(self, payload: dict) -> dict:
+        if not isinstance(payload, dict):
+            raise CompanionTransportError(400, "invalid_request", "request body must be a JSON object")
+        if "budgetEstTokens" not in payload:
+            raise CompanionTransportError(400, "invalid_context_budget", "'budgetEstTokens' is required")
+        value = payload.get("budgetEstTokens")
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise CompanionTransportError(
+                400, "invalid_context_budget", "'budgetEstTokens' must be an integer"
+            )
+        return _run(lambda: self._service.set_dialogue_context_budget(value))
 
     def store_credential(self, payload: dict) -> dict:
         if not isinstance(payload, dict):

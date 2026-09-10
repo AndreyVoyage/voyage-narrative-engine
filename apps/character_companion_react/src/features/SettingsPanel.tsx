@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import type { CompanionClient } from "../client/types.js";
 import type { CompanionSettingsView, ProviderCardView, ProviderTestResult } from "../client/types.js";
 import {
+  DIALOGUE_CONTEXT_BUDGET_PRESETS,
   MODEL_ROLE_ORDER,
   autoFallbackDefault,
+  isValidDialogueContextBudget,
   localContextWarning,
   modelsForRole,
   providerActions,
@@ -33,6 +35,7 @@ export function SettingsPanel({ client, profile, onProfileChange, onClose }: Pro
   const [secretDrafts, setSecretDrafts] = useState<Record<string, string>>({});
   const [testResults, setTestResults] = useState<Record<string, ProviderTestResult>>({});
   const [nameDraft, setNameDraft] = useState(profile.displayName);
+  const [budgetError, setBudgetError] = useState<string | null>(null);
 
   function load() {
     client.getSettings().then(setView).catch((e) => setError(String(e?.message ?? e)));
@@ -234,6 +237,52 @@ export function SettingsPanel({ client, profile, onProfileChange, onClose }: Pro
         })}
       </div>
       <p className="settings-hint settings-model-change-note">{t("settings.modelChangeNote")}</p>
+
+      {/* Dialogue operational context budget -- separate from Local model num_ctx */}
+      <h3 className="settings-section">{t("settings.section.dialogueContext")}</h3>
+      <p className="settings-hint">{t("settings.dialogueContextBudgetHint")}</p>
+      <div className="role-row-selects">
+        {DIALOGUE_CONTEXT_BUDGET_PRESETS.map((p) => (
+          <button
+            key={p.value}
+            type="button"
+            className={
+              view.dialogueContextBudget.estTokens === p.value ? "btn btn-sm btn-active" : "btn btn-sm"
+            }
+            onClick={() => {
+              setBudgetError(null);
+              guard(client.setDialogueContextBudget(p.value)).then(setView);
+            }}
+          >
+            {p.label}
+            {p.value === view.dialogueContextBudget.default
+              ? ` (${t("settings.dialogueContextPresetDefault")})`
+              : ""}
+          </button>
+        ))}
+      </div>
+      <label className="field">
+        <span>{t("settings.dialogueContextBudget")}</span>
+        <input
+          key={view.dialogueContextBudget.estTokens}
+          type="number"
+          name="dialogue_context_budget"
+          min={view.dialogueContextBudget.min}
+          max={view.dialogueContextBudget.max}
+          defaultValue={view.dialogueContextBudget.estTokens}
+          onBlur={(e) => {
+            const raw = e.target.value.trim();
+            const n = Number(raw);
+            if (raw === "" || !isValidDialogueContextBudget(n, view)) {
+              setBudgetError(t("settings.dialogueContextBudgetInvalid"));
+              return;
+            }
+            setBudgetError(null);
+            guard(client.setDialogueContextBudget(n)).then(setView);
+          }}
+        />
+      </label>
+      {budgetError && <p className="settings-warn" role="alert">{budgetError}</p>}
 
       {/* Local model */}
       <h3 className="settings-section">{t("settings.section.local")}</h3>

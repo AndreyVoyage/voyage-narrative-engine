@@ -72,6 +72,21 @@ export function localContextWarning(view: CompanionSettingsView): string | null 
     : null;
 }
 
+/** DIALOGUE operational context-budget presets (exact backend integer values). */
+export const DIALOGUE_CONTEXT_BUDGET_PRESETS = [
+  { value: 16384, label: "16K" },
+  { value: 32768, label: "32K" },
+  { value: 65536, label: "64K" },
+  { value: 131072, label: "128K" },
+] as const;
+
+/** True only for an integer within the backend-advertised range. No clamp, no
+ * rounding -- an out-of-range or non-integer value is simply invalid. */
+export function isValidDialogueContextBudget(value: number, view: CompanionSettingsView): boolean {
+  const b = view.dialogueContextBudget;
+  return Number.isInteger(value) && value >= b.min && value <= b.max;
+}
+
 /** Auto cloud fallback must stay OFF by default. */
 export function autoFallbackDefault(): boolean {
   return false;

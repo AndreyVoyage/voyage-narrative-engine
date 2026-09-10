@@ -317,6 +317,8 @@ class CompanionServer:
                     return self._call(lambda: transport.set_role(body))
                 if method == "POST" and parts == ["api", "companion", "settings", "local"]:
                     return self._call(lambda: transport.set_local_settings(body))
+                if method == "POST" and parts == ["api", "companion", "settings", "dialogue-context"]:
+                    return self._call(lambda: transport.set_dialogue_context_budget(body))
                 if method == "POST" and parts == ["api", "companion", "settings", "credentials"]:
                     return self._call(lambda: transport.store_credential(body))
                 if method == "DELETE" and parts[:4] == ["api", "companion", "settings", "credentials"] and len(parts) == 5:

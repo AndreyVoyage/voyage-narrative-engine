@@ -428,6 +428,7 @@ export class MockCompanionClient implements CompanionClient {
   };
   private localNumCtx: number | null = null;
   private localBaseUrl = "http://127.0.0.1:11434";
+  private dialogueContextBudget = 32768;
 
   private providerCatalog(): ProviderCardView[] {
     return Object.entries(MOCK_CATALOG).map(([providerId, c]) => {
@@ -514,6 +515,12 @@ export class MockCompanionClient implements CompanionClient {
         kiraSafeHint: 16384,
         numCtxWarning: this.localNumCtx !== null && this.localNumCtx < 16384,
       },
+      dialogueContextBudget: {
+        estTokens: this.dialogueContextBudget,
+        min: 16384,
+        default: 32768,
+        max: 131072,
+      },
       allowCloudFallback: false,
       dataRoutingNote: "Сообщения для этой роли отправляются выбранному провайдеру. Дублирования между провайдерами нет.",
     };
@@ -551,6 +558,18 @@ export class MockCompanionClient implements CompanionClient {
       this.localNumCtx = n ?? null;
     }
     if ("baseUrl" in input && typeof input.baseUrl === "string" && input.baseUrl) this.localBaseUrl = input.baseUrl;
+    return this.getSettings();
+  }
+
+  async setDialogueContextBudget(value: number): Promise<CompanionSettingsView> {
+    if (typeof value !== "number" || !Number.isInteger(value) || value < 16384 || value > 131072) {
+      throw new CompanionClientError(
+        400,
+        "invalid_context_budget",
+        "Введите целое число от 16384 до 131072.",
+      );
+    }
+    this.dialogueContextBudget = value; // never touches localNumCtx
     return this.getSettings();
   }
 

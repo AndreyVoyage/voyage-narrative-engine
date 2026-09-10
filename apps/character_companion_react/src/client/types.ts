@@ -248,6 +248,18 @@ export interface LocalSettingsView {
   numCtxWarning: boolean;
 }
 
+/**
+ * Provider-independent DIALOGUE operational context budget (V1C backend).
+ * `estTokens` is an ESTIMATED sizing value — not an exact provider token count,
+ * not the provider context window, not the Ollama local `num_ctx`.
+ */
+export interface DialogueContextBudgetView {
+  estTokens: number;
+  min: number;
+  default: number;
+  max: number;
+}
+
 export interface CompanionSettingsView {
   providers: ProviderCardView[];
   roles: Record<string, { providerId: string; modelId: string }>;
@@ -256,6 +268,7 @@ export interface CompanionSettingsView {
   roleDisplayOrder: string[];
   runtimeWiredRoles: string[];
   local: LocalSettingsView;
+  dialogueContextBudget: DialogueContextBudgetView;
   allowCloudFallback: boolean;
   dataRoutingNote: string;
 }
@@ -306,6 +319,7 @@ export interface CompanionClient {
   getSettings(): Promise<CompanionSettingsView>;
   setRole(role: string, providerId: string, modelId: string): Promise<CompanionSettingsView>;
   setLocalSettings(input: { numCtx?: number | null; baseUrl?: string | null }): Promise<CompanionSettingsView>;
+  setDialogueContextBudget(value: number): Promise<CompanionSettingsView>;
   storeCredential(providerId: string, secret: string): Promise<CompanionSettingsView>;
   deleteCredential(providerId: string): Promise<CompanionSettingsView>;
   testProvider(providerId: string, modelId?: string): Promise<ProviderTestResult>;

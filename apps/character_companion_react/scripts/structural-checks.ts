@@ -1057,6 +1057,122 @@ async function main(): Promise<void> {
   assert(igRu["image.readiness.activeSnapshotMissing"].length > 0, "RU readiness copy present");
   ok("IGW.18 all new image labels localized in five locales");
 
+  // ================================================================
+  // COMPANION CONTEXT UI V1D  (dialogue operational context budget)
+  // ================================================================
+  const ctxSettings = read("features/SettingsPanel.tsx");
+  const ctxTypes = read("client/types.ts");
+  const ctxHttp = read("client/httpCompanionClient.ts");
+  const ctxState = read("app/settingsState.ts");
+  const ctxRu = ru as Record<string, string>;
+  const ctxMock = new MockCompanionClient();
+  const stCtx = await import("../src/app/settingsState.js");
+
+  // 1 -- typed view block + client method
+  assert(/dialogueContextBudget:\s*DialogueContextBudgetView/.test(ctxTypes)
+    && /interface DialogueContextBudgetView[\s\S]*estTokens: number;[\s\S]*min: number;[\s\S]*default: number;[\s\S]*max: number;/.test(ctxTypes),
+    "CompanionSettingsView carries a typed dialogueContextBudget block");
+  assert(ctxTypes.includes("setDialogueContextBudget(value: number): Promise<CompanionSettingsView>"),
+    "CompanionClient has setDialogueContextBudget(number)");
+  ok("V1D.1 CompanionSettingsView + client method exist");
+
+  // 2 -- exact POST route + payload field
+  assert(/setDialogueContextBudget\(value: number\)/.test(ctxHttp)
+    && ctxHttp.includes('"POST", "/settings/dialogue-context", { budgetEstTokens: value }'),
+    "HttpCompanionClient posts /settings/dialogue-context with { budgetEstTokens }");
+  ok("V1D.2 exact POST path + payload field");
+
+  // 3 -- mock: default 32768, exact bounds, isolated from localNumCtx
+  const cv = await ctxMock.getSettings();
+  assert(cv.dialogueContextBudget.estTokens === 32768
+    && cv.dialogueContextBudget.min === 16384
+    && cv.dialogueContextBudget.default === 32768
+    && cv.dialogueContextBudget.max === 131072, "mock default + exact bounds");
+  const before = cv.local.numCtx;
+  const cv2 = await ctxMock.setDialogueContextBudget(65536);
+  assert(cv2.dialogueContextBudget.estTokens === 65536 && cv2.local.numCtx === before,
+    "setting the dialogue budget does not touch localNumCtx");
+  let mockRejected = false;
+  for (const bad of [16383, 131073, 40000.5, 32768.0001]) {
+    try { await ctxMock.setDialogueContextBudget(bad as number); } catch { mockRejected = true; }
+  }
+  // 40000.5 / non-int rejected; a valid int in range still works
+  assert(mockRejected, "mock rejects out-of-range / non-integer budgets");
+  ok("V1D.3 mock default 32768; bounds exact; localNumCtx untouched; range enforced");
+
+  // 4 -- helpers: exact preset values + no-clamp validator
+  assert(stCtx.DIALOGUE_CONTEXT_BUDGET_PRESETS.map((p) => p.value).join(",") === "16384,32768,65536,131072",
+    "presets carry exact backend integers 16384/32768/65536/131072");
+  assert(stCtx.DIALOGUE_CONTEXT_BUDGET_PRESETS.map((p) => p.label).join(",") === "16K,32K,64K,128K",
+    "preset labels are 16K/32K/64K/128K");
+  const vView = await new MockCompanionClient().getSettings();
+  assert(stCtx.isValidDialogueContextBudget(16384, vView) && stCtx.isValidDialogueContextBudget(131072, vView),
+    "range bounds are valid");
+  assert(!stCtx.isValidDialogueContextBudget(16383, vView)
+    && !stCtx.isValidDialogueContextBudget(131073, vView)
+    && !stCtx.isValidDialogueContextBudget(40000.5, vView),
+    "out-of-range / non-integer is invalid (no clamp, no rounding)");
+  ok("V1D.4 preset constants + no-clamp validator");
+
+  // 5 -- SettingsPanel: own section BEFORE Local model, distinct control
+  assert(ctxSettings.includes('t("settings.section.dialogueContext")'), "panel renders the dialogue-context section header");
+  assert(ctxSettings.indexOf('t("settings.section.dialogueContext")') < ctxSettings.indexOf('t("settings.section.local")'),
+    "the dialogue-context section is placed BEFORE the Local model section");
+  assert(ctxSettings.includes('name="dialogue_context_budget"') && !/name="dialogue_context_budget"[\s\S]{0,40}num_ctx/.test(ctxSettings),
+    "the numeric input name is dialogue_context_budget, not num_ctx");
+  assert(ctxSettings.includes("min={view.dialogueContextBudget.min}")
+    && ctxSettings.includes("max={view.dialogueContextBudget.max}"),
+    "numeric input uses backend-advertised min/max");
+  ok("V1D.5 own section before Local model; control distinct from num_ctx");
+
+  // 6 -- server-confirmed updates + keyed remount so the numeric field reflects them
+  assert(ctxSettings.includes("client.setDialogueContextBudget(p.value)")
+    && /guard\(client\.setDialogueContextBudget\([\s\S]*?\)\)\.then\(setView\)/.test(ctxSettings),
+    "preset + numeric commits go through guard(...).then(setView) (server-confirmed)");
+  assert(ctxSettings.includes("key={view.dialogueContextBudget.estTokens}")
+    && ctxSettings.includes("defaultValue={view.dialogueContextBudget.estTokens}"),
+    "numeric input remounts on the server-confirmed value (keyed defaultValue)");
+  ok("V1D.6 preset updates are server-confirmed and visible in the numeric field");
+
+  // 7 -- invalid numeric value is NOT sent
+  const blurBlock = ctxSettings.slice(
+    ctxSettings.indexOf('name="dialogue_context_budget"'),
+    ctxSettings.indexOf('{budgetError &&'),
+  );
+  assert(/if \(raw === "" \|\| !isValidDialogueContextBudget\(n, view\)\)/.test(blurBlock)
+    && /setBudgetError\(t\("settings\.dialogueContextBudgetInvalid"\)\);\s*return;/.test(blurBlock),
+    "an out-of-range / blank numeric entry sets the error and returns WITHOUT calling the client");
+  ok("V1D.7 invalid numeric value is not sent");
+
+  // 8 -- wording: estimated / operational; distinguishes num_ctx; no forbidden claims
+  const hint = ctxRu["settings.dialogueContextBudgetHint"];
+  assert(typeof hint === "string" && /Оценочн/i.test(ctxRu["settings.dialogueContextBudget"]) , "RU label says 'Оценочный'");
+  assert(/num_ctx/i.test(hint) && /сохраня/i.test(hint), "helper distinguishes local num_ctx and states history is kept");
+  for (const dict of [ru, en, es, zhCN, pt] as Record<string, string>[]) {
+    const L = dict as Record<string, string>;
+    const all = (L["settings.dialogueContextBudget"] + " " + L["settings.dialogueContextBudgetHint"]).toLowerCase();
+    assert(!all.includes("deepseek"), "no 'DeepSeek' in the budget copy");
+    assert(!/exact token|точн\w* (числ|количеств)\w* токен|максимальн\w* контекст\w* модел/i.test(all),
+      "no 'exact tokens' / 'maximum model context' claim");
+  }
+  ok("V1D.8 wording is estimated/operational; distinguishes num_ctx; no forbidden claims");
+
+  // 9 -- all five locales carry the same new keys
+  const V1D_KEYS = [
+    "settings.section.dialogueContext",
+    "settings.dialogueContextBudget",
+    "settings.dialogueContextBudgetHint",
+    "settings.dialogueContextBudgetInvalid",
+    "settings.dialogueContextPresetDefault",
+  ];
+  for (const [name, dict] of [["ru", ru], ["en", en], ["es", es], ["zh-CN", zhCN], ["pt", pt]] as const) {
+    for (const k of V1D_KEYS) {
+      const v = (dict as Record<string, string>)[k];
+      assert(typeof v === "string" && v.length > 0, `${name} has ${k}`);
+    }
+  }
+  ok("V1D.9 dialogue-context labels localized in five locales (key parity)");
+
   console.log(`\n${passed} passed, 0 failed`);
 }
 

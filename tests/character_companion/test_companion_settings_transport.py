@@ -130,6 +130,43 @@ def test_dialogue_context_budget_setting(tmp_path):
     assert "dialogueContextBudgetEstTokens" in saved_row and "localNumCtx" in saved_row
 
 
+def test_dialogue_context_budget_transport_surface(tmp_path):
+    """COMPANION_CONTEXT_UI_V1D: GET exposes the budget + bounds; the
+    /settings/dialogue-context setter persists valid presets and rejects
+    everything invalid without a silent clamp; separation from localNumCtx."""
+    t = _transport(tmp_path)
+
+    v = t.get_settings()
+    assert v["dialogueContextBudget"] == {
+        "estTokens": 32768, "min": 16384, "default": 32768, "max": 131072,
+    }
+    assert v["local"]["numCtx"] is None                       # untouched
+
+    for value in (16384, 32768, 65536, 131072):
+        out = t.set_dialogue_context_budget({"budgetEstTokens": value})
+        assert out["dialogueContextBudget"]["estTokens"] == value
+        assert t.get_settings()["dialogueContextBudget"]["estTokens"] == value   # fresh GET persisted
+
+    # invalid SET: bounded 400, no silent clamp / round / default, stored value kept
+    t.set_dialogue_context_budget({"budgetEstTokens": 32768})
+    for bad in ({"budgetEstTokens": 16383}, {"budgetEstTokens": 131073},
+                {"budgetEstTokens": "40000"}, {"budgetEstTokens": True},
+                {"budgetEstTokens": None}, {"budgetEstTokens": 40000.5}, {}):
+        with pytest.raises(CompanionTransportError) as exc:
+            t.set_dialogue_context_budget(bad)
+        assert (exc.value.status, exc.value.code) == (400, "invalid_context_budget")
+    assert t.get_settings()["dialogueContextBudget"]["estTokens"] == 32768
+
+    # separation: dialogue budget SET never touches localNumCtx, and vice versa
+    t.set_local_settings({"numCtx": 20480})
+    t.set_dialogue_context_budget({"budgetEstTokens": 65536})
+    after = t.get_settings()
+    assert after["local"]["numCtx"] == 20480
+    assert after["dialogueContextBudget"]["estTokens"] == 65536
+    t.set_local_settings({"numCtx": 12000})
+    assert t.get_settings()["dialogueContextBudget"]["estTokens"] == 65536   # unchanged
+
+
 def test_bounded_errors(tmp_path):
     t = _transport(tmp_path)
     with pytest.raises(CompanionTransportError) as e1:
@@ -193,6 +230,16 @@ def test_loopback_settings_and_no_raw_secret_get(tmp_path):
 
         _, out = _http(b, "POST", "/api/companion/settings/local", {"numCtx": 12000})
         assert out["local"]["numCtx"] == 12000
+
+        # V1D: dialogue context budget over the real loopback route
+        stg, g = _http(b, "GET", "/api/companion/settings")
+        assert stg == 200 and g["dialogueContextBudget"]["estTokens"] == 32768
+        _, dc = _http(b, "POST", "/api/companion/settings/dialogue-context", {"budgetEstTokens": 65536})
+        assert dc["dialogueContextBudget"]["estTokens"] == 65536 and dc["local"]["numCtx"] == 12000
+        st4, err4 = _http(b, "POST", "/api/companion/settings/dialogue-context", {"budgetEstTokens": 999})
+        assert st4 == 400 and err4["error"]["code"] == "invalid_context_budget"
+        # invalid did not mutate the persisted value
+        assert _http(b, "GET", "/api/companion/settings")[1]["dialogueContextBudget"]["estTokens"] == 65536
 
         st3, err = _http(b, "POST", "/api/companion/settings/roles", {"role": "STT", "providerId": "deepseek"})
         assert st3 == 400 and err["error"]["code"] == "unsupported_role"
