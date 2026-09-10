@@ -3,11 +3,11 @@
 # Responsibilities (Player Shell v0, OD-UX-01..06):
 # - label splashscreen: typography-only "НАРРАТИВ" fade-in/hold/fade-out.
 # - label main_menu: explicit main-menu context (call screen main_menu).
-# - label player_shell_new_game: temporary non-canonical bootstrap to SC_017.
+# - label player_shell_new_game: player-facing entry to the first-real canonical scene.
 #
 # Screens live in screens.rpy, not here (file-ownership design).
-# The one and only place that knows about the temporary demo entry
-# sc_017_v2_start is label player_shell_new_game below (OD-UX-02).
+# The player-facing new-game entry routes to the first-real canonical scene
+# (OD-FIRST-REAL-PLAYER-ENTRY-01).
 
 
 label splashscreen:
@@ -31,6 +31,6 @@ label main_menu:
 
 
 label player_shell_new_game:
-    # TEMPORARY NON-CANONICAL DEMO ENTRY (OD-UX-02).
-    # Replace with the real story-start label once Chapter 1 exists.
-    jump sc_017_v2_start
+    # First-real canonical scene entry (OD-FIRST-REAL-PLAYER-ENTRY-01).
+    # Not permanent Chapter 1; a later accepted story-start may replace this.
+    jump vne_scene_onrv623jojqv66lpm5qv62dbnrwf653bojwxk4c7gaydc_start
