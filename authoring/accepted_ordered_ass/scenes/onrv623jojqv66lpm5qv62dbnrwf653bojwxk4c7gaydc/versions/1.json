@@ -1,0 +1,32 @@
+{
+  "ass_id": "ass_sc_kira_yoga_hall_warmup_001_v1",
+  "content_hash": "c27491900abf097a3113e6200b1d6335ea39b3b08818c5bc1533bc4784bd40e5",
+  "content_rating": "G",
+  "location_id": "yoga_hall",
+  "ordered_flow": [
+    {
+      "character_id": null,
+      "entry_id": "narrative_001",
+      "kind": "TEXT",
+      "presentation": "NARRATIVE",
+      "text": "Кира разминается на беговой дорожке в зале для йоги.",
+      "thought_visibility": null
+    }
+  ],
+  "participants": [
+    {
+      "character_id": "KIRA",
+      "present": true,
+      "role": ""
+    }
+  ],
+  "provenance": {
+    "source_hash": "040240cc9e1405d92e10976cdd5bbbd93040f17cf77a87de93f37e6e0606327f",
+    "source_kind": "scene_body_ordered_acceptance",
+    "source_ref": "authoring/scene_drafts/sc_kira_yoga_hall_warmup_001/versions/1.json",
+    "source_schema_version": "scene_body/1.0"
+  },
+  "scene_id": "sc_kira_yoga_hall_warmup_001",
+  "schema_version": "ass/0.2",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "schema_version": "vne_workspace_project_manifest/0.1",
+  "project_id": "narrative_game",
+  "entities": [
+    {
+      "entity_kind": "SCENE",
+      "stable_id": "sc_kira_yoga_hall_warmup_001",
+      "source_ref": "authoring/scene_drafts/sc_kira_yoga_hall_warmup_001/pointer.json"
+    }
+  ]
+}

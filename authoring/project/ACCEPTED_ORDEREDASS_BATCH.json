@@ -1,0 +1,12 @@
+{
+  "schema_version": "vne_project_accepted_orderedass_batch/0.1",
+  "project_id": "narrative_game",
+  "scene_refs": [
+    {
+      "scene_id": "sc_kira_yoga_hall_warmup_001",
+      "version": 1,
+      "ass_id": "ass_sc_kira_yoga_hall_warmup_001_v1",
+      "ass_content_hash": "c27491900abf097a3113e6200b1d6335ea39b3b08818c5bc1533bc4784bd40e5"
+    }
+  ]
+}
