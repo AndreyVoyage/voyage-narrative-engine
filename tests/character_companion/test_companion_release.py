@@ -190,3 +190,61 @@ def test_release_manifest_module_has_no_hardcoded_secret():
     src = (_REPO / "services" / "character_companion" / "release.py").read_text(encoding="utf-8")
     for banned in ("sk-", "api_key =", "OPENAI_API_KEY", "DEEPSEEK_API_KEY"):
         assert banned not in src
+
+
+# ---------------------------------------------------------- 5. runtime stabilization
+def test_launcher_prevents_duplicate_backend_for_same_data_root():
+    """COMPANION_RUNTIME_STABILIZATION_V1: a second double-click must not spawn a
+    second backend against the real data root; the guard is data-root + pid +
+    command-line specific and NEVER kills processes by name."""
+    launcher = (_REPO / "tools" / "start_character_companion.ps1").read_text(encoding="utf-8")
+    low = launcher.lower()
+
+    # a single launcher-owned backend is tracked per data root (marker sibling of
+    # the data root, carrying pid + port + dataRoot)
+    assert "backend.owned.json" in launcher
+    assert "dataroot" in low and "port" in low and "pid" in low
+    # health probe decides "reuse vs spawn" -- no provider call, loopback only
+    assert "/health" in launcher and "invoke-restmethod" in low
+    assert 'status -eq "ready"' in launcher or "status -eq 'ready'" in launcher
+    # identity is verified by command line before touching any process
+    assert "get-ciminstance win32_process" in low
+    assert "character_companion_server.py" in launcher and "commandline" in low
+    # replacing an owned-but-wedged instance stops ONLY that one explicit pid
+    assert "stop-process -id" in low
+    # an explicit acceptance-restart switch exists
+    assert "[switch]$restart" in low or "[switch] $restart" in low
+    # NEVER a name-based / wildcard process kill
+    for banned in (
+        "stop-process -name", "stop-process python", "-name python", "-name py",
+        "taskkill /im", "taskkill /f /im", "get-process python", "get-process py ",
+        "stop-process *", "kill python",
+    ):
+        assert banned not in low, f"launcher must not kill by name: {banned!r}"
+
+
+def test_no_companion_test_binds_the_real_user_data_root():
+    """Automated tests must use isolated temp data roots, never
+    %LOCALAPPDATA%\\KiraCompanion\\data."""
+    tests_dir = Path(__file__).parent
+    construct = ("data_root=", "companionservice(", "imagejobservice(",
+                "build_transport(", "snapshotstore(", "settingsstore(")
+    offenders = []
+    for f in sorted(tests_dir.glob("test_*.py")):
+        for lineno, line in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
+            low = line.lower()
+            if any(c in low for c in construct) and ("localappdata" in low or "kiracompanion" in low):
+                offenders.append(f"{f.name}:{lineno}: {line.strip()}")
+    assert offenders == [], "tests bind the real Companion data root:\n" + "\n".join(offenders)
+
+
+def test_build_transport_requires_an_explicit_data_root():
+    """The server composition helper has no default data root -- a caller can
+    never accidentally fall back to the real one."""
+    import inspect
+
+    from tools.character_companion_server import build_transport
+
+    params = inspect.signature(build_transport).parameters
+    assert "data_root" in params
+    assert params["data_root"].default is inspect.Parameter.empty
