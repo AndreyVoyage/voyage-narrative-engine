@@ -1388,6 +1388,48 @@ async function main(): Promise<void> {
   }
   ok("V2B.Q five-locale key parity preserved");
 
+  // ================================================================
+  // WRITING ASSISTANT V2C  (auto-growing composer textarea)
+  // ================================================================
+  const v2cComposer = read("features/Composer.tsx");
+  const v2cCss = read("styles.css");
+
+  // A — the textarea has a JS autosize mechanism driven off a ref
+  assert(v2cComposer.includes("useLayoutEffect") && v2cComposer.includes("const textareaRef = useRef<HTMLTextAreaElement>(null)")
+    && /<textarea[\s\S]{0,80}ref=\{textareaRef\}/.test(v2cComposer),
+    "V2C.A textarea has a ref-driven autosize effect");
+  assert(/el\.style\.height = `\$\{el\.scrollHeight \+ border\}px`/.test(v2cComposer),
+    "V2C.A height is computed from scrollHeight");
+  ok("V2C.A auto-grow mechanism present (ref + scrollHeight)");
+
+  // B — the resize reacts to `draft` changes, not only keyboard/input events
+  assert(/useLayoutEffect\(\(\) => \{[\s\S]{0,320}\}, \[draft\]\);/.test(v2cComposer),
+    "V2C.B the autosize effect is keyed on [draft] (covers programmatic setDraft from COMPOSE/EXPAND/restore)");
+  ok("V2C.B sizing reacts to draft changes, not just input events");
+
+  // C — height is bounded by a maximum
+  assert(/\.composer-input\s*\{[^}]*max-height:\s*11rem/.test(v2cCss) && /\.composer-input\s*\{[^}]*overflow-y:\s*auto/.test(v2cCss),
+    "V2C.C .composer-input is capped by max-height with internal scroll beyond it");
+  ok("V2C.C growth is bounded (max-height 11rem, then internal scroll)");
+
+  // D — shrinking is supported: height is reset to auto before each measurement
+  assert(/el\.style\.height = "auto";[\s\S]{0,240}el\.scrollHeight/.test(v2cComposer),
+    "V2C.D the effect resets height to auto before measuring, so clearing/shortening shrinks it");
+  assert(/\.composer-input\s*\{[^}]*resize:\s*none/.test(v2cCss), "V2C.D no manual resize handle");
+  ok("V2C.D shrink-on-clear supported; no manual resize handle");
+
+  // E — the V2B co-author contract is untouched
+  assert(v2cComposer.includes('t("assistant.compose")') && v2cComposer.includes('t("assistant.expand")')
+    && /draftMode\(draft\)\s*===\s*"COMPOSE"/.test(v2cComposer), "V2C.E compose/expand labels intact");
+  assert(/type="submit"[\s\S]{0,160}!isSendableMessage\(draft\)/.test(v2cComposer)
+    && /canAssist\s*=\s*assistantReady\s*&&\s*!assist\.running\s*&&\s*!sending/.test(v2cComposer),
+    "V2C.E Send still needs a sendable draft; co-author enable rule unchanged");
+  const v2cRun = v2cComposer.slice(v2cComposer.indexOf("async function runAssistant"), v2cComposer.indexOf("function undoAssistant"));
+  assert(v2cRun.includes("assistant.suggest(source)") && v2cRun.includes("setDraft(suggestion)") && !v2cRun.includes("onSend")
+    && /if \(draftRef\.current === source\)/.test(v2cRun) && v2cRun.includes("runDiscarded(s, runId)"),
+    "V2C.E co-author path: suggest -> guarded setDraft, never onSend; stale-response guard intact");
+  ok("V2C.E V2B co-author contract preserved (labels, Send rule, no auto-send, stale guard)");
+
   console.log(`\n${passed} passed, 0 failed`);
 }
 

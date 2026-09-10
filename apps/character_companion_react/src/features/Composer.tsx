@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { isSendableMessage } from "../app/companionState.js";
 import {
   beginRun,
@@ -47,6 +47,17 @@ export function Composer({ sending, t, assistant, onSend, onCreateImage, onConte
   // Always-current view of the composer text for the async late-response guard.
   const draftRef = useRef(draft);
   draftRef.current = draft;
+  // Auto-grow the textarea to its content (typing OR programmatic setDraft from
+  // COMPOSE / EXPAND / restore-original), capped by the CSS max-height beyond
+  // which it scrolls internally. Keyed on `draft` so it reacts to every change.
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";                       // shrink-to-fit before measuring
+    const border = el.offsetHeight - el.clientHeight;
+    el.style.height = `${el.scrollHeight + border}px`;
+  }, [draft]);
 
   function submit(event: { preventDefault: () => void }) {
     event.preventDefault();
@@ -131,6 +142,7 @@ export function Composer({ sending, t, assistant, onSend, onCreateImage, onConte
 
       <div className="composer-field">
         <textarea
+          ref={textareaRef}
           className="composer-input"
           placeholder={t("composer.placeholder")}
           rows={2}

@@ -138,7 +138,7 @@ button { font: inherit; color: inherit; }
 .composer { display: flex; gap: var(--sp-2); align-items: flex-end; padding-top: var(--sp-2); border-top: 1px solid var(--c-border); position: relative; }
 .composer-plus { position: relative; }
 .composer-icon { width: 36px; text-align: center; }
-.composer-input { flex: 1; font: inherit; padding: var(--sp-2); resize: vertical; background: var(--c-bg); border: 1px solid var(--c-border); border-radius: var(--radius); color: inherit; }
+.composer-input { flex: 1; font: inherit; padding: var(--sp-2); resize: none; overflow-y: auto; max-height: 11rem; background: var(--c-bg); border: 1px solid var(--c-border); border-radius: var(--radius); color: inherit; }
 .composer-menu {
   position: absolute; bottom: 44px; left: 0; min-width: 240px;
   background: var(--c-bg-raised); border: 1px solid var(--c-border-strong); border-radius: var(--radius);
