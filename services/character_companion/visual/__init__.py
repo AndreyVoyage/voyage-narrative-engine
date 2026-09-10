@@ -57,6 +57,32 @@ from .reference_selection import (
     select_reference_asset_ids,
 )
 
+# ---- Slice C: IMAGE_GENERATION provider boundary + real job generator ----
+from .image_provider_adapter import ImageProviderAdapter, endpoint_kind_for
+from .provider_errors import (
+    ImageGenerationConfigurationError,
+    ImageGenerationError,
+    ImageGenerationResultError,
+    ImageGenerationTransportError,
+    ImageGenerationUnsupportedProviderError,
+)
+from .provider_model import (
+    CONTENT_TYPE_TO_EXTENSION,
+    DEFAULT_SIZE,
+    ENDPOINT_CONDITIONED,
+    ENDPOINT_TEXT,
+    SUPPORTED_IMAGE_CONTENT_TYPES,
+    GeneratedImage,
+    ImageGenerationRequest,
+)
+from .provider_openai import (
+    ReferenceImageInput,
+    generate_conditioned_image,
+    generate_text_to_image,
+    reference_inputs_from_bundle,
+)
+from .real_image_generator import RealCompanionImageGenerator
+
 __all__ = [
     # context
     "VISUAL_CONTEXT_SCHEMA_VERSION",
@@ -94,4 +120,24 @@ __all__ = [
     "ReferenceSelectionError",
     "ReferenceBundleError",
     "VisualPromptError",
+    # Slice C -- provider boundary
+    "ImageProviderAdapter",
+    "endpoint_kind_for",
+    "ImageGenerationRequest",
+    "GeneratedImage",
+    "ReferenceImageInput",
+    "generate_text_to_image",
+    "generate_conditioned_image",
+    "reference_inputs_from_bundle",
+    "RealCompanionImageGenerator",
+    "ENDPOINT_TEXT",
+    "ENDPOINT_CONDITIONED",
+    "DEFAULT_SIZE",
+    "SUPPORTED_IMAGE_CONTENT_TYPES",
+    "CONTENT_TYPE_TO_EXTENSION",
+    "ImageGenerationError",
+    "ImageGenerationConfigurationError",
+    "ImageGenerationUnsupportedProviderError",
+    "ImageGenerationTransportError",
+    "ImageGenerationResultError",
 ]

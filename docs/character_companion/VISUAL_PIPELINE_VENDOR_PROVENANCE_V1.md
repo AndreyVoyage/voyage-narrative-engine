@@ -75,15 +75,44 @@ stops at `VisualPromptPackage` + `ReferenceBundle` (Slice C = provider).
 supersession, branches, ASS, SceneInterpretationArtifact, MediaPlan, the VNE
 PromptPackage chain, Ren'Py.
 
-## Not vendored in Slice A / B
+## Slice C — IMAGE_GENERATION provider adapter + ImageJobService integration (OFFLINE)
+
+Backend-only execution path:
+`VisualPromptPackage` + `ReferenceBundle` + configured `IMAGE_GENERATION` role
++ backend-only credential → `ImageGenerationRequest` → `ImageProviderAdapter`
+→ **exactly one** provider transport call → `GeneratedImage` →
+`RealCompanionImageGenerator` (existing `CompanionImageGenerator` protocol) →
+existing `ImageJobService` `QUEUED → GENERATING → READY / FAILED` lifecycle. No
+live call, no network, no real credential, no real data root, no Canon.
+
+| Target path (`services/character_companion/visual/`) | Source path (in the source repo) | Classification | Adaptation note |
+|---|---|---|---|
+| `provider_errors.py` | `services/image_provider_boundary/errors.py` | ADAPTED | Single-root config-before-network / transport / result taxonomy kept. Renamed to a Companion `ImageGeneration*` prefix; each error carries a short stable `code` for the job-failure row; added `ImageGenerationUnsupportedProviderError` for the registry capability gate. |
+| `provider_model.py` | `services/image_provider_boundary/model.py` | ADAPTED | `GeneratedImage` (frozen `payload` + `payload_sha256` + `content_type` + `model`, `from_bytes`, non-binary `to_dict`) kept. Companion-owned additions: `ImageGenerationRequest` (character id + local snapshot version + exact prompt + resolved provider/model + endpoint kind + size/quality — never a credential/path/Canon path/Memory), plus the supported-content-type / extension tables. |
+| `provider_openai.py` | `services/image_provider_boundary/client.py` **+** `services/character_visual_conditioning/provider.py` | ADAPTED | Both single-call OpenAI-shaped transports lifted: text `POST /v1/images/generations` (JSON, `n=1`) and reference-conditioned `POST /v1/images/edits` (`multipart/form-data`, repeated `image[]`, `n=1`). **Adaptation:** removed the `os.environ["OPENAI_API_KEY"]` fallback (credential is an explicit arg or it raises before I/O); base URL is an explicit arg (no runtime `api.openai.com` default); the one HTTP request goes through an **injectable** `ImageHttpPost` seam (`(url, body, headers, timeout_s) -> json`) matching `cloud_provider.py`'s style, so tests never open a socket; dropped the `certifi` SSL-context requirement (stdlib `urllib`, no new dependency); result decode also magic-byte-sniffs the decoded bytes and fails closed on a non-PNG/JPEG/WEBP payload. Still: exactly one request, no retry, no fallback, URL-only result refused. `reference_inputs_from_bundle` reads `ReferenceBundle` entry bytes directly (no file reopen, no Canon) with deterministic index+character-id filenames. |
+| `image_provider_adapter.py` | `services/character_visual_conditioning/provider.py` (routing idea only) | COMPANION-OWNED (new) | No source code copied. `ImageProviderAdapter.generate(...)` validates the resolved `IMAGE_GENERATION` role (`resolve_role_config` dict — `NOT_CONFIGURED`/`UNSUPPORTED`/`CREDENTIAL_MISSING` fail closed; `READY` and `FUTURE_NOT_WIRED` accepted because a media role is invoked explicitly, not runtime-wired), checks request/role agreement, then the existing `require_model_supported` registry gate (authoritative), then routes: non-empty bundle → conditioned (only if the model's `supports_reference_image`/`supports_image_to_image` is `True` or an `IMAGE_TO_IMAGE`/`CHARACTER_REFERENCE` capability is present — `None`/UNKNOWN is never upgraded to `True`, explicit `False` always rejects), empty bundle → text. Every config/capability failure raises before the transport call. No fallback, no retry, one provider. |
+| `real_image_generator.py` | — | COMPANION-OWNED (new) | No source code copied. `RealCompanionImageGenerator` implements the existing `CompanionImageGenerator` protocol (`advance(job, *, images_dir)`). `QUEUED → GENERATING` performs no work; `GENERATING` loads the **active** `CharacterLocalSnapshot` (fail closed if absent — **no Canon fallback**), builds `VisualContext` (custom → `job.prompt`; context → `job.context` `scene`/`recentMessages` from the existing `_context_frame_request`), builds + integrity-checks the `ReferenceBundle`, builds the `VisualPromptPackage`, calls `ImageProviderAdapter.generate` **once**, persists the bytes staged+atomic under the existing `images_dir` as `images/<job_id>.<ext>` (extension from the trusted content type; unknown → fail closed), records non-secret provenance under `job.context["result"]`, and moves to `READY`; any failure → `FAILED` with a bounded code, no retry. Explicit-dependency construction (no globals). **Not** the release default — `ImageJobService` still defaults to `UnavailableImageGenerator`. |
+
+**Hard rules (Slice C):** no live provider call, no external network (the one
+transport is an injected in-process callable in every test), no real DPAPI
+vault / API key (tests use `InMemoryCredentialVault` + `test-key-not-real`), no
+real data-root write, no Canon access. One generation attempt ⇒ at most one
+provider transport call; no retry, no fallback, no URL second-fetch. The safe
+release default (`UnavailableImageGenerator`) is unchanged — production/default
+activation is Slice D.
+
+## Not vendored in Slice A / B / C
 
 `services/ass/**`, `services/scene_interpretation/**`, `services/mediaplan/**`,
-`services/prompt_composer/**`, `services/scene_text_interpreter/**`,
-`services/character_visual_conditioning/{provider}.py` and the multi-character
-selection/grouping in `selection.py`,
-`services/image_provider_boundary/**`, `services/location_canon/**`,
-`services/generated_image_review/**`,
+`services/prompt_composer/**`, `services/scene_text_interpreter/**`, the
+multi-character selection/grouping in
+`services/character_visual_conditioning/selection.py`,
+`services/location_canon/**`, `services/generated_image_review/**`,
 `services/approved_generated_image_asset_gate/**`,
 `tools/visual_asset_registry.py`, and the `tools/scene_image_test_app.py`
-orchestrator / provider call. These belong to later slices (C: provider
-adapter; D: product binding) or are VNE/Ren'Py-specific.
+orchestrator. Slice C reused the transport bodies of
+`services/image_provider_boundary/**` and
+`services/character_visual_conditioning/provider.py`; their registry /
+env-settings / `certifi` / VNE job & file persistence were **not** carried
+over. Remaining items belong to Slice D (product binding) or are
+VNE/Ren'Py-specific.
