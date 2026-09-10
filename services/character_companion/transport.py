@@ -347,6 +347,10 @@ class CompanionTransport:
         job_id = _require_str(payload, "jobId")
         return _run(lambda: (self._service.delete_image_job(job_id), {"deleted": job_id})[1])
 
+    def image_generation_readiness(self, character_id: str | None = None) -> dict:
+        """Provider-call-free readiness verdict; safe product fields only."""
+        return _run(lambda: self._service.image_generation_readiness(character_id).to_dict())
+
     # ---------------------------------------------------- provider settings
     def get_settings(self) -> dict:
         return _run(self._service.settings_view)

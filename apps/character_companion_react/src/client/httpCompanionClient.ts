@@ -16,6 +16,7 @@ import {
   CompanionSession,
   CompanionSettingsView,
   CompanionTurn,
+  ImageGenerationReadiness,
   ImageJob,
   ImageJobKind,
   NewDialogInput,
@@ -129,6 +130,13 @@ export class HttpCompanionClient implements CompanionClient {
       field: opts?.field,
       seed: opts?.seed ?? null,
     });
+  }
+
+  async imageGenerationReadiness(characterId: string): Promise<ImageGenerationReadiness> {
+    return call<ImageGenerationReadiness>(
+      "GET",
+      `/characters/${encodeURIComponent(characterId)}/image-readiness`,
+    );
   }
 
   async createImageJob(sessionId: string, kind: ImageJobKind, prompt?: string): Promise<ImageJob> {

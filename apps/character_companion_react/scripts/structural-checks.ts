@@ -941,6 +941,122 @@ async function main(): Promise<void> {
   }
   ok("CPP.30 new labels localized in all five locales; contract carries no internal data");
 
+  // ================================================================
+  // IMAGE GENERATION PRODUCT WIRING V1  (Slice D)
+  // ================================================================
+  const appD = read("App.tsx");
+  const rightWing = read("features/RightWing.tsx");
+  const convD = read("features/Conversation.tsx");
+  const composerD = read("features/Composer.tsx");
+  const dialogD = read("features/CreateImageDialog.tsx");
+  const typesD = read("client/types.ts");
+  const drawerD = read("features/CharacterProfileDrawer.tsx");
+  const igMock = new MockCompanionClient();
+  const igRu = ru as Record<string, string>;
+
+  // 1 + 2 — custom + context-frame actions exist (kept in the composer [+] menu)
+  assert(composerD.includes('t("composer.createImage")') && composerD.includes("onCreateImage"), "custom image action exists");
+  assert(composerD.includes('t("composer.contextFrame")') && composerD.includes("onContextFrame"), "context-frame action exists");
+  assert(appD.includes('createImageJob("custom")') && appD.includes('createImageJob("context")'), "App wires both image actions");
+  ok("IGW.1 custom image action exists");
+  ok("IGW.2 context-frame action exists");
+
+  // 3 — custom description UI no longer uses window.prompt
+  assert(!appD.includes("window.prompt("), "App no longer uses window.prompt for images");
+  assert(appD.includes("CreateImageDialog") && appD.includes("setShowCreateImage(true)"), "custom uses a Companion-native dialog");
+  assert(dialogD.includes('role="dialog"') && dialogD.includes("image-create-input") && dialogD.includes('t("image.createSubmit")'),
+    "CreateImageDialog is a real dialog with a description field");
+  ok("IGW.3 custom description UI is a native dialog, not window.prompt");
+
+  // 4 — readiness is fetched and rendered (provider-call-free client method)
+  assert(typeof (igMock as CompanionClient).imageGenerationReadiness === "function", "client exposes imageGenerationReadiness");
+  const igReady = await igMock.imageGenerationReadiness("kira");
+  assert(igReady.status === "READY" && igReady.ready === true, "mock readiness returns a verdict");
+  assert(appD.includes(".imageGenerationReadiness(") && appD.includes("imageReadiness"), "App fetches + holds readiness");
+  assert(dialogD.includes("readiness.messageKey") && rightWing.includes("imageReadiness"), "readiness is rendered in the dialog + right wing");
+  ok("IGW.4 readiness is fetched and rendered");
+
+  // 5 — a not-ready state guards submission
+  assert(/canSubmit\s*=\s*ready\s*&&/.test(dialogD) && dialogD.includes("disabled={!canSubmit}"), "dialog blocks submit unless ready");
+  assert(/if \(imageReadiness && !imageReadiness\.ready\)/.test(appD), "App guards the context action on readiness");
+  const igMockBlocked = new MockCompanionClient();
+  igMockBlocked.imageReadiness = { ...igMockBlocked.imageReadiness, status: "ROLE_UNASSIGNED", ready: false, unverified: false,
+    reasonCode: "ROLE_UNASSIGNED", messageKey: "image.readiness.roleUnassigned" };
+  const blocked = await igMockBlocked.imageGenerationReadiness("kira");
+  assert(blocked.ready === false && blocked.messageKey === "image.readiness.roleUnassigned", "not-ready verdict is representable");
+  ok("IGW.5 not-ready state blocks / guards submission");
+
+  // 6-9 — QUEUED / GENERATING / READY / FAILED are renderable
+  assert(convD.includes('t("job.generating")') && convD.includes('t("job.ready")') && convD.includes('t("job.failed")'),
+    "Conversation job strip renders generating / ready / failed");
+  assert(rightWing.includes('t("image.statusQueued")') && rightWing.includes('t("image.statusGenerating")')
+    && rightWing.includes('t("image.statusFailed")'), "right wing renders queued / generating / failed");
+  ok("IGW.6 QUEUED renderable");
+  ok("IGW.7 GENERATING renderable");
+  ok("IGW.8 READY renderable");
+  ok("IGW.9 FAILED renderable");
+
+  // 10 + 11 — READY image resolves through the safe server URL; gallery shows it
+  assert(appD.includes('IMAGE_FILE_BASE = "/api/companion/image-file/"') && appD.includes("encodeURIComponent(resultRef)"),
+    "result refs resolve through the existing safe image-file route");
+  assert(rightWing.includes("readyImages.map(") && rightWing.includes("wing-gallery"), "right-wing gallery lists READY images");
+  assert(appD.includes('j.state === "READY" && j.resultRef') || appD.includes("readyImages"), "App derives readyImages from the job list");
+  ok("IGW.10 READY image resolves through a safe server URL");
+  ok("IGW.11 Gallery receives / shows the READY item");
+
+  // 12 + 13 — make-background + make-cover reuse existing mechanisms
+  assert(rightWing.includes('t("image.makeBackground")') && rightWing.includes("onMakeBackground("), "right wing has a set-as-background action");
+  assert(appD.includes("function makeBackground") && appD.includes("setFocusBackgroundRef("), "background reuses the existing local focus-background preference");
+  assert(rightWing.includes('t("image.makeCover")') && rightWing.includes("onMakeCover("), "right wing has a set-as-cover action");
+  assert(appD.includes("function makeCover") && appD.includes(".setSceneCover("), "cover reuses the existing client.setSceneCover");
+  // BACKGROUND != COVER: two different targets
+  assert(!/function makeBackground[\s\S]{0,160}setSceneCover/.test(appD) && !/function makeCover[\s\S]{0,160}setFocusBackgroundRef/.test(appD),
+    "one action does not silently do both");
+  ok("IGW.12 make-background action exists / uses existing mechanism");
+  ok("IGW.13 make-cover action exists / uses existing mechanism");
+
+  // 14 + 15 — public-profile boundary is preserved
+  for (const banned of ["readyImages", "imageJobs", "ready_results", "listImageJobs", "createImageJob"]) {
+    assert(!drawerD.includes(banned), `profile drawer free of session-gallery coupling '${banned}'`);
+  }
+  assert(drawerD.includes("profile.media.map(") && drawerD.includes("item.sourceRef"), "drawer renders only curated profile media (from profile.media)");
+  const openBodyD = appD.slice(appD.indexOf("function openProfile"), appD.indexOf("function closeProfile"));
+  for (const banned of ["createImageJob", "submitImageJob", "imageGenerationReadiness"]) {
+    assert(!openBodyD.includes(banned), `opening the profile is free of '${banned}'`);
+  }
+  ok("IGW.14 profile drawer media is not fed from the session gallery");
+  ok("IGW.15 opening the profile creates no image job");
+
+  // 16 + 17 — no credential / provider base URL leaks into frontend image types
+  const igTypesBlock = typesD.slice(typesD.indexOf("interface ImageGenerationReadiness"), typesD.indexOf("interface ImageGenerationReadiness") + 400)
+    + typesD.slice(typesD.indexOf("interface ImageJob "), typesD.indexOf("interface ImageJob ") + 400);
+  for (const banned of ["apiKey", "api_key", "secret", "credential", "authorization", "baseUrl", "base_url", "Authorization"]) {
+    assert(!igTypesBlock.includes(banned), `image types free of '${banned}'`);
+  }
+  assert(!/sk-[A-Za-z0-9]{6,}/.test(JSON.stringify(igReady)), "readiness payload carries no raw key");
+  assert(JSON.stringify(igReady).toLowerCase().indexOf("http") === -1 || !/https?:\/\//.test(JSON.stringify(igReady)),
+    "readiness payload carries no provider URL");
+  ok("IGW.16 provider credential is not represented in frontend types");
+  ok("IGW.17 no provider base URL / API key in the image-job UI response");
+
+  // 18 — every new image.* label exists in all five locales
+  const IMAGE_KEYS = [
+    "image.createTitle", "image.description", "image.createSubmit", "image.cancel", "image.openSettings",
+    "image.unverified", "image.statusQueued", "image.statusGenerating", "image.statusReady", "image.statusFailed",
+    "image.makeBackground", "image.makeCover",
+    "image.readiness.ready", "image.readiness.roleUnassigned", "image.readiness.providerNotConfigured",
+    "image.readiness.modelUnsupported", "image.readiness.credentialMissing", "image.readiness.referenceUnsupported",
+    "image.readiness.unverifiedCapability", "image.readiness.activeSnapshotMissing",
+  ];
+  for (const [name, dict] of [["ru", ru], ["en", en], ["es", es], ["zh-CN", zhCN], ["pt", pt]] as const) {
+    for (const k of IMAGE_KEYS) {
+      const v = (dict as Record<string, string>)[k];
+      assert(typeof v === "string" && v.length > 0, `${name} has ${k}`);
+    }
+  }
+  assert(igRu["image.readiness.activeSnapshotMissing"].length > 0, "RU readiness copy present");
+  ok("IGW.18 all new image labels localized in five locales");
+
   console.log(`\n${passed} passed, 0 failed`);
 }
 

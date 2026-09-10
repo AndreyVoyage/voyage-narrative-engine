@@ -40,6 +40,28 @@ export const ru = {
   "job.ready": "Изображение готово",
   "job.failed": "Не удалось создать изображение",
 
+  // -- image generation product wiring (Slice D) --------------------
+  "image.createTitle": "Создать изображение",
+  "image.description": "Опишите изображение",
+  "image.createSubmit": "Создать",
+  "image.cancel": "Отмена",
+  "image.openSettings": "Открыть настройки",
+  "image.unverified": "Экспериментально: модель не проверена вживую",
+  "image.statusQueued": "В очереди",
+  "image.statusGenerating": "Создаю изображение…",
+  "image.statusReady": "Изображение готово",
+  "image.statusFailed": "Не удалось создать изображение",
+  "image.makeBackground": "Сделать фоном",
+  "image.makeCover": "Сделать обложкой",
+  "image.readiness.ready": "Готово к генерации",
+  "image.readiness.roleUnassigned": "Настройте модель для генерации изображений",
+  "image.readiness.providerNotConfigured": "Провайдер для генерации изображений не настроен",
+  "image.readiness.modelUnsupported": "Выбранная модель не поддерживает генерацию изображений",
+  "image.readiness.credentialMissing": "Не указан ключ API для выбранного провайдера",
+  "image.readiness.referenceUnsupported": "Модель не поддерживает генерацию по референсам персонажа",
+  "image.readiness.unverifiedCapability": "Поддержка референсов у модели не подтверждена",
+  "image.readiness.activeSnapshotMissing": "Для персонажа ещё нет активного визуального профиля",
+
   // -- composer ----------------------------------------------------
   "composer.placeholder": "Написать сообщение…",
   "composer.send": "Отправить",

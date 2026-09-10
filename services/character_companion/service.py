@@ -49,6 +49,7 @@ from services.character_lab.source_loader import build_repo_source_loader
 from services.character_runtime import RuntimeMemoryBackend
 
 from .catalog import CompanionCatalog, CompanionCharacterEntry, build_default_catalog
+from .image_readiness import ImageGenerationReadiness, evaluate_image_generation_readiness
 from .public_profile import CharacterPublicProfile, CharacterPublicProfileStore
 from .image_jobs import (
     KIND_CONTEXT,
@@ -573,6 +574,23 @@ class CompanionService:
             )
         except CompanionImageError as exc:
             raise CompanionError(exc.code, exc.message) from exc
+
+    def image_generation_readiness(self, character_id: Optional[str] = None) -> ImageGenerationReadiness:
+        """Provider-call-free readiness verdict for the image-generation product
+        actions. Optionally binds the per-character ACTIVE local visual snapshot
+        check."""
+        cid: Optional[str] = None
+        if character_id:
+            cid = self._require_character(character_id).character_id
+        from .character_import import SnapshotStore
+
+        settings = self._settings_store.load() if self._settings_store is not None else None
+        return evaluate_image_generation_readiness(
+            settings,
+            self._vault,
+            snapshot_store=SnapshotStore(self._data_root),
+            character_id=cid,
+        )
 
     def _context_frame_request(self, row: dict) -> dict:
         """Structured intent for a future visual pipeline. BOUNDED: only the

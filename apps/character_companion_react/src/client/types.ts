@@ -114,6 +114,28 @@ export interface CompanionTurn {
 export type ImageJobKind = "custom" | "context";
 export type ImageJobState = "QUEUED" | "GENERATING" | "READY" | "FAILED" | "CANCELLED";
 
+export type ImageReadinessStatus =
+  | "READY"
+  | "ROLE_UNASSIGNED"
+  | "PROVIDER_NOT_CONFIGURED"
+  | "MODEL_UNSUPPORTED"
+  | "CREDENTIAL_MISSING"
+  | "REFERENCE_CONDITIONING_UNSUPPORTED"
+  | "UNVERIFIED_CAPABILITY"
+  | "ACTIVE_SNAPSHOT_MISSING";
+
+/** Provider-call-free readiness verdict for IMAGE_GENERATION. Safe product
+ *  fields only — no credential, no provider base URL, no filesystem path. */
+export interface ImageGenerationReadiness {
+  status: ImageReadinessStatus;
+  ready: boolean;
+  providerId: string | null;
+  modelId: string | null;
+  unverified: boolean;
+  reasonCode: string | null;
+  messageKey: string;
+}
+
 export interface ImageJob {
   jobId: string;
   sessionId: string;
@@ -277,6 +299,7 @@ export interface CompanionClient {
   sendMessage(sessionId: string, text: string): Promise<CompanionTurn>;
   rewriteDraft(draft: string, opts?: { localeHint?: string }): Promise<WritingAssistantResult>;
   randomScenario(opts?: { field?: SceneField; seed?: number }): Promise<RandomScenarioResult>;
+  imageGenerationReadiness(characterId: string): Promise<ImageGenerationReadiness>;
   createImageJob(sessionId: string, kind: ImageJobKind, prompt?: string): Promise<ImageJob>;
   listImageJobs(sessionId: string): Promise<ImageJob[]>;
   setSceneCover(sessionId: string, resultRef: string): Promise<CompanionSession>;

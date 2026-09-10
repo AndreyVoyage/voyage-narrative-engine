@@ -73,6 +73,33 @@ def build_fake_provider_factory(response: str = DEFAULT_FAKE_REPLY):
     return factory
 
 
+def _build_image_generator(gen_mode: str, *, data_root, settings_store, vault):
+    """Return the image generator for the SERVER composition root.
+
+    ``real`` -> ``RealCompanionImageGenerator`` (network-capable, but does no I/O
+    until a job runs); requires a secure vault, else fails closed to
+    ``UnavailableImageGenerator``. ``fake`` -> deterministic offline generator.
+    Anything else -> ``UnavailableImageGenerator``. No provider call here.
+    """
+    if gen_mode == "real":
+        if vault is None:
+            return UnavailableImageGenerator()
+        from services.character_companion.visual import (  # noqa: E402
+            ImageProviderAdapter,
+            RealCompanionImageGenerator,
+        )
+
+        return RealCompanionImageGenerator(
+            data_root=Path(data_root),
+            settings_store=settings_store,
+            credential_vault=vault,
+            adapter=ImageProviderAdapter(),
+        )
+    if gen_mode == "fake":
+        return FakeImageGenerator()
+    return UnavailableImageGenerator()
+
+
 def build_transport(
     *,
     data_root,
@@ -118,8 +145,18 @@ def build_transport(
         except Exception:  # noqa: BLE001 -- platform without a secure store
             vault = None
 
-    gen_mode = (env.get("COMPANION_IMAGE_GENERATOR") or "fake").strip().lower()
-    image_generator = FakeImageGenerator() if gen_mode == "fake" else UnavailableImageGenerator()
+    # Composition root for the image generator. The library default
+    # (``ImageJobService()`` -> ``UnavailableImageGenerator``) is deliberately
+    # NOT changed. Here, RELEASE mode wires the real, network-capable generator;
+    # DEV keeps the deterministic fake; ``COMPANION_IMAGE_GENERATOR`` overrides
+    # either (``real`` | ``fake`` | ``unavailable``). Construction performs ZERO
+    # provider requests and resolves NO credential -- a credential is read only
+    # inside an explicitly-executed image job.
+    gen_env = (env.get("COMPANION_IMAGE_GENERATOR") or "").strip().lower()
+    gen_mode = gen_env or ("real" if mode == "release" else "fake")
+    image_generator = _build_image_generator(
+        gen_mode, data_root=data_root, settings_store=settings_store, vault=vault
+    )
 
     service = CompanionService(
         acceptance_root=acceptance_root or (repo_root / "accepted"),
@@ -227,6 +264,10 @@ class CompanionServer:
                         and parts[4] == "profile":
                     character_id = urllib.parse.unquote(parts[3])
                     return self._call(lambda: transport.get_character_profile(character_id))
+                if method == "GET" and parts[:3] == ["api", "companion", "characters"] and len(parts) == 5 \
+                        and parts[4] == "image-readiness":
+                    character_id = urllib.parse.unquote(parts[3])
+                    return self._call(lambda: transport.image_generation_readiness(character_id))
                 if method == "POST" and parts == ["api", "companion", "sessions"]:
                     return self._call(lambda: transport.create_session(body))
                 if method == "GET" and parts[:3] == ["api", "companion", "sessions"] and len(parts) == 4:

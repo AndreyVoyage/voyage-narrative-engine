@@ -16,6 +16,7 @@ import {
   CompanionSession,
   CompanionSettingsView,
   CompanionTurn,
+  ImageGenerationReadiness,
   ImageJob,
   ImageJobKind,
   NewDialogInput,
@@ -210,6 +211,16 @@ export class MockCompanionClient implements CompanionClient {
   private activity = 0;
   private armedFailure = false;
   reply = "Детерминированный ответ.";
+  /** Structural checks flip this to exercise the not-ready product path. */
+  imageReadiness: ImageGenerationReadiness = {
+    status: "READY",
+    ready: true,
+    providerId: "openai",
+    modelId: "gpt-image-1",
+    unverified: true, // registry marks gpt-image-1 as unverified
+    reasonCode: null,
+    messageKey: "image.readiness.ready",
+  };
 
   constructor(characters: CompanionCharacter[] = [KIRA]) {
     this.characters = characters;
@@ -353,6 +364,11 @@ export class MockCompanionClient implements CompanionClient {
     const scenario = {} as Record<SceneField, string>;
     for (const f of SCENE_FIELDS) scenario[f] = pick(f);
     return { scenario };
+  }
+
+  async imageGenerationReadiness(characterId: string): Promise<ImageGenerationReadiness> {
+    this.requireCharacter(characterId);
+    return { ...this.imageReadiness };
   }
 
   async createImageJob(sessionId: string, kind: ImageJobKind, prompt?: string): Promise<ImageJob> {

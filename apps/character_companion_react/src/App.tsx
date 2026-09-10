@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "r
 import { CharacterList } from "./features/CharacterList.js";
 import { CharacterProfileDrawer } from "./features/CharacterProfileDrawer.js";
 import { ChatList } from "./features/ChatList.js";
+import { CreateImageDialog } from "./features/CreateImageDialog.js";
 import { Conversation } from "./features/Conversation.js";
 import { NewDialog } from "./features/NewDialog.js";
 import { RightWing } from "./features/RightWing.js";
@@ -13,6 +14,7 @@ import {
   CharacterPublicProfile,
   CompanionClient,
   CompanionClientError,
+  ImageGenerationReadiness,
   ImageJobKind,
   SceneField,
 } from "./client/types.js";
@@ -23,6 +25,7 @@ import {
 } from "./app/companionState.js";
 import { loadAppearance, rememberFocusLayout, type FocusLayout } from "./app/appearance.js";
 import { draftToInput } from "./app/newDialog.js";
+import { setFocusBackgroundRef } from "./app/focusBackground.js";
 import { loadUserProfile, saveUserProfile, type LocalUserProfile } from "./app/userProfile.js";
 import { useLocale } from "./i18n/react.js";
 import type { ComposerAssistant } from "./features/Composer.js";
@@ -49,6 +52,9 @@ export function App() {
   const [profileCharId, setProfileCharId] = useState<string | null>(null);
   const [profile, setProfile] = useState<CharacterPublicProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
+  // IMAGE_GENERATION product wiring — readiness is provider-call-free.
+  const [imageReadiness, setImageReadiness] = useState<ImageGenerationReadiness | null>(null);
+  const [showCreateImage, setShowCreateImage] = useState(false);
   const [release, setRelease] = useState<import("./client/types.js").ReleaseInfo | null>(null);
   const [userProfile, setUserProfile] = useState<LocalUserProfile>(loadUserProfile);
   const [assistantReady, setAssistantReady] = useState(false);
@@ -124,11 +130,24 @@ export function App() {
     };
   }, [state.selectedSessionId]);
 
+  // ---- image-generation readiness (provider-call-free) -----------
+  const refreshImageReadiness = useCallback((characterId: string | null) => {
+    if (!characterId) {
+      setImageReadiness(null);
+      return;
+    }
+    client
+      .imageGenerationReadiness(characterId)
+      .then(setImageReadiness)
+      .catch(() => setImageReadiness(null));
+  }, []);
+
   // ---- selection --------------------------------------------------
   function selectCharacter(characterId: string) {
     setShowNewDialog(false);
     dispatch({ type: "selectCharacter", characterId });
     loadSessions(characterId);
+    refreshImageReadiness(characterId);
   }
   function selectSession(sessionId: string) {
     setShowNewDialog(false);
@@ -179,14 +198,32 @@ export function App() {
     else if (state.selectedCharacterId) loadSessions(state.selectedCharacterId);
   }
 
+  // Explicit user action only. "custom" opens the Companion-native dialog;
+  // "context" uses the existing bounded context-frame path. Neither generates
+  // anything until the user confirms, and both are guarded by readiness.
   function createImageJob(kind: ImageJobKind) {
+    if (!state.selectedSessionId) return;
+    if (kind === "custom") {
+      setShowCreateImage(true);
+      return;
+    }
+    if (imageReadiness && !imageReadiness.ready) {
+      dispatch({ type: "sendFailed", code: "image_generation_not_configured", message: imageReadiness.messageKey });
+      return;
+    }
+    submitImageJob("context");
+  }
+
+  function submitImageJob(kind: ImageJobKind, description?: string) {
     const sessionId = state.selectedSessionId;
     if (!sessionId) return;
-    const prompt = kind === "custom" ? (window.prompt(t("app.describeImage")) ?? "").trim() : "";
-    if (kind === "custom" && !prompt) return;
+    if (kind === "custom" && !(description && description.trim())) return;
     client
-      .createImageJob(sessionId, kind, kind === "custom" ? prompt : undefined)
-      .then((job) => dispatch({ type: "imageJobCreated", job }))
+      .createImageJob(sessionId, kind, kind === "custom" ? description!.trim() : undefined)
+      .then((job) => {
+        setShowCreateImage(false);
+        dispatch({ type: "imageJobCreated", job });
+      })
       .catch((e) => dispatch({ type: "sendFailed", ...errorOf(e) }));
   }
 
@@ -197,6 +234,12 @@ export function App() {
       .setSceneCover(sessionId, resultRef)
       .then((session) => dispatch({ type: "sessionUpdated", session }))
       .catch((e) => dispatch({ type: "sendFailed", ...errorOf(e) }));
+  }
+
+  // BACKGROUND != COVER: this is the existing local, presentation-only Focus
+  // background preference. No regeneration, no Scene / Memory / cover write.
+  function makeBackground(resultRef: string) {
+    if (state.selectedSessionId) setFocusBackgroundRef(state.selectedSessionId, resultRef);
   }
 
   function setFocusLayout(layout: FocusLayout) {
@@ -241,8 +284,20 @@ export function App() {
       ? imageUrl(readyImages[readyImages.length - 1].resultRef as string)
       : null;
 
+  const createImageDialog = showCreateImage ? (
+    <CreateImageDialog
+      readiness={imageReadiness}
+      busy={anyImageJobActive(state.imageJobs)}
+      onSubmit={(description) => submitImageJob("custom", description)}
+      onCancel={() => setShowCreateImage(false)}
+      onOpenSettings={() => { setShowCreateImage(false); setShowSettings(true); }}
+    />
+  ) : null;
+
   if (state.focusActive && selectedSession) {
     return (
+      <>
+      {createImageDialog}
       <FocusMode
         layout={state.focusLayout}
         characterId={state.selectedCharacterId}
@@ -265,6 +320,7 @@ export function App() {
         onExit={() => dispatch({ type: "focusExit" })}
         onMakeCover={makeCover}
       />
+      </>
     );
   }
 
@@ -290,10 +346,16 @@ export function App() {
             client={client}
             profile={userProfile}
             onProfileChange={updateProfile}
-            onClose={() => { setShowSettings(false); refreshAssistantReady(); }}
+            onClose={() => {
+              setShowSettings(false);
+              refreshAssistantReady();
+              refreshImageReadiness(state.selectedCharacterId);
+            }}
           />
         </div>
       )}
+
+      {createImageDialog}
 
       <main className="columns">
         <CharacterList
@@ -348,7 +410,9 @@ export function App() {
           imageUrl={imageUrl}
           readyImages={readyImages}
           activeJob={activeJob}
+          imageReadiness={imageReadiness}
           onMakeCover={makeCover}
+          onMakeBackground={makeBackground}
           onCreateImage={() => createImageJob("custom")}
           onContextFrame={() => createImageJob("context")}
         />
