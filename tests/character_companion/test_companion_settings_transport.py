@@ -73,6 +73,63 @@ def test_dict_roundtrip_providers_roles_credentials(tmp_path):
     assert "fake reply" not in json.dumps(res, ensure_ascii=False) and KEY not in json.dumps(res)
 
 
+def test_dialogue_context_budget_setting(tmp_path):
+    """COMPANION_CONTEXT_POLICY_V1C: the DIALOGUE-only estimated-token context
+    budget -- default, round-trip, validation, and separation from num_ctx."""
+    from services.character_companion.settings import (
+        DIALOGUE_CONTEXT_BUDGET_DEFAULT,
+        DIALOGUE_CONTEXT_BUDGET_MAX,
+        DIALOGUE_CONTEXT_BUDGET_MIN,
+        CompanionSettings,
+        SettingsError,
+        SettingsStore,
+    )
+
+    assert (DIALOGUE_CONTEXT_BUDGET_MIN, DIALOGUE_CONTEXT_BUDGET_DEFAULT,
+            DIALOGUE_CONTEXT_BUDGET_MAX) == (16384, 32768, 131072)
+
+    # 2 -- key absent everywhere -> normalized to the default, no write needed
+    assert CompanionSettings().dialogue_context_budget_est_tokens == 32768
+    assert CompanionSettings.from_row({}).dialogue_context_budget_est_tokens == 32768
+    store = SettingsStore(tmp_path / "s2")
+    assert not store.path.exists()
+    assert store.load().dialogue_context_budget_est_tokens == 32768   # in-memory default
+    assert not store.path.exists()                                    # NOT migrated on load
+
+    # 3 -- round-trip through save/load and to_row/from_row
+    for value in (16384, 32768, 65536, 131072):
+        out = store.set_dialogue_context_budget_est_tokens(value)
+        assert out.dialogue_context_budget_est_tokens == value
+        assert store.load().dialogue_context_budget_est_tokens == value
+        row = out.to_row()
+        assert row["dialogueContextBudgetEstTokens"] == value
+        assert CompanionSettings.from_row(row).dialogue_context_budget_est_tokens == value
+
+    # 4 -- invalid / out-of-range: setter raises (like set_local_num_ctx),
+    #      persisted junk normalizes to the default on load
+    for bad in (16383, 131073, 0, -5):
+        with pytest.raises(SettingsError) as exc:
+            store.set_dialogue_context_budget_est_tokens(bad)
+        assert exc.value.code == "invalid_context_budget"
+    with pytest.raises(SettingsError):
+        store.set_dialogue_context_budget_est_tokens(True)          # bool is not an int here
+    for junk in (999, "x", None, 200000):
+        assert CompanionSettings.from_row(
+            {"dialogueContextBudgetEstTokens": junk}
+        ).dialogue_context_budget_est_tokens == 32768
+
+    # 23 -- completely separate from local_num_ctx
+    store.set_local_num_ctx(20480)
+    store.set_dialogue_context_budget_est_tokens(65536)
+    loaded = store.load()
+    assert loaded.local_num_ctx == 20480
+    assert loaded.dialogue_context_budget_est_tokens == 65536
+    assert "dialogueContextBudgetEstTokens" != "localNumCtx"
+    # the settings row never trips the secret guard with the "...tokens" key
+    saved_row = loaded.to_row()
+    assert "dialogueContextBudgetEstTokens" in saved_row and "localNumCtx" in saved_row
+
+
 def test_bounded_errors(tmp_path):
     t = _transport(tmp_path)
     with pytest.raises(CompanionTransportError) as e1:

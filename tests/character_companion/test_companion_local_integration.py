@@ -275,3 +275,109 @@ def http2(server, method, path, body=None):
                                  headers={"Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=5) as r:
         return r.status, json.loads(r.read().decode())
+
+
+# ------------------------------------------------------ COMPANION_CONTEXT_POLICY_V1C
+def _svc_budget(tmp_path, factory, budget, *, data_root=None):
+    """CompanionService whose DIALOGUE requests are bounded by an explicit
+    settings context budget (no vault -> the injected local factory is used)."""
+    from services.character_companion.settings import SettingsStore
+
+    dr = data_root or (tmp_path / "companion-data")
+    store = SettingsStore(dr)
+    store.set_dialogue_context_budget_est_tokens(budget)
+    return CompanionService(
+        acceptance_root=ACCEPTED_ROOT,
+        data_root=dr,
+        provider_factory=factory,
+        provider_info={"provider_id": "local", "model": "llama3"},
+        settings_store=store,
+    )
+
+
+def _sent_dialogue(seen):
+    """user/assistant messages in the last request the fake model received."""
+    msgs = seen[-1]["messages"]
+    return [m for m in msgs if m["role"] in ("user", "assistant")]
+
+
+def test_ctx_budget_short_conversation_unchanged_under_budget(tmp_path):
+    """Case 8 / 24: a short conversation well under the default budget assembles
+    with the FULL history, in order -- offline, no network dependency."""
+    srv = _OllamaServer().start()
+    try:
+        svc = _svc_budget(tmp_path, _local_factory(srv.base_url), 32768)
+        session = svc.create_session("kira")
+        svc.send_message(session.session_id, "Первое.")
+        svc.send_message(session.session_id, "Второе.")
+        svc.send_message(session.session_id, "Третье.")
+        dlg = _sent_dialogue(_FakeOllama.seen)
+        # request carried every prior turn (4 msgs) + the current user message
+        assert [(m["role"], m["content"]) for m in dlg] == [
+            ("user", "Первое."), ("assistant", "Ответ локальной модели."),
+            ("user", "Второе."), ("assistant", "Ответ локальной модели."),
+            ("user", "Третье."),
+        ]
+        assert any(m["role"] == "system" for m in _FakeOllama.seen[-1]["messages"])
+    finally:
+        srv.stop()
+
+
+def test_ctx_budget_long_conversation_bounded_history_persists_complete(tmp_path):
+    """Case 9 / 10 / 11 / 12 / 13: a long conversation is bounded in the REQUEST
+    (newest complete turns, chronological) while the persisted event log stays
+    complete."""
+    data_root = tmp_path / "companion-data"
+    srv = _OllamaServer().start()
+    try:
+        svc = _svc_budget(tmp_path, _local_factory(srv.base_url), 16384, data_root=data_root)
+        session = svc.create_session("kira")
+        big = "деталь " * 260  # ~1800-char, mostly-Cyrillic user message
+        for i in range(16):
+            svc.send_message(session.session_id, f"ход {i}: {big}")
+
+        dlg = _sent_dialogue(_FakeOllama.seen)          # last request's dialogue window
+        assert len(dlg) % 2 == 1                        # N history msgs + current user
+        history_sent = dlg[:-1]
+        assert 0 < len(history_sent) < 30               # bounded (< 15 prior turns * 2)
+        assert len(history_sent) % 2 == 0               # whole [user, assistant] turns
+        # newest retained + chronological: the last sent history msg is the most
+        # recent persisted character reply
+        persisted = [(m.role, m.text) for m in svc.get_messages(session.session_id)]
+        assert len(persisted) == 32                     # 13: full log, nothing truncated
+        assert persisted[-1] == ("character", "Ответ локальной модели.")
+        assert history_sent[-1]["role"] == "assistant"
+        assert history_sent[0]["role"] == "user"
+        # the sent history is exactly the newest contiguous slice of the transcript
+        flat = [{"user": "user", "character": "assistant"}[r] for r, _ in persisted]
+        assert [m["role"] for m in history_sent] == flat[len(flat) - len(history_sent):]
+
+        # backend + persistence still perfectly ordered
+        assert [m.seq for m in svc.get_messages(session.session_id)] == sorted(
+            m.seq for m in svc.get_messages(session.session_id)
+        )
+    finally:
+        srv.stop()
+
+
+def test_ctx_budget_mandatory_overflow_before_provider_and_persistence(tmp_path):
+    """Case 20: when the mandatory context alone exceeds the budget the turn
+    fails closed -- no provider call, nothing persisted."""
+    data_root = tmp_path / "companion-data"
+    srv = _OllamaServer().start()
+    try:
+        svc = _svc_budget(tmp_path, _local_factory(srv.base_url), 16384, data_root=data_root)
+        session = svc.create_session("kira")
+        svc.send_message(session.session_id, "Обычная реплика.")
+        _FakeOllama.seen = []
+        prior = [(m.role, m.text) for m in svc.get_messages(session.session_id)]
+
+        from services.character_companion import CompanionError
+
+        with pytest.raises(CompanionError) as exc:
+            svc.send_message(session.session_id, "я" * 200000)  # current msg alone blows the budget
+        assert exc.value.code == "context_budget_exceeded"
+        assert _FakeOllama.seen == []                             # provider never called
+        assert [(m.role, m.text) for m in svc.get_messages(session.session_id)] == prior  # nothing persisted
+    finally:
+        srv.stop()

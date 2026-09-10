@@ -44,6 +44,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 
 from services.character_lab import GroundedV2Policy, RuntimeService
+from services.character_lab.runtime_policy import ContextBudgetExceededError
 from services.character_lab.scene import new_scene
 from services.character_lab.source_loader import build_repo_source_loader
 from services.character_runtime import RuntimeMemoryBackend
@@ -79,6 +80,7 @@ from .provider_resolution import (
     test_provider_connection,
 )
 from .settings import (
+    DIALOGUE_CONTEXT_BUDGET_DEFAULT,
     NUM_CTX_KIRA_SAFE_HINT,
     NUM_CTX_MAX,
     NUM_CTX_MIN,
@@ -516,10 +518,20 @@ class CompanionService:
         except (CompanionConfigError, SettingsError, ProviderRegistryError) as exc:
             raise CompanionError(getattr(exc, "code", "provider_config"), exc.message) from exc
 
+        # Companion supplies its normalized DIALOGUE operational context budget
+        # explicitly (V1C). Bare GroundedV2Policy() -- e.g. Character Lab -- stays
+        # unbounded. The budget bounds ONLY the assembled provider request; the
+        # persisted event log is never touched.
+        context_budget = (
+            self._settings_store.load().dialogue_context_budget_est_tokens
+            if self._settings_store is not None
+            else DIALOGUE_CONTEXT_BUDGET_DEFAULT
+        )
+
         try:
             result = self._runtime.turn(
                 entry.subject_id,
-                policy=GroundedV2Policy(),
+                policy=GroundedV2Policy(context_budget_est_tokens=context_budget),
                 history=history,
                 user_message=text.strip(),
                 provider=factory(None),
@@ -532,6 +544,14 @@ class CompanionService:
             )
         except CompanionError:
             raise
+        except ContextBudgetExceededError as exc:
+            # Mandatory context alone exceeds the configured budget -- raised by
+            # assemble_context BEFORE any provider call or persistence.
+            raise CompanionError(
+                "context_budget_exceeded",
+                "the mandatory request context exceeds the configured dialogue "
+                "context budget",
+            ) from exc
         except Exception as exc:  # noqa: BLE001 -- fail-closed, do not leak internals
             if _has_unavailable_cause(exc):
                 local = _find_local_provider_error(exc)

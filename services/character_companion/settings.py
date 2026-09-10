@@ -35,6 +35,14 @@ NUM_CTX_MAX = 131072
 #: Below this the KIRA Grounded request is likely to be truncated.
 NUM_CTX_KIRA_SAFE_HINT = 16384
 
+# DIALOGUE operational context budget -- a provider-independent Companion-side
+# ESTIMATED-token allowance for assembling the dialogue request. It is NOT an
+# exact provider token count and is completely separate from ``local_num_ctx``
+# (the Ollama ``num_ctx`` request parameter). Applies to DIALOGUE only.
+DIALOGUE_CONTEXT_BUDGET_MIN = 16384
+DIALOGUE_CONTEXT_BUDGET_DEFAULT = 32768
+DIALOGUE_CONTEXT_BUDGET_MAX = 131072
+
 _FORBIDDEN_KEYS = frozenset({"api_key", "apikey", "secret", "credential", "authorization", "token"})
 
 
@@ -66,6 +74,9 @@ class CompanionSettings:
     # provider_id -> base URL override
     base_urls: Dict[str, str] = field(default_factory=dict)
     local_num_ctx: Optional[int] = None
+    # DIALOGUE-only estimated-token context budget (see constants above). Never
+    # None: a missing / invalid persisted value normalizes to the default.
+    dialogue_context_budget_est_tokens: int = DIALOGUE_CONTEXT_BUDGET_DEFAULT
     # explicit; NEVER auto-enabled. Foundation only.
     allow_cloud_fallback: bool = False
     ui: Dict[str, str] = field(default_factory=dict)
@@ -87,6 +98,7 @@ class CompanionSettings:
                       for r, a in self.roles.items()},
             "baseUrls": dict(self.base_urls),
             "localNumCtx": self.local_num_ctx,
+            "dialogueContextBudgetEstTokens": int(self.dialogue_context_budget_est_tokens),
             "allowCloudFallback": bool(self.allow_cloud_fallback),
             "ui": dict(self.ui),
         }
@@ -117,12 +129,22 @@ class CompanionSettings:
         num_ctx = data.get("localNumCtx")
         if not (isinstance(num_ctx, int) and not isinstance(num_ctx, bool) and NUM_CTX_MIN <= num_ctx <= NUM_CTX_MAX):
             num_ctx = None
+        # Missing key OR invalid/out-of-range persisted value -> the safe default.
+        # A file without this key is NOT rewritten on load (lazy migration).
+        budget = data.get("dialogueContextBudgetEstTokens")
+        if not (
+            isinstance(budget, int)
+            and not isinstance(budget, bool)
+            and DIALOGUE_CONTEXT_BUDGET_MIN <= budget <= DIALOGUE_CONTEXT_BUDGET_MAX
+        ):
+            budget = DIALOGUE_CONTEXT_BUDGET_DEFAULT
         ui = {str(k): str(v) for k, v in (data.get("ui") or {}).items()
               if isinstance(k, str) and str(k).lower() not in _FORBIDDEN_KEYS}
         return cls(
             roles=roles,
             base_urls=base_urls,
             local_num_ctx=num_ctx,
+            dialogue_context_budget_est_tokens=budget,
             allow_cloud_fallback=bool(data.get("allowCloudFallback", False)),
             ui=ui,
         )
@@ -184,6 +206,21 @@ class SettingsStore:
             raise SettingsError(exc.code, exc.message) from exc
         settings = self.load()
         settings.roles[role] = RoleAssignment(entry.provider_id, model_id)
+        return self.save(settings)
+
+    def set_dialogue_context_budget_est_tokens(self, value: int) -> CompanionSettings:
+        """DIALOGUE-only estimated-token context budget. Separate from
+        ``local_num_ctx``; never an exact provider token count."""
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise SettingsError("invalid_context_budget", "context budget must be an integer")
+        if not (DIALOGUE_CONTEXT_BUDGET_MIN <= value <= DIALOGUE_CONTEXT_BUDGET_MAX):
+            raise SettingsError(
+                "invalid_context_budget",
+                f"context budget must be within "
+                f"[{DIALOGUE_CONTEXT_BUDGET_MIN}, {DIALOGUE_CONTEXT_BUDGET_MAX}]",
+            )
+        settings = self.load()
+        settings.dialogue_context_budget_est_tokens = value
         return self.save(settings)
 
     def set_local_num_ctx(self, num_ctx: Optional[int]) -> CompanionSettings:

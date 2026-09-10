@@ -14,8 +14,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from dataclasses import dataclass, field
-from typing import Any, Mapping
+from typing import Any, Mapping, Optional
 
 from services.character_core.dimensions import (
     DimensionSet,
@@ -325,6 +326,81 @@ def _bounded_newest(items, *, rendered_len, max_items, max_chars):
     kept.reverse()
     return kept
 
+
+# --------------------------------------------------------------------------- #
+# Companion operational context budget (V1C).
+#
+# An OPTIONAL, provider-independent, ESTIMATED-token allowance for assembling
+# the GroundedV2 dialogue REQUEST. It never touches the persisted event log,
+# consolidated records, runtime state, provenance, or ``select_memory``'s own
+# (unchanged) 20-event / 6000-char working-memory bound. Bare
+# ``GroundedV2Policy()`` passes no budget and behaves exactly as before.
+#
+# The unit is an OPERATIONAL SIZING HEURISTIC, not a real tokenizer:
+#   content_est_tokens(text) = max(ceil(len/3), ceil(utf8_bytes/4))
+# so mixed Russian/English is bounded conservatively offline and
+# deterministically. Diagnostics always call it "estimated tokens".
+# --------------------------------------------------------------------------- #
+CONTEXT_BUDGET_ESTIMATOR_ID = "companion_est_v1"
+MESSAGE_OVERHEAD_EST_TOKENS = 8
+OUTPUT_RESERVE_EST_TOKENS = 2048
+#: Target (not a hard floor): try to keep at least this many newest complete
+#: dialogue turns before lower-priority grounding consumes the budget.
+PROTECTED_RECENT_TURNS = 2
+
+
+def content_est_tokens(text: str) -> int:
+    """Deterministic, language-safer estimated-token size of one string.
+
+    NOT the provider's exact token count -- an operational sizing heuristic.
+    """
+    s = text or ""
+    return max(math.ceil(len(s) / 3), math.ceil(len(s.encode("utf-8")) / 4))
+
+
+def message_est_tokens(content: str) -> int:
+    """Estimated tokens for one provider message (content + fixed structure
+    overhead). Deterministic; offline."""
+    return content_est_tokens(content) + MESSAGE_OVERHEAD_EST_TOKENS
+
+
+class ContextBudgetExceededError(RuntimeError):
+    """The mandatory (MUST-KEEP) request context alone exceeds the configured
+    Companion operational input budget.
+
+    Character-Lab-local: raised before any provider call and before any
+    persistence. It NEVER imports or references ``services.character_companion``;
+    the Companion boundary maps it to its own bounded error.
+    """
+
+    code = "context_budget_exceeded"
+
+
+def _pair_history_turns(history) -> list:
+    """Group a flat provider ``history`` list into complete dialogue turn units,
+    NEWEST unit first. Each unit is a list of ORIGINAL indices (1-2), in
+    chronological order. Deterministic; never fabricates a missing partner.
+
+    * ``assistant`` preceded by ``user`` -> a [user, assistant] turn.
+    * a lone ``user`` (trailing/pending, or legacy) -> a 1-index unit.
+    * a leading orphan ``assistant`` (no preceding user) -> dropped (never
+      emitted as the first history message).
+    """
+    units: list = []
+    i = len(history) - 1
+    while i >= 0:
+        role = history[i].get("role")
+        if role == "assistant" and i - 1 >= 0 and history[i - 1].get("role") == "user":
+            units.append([i - 1, i])
+            i -= 2
+        elif role == "user":
+            units.append([i])
+            i -= 1
+        else:  # orphan assistant / unknown role at this edge -> not selectable
+            i -= 1
+    return units
+
+
 _GROUNDED_V2_STATE_HEADER = "ПОДТВЕРЖДЁННОЕ ТЕКУЩЕЕ СОСТОЯНИЕ"
 _GROUNDED_V2_STATE_FOOTER = (
     "Эти факты оператор явно подтвердил как текущее состояние. Они дополняют "
@@ -371,6 +447,17 @@ class GroundedV2Policy(RuntimePolicy):
 
     variant_id = KIRA_GROUNDED_V2
     variant_version = GROUNDED_V2_VARIANT_VERSION
+
+    def __init__(self, *, context_budget_est_tokens: Optional[int] = None) -> None:
+        """``context_budget_est_tokens=None`` (bare ``GroundedV2Policy()``) ->
+        the existing unbounded Character Lab behavior, byte-for-byte. Only the
+        Companion path passes a normalized integer, which bounds ONLY the
+        assembled provider request (never the persisted log)."""
+        self._context_budget_est_tokens = (
+            int(context_budget_est_tokens)
+            if context_budget_est_tokens is not None
+            else None
+        )
 
     def select_memory(self, runtime_context, session_id):
         # Honest factual memory only: USER_STATED events, in causal seq order.
@@ -623,57 +710,274 @@ class GroundedV2Policy(RuntimePolicy):
             self._epistemic_block(epistemic_extra) if epistemic_extra else None
         )
 
-        system_messages = [{"role": "system", "content": _GROUNDED_V2_CORE_INSTRUCTION}]
-        if grounding:
-            system_messages.append({"role": "system", "content": grounding})
-        # Deterministic order: FACT state, then RELATIONSHIP, then PSYCHOLOGY.
+        # Fixed emission order (unchanged): core, grounding, FACT, RELATIONSHIP,
+        # PSYCHOLOGY, raw memory, consolidated, epistemic, scene, history, current.
+        state_block_by_domain = {}
         for domain, _kind, _line_kind, header, footer in _GROUNDED_V2_STATE_SEGMENTS:
             domain_entries = self._domain_entries(selected_state, domain)
             if domain_entries:
-                system_messages.append({
-                    "role": "system",
-                    "content": self._domain_block(
-                        header, footer, domain_entries,
-                        dimension_set=dimension_set, domain=domain,
-                    ),
-                })
-        if memory_block is not None:
-            system_messages.append({"role": "system", "content": memory_block})
-        if consolidated_block is not None:
-            system_messages.append({"role": "system", "content": consolidated_block})
-        if epistemic_block is not None:
-            system_messages.append({"role": "system", "content": epistemic_block})
-        if scene is not None:
-            system_messages.append(
-                {"role": "system", "content": render_scene_block(scene)}
-            )
+                state_block_by_domain[domain] = self._domain_block(
+                    header, footer, domain_entries, dimension_set=dimension_set, domain=domain
+                )
+        scene_block = render_scene_block(scene) if scene is not None else None
 
+        if self._context_budget_est_tokens is None:
+            # ---- legacy / Character Lab path: byte-for-byte unchanged --------
+            system_messages = [{"role": "system", "content": _GROUNDED_V2_CORE_INSTRUCTION}]
+            if grounding:
+                system_messages.append({"role": "system", "content": grounding})
+            for domain, _k, _lk, _h, _f in _GROUNDED_V2_STATE_SEGMENTS:
+                if domain in state_block_by_domain:
+                    system_messages.append(
+                        {"role": "system", "content": state_block_by_domain[domain]}
+                    )
+            if memory_block is not None:
+                system_messages.append({"role": "system", "content": memory_block})
+            if consolidated_block is not None:
+                system_messages.append({"role": "system", "content": consolidated_block})
+            if epistemic_block is not None:
+                system_messages.append({"role": "system", "content": epistemic_block})
+            if scene_block is not None:
+                system_messages.append({"role": "system", "content": scene_block})
+            messages = (
+                tuple(system_messages)
+                + tuple(history)
+                + ({"role": "user", "content": user_message},)
+            )
+            manifest = AssemblyManifest(
+                variant_id=self.variant_id,
+                variant_version=self.variant_version,
+                items=tuple(
+                    self._build_items(
+                        package, grounding, accepted_source_hash, selected_state,
+                        selected_mem, history, user_message, scene, dimension_set,
+                        selected_consolidated, epistemic_extra, epistemic_stats,
+                    )
+                ),
+            )
+            return ContextAssembly(messages=messages, manifest=manifest)
+
+        # ---- Companion operational budget path (V1C) ------------------------
+        (
+            system_messages,
+            selected_history,
+            eff_state,
+            eff_mem,
+            eff_consolidated,
+            eff_epistemic,
+            eff_scene,
+            budget_report,
+        ) = self._apply_context_budget(
+            grounding=grounding,
+            user_message=user_message,
+            state_block_by_domain=state_block_by_domain,
+            selected_state=selected_state,
+            memory_block=memory_block,
+            selected_mem=selected_mem,
+            consolidated_block=consolidated_block,
+            selected_consolidated=selected_consolidated,
+            epistemic_block=epistemic_block,
+            epistemic_extra=epistemic_extra,
+            scene_block=scene_block,
+            history=list(history),
+        )
         messages = (
             tuple(system_messages)
-            + tuple(history)
+            + tuple(selected_history)
             + ({"role": "user", "content": user_message},)
         )
+        items = list(
+            self._build_items(
+                package, grounding, accepted_source_hash, eff_state,
+                eff_mem, selected_history, user_message,
+                scene if eff_scene else None, dimension_set,
+                eff_consolidated, eff_epistemic, epistemic_stats,
+            )
+        )
+        items.append(AssemblyItem("context.budget_report", "", budget_report))
         manifest = AssemblyManifest(
             variant_id=self.variant_id,
             variant_version=self.variant_version,
-            items=tuple(
-                self._build_items(
-                    package,
-                    grounding,
-                    accepted_source_hash,
-                    selected_state,
-                    selected_mem,
-                    history,
-                    user_message,
-                    scene,
-                    dimension_set,
-                    selected_consolidated,
-                    epistemic_extra,
-                    epistemic_stats,
-                )
-            ),
+            items=tuple(items),
         )
         return ContextAssembly(messages=messages, manifest=manifest)
+
+    def _apply_context_budget(
+        self,
+        *,
+        grounding,
+        user_message,
+        state_block_by_domain,
+        selected_state,
+        memory_block,
+        selected_mem,
+        consolidated_block,
+        selected_consolidated,
+        epistemic_block,
+        epistemic_extra,
+        scene_block,
+        history,
+    ):
+        """Deterministic priority fill. Bounds ONLY the assembled request. On a
+        MUST-KEEP overflow it raises :class:`ContextBudgetExceededError` BEFORE
+        any provider call / persistence (this method has no side effects)."""
+        budget = self._context_budget_est_tokens
+        E = budget - OUTPUT_RESERVE_EST_TOKENS
+
+        history_messages_available = len(history)
+        turn_units = _pair_history_turns(history)          # newest-first, index units
+        history_turns_available = len(turn_units)
+
+        def unit_cost(idx_unit):
+            return sum(message_est_tokens(history[i]["content"]) for i in idx_unit)
+
+        # PHASE A -- MUST KEEP
+        must = message_est_tokens(_GROUNDED_V2_CORE_INSTRUCTION) + message_est_tokens(user_message)
+        if grounding:
+            must += message_est_tokens(grounding)
+        if must > E:
+            raise ContextBudgetExceededError(
+                f"mandatory dialogue context ~{must} est_tokens exceeds the input "
+                f"allowance ~{E} est_tokens (budget {budget})"
+            )
+        remaining = E - must
+        est_assembled = must
+        max_history_allowance = E - must
+
+        blocks_included = ["system.role_instruction"]
+        if grounding:
+            blocks_included.append("system.package_grounding")
+        blocks_omitted = []
+
+        def _try_block(kind, content):
+            nonlocal remaining, est_assembled
+            if content is None:
+                return None
+            cost = message_est_tokens(content)
+            if cost <= remaining:
+                remaining -= cost
+                est_assembled += cost
+                blocks_included.append(kind)
+                return content
+            blocks_omitted.append(kind)
+            return None
+
+        # PHASE B -- FACT, RELATIONSHIP, PSYCHOLOGY, Scene, Consolidated (whole/omit)
+        _STATE_KIND = {
+            _DOMAIN_FACT: "system.runtime_state",
+            _DOMAIN_RELATIONSHIP: "system.relationship_state",
+            _DOMAIN_PSYCHOLOGY: "system.psychology_state",
+        }
+        inc_state_blocks = {}
+        for domain, _k, _lk, _h, _f in _GROUNDED_V2_STATE_SEGMENTS:
+            if domain in state_block_by_domain:
+                got = _try_block(_STATE_KIND[domain], state_block_by_domain[domain])
+                if got is not None:
+                    inc_state_blocks[domain] = got
+        inc_scene = _try_block("system.scene", scene_block)
+        inc_consolidated_str = _try_block("system.consolidated_memory", consolidated_block)
+
+        # ---- history: ONE strictly-contiguous newest->oldest window ---------
+        # The first complete turn that does not fit ends selection; no older
+        # turn is inspected after that point (across PHASE C and PHASE E alike).
+        selected_idx = []
+        oversized_dropped = 0
+        history_cutoff = False
+
+        def _consume_turn(idx_unit):
+            nonlocal remaining, est_assembled, oversized_dropped, history_cutoff
+            uc = unit_cost(idx_unit)
+            if uc <= remaining:
+                selected_idx.extend(idx_unit)
+                remaining -= uc
+                est_assembled += uc
+                return True
+            if uc > max_history_allowance:
+                oversized_dropped += 1
+            history_cutoff = True          # contiguous cutoff established
+            return False
+
+        # PHASE C -- up to PROTECTED_RECENT_TURNS newest complete turns. A turn
+        # that does not fit STOPS here; the next protected turn is NOT tried.
+        protected_n = min(PROTECTED_RECENT_TURNS, len(turn_units))
+        c_taken = 0
+        while c_taken < protected_n and _consume_turn(turn_units[c_taken]):
+            c_taken += 1
+
+        # PHASE D -- raw USER_STATED memory block (already bounded; whole/omit)
+        inc_memory_str = _try_block("system.memory_grounding", memory_block)
+
+        # PHASE E -- extend the SAME contiguous window with older complete turns,
+        # newest->oldest, ONLY if PHASE C took every protected turn without a
+        # cutoff. STOP on the first turn that does not fit; never skip ahead.
+        if not history_cutoff and c_taken == protected_n:
+            for idx_unit in turn_units[protected_n:]:
+                if not _consume_turn(idx_unit):
+                    break
+
+        # PHASE F -- epistemic context (lowest priority)
+        inc_epistemic_str = _try_block("system.epistemic_context", epistemic_block)
+
+        selected_idx.sort()
+        selected_history = [history[i] for i in selected_idx]
+        _sel = set(selected_idx)
+        history_turns_selected = sum(
+            1 for idx_unit in turn_units if all(i in _sel for i in idx_unit)
+        )
+
+        # rebuild system messages in the fixed canonical order
+        system_messages = [{"role": "system", "content": _GROUNDED_V2_CORE_INSTRUCTION}]
+        if grounding:
+            system_messages.append({"role": "system", "content": grounding})
+        for domain, _k, _lk, _h, _f in _GROUNDED_V2_STATE_SEGMENTS:
+            if domain in inc_state_blocks:
+                system_messages.append({"role": "system", "content": inc_state_blocks[domain]})
+        if inc_memory_str is not None:
+            system_messages.append({"role": "system", "content": inc_memory_str})
+        if inc_consolidated_str is not None:
+            system_messages.append({"role": "system", "content": inc_consolidated_str})
+        if inc_epistemic_str is not None:
+            system_messages.append({"role": "system", "content": inc_epistemic_str})
+        if inc_scene is not None:
+            system_messages.append({"role": "system", "content": inc_scene})
+
+        inc_domains = set(inc_state_blocks)
+        eff_state = [
+            e for e in selected_state
+            if (e.get("domain") or _DOMAIN_FACT) in inc_domains
+        ]
+        eff_mem = selected_mem if inc_memory_str is not None else []
+        eff_consolidated = selected_consolidated if inc_consolidated_str is not None else []
+        eff_epistemic = epistemic_extra if inc_epistemic_str is not None else ()
+
+        budget_report = {
+            "budget_est_tokens": budget,
+            "effective_input_budget_est_tokens": E,
+            "budget_unit": "estimated_tokens",
+            "estimator": CONTEXT_BUDGET_ESTIMATOR_ID,
+            "output_reserve_est_tokens": OUTPUT_RESERVE_EST_TOKENS,
+            "history_messages_available": history_messages_available,
+            "history_messages_selected": len(selected_history),
+            "history_turns_available": history_turns_available,
+            "history_turns_selected": history_turns_selected,
+            "oldest_selected_history_index": (selected_idx[0] if selected_idx else None),
+            "newest_selected_history_index": (selected_idx[-1] if selected_idx else None),
+            "blocks_included": list(blocks_included),
+            "blocks_omitted_budget": list(blocks_omitted),
+            "est_assembled_tokens": est_assembled,
+            "mandatory_overflow": False,
+            "history_oversized_turns_dropped": oversized_dropped,
+        }
+        return (
+            system_messages,
+            selected_history,
+            eff_state,
+            eff_mem,
+            eff_consolidated,
+            eff_epistemic,
+            inc_scene,
+            budget_report,
+        )
 
     def _build_items(
         self,
