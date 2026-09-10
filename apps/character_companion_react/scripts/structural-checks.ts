@@ -671,7 +671,7 @@ async function main(): Promise<void> {
   // 2 — ✨ exists in the composer and never sends automatically
   assert(composerSrc.includes("✨") && composerSrc.includes("runAssistant") && composerSrc.includes("composer-assist"),
     "composer has a ✨ assistant control");
-  assert(/setDraft\(suggestion\)/.test(composerSrc), "suggestion replaces the composer value in place");
+  assert(/onDraftChange\(suggestion\)/.test(composerSrc), "suggestion replaces the composer value in place");
   const submitBody = composerSrc.slice(composerSrc.indexOf("function submit"), composerSrc.indexOf("function editDraft"));
   assert(!submitBody.includes("assistant") && !/runAssistant[\s\S]{0,200}onSend/.test(composerSrc),
     "the assistant path never calls onSend");
@@ -1340,15 +1340,15 @@ async function main(): Promise<void> {
 
   // L — the co-author execution path only changes the draft; never onSend
   const v2bRun = v2bComposer.slice(v2bComposer.indexOf("async function runAssistant"), v2bComposer.indexOf("function undoAssistant"));
-  assert(v2bRun.includes("assistant.suggest(source)") && v2bRun.includes("setDraft(suggestion)") && !v2bRun.includes("onSend"),
-    "V2B.L runAssistant calls suggest -> conditional setDraft, never onSend");
+  assert(v2bRun.includes("assistant.suggest(source)") && v2bRun.includes("onDraftChange(suggestion)") && !v2bRun.includes("onSend"),
+    "V2B.L runAssistant calls suggest -> conditional onDraftChange, never onSend");
   ok("V2B.L co-author response changes the draft only, never sends");
 
   // M/N — stale-response / draft-snapshot guard; a newer edit discards the late suggestion
   assert(v2bAssist.includes("runId") && v2bAssist.includes("snapshot")
     && /export function canApply\([\s\S]{0,160}state\.runId === runId && currentDraft === state\.snapshot/.test(v2bAssist),
     "V2B.M composerAssistant exposes a runId + snapshot guard");
-  assert(/if \(draftRef\.current === source\)\s*\{[\s\S]{0,120}setDraft\(suggestion\)/.test(v2bComposer)
+  assert(/if \(draftRef\.current === source\)\s*\{[\s\S]{0,140}onDraftChange\(suggestion\)/.test(v2bComposer)
     && /\}\s*else\s*\{[\s\S]{0,80}runDiscarded\(s, runId\)/.test(v2bComposer),
     "V2B.N the late suggestion is applied only if the composer is unchanged, else discarded");
   // functional check of the guard
@@ -1425,10 +1425,136 @@ async function main(): Promise<void> {
     && /canAssist\s*=\s*assistantReady\s*&&\s*!assist\.running\s*&&\s*!sending/.test(v2cComposer),
     "V2C.E Send still needs a sendable draft; co-author enable rule unchanged");
   const v2cRun = v2cComposer.slice(v2cComposer.indexOf("async function runAssistant"), v2cComposer.indexOf("function undoAssistant"));
-  assert(v2cRun.includes("assistant.suggest(source)") && v2cRun.includes("setDraft(suggestion)") && !v2cRun.includes("onSend")
+  assert(v2cRun.includes("assistant.suggest(source)") && v2cRun.includes("onDraftChange(suggestion)") && !v2cRun.includes("onSend")
     && /if \(draftRef\.current === source\)/.test(v2cRun) && v2cRun.includes("runDiscarded(s, runId)"),
-    "V2C.E co-author path: suggest -> guarded setDraft, never onSend; stale-response guard intact");
+    "V2C.E co-author path: suggest -> guarded onDraftChange, never onSend; stale-response guard intact");
   ok("V2C.E V2B co-author contract preserved (labels, Send rule, no auto-send, stale guard)");
+
+  // ================================================================
+  // WRITING ASSISTANT V2D  (composer layout fix + per-session drafts)
+  // ================================================================
+  const v2dComposer = read("features/Composer.tsx");
+  const v2dCss = read("styles.css");
+  const v2dApp = read("App.tsx");
+  const v2dConv = read("features/Conversation.tsx");
+  const v2dFocus = read("features/FocusMode.tsx");
+
+  // A/B/C — the textarea is no longer a zero-basis flex item; the field keeps its flex width
+  assert(!/\.composer-input\s*\{[^}]*flex:\s*1/.test(v2dCss), "V2D.A .composer-input no longer sets flex: 1");
+  assert(!/\.composer-field \.composer-input\s*\{[^}]*flex:\s*1/.test(v2dCss),
+    "V2D.B .composer-field .composer-input no longer sets flex: 1");
+  assert(/\.composer-field\s*\{[^}]*flex:\s*1/.test(v2dCss), "V2D.C .composer-field keeps flex: 1 (governs field width)");
+  ok("V2D.A/B/C textarea flex removed; field flex retained");
+
+  // D — the deterministic sizing tokens on .composer-input
+  assert(/\.composer-input\s*\{[^}]*line-height:\s*1\.4/.test(v2dCss)
+    && /\.composer-input\s*\{[^}]*max-height:\s*11rem/.test(v2dCss)
+    && /\.composer-input\s*\{[^}]*overflow-y:\s*auto/.test(v2dCss)
+    && /\.composer-input\s*\{[^}]*resize:\s*none/.test(v2dCss),
+    "V2D.D .composer-input carries line-height 1.4 + max-height 11rem + overflow-y auto + resize none");
+  ok("V2D.D deterministic sizing tokens present");
+
+  // E — the committed autosize algorithm is unchanged
+  assert(v2dComposer.includes("useLayoutEffect")
+    && /el\.style\.height = "auto";/.test(v2dComposer)
+    && /el\.style\.height = `\$\{el\.scrollHeight \+ border\}px`/.test(v2dComposer)
+    && /\}, \[draft\]\);/.test(v2dComposer),
+    "V2D.E autosize effect intact (useLayoutEffect, reset to auto, scrollHeight, [draft] dep)");
+  ok("V2D.E committed autosize algorithm unchanged");
+
+  // F/G — Composer no longer owns the draft text; it is controlled
+  assert(!/const \[draft, setDraft\] = useState\(""\)/.test(v2dComposer)
+    && !/\bsetDraft\b/.test(v2dComposer),
+    "V2D.F Composer has no local useState(\"\") draft and never calls setDraft");
+  assert(/draft: string;/.test(v2dComposer) && /onDraftChange: \(next: string\) => void;/.test(v2dComposer)
+    && /value=\{draft\}/.test(v2dComposer) && /onChange=\{\(e\) => editDraft\(e\.target\.value\)\}/.test(v2dComposer)
+    && /function editDraft\(value: string\) \{\s*onDraftChange\(value\)/.test(v2dComposer),
+    "V2D.G Composer is controlled via draft + onDraftChange (typing routes through onDraftChange)");
+  ok("V2D.F/G Composer is a controlled component (no local draft ownership)");
+
+  // H — App owns a per-session in-memory draft map, keyed by session id, no persistence
+  assert(/const \[sessionDrafts, setSessionDrafts\] = useState<Record<string, string>>\(\{\}\)/.test(v2dApp)
+    && /const composerDraft = state\.selectedSessionId \? \(sessionDrafts\[state\.selectedSessionId\] \?\? ""\) : ""/.test(v2dApp)
+    && !/localStorage|sessionStorage|indexedDB/i.test(v2dApp.slice(v2dApp.indexOf("sessionDrafts"), v2dApp.indexOf("sessionDrafts") + 1200)),
+    "V2D.H App owns Record<sessionId,string> drafts in memory (no browser storage)");
+  ok("V2D.H App owns a per-session in-memory draft map");
+
+  // I/J — both center views receive the SAME controlled draft source
+  assert(/<Conversation[\s\S]{0,400}draft=\{composerDraft\}[\s\S]{0,40}onDraftChange=\{setComposerDraft\}/.test(v2dApp),
+    "V2D.I App passes composerDraft / setComposerDraft to Conversation");
+  assert(/<FocusMode[\s\S]{0,600}draft=\{composerDraft\}[\s\S]{0,40}onDraftChange=\{setComposerDraft\}/.test(v2dApp),
+    "V2D.J App passes the SAME composerDraft / setComposerDraft to FocusMode");
+  assert(/draft=\{draft\}\s*onDraftChange=\{onDraftChange\}/.test(v2dConv), "V2D.I Conversation forwards the props to <Composer>");
+  assert(/draft=\{draft\}\s*onDraftChange=\{onDraftChange\}/.test(v2dFocus), "V2D.J FocusMode forwards the props to <Composer>");
+  ok("V2D.I/J Conversation + FocusMode both wire the same current-session draft");
+
+  // K — per-session keying: setComposerDraft only ever writes the selected session's entry
+  assert(/setComposerDraft = useCallback\(\(next: string\) => \{\s*const sid = state\.selectedSessionId;\s*if \(!sid\) return;\s*setSessionDrafts\(\(d\) => \(d\[sid\] === next \? d : \{ \.\.\.d, \[sid\]: next \}\)\)/.test(v2dApp),
+    "V2D.K a draft update only touches drafts[selectedSessionId]");
+  ok("V2D.K session A and session B drafts are keyed independently");
+
+  // L — successful Send clears ONLY that session's draft; a failed send does not
+  const sendBody = v2dApp.slice(v2dApp.indexOf("function send(text: string)"), v2dApp.indexOf("function retry()"));
+  assert(/\.then\(\(turn\) => \{[\s\S]{0,400}setSessionDrafts\(\(d\) => \{\s*if \(!\(sessionId in d\)\) return d;[\s\S]{0,120}delete next\[sessionId\]/.test(sendBody)
+    && !/\.catch\([\s\S]{0,160}setSessionDrafts/.test(sendBody),
+    "V2D.L send success deletes drafts[sessionId] only; the catch path never clears a draft");
+  ok("V2D.L successful Send clears only the sent session's draft (failed send keeps it)");
+
+  // M — a newly created / selected session does not inherit a prior draft
+  assert(v2dApp.includes('sessionDrafts[state.selectedSessionId] ?? ""')
+    && !/sessionCreated[\s\S]{0,200}setSessionDrafts/.test(v2dApp)
+    && !/function selectSession[\s\S]{0,200}setSessionDrafts/.test(v2dApp),
+    "V2D.M selecting/creating a session never copies another session's draft (missing key -> \"\")");
+  ok("V2D.M new-session selection starts from an empty draft");
+
+  // N/O — mounted guard: a co-author result from an unmounted Composer must not write the lifted draft
+  assert(/const aliveRef = useRef\(true\);/.test(v2dComposer)
+    && /useEffect\(\(\) => \(\) => \{ aliveRef\.current = false; \}, \[\]\);/.test(v2dComposer),
+    "V2D.N Composer has an alive ref cleared on unmount");
+  assert(/const suggestion = await assistant\.suggest\(source\);\s*if \(!runIsCurrent\(runId, requestSessionId\)\) return;/.test(v2dComposer)
+    && /\} catch \(e\) \{\s*if \(!runIsCurrent\(runId, requestSessionId\)\) return;/.test(v2dComposer)
+    && /return\s+aliveRef\.current/.test(v2dComposer),
+    "V2D.O both branches bail via runIsCurrent (which requires aliveRef) before touching state");
+  ok("V2D.N/O late co-author result cannot write into a remounted composer / other session");
+
+  // R/S/T/U — SESSION-SWITCH async ownership (same Composer may stay mounted on A -> B)
+  const v2dConv2 = read("features/Conversation.tsx");
+  const v2dFocus2 = read("features/FocusMode.tsx");
+  // R — Composer receives a real session identity, wired from App through BOTH views
+  assert(/sessionId: string \| null;/.test(v2dComposer)
+    && /export function Composer\(\{ sending, t, assistant, sessionId,/.test(v2dComposer),
+    "V2D.R Composer takes a real sessionId prop");
+  assert(/<Conversation[\s\S]{0,400}sessionId=\{state\.selectedSessionId \|\| null\}/.test(v2dApp)
+    && /<FocusMode[\s\S]{0,600}sessionId=\{selectedSession\.sessionId\}/.test(v2dApp),
+    "V2D.S App passes the current session id to BOTH Conversation and FocusMode");
+  assert(/sessionId=\{sessionId\}/.test(v2dConv2) && /sessionId=\{sessionId\}/.test(v2dFocus2),
+    "V2D.T Conversation and FocusMode forward sessionId to <Composer>");
+  // U — the run captures its session; both branches gate on session identity (not text)
+  assert(/const requestSessionId = sessionId;/.test(v2dComposer)
+    && /runRef\.current = \{ id: runId, sid: requestSessionId \};/.test(v2dComposer)
+    && /function runIsCurrent\(runId: number, requestSessionId: string \| null\)[\s\S]{0,300}r\.sid === requestSessionId[\s\S]{0,120}sessionRef\.current === requestSessionId/.test(v2dComposer),
+    "V2D.U each run captures requestSessionId; runIsCurrent requires runId + session match, never text");
+  // V — a session change abandons the in-flight run and resets transient assist UI, draft untouched
+  assert(/prevSessionRef\.current === sessionId\) return;[\s\S]{0,140}runRef\.current = null;[\s\S]{0,80}setAssist\(initialAssistantState\(\)\)/.test(v2dComposer)
+    && /\}, \[sessionId\]\);/.test(v2dComposer)
+    && !/\[sessionId\][\s\S]{0,200}onDraftChange/.test(v2dComposer),
+    "V2D.V on sessionId change: null the run + reset assist to initial; the controlled draft is NOT cleared");
+  ok("V2D.R/S/T/U/V session-switch async ownership: late A-result cannot touch B (even empty==empty)");
+
+  // P/Q — V2B/V2C contract still intact
+  const v2dRun = v2dComposer.slice(v2dComposer.indexOf("async function runAssistant"), v2dComposer.indexOf("function undoAssistant"));
+  assert(v2dComposer.includes('t("assistant.compose")') && v2dComposer.includes('t("assistant.expand")')
+    && /draftMode\(draft\)\s*===\s*"COMPOSE"/.test(v2dComposer)
+    && /type="submit"[\s\S]{0,160}!isSendableMessage\(draft\)/.test(v2dComposer)
+    && /canAssist\s*=\s*assistantReady\s*&&\s*!assist\.running\s*&&\s*!sending/.test(v2dComposer)
+    && v2dRun.includes("assistant.suggest(source)") && !v2dRun.includes("onSend"),
+    "V2D.P Compose/Expand labels, Send rule, co-author enable rule intact; co-author path never calls onSend");
+  assert(v2dComposer.includes("beginRun(assist, draft)") && /const runId = started\.runId;/.test(v2dComposer)
+    && /if \(draftRef\.current === source\)/.test(v2dComposer),
+    "V2D.Q runId + exact-source stale guard preserved");
+  assert(read("client/httpCompanionClient.ts").includes('"POST", "/writing-assistant/suggest"'),
+    "V2D.P suggest endpoint unchanged (no client mode)");
+  ok("V2D.P/Q V2B co-author + V2C autosize contracts preserved");
 
   console.log(`\n${passed} passed, 0 failed`);
 }

@@ -25,6 +25,9 @@ interface Props {
   hiddenMessageIds: number[];
   sending: boolean;
   assistant?: ComposerAssistant;
+  /** Controlled current-session composer draft (owned by App, per session). */
+  draft: string;
+  onDraftChange: (next: string) => void;
   coverUrl: string | null;
   coverRef: string | null;
   readyImages: ImageJob[];
@@ -69,6 +72,7 @@ const NEAR_BOTTOM_PX = 120;
 export function FocusMode(props: Props) {
   const {
     layout, characterId, characterName, sessionId, messages, hiddenMessageIds, sending, assistant,
+    draft, onDraftChange,
     coverUrl, coverRef, readyImages, imageUrl, userProfile, t, onSetLayout, onExit, onMakeCover,
   } = props;
   // hidden messages are omitted from every focus layout's transcript; the
@@ -321,6 +325,9 @@ export function FocusMode(props: Props) {
                 sending={sending}
                 t={t}
                 assistant={assistant}
+                sessionId={sessionId}
+                draft={draft}
+                onDraftChange={onDraftChange}
                 onSend={props.onSend}
                 onCreateImage={props.onCreateImage}
                 onContextFrame={props.onContextFrame}

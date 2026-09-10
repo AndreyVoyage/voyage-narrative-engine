@@ -60,6 +60,17 @@ export function App() {
   const [assistantReady, setAssistantReady] = useState(false);
   const pollRef = useRef<number | null>(null);
 
+  // Unsent composer drafts, keyed by session id, IN MEMORY ONLY (no backend, no
+  // localStorage). Owned here so switching view / entering or leaving Focus Mode
+  // — which remounts the Composer — never discards the current session's draft.
+  const [sessionDrafts, setSessionDrafts] = useState<Record<string, string>>({});
+  const composerDraft = state.selectedSessionId ? (sessionDrafts[state.selectedSessionId] ?? "") : "";
+  const setComposerDraft = useCallback((next: string) => {
+    const sid = state.selectedSessionId;
+    if (!sid) return;
+    setSessionDrafts((d) => (d[sid] === next ? d : { ...d, [sid]: next }));
+  }, [state.selectedSessionId]);
+
   const refreshAssistantReady = useCallback(() => {
     // The co-author follows the ONE authoritative text model: the DIALOGUE role.
     // There is no separate WRITING_ASSISTANT readiness any more.
@@ -195,7 +206,17 @@ export function App() {
     dispatch({ type: "sendStart" });
     client
       .sendMessage(sessionId, text)
-      .then((turn) => dispatch({ type: "sendSucceeded", messages: turn.messages }))
+      .then((turn) => {
+        dispatch({ type: "sendSucceeded", messages: turn.messages });
+        // clear ONLY this session's unsent draft, and ONLY on success — a
+        // failed send must never lose the user's text.
+        setSessionDrafts((d) => {
+          if (!(sessionId in d)) return d;
+          const next = { ...d };
+          delete next[sessionId];
+          return next;
+        });
+      })
       .catch((e) => dispatch({ type: "sendFailed", ...errorOf(e) }));
   }
 
@@ -313,6 +334,8 @@ export function App() {
         hiddenMessageIds={selectedSession.hiddenMessageIds ?? []}
         sending={state.loading === "sending"}
         assistant={assistant}
+        draft={composerDraft}
+        onDraftChange={setComposerDraft}
         coverUrl={coverUrl}
         coverRef={selectedSession.sceneCoverRef ?? null}
         readyImages={readyImages}
@@ -399,6 +422,9 @@ export function App() {
             sending={state.loading === "sending"}
             error={state.error}
             assistant={assistant}
+            sessionId={state.selectedSessionId || null}
+            draft={composerDraft}
+            onDraftChange={setComposerDraft}
             onSend={send}
             onRetry={retry}
             onCreateImage={() => createImageJob("custom")}

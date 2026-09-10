@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { isSendableMessage } from "../app/companionState.js";
 import {
   beginRun,
@@ -26,6 +26,14 @@ interface Props {
   sending: boolean;
   t: TFunction;
   assistant?: ComposerAssistant;
+  /** The current conversation session. Every co-author run is owned by the
+   *  session it started in; a result that arrives after the user switched
+   *  sessions (even with the SAME Composer still mounted) is discarded. */
+  sessionId: string | null;
+  /** Controlled current-session draft, owned above the view-mode tree swap. */
+  draft: string;
+  /** Update the current session's draft (co-author results route through here too). */
+  onDraftChange: (next: string) => void;
   onSend: (text: string) => void;
   onCreateImage: () => void;
   onContextFrame: () => void;
@@ -40,16 +48,36 @@ interface Props {
  * pressing Send can send. A late suggestion is dropped if the user typed while
  * waiting. Attachment upload + the microphone stay honestly unavailable.
  */
-export function Composer({ sending, t, assistant, onSend, onCreateImage, onContextFrame }: Props) {
-  const [draft, setDraft] = useState("");
+export function Composer({ sending, t, assistant, sessionId, draft, onDraftChange, onSend, onCreateImage, onContextFrame }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [assist, setAssist] = useState<AssistantState>(initialAssistantState());
-  // Always-current view of the composer text for the async late-response guard.
+  // Always-current view of the controlled draft for the async late-response guard.
   const draftRef = useRef(draft);
   draftRef.current = draft;
-  // Auto-grow the textarea to its content (typing OR programmatic setDraft from
-  // COMPOSE / EXPAND / restore-original), capped by the CSS max-height beyond
-  // which it scrolls internally. Keyed on `draft` so it reacts to every change.
+  // Always-current session identity for the same-instance session-switch guard.
+  const sessionRef = useRef(sessionId);
+  sessionRef.current = sessionId;
+  // Alive flag: a co-author promise that resolves after this Composer has been
+  // unmounted (e.g. the user entered/left Focus Mode) must NOT write into the
+  // now-lifted, possibly different-session draft.
+  const aliveRef = useRef(true);
+  useEffect(() => () => { aliveRef.current = false; }, []);
+  // The one co-author run this Composer currently owns: its runId AND the
+  // session it started in. Cleared on a session switch so a late A-result can
+  // never land in B — even when the same Composer instance stays mounted and
+  // A's and B's drafts happen to be identical (e.g. both empty).
+  const runRef = useRef<{ id: number; sid: string | null } | null>(null);
+  const prevSessionRef = useRef(sessionId);
+  useEffect(() => {
+    if (prevSessionRef.current === sessionId) return;
+    prevSessionRef.current = sessionId;
+    runRef.current = null;                         // abandon any in-flight run
+    setAssist(initialAssistantState());            // B never inherits A's running/error/restore UI
+  }, [sessionId]);
+  // Auto-grow the textarea to its content (typing OR a programmatic draft change
+  // from COMPOSE / EXPAND / restore-original), capped by the CSS max-height
+  // beyond which it scrolls internally. Keyed on `draft` so it reacts to every
+  // change of the controlled value.
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   useLayoutEffect(() => {
     const el = textareaRef.current;
@@ -62,13 +90,14 @@ export function Composer({ sending, t, assistant, onSend, onCreateImage, onConte
   function submit(event: { preventDefault: () => void }) {
     event.preventDefault();
     if (!isSendableMessage(draft) || sending) return;
+    // The owner (App) clears this session's draft only on a SUCCESSFUL send, so
+    // a failed send never loses the user's text.
     onSend(draft.trim());
-    setDraft("");
     setAssist(initialAssistantState());
   }
 
   function editDraft(value: string) {
-    setDraft(value);
+    onDraftChange(value);
     setAssist((s) => forgetIfIdle(s));
   }
 
@@ -82,21 +111,38 @@ export function Composer({ sending, t, assistant, onSend, onCreateImage, onConte
       ? t("assistant.compose")
       : t("assistant.expand");
 
+  // A late result may touch draft / assist state ONLY if this Composer is still
+  // mounted AND still on the session that started the run AND this run is still
+  // the one the Composer owns (a session switch nulls runRef). Text equality
+  // alone never establishes session identity.
+  function runIsCurrent(runId: number, requestSessionId: string | null): boolean {
+    const r = runRef.current;
+    return aliveRef.current
+      && r !== null
+      && r.id === runId
+      && r.sid === requestSessionId
+      && sessionRef.current === requestSessionId;
+  }
+
   async function runAssistant() {
     if (!assistant || !canAssist) return;
+    const requestSessionId = sessionId;
     const started = beginRun(assist, draft);
     const runId = started.runId;
     const source = started.snapshot;
+    runRef.current = { id: runId, sid: requestSessionId };
     setAssist(started);
     try {
       const suggestion = await assistant.suggest(source);
+      if (!runIsCurrent(runId, requestSessionId)) return;   // unmounted / session switched / superseded
       if (draftRef.current === source) {
         setAssist((s) => runSucceeded(s, runId));
-        setDraft(suggestion);                       // replace IN PLACE; still unsent
+        onDraftChange(suggestion);                  // replace IN PLACE; still unsent
       } else {
         setAssist((s) => runDiscarded(s, runId));   // user typed while waiting — keep their text
       }
     } catch (e) {
+      if (!runIsCurrent(runId, requestSessionId)) return;   // stale completion — do not touch state
       const code = e && typeof e === "object" && "code" in e ? String((e as { code: unknown }).code) : "assistant_failed";
       setAssist((s) => runFailed(s, runId, code));   // draft is left exactly as it was
     }
@@ -105,7 +151,7 @@ export function Composer({ sending, t, assistant, onSend, onCreateImage, onConte
   function undoAssistant() {
     const { state, draft: original } = restoreOriginal(assist);
     setAssist(state);
-    setDraft(original);
+    onDraftChange(original);
   }
 
   const soon = t("composer.attachSoonTitle");

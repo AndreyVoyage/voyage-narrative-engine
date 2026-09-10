@@ -12,6 +12,11 @@ interface Props {
   sending: boolean;
   error: { code: string; message: string } | null;
   assistant?: ComposerAssistant;
+  /** Current session identity — every co-author run is owned by its session. */
+  sessionId: string | null;
+  /** Controlled current-session composer draft (owned by App, per session). */
+  draft: string;
+  onDraftChange: (next: string) => void;
   onSend: (text: string) => void;
   onRetry: () => void;
   onCreateImage: () => void;
@@ -32,7 +37,7 @@ async function copyText(text: string): Promise<boolean> {
 /** Center region — transcript + composer + a NON-BLOCKING image-job status
  * strip + bounded error. Chat stays usable while an image job runs. */
 export function Conversation({
-  session, messages, imageJobs, sending, error, assistant,
+  session, messages, imageJobs, sending, error, assistant, sessionId, draft, onDraftChange,
   onSend, onRetry, onCreateImage, onContextFrame, onEnterFocus, onHideMessage,
 }: Props) {
   const { t, tError } = useLocale();
@@ -113,6 +118,9 @@ export function Conversation({
         sending={sending}
         t={t}
         assistant={assistant}
+        sessionId={sessionId}
+        draft={draft}
+        onDraftChange={onDraftChange}
         onSend={onSend}
         onCreateImage={onCreateImage}
         onContextFrame={onContextFrame}
