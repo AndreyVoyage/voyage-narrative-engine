@@ -1,0 +1,3 @@
+authoring/project/*.json text eol=lf
+authoring/scene_drafts/**/*.json text eol=lf
+authoring/accepted_ordered_ass/**/*.json text eol=lf
