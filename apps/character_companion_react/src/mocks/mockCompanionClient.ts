@@ -29,6 +29,7 @@ import {
   RoleResolution,
   SCENE_FIELDS,
   SceneField,
+  WritingAssistantMode,
   WritingAssistantResult,
   emptyScene,
   sceneHasAny,
@@ -324,19 +325,35 @@ export class MockCompanionClient implements CompanionClient {
     return { ...row.session };
   }
 
+  /** V2 co-author. The mode is DERIVED from the draft (empty -> COMPOSE, else
+   *  EXPAND) and driven by the authoritative DIALOGUE assignment — never a
+   *  separate WRITING_ASSISTANT selection. It only returns text; it never sends. */
+  async suggestDraft(
+    draft: string,
+    _opts?: { localeHint?: string | null; sessionId?: string | null },
+  ): Promise<WritingAssistantResult> {
+    return this.coauthor(draft, { allowEmpty: true });
+  }
+
+  /** Legacy composer rewrite — non-empty draft only, EXPAND semantics. */
   async rewriteDraft(draft: string, _opts?: { localeHint?: string }): Promise<WritingAssistantResult> {
-    if (typeof draft !== "string" || !draft.trim()) {
+    return this.coauthor(draft, { allowEmpty: false });
+  }
+
+  private coauthor(draft: string, { allowEmpty }: { allowEmpty: boolean }): WritingAssistantResult {
+    if (typeof draft !== "string" || (!allowEmpty && !draft.trim())) {
       throw new CompanionClientError(400, "invalid_draft", "Пустой черновик.");
     }
-    const a = this.roles.WRITING_ASSISTANT;
-    if (!a) {
-      throw new CompanionClientError(409, "assistant_not_configured", "Помощник написания не настроен.");
-    }
+    const a = this.roles.DIALOGUE; // authoritative text model; WRITING_ASSISTANT is ignored
     const c = MOCK_CATALOG[a.providerId];
     if (c?.credentialRequired && !this.secrets.has(a.providerId)) {
       throw new CompanionClientError(409, "missing_credential", "Нет ключа для выбранного провайдера.");
     }
-    return { suggestion: mockPolish(draft), provider: a.providerId, model: a.modelId };
+    const mode: WritingAssistantMode = draft.trim() === "" ? "COMPOSE" : "EXPAND";
+    const suggestion = mode === "COMPOSE"
+      ? "И что было дальше?"                 // a plausible next user message
+      : `${mockPolish(draft)} Расскажи, пожалуйста, подробнее — мне правда интересно.`;
+    return { suggestion, provider: a.providerId, model: a.modelId, mode };
   }
 
   async sendMessage(sessionId: string, text: string): Promise<CompanionTurn> {

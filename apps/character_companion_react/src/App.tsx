@@ -61,10 +61,12 @@ export function App() {
   const pollRef = useRef<number | null>(null);
 
   const refreshAssistantReady = useCallback(() => {
+    // The co-author follows the ONE authoritative text model: the DIALOGUE role.
+    // There is no separate WRITING_ASSISTANT readiness any more.
     client.getSettings()
       .then((view) => {
-        const wa = view.roleCatalog.find((r) => r.role === "WRITING_ASSISTANT");
-        setAssistantReady(Boolean(wa && wa.readiness !== "NOT_CONFIGURED" && wa.readiness !== "UNSUPPORTED"));
+        const dialogue = view.roleCatalog.find((r) => r.role === "DIALOGUE");
+        setAssistantReady(dialogue?.readiness === "READY");
       })
       .catch(() => setAssistantReady(false));
   }, []);
@@ -72,11 +74,15 @@ export function App() {
 
   const assistant: ComposerAssistant = useMemo(() => ({
     available: assistantReady,
-    rewrite: async (source: string) => {
-      const res = await client.rewriteDraft(source, { localeHint: locale });
+    suggest: async (source: string) => {
+      // "" -> COMPOSE, non-empty -> EXPAND (the backend derives the mode).
+      const res = await client.suggestDraft(source, {
+        localeHint: locale,
+        sessionId: state.selectedSessionId || null,
+      });
       return res.suggestion;
     },
-  }), [assistantReady, locale]);
+  }), [assistantReady, locale, state.selectedSessionId]);
 
   // one-time reconcile: honour a locale that was only stored on the profile
   useEffect(() => {

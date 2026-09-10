@@ -6,10 +6,12 @@
 import { CompanionSettingsView, ModelView, ProviderCardView } from "../client/types.js";
 import type { TranslationKey } from "../i18n/index.js";
 
-/** Canonical presentation order for the "models by task" section. */
+/** Presentation order for the "models by task" section. WRITING_ASSISTANT is a
+ *  live backend role but is NOT shown as a separate user-facing selection: the
+ *  co-author runs on the authoritative DIALOGUE ("Текстовая модель") assignment. */
 export const MODEL_ROLE_ORDER = [
   "DIALOGUE", "VISION", "IMAGE_GENERATION", "VIDEO_GENERATION",
-  "STT", "TTS", "REALTIME", "WRITING_ASSISTANT", "LOCAL_ALTERNATIVE",
+  "STT", "TTS", "REALTIME", "LOCAL_ALTERNATIVE",
 ] as const;
 
 /** i18n key for a model-role display name (falls back to the raw id). */

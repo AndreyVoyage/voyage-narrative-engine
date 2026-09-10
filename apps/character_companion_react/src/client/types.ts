@@ -169,11 +169,16 @@ export const MODEL_ROLES = [
 ] as const;
 export type ModelRole = (typeof MODEL_ROLES)[number];
 
-/** Result of one composer Writing Assistant rewrite. */
+/** Which co-author mode the backend derived from the draft. */
+export type WritingAssistantMode = "COMPOSE" | "EXPAND";
+
+/** Result of one composer co-author call. `mode` is derived by the backend
+ *  ("" -> COMPOSE, non-empty -> EXPAND); the client never sends it. */
 export interface WritingAssistantResult {
   suggestion: string;
   provider: string;
   model: string;
+  mode?: WritingAssistantMode;
 }
 
 export type RoleReadiness =
@@ -310,6 +315,13 @@ export interface CompanionClient {
   setMessageHidden(sessionId: string, messageId: number, hidden: boolean): Promise<CompanionSession>;
   getMessages(sessionId: string): Promise<CompanionMessage[]>;
   sendMessage(sessionId: string, text: string): Promise<CompanionTurn>;
+  /** V2 contextual co-author. `draft` MAY be empty (COMPOSE); non-empty is
+   *  EXPAND. The backend derives the mode — never pass one. */
+  suggestDraft(
+    draft: string,
+    opts?: { localeHint?: string | null; sessionId?: string | null },
+  ): Promise<WritingAssistantResult>;
+  /** Legacy composer rewrite — non-empty draft only, EXPAND semantics. */
   rewriteDraft(draft: string, opts?: { localeHint?: string }): Promise<WritingAssistantResult>;
   randomScenario(opts?: { field?: SceneField; seed?: number }): Promise<RandomScenarioResult>;
   imageGenerationReadiness(characterId: string): Promise<ImageGenerationReadiness>;

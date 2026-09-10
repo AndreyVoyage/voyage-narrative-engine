@@ -234,6 +234,9 @@ export function SettingsPanel({ client, profile, onProfileChange, onClose }: Pro
                   </label>
                 </div>
               )}
+              {role === "DIALOGUE" && (
+                <p className="settings-hint">{t("settings.textModelHint")}</p>
+              )}
               {roleIsConfiguredButNotImplemented(readiness, runtimeWired) && (
                 <p className="settings-hint role-row-future">{t("readiness.FUTURE_NOT_WIRED")}</p>
               )}

@@ -32,13 +32,15 @@ import {
   visibleSessions,
 } from "../src/app/companionState.js";
 import {
-  beginRewrite,
+  beginRun,
+  canApply,
   canRestoreOriginal,
+  draftMode,
   initialAssistantState,
   restoreOriginal,
-  rewriteFailed,
-  rewriteSucceeded,
-  sourceDraftFor,
+  runDiscarded,
+  runFailed,
+  runSucceeded,
 } from "../src/app/composerAssistant.js";
 import {
   FOCUS_LAYOUTS,
@@ -551,8 +553,8 @@ async function main(): Promise<void> {
   // 1 — a dedicated "models by task" section exists
   assert(mediaSettings.includes('t("settings.section.modelRoles")') && mediaSettings.includes("MODEL_ROLE_ORDER"),
     "SettingsPanel has a models-by-task section");
-  assert(stMod2.MODEL_ROLE_ORDER.join(",") === "DIALOGUE,VISION,IMAGE_GENERATION,VIDEO_GENERATION,STT,TTS,REALTIME,WRITING_ASSISTANT,LOCAL_ALTERNATIVE",
-    "canonical role order incl. VIDEO_GENERATION + WRITING_ASSISTANT");
+  assert(stMod2.MODEL_ROLE_ORDER.join(",") === "DIALOGUE,VISION,IMAGE_GENERATION,VIDEO_GENERATION,STT,TTS,REALTIME,LOCAL_ALTERNATIVE",
+    "visible role order: no separate WRITING_ASSISTANT selector (V2B)");
   ok("MPR.1 model-role configuration section exists");
 
   // 2 — every canonical role is visible in the catalog + has a localized label
@@ -658,15 +660,13 @@ async function main(): Promise<void> {
   const ccRu = ru as Record<string, string>;
   const ccMock = new MockCompanionClient();
 
-  // 1 — WRITING_ASSISTANT role is additive, in the settings section, not runtime-wired
+  // 1 — WRITING_ASSISTANT stays a live BACKEND role but is not a visible selector (V2B)
   const ccView = await ccMock.getSettings();
-  assert(ccView.roleCatalog.some((r) => r.role === "WRITING_ASSISTANT"), "roleCatalog has WRITING_ASSISTANT");
-  assert(stMod2.MODEL_ROLE_ORDER.includes("WRITING_ASSISTANT" as (typeof stMod2.MODEL_ROLE_ORDER)[number]), "role order includes it");
+  assert(ccView.roleCatalog.some((r) => r.role === "WRITING_ASSISTANT"), "backend roleCatalog still carries WRITING_ASSISTANT");
+  assert(!stMod2.MODEL_ROLE_ORDER.includes("WRITING_ASSISTANT" as (typeof stMod2.MODEL_ROLE_ORDER)[number]),
+    "the frontend role order no longer shows a separate WRITING_ASSISTANT selector");
   assert(ccView.runtimeWiredRoles.length === 1 && ccView.runtimeWiredRoles[0] === "DIALOGUE", "still only DIALOGUE runtime-wired");
-  for (const loc of [ru, en, es, zhCN, pt]) {
-    assert(typeof (loc as Record<string, string>)["role.WRITING_ASSISTANT"] === "string", "role.WRITING_ASSISTANT localized");
-  }
-  ok("CCA.1 WRITING_ASSISTANT role added additively, localized, not runtime-wired");
+  ok("CCA.1 WRITING_ASSISTANT remains a backend role, no separate user-facing selector");
 
   // 2 — ✨ exists in the composer and never sends automatically
   assert(composerSrc.includes("✨") && composerSrc.includes("runAssistant") && composerSrc.includes("composer-assist"),
@@ -682,43 +682,56 @@ async function main(): Promise<void> {
     "no modal suggestion UI");
   ok("CCA.3 no modal suggestion window");
 
-  // 4 — disabled with a blank draft or an unconfigured assistant
-  assert(/canAssist\s*=\s*assistantReady\s*&&\s*isSendableMessage\(draft\)/.test(composerSrc)
-    && composerSrc.includes("disabled={!canAssist}"), "✨ disabled unless a non-blank draft + configured assistant");
-  ok("CCA.4 ✨ disabled for blank draft / unconfigured role");
+  // 4 — the co-author works with an EMPTY composer; only Send needs a sendable draft
+  assert(/canAssist\s*=\s*assistantReady\s*&&\s*!assist\.running\s*&&\s*!sending/.test(composerSrc)
+    && composerSrc.includes("disabled={!canAssist}"), "✨ enabled for an empty composer (no isSendableMessage gate)");
+  assert(!/canAssist[\s\S]{0,80}isSendableMessage/.test(composerSrc), "the co-author enable rule never calls isSendableMessage");
+  assert(/type="submit"[\s\S]{0,160}disabled=\{sending \|\| !isSendableMessage\(draft\)\}/.test(composerSrc),
+    "the Send button still requires a sendable (non-blank) draft");
+  ok("CCA.4 co-author works with empty composer; Send still needs a non-blank draft");
 
-  // 5 — original draft preserved + regenerate from the ORIGINAL source
+  // 5 — two-mode state: each run snapshots the CURRENT draft; restore only for EXPAND
+  assert(draftMode("") === "COMPOSE" && draftMode("  ") === "COMPOSE" && draftMode("hi") === "EXPAND", "draftMode splits on emptiness");
   let a0 = initialAssistantState();
-  assert(a0.originalDraft === null, "fresh assistant state has no original draft");
-  a0 = beginRewrite(a0, "прив я устал");
-  assert(a0.originalDraft === "прив я устал" && a0.running === true, "beginRewrite captures the original + marks running");
-  a0 = rewriteSucceeded(a0);
-  a0 = beginRewrite(a0, "Привет, я устал.");             // user then pressed ✨ again on the suggestion
-  assert(sourceDraftFor(a0, "Привет, я устал.") === "прив я устал", "regenerate uses the ORIGINAL draft, not the suggestion");
-  assert(canRestoreOriginal(a0, "Привет, я устал.") === true, "restore affordance is offered");
+  a0 = beginRun(a0, "прив я устал");
+  assert(a0.running === true && a0.snapshot === "прив я устал" && a0.mode === "EXPAND", "beginRun snapshots the current draft (EXPAND)");
+  const firstRun = a0.runId;
+  a0 = runSucceeded(a0, firstRun);
+  assert(a0.restorable === "прив я устал", "after EXPAND the ORIGINAL is restorable");
+  a0 = beginRun(a0, "Привет, я устал.");                 // press ✨ again on the suggestion
+  assert(a0.snapshot === "Привет, я устал." && a0.runId === firstRun + 1,
+    "a repeated run uses the NOW-visible draft, not a permanently captured first source");
+  a0 = runSucceeded(a0, a0.runId);
   const undo = restoreOriginal(a0);
-  assert(undo.draft === "прив я устал" && undo.state.originalDraft === null, "undo restores the exact original draft");
-  ok("CCA.5 original draft preserved; regenerate from original; undo works");
+  assert(undo.draft === "Привет, я устал." && undo.state.restorable === null, "undo restores that run's original draft");
+  // COMPOSE never offers a misleading "restore original"
+  let ac = runSucceeded(beginRun(initialAssistantState(), ""), 1);
+  assert(ac.mode === "COMPOSE" && ac.restorable === null && canRestoreOriginal(ac, "предложенный текст") === false,
+    "a COMPOSE run offers no restore-original affordance");
+  ok("CCA.5 two-mode state: current-draft source; restore-original only for EXPAND");
 
-  // 6 — draft is kept on assistant failure
-  let a1 = rewriteFailed(beginRewrite(initialAssistantState(), "черновик"), "assistant_failed");
-  assert(a1.running === false && a1.error === "assistant_failed" && a1.originalDraft === "черновик",
-    "failure keeps the draft and records a bounded code");
-  assert(composerSrc.includes("rewriteFailed") && !/catch[\s\S]{0,120}setDraft\(""\)/.test(composerSrc),
+  // 6 — draft is kept on co-author failure
+  let a1 = runFailed(beginRun(initialAssistantState(), "черновик"), 1, "assistant_failed");
+  assert(a1.running === false && a1.error === "assistant_failed" && a1.snapshot === "черновик",
+    "failure keeps the draft snapshot and records a bounded code");
+  assert(composerSrc.includes("runFailed(") && !/catch[\s\S]{0,120}setDraft\(""\)/.test(composerSrc),
     "composer never clears the draft on failure");
-  ok("CCA.6 draft remains after assistant failure");
+  ok("CCA.6 draft remains after co-author failure");
 
-  // 7 — assistant resolves only the configured provider/model; unconfigured -> bounded
-  let unconfigured = false;
-  try { await new MockCompanionClient().rewriteDraft("привет"); } catch (e) {
-    unconfigured = (e as { code?: string }).code === "assistant_not_configured";
-  }
-  assert(unconfigured, "rewrite without a configured role fails with assistant_not_configured");
-  const cc2 = new MockCompanionClient();
-  await cc2.setRole("WRITING_ASSISTANT", "fake", "fake");
-  const sug = await cc2.rewriteDraft("прив я сегодня устал давай просто поговорим");
-  assert(sug.suggestion && sug.provider === "fake" && sug.model === "fake", "configured fake assistant returns a suggestion");
-  ok("CCA.7 assistant resolves only the configured role; no fallback");
+  // 7 — the co-author runs on the authoritative DIALOGUE model (mock), never a separate WA selection
+  const cc7 = new MockCompanionClient();
+  const emptyOut = await cc7.suggestDraft("");                     // COMPOSE, empty draft allowed
+  assert(emptyOut.suggestion.trim().length > 0 && emptyOut.mode === "COMPOSE"
+    && emptyOut.provider === "fake" && emptyOut.model === "fake", "empty draft -> COMPOSE on the DIALOGUE model");
+  await cc7.setRole("DIALOGUE", "local", "llama3");
+  const expandOut = await cc7.suggestDraft("прив я сегодня устал давай просто поговорим");
+  assert(expandOut.mode === "EXPAND" && expandOut.provider === "local" && expandOut.model === "llama3",
+    "non-empty draft -> EXPAND, following the DIALOGUE assignment");
+  await cc7.setRole("WRITING_ASSISTANT", "openai", "gpt-4o-mini");  // must NOT change execution
+  const stillDialogue = await cc7.suggestDraft("ещё черновик");
+  assert(stillDialogue.provider === "local" && stillDialogue.model === "llama3",
+    "a stored WRITING_ASSISTANT assignment is ignored for execution");
+  ok("CCA.7 co-author follows DIALOGUE; stored WRITING_ASSISTANT assignment ignored");
 
   // 8 — error codes localized in all five locales
   for (const code of ["assistant_not_configured", "assistant_failed"]) {
@@ -1260,6 +1273,120 @@ async function main(): Promise<void> {
     }
   }
   ok("V1E.K five-locale key parity preserved");
+
+  // ================================================================
+  // WRITING ASSISTANT V2B  (contextual co-author UI)
+  // ================================================================
+  const v2bComposer = read("features/Composer.tsx");
+  const v2bAssist = read("app/composerAssistant.ts");
+  const v2bApp = read("App.tsx");
+  const v2bTypes = read("client/types.ts");
+  const v2bHttp = read("client/httpCompanionClient.ts");
+  const v2bSettings = read("features/SettingsPanel.tsx");
+  const stV2b = await import("../src/app/settingsState.js");
+  const v2bMock = new MockCompanionClient();
+
+  // A/B — empty composer no longer blocks the co-author; Send still needs isSendableMessage
+  assert(/canAssist\s*=\s*assistantReady\s*&&\s*!assist\.running\s*&&\s*!sending/.test(v2bComposer)
+    && !/canAssist[\s\S]{0,80}isSendableMessage/.test(v2bComposer),
+    "V2B.A co-author enable rule drops the isSendableMessage gate");
+  assert(/type="submit"[\s\S]{0,160}!isSendableMessage\(draft\)/.test(v2bComposer),
+    "V2B.B Send button still gated by isSendableMessage");
+  ok("V2B.A/B empty composer allowed for co-author; Send still guarded");
+
+  // C/D — visible localized Compose / Expand actions, chosen by draft emptiness
+  assert(v2bComposer.includes('t("assistant.compose")') && v2bComposer.includes('t("assistant.expand")'),
+    "V2B.C composer renders localized compose + expand actions");
+  assert(/draftMode\(draft\)\s*===\s*"COMPOSE"[\s\S]{0,120}assistant\.compose[\s\S]{0,60}assistant\.expand/.test(v2bComposer)
+    && /\{assist\.running \? "…" : `✨ \$\{coAuthorLabel\}`\}/.test(v2bComposer),
+    "V2B.D the displayed action text follows draft emptiness (visible, not title-only)");
+  for (const [name, dict] of [["ru", ru], ["en", en], ["es", es], ["zh-CN", zhCN], ["pt", pt]] as const) {
+    for (const k of ["assistant.compose", "assistant.expand", "assistant.coauthor", "settings.textModelHint"]) {
+      assert(typeof (dict as Record<string, string>)[k] === "string" && (dict as Record<string, string>)[k].length > 0,
+        `${name} has ${k}`);
+    }
+  }
+  ok("V2B.C/D visible localized Compose/Expand actions driven by emptiness");
+
+  // E/F/G — suggest request: /writing-assistant/suggest, carries sessionId, NO client mode
+  assert(v2bHttp.includes('"POST", "/writing-assistant/suggest"'), "V2B.E http client posts /writing-assistant/suggest");
+  assert(v2bHttp.includes("sessionId: opts?.sessionId ?? null")
+    && v2bApp.includes("sessionId: state.selectedSessionId || null"),
+    "V2B.F the request carries the current active sessionId (from App state)");
+  assert(!/"\/writing-assistant\/suggest",\s*\{[^}]*\bmode\b/.test(v2bHttp) && !v2bApp.includes("mode:"),
+    "V2B.G the client never sends a mode field");
+  ok("V2B.E/F/G suggest endpoint + sessionId, no client-supplied mode");
+
+  // H — assistant readiness follows DIALOGUE, not WRITING_ASSISTANT
+  assert(/roleCatalog\.find\(\(r\) => r\.role === "DIALOGUE"\)/.test(v2bApp)
+    && /setAssistantReady\(dialogue\?\.readiness === "READY"\)/.test(v2bApp)
+    && !/roleCatalog[\s\S]{0,80}"WRITING_ASSISTANT"/.test(v2bApp),
+    "V2B.H App derives co-author availability from the DIALOGUE role");
+  ok("V2B.H assistant readiness follows the authoritative DIALOGUE model");
+
+  // I/J/K — Settings: no WRITING_ASSISTANT selector; DIALOGUE stays; label is 'Текстовая модель'
+  assert(!stV2b.MODEL_ROLE_ORDER.includes("WRITING_ASSISTANT" as (typeof stV2b.MODEL_ROLE_ORDER)[number]),
+    "V2B.I WRITING_ASSISTANT is absent from the visible MODEL_ROLE_ORDER");
+  assert(stV2b.MODEL_ROLE_ORDER.includes("DIALOGUE" as (typeof stV2b.MODEL_ROLE_ORDER)[number])
+    && v2bSettings.includes("MODEL_ROLE_ORDER.map((role)"), "V2B.J DIALOGUE remains in the model settings list");
+  assert((ru as Record<string, string>)["role.DIALOGUE"] === "Текстовая модель"
+    && (en as Record<string, string>)["role.DIALOGUE"] === "Text model"
+    && (es as Record<string, string>)["role.DIALOGUE"] === "Modelo de texto"
+    && (zhCN as Record<string, string>)["role.DIALOGUE"] === "文本模型"
+    && (pt as Record<string, string>)["role.DIALOGUE"] === "Modelo de texto",
+    "V2B.K visible DIALOGUE label is 'Текстовая модель' / equivalents");
+  assert(v2bSettings.includes('t("settings.textModelHint")'), "V2B.K helper copy rendered under the DIALOGUE row");
+  ok("V2B.I/J/K one visible text model; DIALOGUE relabelled");
+
+  // L — the co-author execution path only changes the draft; never onSend
+  const v2bRun = v2bComposer.slice(v2bComposer.indexOf("async function runAssistant"), v2bComposer.indexOf("function undoAssistant"));
+  assert(v2bRun.includes("assistant.suggest(source)") && v2bRun.includes("setDraft(suggestion)") && !v2bRun.includes("onSend"),
+    "V2B.L runAssistant calls suggest -> conditional setDraft, never onSend");
+  ok("V2B.L co-author response changes the draft only, never sends");
+
+  // M/N — stale-response / draft-snapshot guard; a newer edit discards the late suggestion
+  assert(v2bAssist.includes("runId") && v2bAssist.includes("snapshot")
+    && /export function canApply\([\s\S]{0,160}state\.runId === runId && currentDraft === state\.snapshot/.test(v2bAssist),
+    "V2B.M composerAssistant exposes a runId + snapshot guard");
+  assert(/if \(draftRef\.current === source\)\s*\{[\s\S]{0,120}setDraft\(suggestion\)/.test(v2bComposer)
+    && /\}\s*else\s*\{[\s\S]{0,80}runDiscarded\(s, runId\)/.test(v2bComposer),
+    "V2B.N the late suggestion is applied only if the composer is unchanged, else discarded");
+  // functional check of the guard
+  let g = beginRun(initialAssistantState(), "");
+  assert(canApply(g, g.runId, "") === true && canApply(g, g.runId, "user typed this") === false,
+    "V2B.N canApply blocks application after a newer user edit");
+  g = runDiscarded(g, g.runId);
+  assert(g.running === false, "a discarded run stops running without touching the draft");
+  ok("V2B.M/N stale-response guard: newer typing is preserved");
+
+  // O — repeated generation uses the CURRENT composer draft as the new source
+  let o = beginRun(initialAssistantState(), "первый черновик");
+  o = runSucceeded(o, o.runId);
+  const secondSource = beginRun(o, "совсем другой текст").snapshot;
+  assert(secondSource === "совсем другой текст", "V2B.O the second run's source is the now-visible draft, not the first");
+  ok("V2B.O repeated ✨ uses the current draft, not a permanently captured first source");
+
+  // P — restore-original applies to EXPAND, not to an initially-empty COMPOSE
+  const pExpand = runSucceeded(beginRun(initialAssistantState(), "черновик пользователя"), 1);
+  assert(canRestoreOriginal(pExpand, "обогащённый текст") === true, "EXPAND offers restore-original");
+  const pCompose = runSucceeded(beginRun(initialAssistantState(), ""), 1);
+  assert(canRestoreOriginal(pCompose, "сочинённое сообщение") === false, "COMPOSE offers no restore-original");
+  ok("V2B.P restore-original is EXPAND-only");
+
+  // legacy client method preserved; new typed result carries the optional mode
+  assert(typeof (v2bMock as CompanionClient).rewriteDraft === "function"
+    && typeof (v2bMock as CompanionClient).suggestDraft === "function", "V2B client surface: suggestDraft + legacy rewriteDraft");
+  assert(/interface WritingAssistantResult[\s\S]{0,200}mode\?:\s*WritingAssistantMode/.test(v2bTypes),
+    "WritingAssistantResult carries an optional backend-derived mode");
+
+  // Q — five-locale key parity still holds
+  {
+    const keyN = Object.keys(ru).length;
+    for (const [name, dict] of [["en", en], ["es", es], ["zh-CN", zhCN], ["pt", pt]] as const) {
+      assert(Object.keys(dict).length === keyN, `${name} dictionary key count matches ru (${keyN})`);
+    }
+  }
+  ok("V2B.Q five-locale key parity preserved");
 
   console.log(`\n${passed} passed, 0 failed`);
 }

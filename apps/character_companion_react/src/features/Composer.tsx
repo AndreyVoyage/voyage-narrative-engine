@@ -1,23 +1,25 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { isSendableMessage } from "../app/companionState.js";
 import {
-  beginRewrite,
+  beginRun,
   canRestoreOriginal,
+  draftMode,
   forgetIfIdle,
   initialAssistantState,
   restoreOriginal,
-  rewriteFailed,
-  rewriteSucceeded,
-  sourceDraftFor,
+  runDiscarded,
+  runFailed,
+  runSucceeded,
   type AssistantState,
 } from "../app/composerAssistant.js";
 import type { TFunction } from "../i18n/react.js";
 
 export interface ComposerAssistant {
-  /** true when a WRITING_ASSISTANT provider/model is configured for invocation */
+  /** true when the authoritative DIALOGUE text model is configured/ready */
   available: boolean;
-  /** rewrite the given source draft; rejects with a bounded error code string */
-  rewrite: (source: string) => Promise<string>;
+  /** co-author the given source draft ("" = COMPOSE, non-empty = EXPAND — the
+   *  backend derives the mode). Rejects with a bounded error code string. */
+  suggest: (source: string) => Promise<string>;
 }
 
 interface Props {
@@ -30,17 +32,21 @@ interface Props {
 }
 
 /**
- * Composer:  [ + ]  [ message ]  [ ✨ ]  [ 🎤 ]  [ Send ]
+ * Composer:  [ + ]  [ message ]  [ ✨ Сочинить / ✨ Развить ]  [ 🎤 ]  [ Send ]
  *
- * ✨ = Writing Assistant. It rewrites the draft IN PLACE inside this same input;
- * it never opens a modal and never sends. The exact original draft can be
- * restored, and pressing ✨ again rewrites the original (not the last
- * suggestion). Attachment upload + the microphone stay honestly unavailable.
+ * ✨ = contextual Co-Author. On an empty composer it COMPOSES a proposed user
+ * message; on a non-empty draft it EXPANDS it. It writes the result IN PLACE
+ * into this same input, never opens a modal and NEVER sends — only the human
+ * pressing Send can send. A late suggestion is dropped if the user typed while
+ * waiting. Attachment upload + the microphone stay honestly unavailable.
  */
 export function Composer({ sending, t, assistant, onSend, onCreateImage, onContextFrame }: Props) {
   const [draft, setDraft] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [assist, setAssist] = useState<AssistantState>(initialAssistantState());
+  // Always-current view of the composer text for the async late-response guard.
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
 
   function submit(event: { preventDefault: () => void }) {
     event.preventDefault();
@@ -56,19 +62,32 @@ export function Composer({ sending, t, assistant, onSend, onCreateImage, onConte
   }
 
   const assistantReady = Boolean(assistant?.available);
-  const canAssist = assistantReady && isSendableMessage(draft) && !assist.running && !sending;
+  // The co-author works with an EMPTY composer (COMPOSE); only Send needs a
+  // sendable draft. Single-flight: no new run while one is running.
+  const canAssist = assistantReady && !assist.running && !sending;
+  const coAuthorLabel = assist.running
+    ? t("assistant.working")
+    : draftMode(draft) === "COMPOSE"
+      ? t("assistant.compose")
+      : t("assistant.expand");
 
   async function runAssistant() {
     if (!assistant || !canAssist) return;
-    const source = sourceDraftFor(assist, draft);
-    setAssist((s) => beginRewrite(s, draft));
+    const started = beginRun(assist, draft);
+    const runId = started.runId;
+    const source = started.snapshot;
+    setAssist(started);
     try {
-      const suggestion = await assistant.rewrite(source);
-      setDraft(suggestion);                       // replace IN PLACE; still unsent
-      setAssist((s) => rewriteSucceeded(s));
+      const suggestion = await assistant.suggest(source);
+      if (draftRef.current === source) {
+        setAssist((s) => runSucceeded(s, runId));
+        setDraft(suggestion);                       // replace IN PLACE; still unsent
+      } else {
+        setAssist((s) => runDiscarded(s, runId));   // user typed while waiting — keep their text
+      }
     } catch (e) {
       const code = e && typeof e === "object" && "code" in e ? String((e as { code: unknown }).code) : "assistant_failed";
-      setAssist((s) => rewriteFailed(s, code));   // draft is left exactly as it was
+      setAssist((s) => runFailed(s, runId, code));   // draft is left exactly as it was
     }
   }
 
@@ -139,13 +158,13 @@ export function Composer({ sending, t, assistant, onSend, onCreateImage, onConte
 
       <button
         type="button"
-        className="btn composer-icon composer-assist"
+        className="btn composer-assist"
         disabled={!canAssist}
-        title={assistantReady ? t("assistant.rewrite") : t("assistant.unavailable")}
-        aria-label={t("assistant.rewrite")}
+        title={assistantReady ? coAuthorLabel : t("assistant.unavailable")}
+        aria-label={assistantReady ? `${t("assistant.coauthor")}: ${coAuthorLabel}` : t("assistant.unavailable")}
         onClick={runAssistant}
       >
-        {assist.running ? "…" : "✨"}
+        {assist.running ? "…" : `✨ ${coAuthorLabel}`}
       </button>
 
       <button

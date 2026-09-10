@@ -118,6 +118,18 @@ export class HttpCompanionClient implements CompanionClient {
     return call<CompanionTurn>("POST", "/messages", { sessionId, text });
   }
 
+  async suggestDraft(
+    draft: string,
+    opts?: { localeHint?: string | null; sessionId?: string | null },
+  ): Promise<WritingAssistantResult> {
+    // No `mode` — the backend derives COMPOSE ("") / EXPAND (non-empty).
+    return call<WritingAssistantResult>("POST", "/writing-assistant/suggest", {
+      draft,
+      localeHint: opts?.localeHint ?? null,
+      sessionId: opts?.sessionId ?? null,
+    });
+  }
+
   async rewriteDraft(draft: string, opts?: { localeHint?: string }): Promise<WritingAssistantResult> {
     return call<WritingAssistantResult>("POST", "/writing-assistant/rewrite", {
       draft,
