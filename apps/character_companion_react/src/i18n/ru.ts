@@ -111,6 +111,15 @@ export const ru = {
   "profile.avatarComingSoon": "Фото профиля — скоро",
   "profile.language": "Язык интерфейса",
 
+  // -- character public profile (cards + detail drawer) ---------------
+  "profile.details": "Подробнее",
+  "profile.close": "Закрыть",
+  "profile.dialogAria": "Профиль персонажа",
+  "profile.aboutFallback": "Подробное описание появится позже.",
+  "profile.mediaTitle": "Фото и видео",
+  "profile.mediaEmpty": "Медиа пока нет.",
+  "profile.playVideo": "Воспроизвести видео",
+
   // -- settings ----------------------------------------------------
   "settings.title": "Настройки",
   "settings.close": "Закрыть",

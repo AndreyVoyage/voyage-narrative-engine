@@ -8,6 +8,7 @@
  */
 
 import {
+  CharacterPublicProfile,
   CompanionCharacter,
   CompanionClient,
   CompanionClientError,
@@ -61,6 +62,13 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<T>
 export class HttpCompanionClient implements CompanionClient {
   async listCharacters(): Promise<CompanionCharacter[]> {
     return (await call<{ characters: CompanionCharacter[] }>("GET", "/characters")).characters ?? [];
+  }
+
+  async getCharacterProfile(characterId: string): Promise<CharacterPublicProfile> {
+    return call<CharacterPublicProfile>(
+      "GET",
+      `/characters/${encodeURIComponent(characterId)}/profile`,
+    );
   }
 
   async listSessions(characterId: string): Promise<CompanionSession[]> {

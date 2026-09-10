@@ -49,6 +49,7 @@ from services.character_lab.source_loader import build_repo_source_loader
 from services.character_runtime import RuntimeMemoryBackend
 
 from .catalog import CompanionCatalog, CompanionCharacterEntry, build_default_catalog
+from .public_profile import CharacterPublicProfile, CharacterPublicProfileStore
 from .image_jobs import (
     KIND_CONTEXT,
     KIND_CUSTOM,
@@ -227,6 +228,10 @@ class CompanionService:
         self._images = ImageJobService(
             self._data_root, image_generator or UnavailableImageGenerator()
         )
+        # Editable public presentation layer -- independent of the accepted
+        # package / runtime / local visual snapshot / memory. A future Admin
+        # Studio persists an edited profile through this same store.
+        self._profiles = CharacterPublicProfileStore(self._data_root)
         # Secure provider configuration (optional). When BOTH a settings store
         # and a credential vault are present, send_message resolves the DIALOGUE
         # provider factory from settings each turn. Otherwise the injected
@@ -251,6 +256,18 @@ class CompanionService:
         if entry is None or not entry.available:
             raise CompanionError("unknown_character", f"unknown character {character_id!r}")
         return entry
+
+    # ---- public profile (editable editorial layer; never runtime truth) ----
+    def get_public_profile(self, character_id: str) -> CharacterPublicProfile:
+        entry = self._require_character(character_id)
+        return self._profiles.load(entry.character_id, display_name=entry.display_name)
+
+    def save_public_profile(self, profile: CharacterPublicProfile) -> CharacterPublicProfile:
+        """Persist an author/admin-edited profile (future Admin Studio seam).
+        Reads/writes ONLY the public-profile store -- no accepted package,
+        runtime, snapshot, or memory write."""
+        self._require_character(profile.character_id)
+        return self._profiles.save(profile)
 
     # --------------------------------------------------------- registry io
     def _registry_path(self) -> Path:

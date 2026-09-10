@@ -17,6 +17,44 @@ export interface CompanionCharacter {
   packageId: string | null;
   packageVersion: number | null;
   sourceHash: string | null;
+  // ---- public-profile card summary (lightweight; full profile on demand) ----
+  shortDescription: string;
+  hasDetailedProfile: boolean;
+  profileIsFallback: boolean;
+}
+
+/**
+ * Curated PUBLIC editorial content for a character. This is a presentation
+ * layer a future Admin Studio edits — never Character Package / Runtime /
+ * Memory / Canon truth. It carries no CRP data, hashes, prompts, or provider
+ * config.
+ */
+export type ProfileMediaType = "image" | "video";
+
+export interface ProfileMedia {
+  mediaId: string;
+  mediaType: ProfileMediaType;
+  sourceRef: string;          // transport-safe: "characters/…" or "images/…"
+  thumbnailRef: string | null;
+  title: string | null;
+}
+
+export interface ProfileSection {
+  sectionId: string;
+  title: string;
+  body: string;
+}
+
+export interface CharacterPublicProfile {
+  schemaVersion: string;
+  characterId: string;
+  displayName: string;
+  shortDescription: string;
+  longDescription: string;
+  isFallback: boolean;
+  primaryMediaId: string | null;
+  sections: ProfileSection[];
+  media: ProfileMedia[];
 }
 
 export const SCENE_FIELDS = ["place", "time", "situation", "mood"] as const;
@@ -228,6 +266,7 @@ export class CompanionClientError extends Error {
 
 export interface CompanionClient {
   listCharacters(): Promise<CompanionCharacter[]>;
+  getCharacterProfile(characterId: string): Promise<CharacterPublicProfile>;
   listSessions(characterId: string): Promise<CompanionSession[]>;
   getSession(sessionId: string): Promise<CompanionSession>;
   createSession(characterId: string, input?: NewDialogInput): Promise<CompanionSession>;

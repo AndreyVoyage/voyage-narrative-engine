@@ -223,6 +223,10 @@ class CompanionServer:
                         and parts[4] == "sessions":
                     character_id = urllib.parse.unquote(parts[3])
                     return self._call(lambda: transport.list_sessions(character_id))
+                if method == "GET" and parts[:3] == ["api", "companion", "characters"] and len(parts) == 5 \
+                        and parts[4] == "profile":
+                    character_id = urllib.parse.unquote(parts[3])
+                    return self._call(lambda: transport.get_character_profile(character_id))
                 if method == "POST" and parts == ["api", "companion", "sessions"]:
                     return self._call(lambda: transport.create_session(body))
                 if method == "GET" and parts[:3] == ["api", "companion", "sessions"] and len(parts) == 4:

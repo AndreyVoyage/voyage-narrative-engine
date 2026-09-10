@@ -95,6 +95,15 @@ export const zhCN: Record<TranslationKey, string> = {
   "profile.avatarComingSoon": "头像 — 即将推出",
   "profile.language": "界面语言",
 
+  // -- character public profile (cards + detail drawer) ---------------
+  "profile.details": "详情",
+  "profile.close": "关闭",
+  "profile.dialogAria": "角色简介",
+  "profile.aboutFallback": "详细介绍稍后补充。",
+  "profile.mediaTitle": "照片和视频",
+  "profile.mediaEmpty": "暂无媒体内容。",
+  "profile.playVideo": "播放视频",
+
   "settings.title": "设置",
   "settings.close": "关闭",
   "settings.section.providers": "提供方",

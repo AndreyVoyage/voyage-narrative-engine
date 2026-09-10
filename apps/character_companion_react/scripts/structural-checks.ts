@@ -801,6 +801,146 @@ async function main(): Promise<void> {
     "Focus Mode V2 canvas + polished scrolling still present");
   ok("CCA.15 Focus V2 and custom scrolling preserved");
 
+  // ================================================================
+  // CHARACTER PUBLIC PROFILE V1
+  // ================================================================
+  const listSrc = read("features/CharacterList.tsx");
+  const drawerSrc = read("features/CharacterProfileDrawer.tsx");
+  const appCPP = read("App.tsx");
+  const cssCPP = read("styles.css");
+  const cppRu = ru as Record<string, string>;
+  const cppMock = new MockCompanionClient();
+
+  // 13 — sidebar is a compact card, not a name-only row
+  assert(listSrc.includes("char-card") && listSrc.includes("char-card-main") && !/className=\{[^}]*"row"/.test(listSrc),
+    "CharacterList renders a card, not the old name-only 'row' button");
+  ok("CPP.13 character sidebar renders a card (not name-only)");
+
+  // 14 — card shows avatar + name + short description
+  assert(listSrc.includes("portraitFor(c.characterId)") && listSrc.includes("char-card-avatar"), "card has an avatar via portraitFor");
+  assert(listSrc.includes("char-card-name") && listSrc.includes("{c.displayName}"), "card shows the display name");
+  assert(listSrc.includes("char-card-desc") && listSrc.includes("{c.shortDescription}"), "card shows the short description");
+  ok("CPP.14 card renders avatar + name + short description");
+
+  // 15 — short description is visually clamped to ~2 lines
+  assert(/\.char-card-desc\s*\{[^}]*-webkit-line-clamp:\s*2/.test(cssCPP) && /\.char-card-desc\s*\{[^}]*overflow:\s*hidden/.test(cssCPP),
+    "short description is line-clamped to 2 lines");
+  ok("CPP.15 short description visually bounded / clamped");
+
+  // 16 — a "Подробнее" control exists
+  assert(listSrc.includes('t("profile.details")') && listSrc.includes("onOpenProfile("), "card has a localized 'details' action");
+  assert(cppRu["profile.details"] === "Подробнее", "'Подробнее' label preserved in the RU dictionary");
+  ok("CPP.16 'Подробнее' control present");
+
+  // 17 — clicking it opens the drawer (fetches the full profile; no selection change)
+  assert(appCPP.includes("onOpenProfile={openProfile}") && /\.getCharacterProfile\(/.test(appCPP),
+    "App wires openProfile to the on-demand full-profile fetch");
+  assert(appCPP.includes("CharacterProfileDrawer") && appCPP.includes("open={profileCharId !== null}"),
+    "App renders the drawer, open state derived from profileCharId");
+  const cppProfile = await cppMock.getCharacterProfile("kira");
+  assert(cppProfile.characterId === "kira" && cppProfile.schemaVersion.startsWith("companion_public_profile/"),
+    "client.getCharacterProfile returns a public profile");
+  ok("CPP.17 clicking 'Подробнее' opens the profile drawer");
+
+  // 18 — drawer renders name + short + long copy
+  assert(drawerSrc.includes("profile.displayName") && drawerSrc.includes("profile.shortDescription") && /profile\??\.longDescription/.test(drawerSrc),
+    "drawer renders display name + short + long description");
+  assert(drawerSrc.includes("profile-name") && drawerSrc.includes("profile-short") && drawerSrc.includes("profile-long"),
+    "drawer has name / short / long regions");
+  ok("CPP.18 drawer renders name + short + long copy");
+
+  // 19 — optional ordered sections render in stable order
+  assert(drawerSrc.includes("profile.sections.map(") && drawerSrc.includes("profile-section"), "drawer maps ordered sections");
+  assert(JSON.stringify(cppProfile.sections.map((s) => s.sectionId)) === JSON.stringify(["about", "style", "interests"]),
+    "sections keep their authored order through the client");
+  ok("CPP.19 optional sections render in stable order");
+
+  // 20 + 21 — image media tile + video media tile support
+  assert(drawerSrc.includes("profile-media-image") && drawerSrc.includes("<img"), "drawer renders an image media tile");
+  assert(cppProfile.media.some((m) => m.mediaType === "image"), "mock profile has an image media item");
+  ok("CPP.20 image media tile renders");
+  assert(drawerSrc.includes("profile-media-video") && drawerSrc.includes("<video"), "drawer renders a video media tile");
+  assert(cppProfile.media.some((m) => m.mediaType === "video"), "mock profile has a video media item");
+  ok("CPP.21 video media tile path is supported");
+
+  // 22 — backdrop dim + blur while the drawer is open
+  assert(drawerSrc.includes("profile-backdrop") && drawerSrc.includes('if (!open) return null'), "backdrop renders only while open");
+  assert(/\.profile-backdrop\s*\{[^}]*backdrop-filter:\s*blur\(/.test(cssCPP) && /\.profile-backdrop\s*\{[^}]*background:\s*rgba\(/.test(cssCPP),
+    "backdrop is a translucent dark, blurred overlay");
+  ok("CPP.22 backdrop dim + blur state appears while open");
+
+  // 23 — close button
+  assert(drawerSrc.includes("profile-close") && drawerSrc.includes('t("profile.close")') && drawerSrc.includes("onClick={onClose}"),
+    "drawer has an accessible close button");
+  ok("CPP.23 close button closes the drawer");
+
+  // 24 — Escape closes
+  assert(/e\.key === "Escape"/.test(drawerSrc) && /addEventListener\("keydown"/.test(drawerSrc) && drawerSrc.includes("onClose()"),
+    "Escape key closes the drawer");
+  ok("CPP.24 Escape closes the drawer");
+
+  // 25 — backdrop click closes; drawer body click does not
+  assert(/className="profile-backdrop" onClick={onClose}/.test(drawerSrc)
+    && /onClick=\{\(e\) => e\.stopPropagation\(\)\}/.test(drawerSrc),
+    "click on the backdrop closes; click inside the drawer does not");
+  ok("CPP.25 backdrop click closes the drawer");
+
+  // 26 — opening / closing the profile never touches selection / session / messages
+  const openBody = appCPP.slice(appCPP.indexOf("function openProfile"), appCPP.indexOf("function closeProfile"));
+  const closeStart = appCPP.indexOf("function closeProfile");
+  const closeBody = appCPP.slice(closeStart, appCPP.indexOf("\n  }", closeStart) + 1);
+  for (const banned of ["dispatch(", "loadSessions(", "loadMessages(", "selectCharacter(", "selectSession("]) {
+    assert(!openBody.includes(banned) && !closeBody.includes(banned), `profile open/close is free of '${banned}'`);
+  }
+  assert(drawerSrc.includes('role="dialog"') && drawerSrc.includes('aria-modal="true"'), "drawer uses dialog semantics");
+  ok("CPP.26 selected chat / session state is untouched by the drawer");
+
+  // 27 — no ImageJob / provider action from opening the profile
+  for (const banned of ["createImageJob", "createImage", "sendMessage(", "createSession(", "setSceneCover("]) {
+    assert(!openBody.includes(banned), `profile open is free of '${banned}'`);
+  }
+  assert(!drawerSrc.includes("createImageJob") && !drawerSrc.includes("sendMessage("), "drawer triggers no chat / job action");
+  ok("CPP.27 opening the profile triggers no ImageJob / provider action");
+
+  // 28 — empty sections / media render cleanly
+  assert(drawerSrc.includes("profile.sections.length > 0") && drawerSrc.includes("profile.media.length === 0")
+    && drawerSrc.includes('t("profile.mediaEmpty")'), "drawer guards empty sections / media with a clean empty state");
+  const cppFallback = await new MockCompanionClient([
+    { characterId: "future-x", displayName: "Future X", packageId: null, packageVersion: null, sourceHash: null,
+      shortDescription: "", hasDetailedProfile: false, profileIsFallback: true },
+  ]).getCharacterProfile("future-x");
+  assert(cppFallback.sections.length === 0 && cppFallback.media.length === 0 && cppFallback.isFallback === true,
+    "a character with no authored profile yields an empty, fallback-flagged profile");
+  ok("CPP.28 empty sections / media do not break the drawer");
+
+  // 29 — the list shape works for N characters; nothing hardcodes 'only KIRA'
+  assert(listSrc.includes("characters.map(") && appCPP.includes("characters={state.characters}"), "the card list maps N characters");
+  assert(!/["']kira["']/i.test(drawerSrc), "the drawer component hardcodes no character id");
+  const twoChars = new MockCompanionClient([
+    { characterId: "kira", displayName: "Кира", packageId: "p", packageVersion: 0, sourceHash: "h",
+      shortDescription: "s1", hasDetailedProfile: true, profileIsFallback: false },
+    { characterId: "mara", displayName: "Мара", packageId: "p2", packageVersion: 0, sourceHash: "h2",
+      shortDescription: "s2", hasDetailedProfile: false, profileIsFallback: true },
+  ]);
+  const listed2 = await twoChars.listCharacters();
+  assert(listed2.length === 2 && listed2.every((c) => typeof c.shortDescription === "string"), "N-character card summaries carry short copy");
+  ok("CPP.29 N-character list shape is supported");
+
+  // 30 — every new label exists in all five locales; no internal data in the contract
+  for (const [name, dict] of [["ru", ru], ["en", en], ["es", es], ["zh-CN", zhCN], ["pt", pt]] as const) {
+    for (const k of ["profile.details", "profile.close", "profile.dialogAria", "profile.aboutFallback",
+                     "profile.mediaTitle", "profile.mediaEmpty", "profile.playVideo"]) {
+      const v = (dict as Record<string, string>)[k];
+      assert(typeof v === "string" && v.length > 0, `${name} has ${k}`);
+    }
+  }
+  const contractBlob = JSON.stringify(cppProfile).toLowerCase();
+  for (const banned of ["claim", "evidence", "reconstruction", "psychology", "relationship", "coefficient",
+                        "packagehash", "snapshothash", "credential", "systemprompt", "appdata", "c:\\"]) {
+    assert(!contractBlob.includes(banned), `public profile contract free of '${banned}'`);
+  }
+  ok("CPP.30 new labels localized in all five locales; contract carries no internal data");
+
   console.log(`\n${passed} passed, 0 failed`);
 }
 

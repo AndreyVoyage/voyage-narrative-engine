@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { CharacterList } from "./features/CharacterList.js";
+import { CharacterProfileDrawer } from "./features/CharacterProfileDrawer.js";
 import { ChatList } from "./features/ChatList.js";
 import { Conversation } from "./features/Conversation.js";
 import { NewDialog } from "./features/NewDialog.js";
@@ -8,7 +9,13 @@ import { FocusMode } from "./features/FocusMode.js";
 import { SettingsPanel } from "./features/SettingsPanel.js";
 import { HttpCompanionClient } from "./client/httpCompanionClient.js";
 import { MockCompanionClient } from "./mocks/mockCompanionClient.js";
-import { CompanionClient, CompanionClientError, ImageJobKind, SceneField } from "./client/types.js";
+import {
+  CharacterPublicProfile,
+  CompanionClient,
+  CompanionClientError,
+  ImageJobKind,
+  SceneField,
+} from "./client/types.js";
 import {
   anyImageJobActive,
   companionReducer,
@@ -37,6 +44,11 @@ export function App() {
   const [state, dispatch] = useReducer(companionReducer, appearance.focusModeLayout, initialCompanionState);
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  // Public-profile drawer — presentation only. Opening it never changes the
+  // selected character, the session, chat messages, memory, or any image job.
+  const [profileCharId, setProfileCharId] = useState<string | null>(null);
+  const [profile, setProfile] = useState<CharacterPublicProfile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
   const [release, setRelease] = useState<import("./client/types.js").ReleaseInfo | null>(null);
   const [userProfile, setUserProfile] = useState<LocalUserProfile>(loadUserProfile);
   const [assistantReady, setAssistantReady] = useState(false);
@@ -122,6 +134,21 @@ export function App() {
     setShowNewDialog(false);
     dispatch({ type: "selectSession", sessionId });
     loadMessages(sessionId);
+  }
+
+  // ---- public profile drawer (no selection / session / memory side effects) --
+  function openProfile(characterId: string) {
+    setProfileCharId(characterId);
+    setProfile(null);
+    setProfileLoading(true);
+    client
+      .getCharacterProfile(characterId)
+      .then((p) => setProfile(p))
+      .catch(() => setProfile(null))
+      .finally(() => setProfileLoading(false));
+  }
+  function closeProfile() {
+    setProfileCharId(null);
   }
 
   function startDialog(input: ReturnType<typeof draftToInput>) {
@@ -273,6 +300,7 @@ export function App() {
           characters={state.characters}
           selectedCharacterId={state.selectedCharacterId}
           onSelect={selectCharacter}
+          onOpenProfile={openProfile}
         />
         <ChatList
           sessions={state.sessions}
@@ -325,6 +353,15 @@ export function App() {
           onContextFrame={() => createImageJob("context")}
         />
       </main>
+
+      <CharacterProfileDrawer
+        open={profileCharId !== null}
+        characterId={profileCharId}
+        profile={profile}
+        loading={profileLoading}
+        imageUrl={imageUrl}
+        onClose={closeProfile}
+      />
     </div>
   );
 }

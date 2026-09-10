@@ -7,6 +7,7 @@
  */
 
 import {
+  CharacterPublicProfile,
   CompanionCharacter,
   CompanionClient,
   CompanionClientError,
@@ -38,7 +39,63 @@ const KIRA: CompanionCharacter = {
   packageId: "kira-mock-package",
   packageVersion: 0,
   sourceHash: "mock-source-hash",
+  shortDescription: "Тёплая, вдумчивая собеседница для неспешных разговоров.",
+  hasDetailedProfile: true,
+  profileIsFallback: false,
 };
+
+/**
+ * Deterministic mock public profile — curated editorial content only (no CRP /
+ * runtime / memory data). Exercises ordered sections + image and video media.
+ */
+const MOCK_PROFILES: Record<string, CharacterPublicProfile> = {
+  kira: {
+    schemaVersion: "companion_public_profile/0.1",
+    characterId: "kira",
+    displayName: "Кира",
+    shortDescription: "Тёплая, вдумчивая собеседница для неспешных разговоров.",
+    longDescription:
+      "Кира ценит спокойный ритм разговора и внимательные вопросы.\n\n" +
+      "Ей интересны детали дня собеседника, музыка и долгие вечерние прогулки.",
+    isFallback: false,
+    primaryMediaId: "portrait",
+    sections: [
+      { sectionId: "about", title: "О персонаже", body: "Спокойная, наблюдательная, любит паузы в разговоре." },
+      { sectionId: "style", title: "Стиль общения", body: "Мягкий тон, короткие реплики, без давления." },
+      { sectionId: "interests", title: "Интересы", body: "Музыка, вечерний город, чай." },
+    ],
+    media: [
+      {
+        mediaId: "portrait",
+        mediaType: "image",
+        sourceRef: "characters/kira/KIRA_release_portrait_v1_APPROVED.png",
+        thumbnailRef: null,
+        title: "Портрет",
+      },
+      {
+        mediaId: "intro",
+        mediaType: "video",
+        sourceRef: "characters/kira/intro.webm",
+        thumbnailRef: "characters/kira/KIRA_release_portrait_v1_APPROVED.png",
+        title: "Знакомство",
+      },
+    ],
+  },
+};
+
+function fallbackProfile(c: CompanionCharacter): CharacterPublicProfile {
+  return {
+    schemaVersion: "companion_public_profile/0.1",
+    characterId: c.characterId,
+    displayName: c.displayName,
+    shortDescription: c.shortDescription,
+    longDescription: "",
+    isFallback: true,
+    primaryMediaId: null,
+    sections: [],
+    media: [],
+  };
+}
 
 const POOLS: Record<SceneField, string[]> = {
   place: ["Небольшая кухня", "Столик в кафе", "Крыша дома вечером"],
@@ -164,6 +221,11 @@ export class MockCompanionClient implements CompanionClient {
 
   async listCharacters(): Promise<CompanionCharacter[]> {
     return [...this.characters];
+  }
+
+  async getCharacterProfile(characterId: string): Promise<CharacterPublicProfile> {
+    const c = this.requireCharacter(characterId);
+    return MOCK_PROFILES[characterId] ?? fallbackProfile(c);
   }
 
   private requireCharacter(id: string): CompanionCharacter {

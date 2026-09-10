@@ -95,6 +95,15 @@ export const es: Record<TranslationKey, string> = {
   "profile.avatarComingSoon": "Foto de perfil — próximamente",
   "profile.language": "Idioma de la interfaz",
 
+  // -- character public profile (cards + detail drawer) ---------------
+  "profile.details": "Más información",
+  "profile.close": "Cerrar",
+  "profile.dialogAria": "Perfil del personaje",
+  "profile.aboutFallback": "La descripción detallada se añadirá más adelante.",
+  "profile.mediaTitle": "Fotos y vídeo",
+  "profile.mediaEmpty": "Aún no hay contenido multimedia.",
+  "profile.playVideo": "Reproducir vídeo",
+
   "settings.title": "Ajustes",
   "settings.close": "Cerrar",
   "settings.section.providers": "Proveedores",

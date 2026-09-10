@@ -75,13 +75,48 @@ def _require_str(payload: dict, field: str) -> str:
     return value
 
 
-def _character_to_json(entry) -> dict:
-    return {
+def _character_to_json(entry, profile=None) -> dict:
+    out = {
         "characterId": entry.character_id,
         "displayName": entry.display_name,
         "packageId": entry.package_id,
         "packageVersion": entry.package_version,
         "sourceHash": entry.source_hash,
+    }
+    if profile is not None:
+        # lightweight card data only -- the full profile is fetched on demand
+        out["shortDescription"] = profile.short_description
+        out["hasDetailedProfile"] = profile.has_detailed_profile
+        out["profileIsFallback"] = profile.is_fallback
+    return out
+
+
+def _profile_to_json(p) -> dict:
+    """Public, curated editorial content only. Never carries CRP data, claim
+    ids, prompts, hashes, provider config, numeric runtime state, memory, or
+    filesystem paths -- the model has no such fields."""
+    return {
+        "schemaVersion": p.schema_version,
+        "characterId": p.character_id,
+        "displayName": p.display_name,
+        "shortDescription": p.short_description,
+        "longDescription": p.long_description,
+        "isFallback": p.is_fallback,
+        "primaryMediaId": p.primary_media_id,
+        "sections": [
+            {"sectionId": s.section_id, "title": s.title, "body": s.body}
+            for s in p.visible_sections()
+        ],
+        "media": [
+            {
+                "mediaId": m.media_id,
+                "mediaType": m.media_type,
+                "sourceRef": m.source_ref,
+                "thumbnailRef": m.thumbnail_ref,
+                "title": m.title,
+            }
+            for m in p.visible_media()
+        ],
     }
 
 
@@ -151,9 +186,19 @@ class CompanionTransport:
 
     # ---------------------------------------------------------- catalog
     def list_characters(self) -> dict:
-        return _run(lambda: {
-            "characters": [_character_to_json(c) for c in self._service.list_characters()]
-        })
+        def op() -> dict:
+            out = []
+            for c in self._service.list_characters():
+                try:
+                    profile = self._service.get_public_profile(c.character_id)
+                except CompanionError:
+                    profile = None
+                out.append(_character_to_json(c, profile))
+            return {"characters": out}
+        return _run(op)
+
+    def get_character_profile(self, character_id: str) -> dict:
+        return _run(lambda: _profile_to_json(self._service.get_public_profile(character_id)))
 
     # ---------------------------------------------------------- sessions
     def list_sessions(self, character_id: str) -> dict:
