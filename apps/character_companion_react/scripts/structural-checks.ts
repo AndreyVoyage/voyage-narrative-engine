@@ -1173,6 +1173,94 @@ async function main(): Promise<void> {
   }
   ok("V1D.9 dialogue-context labels localized in five locales (key parity)");
 
+  // ================================================================
+  // COMPANION CONTEXT UI V1E  (local technical settings -> collapsed advanced)
+  // ================================================================
+  const v1eSettings = read("features/SettingsPanel.tsx");
+  const v1eHttp = read("client/httpCompanionClient.ts");
+
+  // A -- local advanced disclosure state, initialized closed
+  assert(/const \[localAdvancedOpen, setLocalAdvancedOpen\] = useState\(false\)/.test(v1eSettings),
+    "SettingsPanel declares localAdvancedOpen state initialized to false (collapsed)");
+  ok("V1E.A local advanced disclosure state starts collapsed");
+
+  // B -- "Контекст диалога" stays rendered before the local technical section
+  const iDlgSection = v1eSettings.indexOf('t("settings.section.dialogueContext")');
+  const iLocalSection = v1eSettings.indexOf('t("settings.section.local")');
+  const iLocalAdvanced = v1eSettings.indexOf('t("settings.section.localAdvanced")');
+  assert(iDlgSection > -1 && iLocalSection > -1 && iDlgSection < iLocalSection,
+    "dialogue-context section still precedes the Local model section");
+  assert(iLocalAdvanced > iLocalSection, "the advanced disclosure sits under the Local model heading");
+  ok("V1E.B dialogue-context section remains top-level, before local technical settings");
+
+  // C -- dialogue-context control is untouched (name, client method, endpoint)
+  assert(v1eSettings.includes('name="dialogue_context_budget"')
+    && v1eSettings.includes("client.setDialogueContextBudget(")
+    && v1eSettings.includes("key={view.dialogueContextBudget.estTokens}"),
+    "dialogue-context numeric field keeps its V1D name / client call / keyed remount");
+  assert(v1eHttp.includes('"POST", "/settings/dialogue-context", { budgetEstTokens: value }'),
+    "dialogue-context endpoint semantics unchanged (/settings/dialogue-context, budgetEstTokens)");
+  ok("V1E.C dialogue-context UI + endpoint wiring unchanged");
+
+  // D -- Base URL + num_ctx now live inside the conditional advanced block
+  const iAdvGate = v1eSettings.indexOf("{localAdvancedOpen && (");
+  const iBaseUrl = v1eSettings.indexOf('t("settings.localBaseUrl")');
+  const iNumCtx = v1eSettings.indexOf('name="num_ctx"');
+  const iNumCtxHint = v1eSettings.indexOf('t("settings.localNumCtxHint")');
+  assert(iAdvGate > -1 && iAdvGate > iLocalAdvanced,
+    "the advanced content is gated after the disclosure control");
+  assert(iBaseUrl > iAdvGate && iNumCtx > iAdvGate && iNumCtxHint > iAdvGate,
+    "Base URL, num_ctx and the local helper are all inside the localAdvancedOpen block");
+  ok("V1E.D Base URL + num_ctx + helper are behind the collapsed disclosure");
+
+  // E -- disclosure uses the codebase's aria-expanded idiom, no form side effect
+  const discBlock = v1eSettings.slice(iLocalSection, iAdvGate);
+  assert(/<button[\s\S]*?type="button"[\s\S]*?aria-expanded=\{localAdvancedOpen\}[\s\S]*?setLocalAdvancedOpen\(/.test(discBlock),
+    "disclosure is a type=button with aria-expanded={localAdvancedOpen} toggling the state");
+  ok("V1E.E disclosure uses aria-expanded, no form submit");
+
+  // F -- local settings wiring preserved (still /settings/local via setLocalSettings)
+  assert(/client\.setLocalSettings\(\{ baseUrl:/.test(v1eSettings)
+    && /client\.setLocalSettings\(\{ numCtx: n \}\)/.test(v1eSettings),
+    "Base URL and num_ctx still call client.setLocalSettings (POST /settings/local)");
+  assert(v1eSettings.includes("localContextWarning(view)"),
+    "local num_ctx warning semantics preserved");
+  ok("V1E.F local Base URL / num_ctx setter wiring unchanged");
+
+  // G -- dialogue budget and num_ctx stay separate controls, no cross-field sync
+  assert(iDlgSection < iLocalSection && iLocalSection < iNumCtx,
+    "dialogue_context_budget and num_ctx are in separate sections in source order");
+  const localOnlyBlock = v1eSettings.slice(iAdvGate);
+  assert(!localOnlyBlock.includes("setDialogueContextBudget")
+    && !localOnlyBlock.includes("dialogueContextBudget"),
+    "the local advanced block never references the dialogue context budget");
+  ok("V1E.G dialogue budget and local num_ctx remain independent, no sync");
+
+  // H/I/J -- new + reworded i18n keys across all five locales
+  const V1E_KEYS = ["settings.section.localAdvanced", "settings.localNumCtxHint", "settings.localNumCtx"];
+  for (const [name, dict] of [["ru", ru], ["en", en], ["es", es], ["zh-CN", zhCN], ["pt", pt]] as const) {
+    const L = dict as Record<string, string>;
+    for (const k of V1E_KEYS) {
+      assert(typeof L[k] === "string" && L[k].length > 0, `${name} has ${k}`);
+    }
+    assert(/num_ctx/i.test(L["settings.localNumCtx"]), `${name} localNumCtx still names num_ctx`);
+  }
+  assert(/локальн/i.test((ru as Record<string, string>)["settings.localNumCtx"])
+    && (ru as Record<string, string>)["settings.localNumCtx"] !== "Размер контекста (num_ctx)",
+    "RU localNumCtx reworded to the local-model meaning");
+  assert(/ollama/i.test((ru as Record<string, string>)["settings.localNumCtxHint"]),
+    "RU localNumCtxHint scopes the setting to the local (Ollama) model");
+  ok("V1E.H/I/J local-advanced i18n keys present + reworded in five locales");
+
+  // K -- locale key-set parity still holds after the additions
+  {
+    const keyN = Object.keys(ru).length;
+    for (const [name, dict] of [["en", en], ["es", es], ["zh-CN", zhCN], ["pt", pt]] as const) {
+      assert(Object.keys(dict).length === keyN, `${name} dictionary key count matches ru (${keyN})`);
+    }
+  }
+  ok("V1E.K five-locale key parity preserved");
+
   console.log(`\n${passed} passed, 0 failed`);
 }
 

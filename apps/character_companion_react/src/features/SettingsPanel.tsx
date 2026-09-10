@@ -36,6 +36,11 @@ export function SettingsPanel({ client, profile, onProfileChange, onClose }: Pro
   const [testResults, setTestResults] = useState<Record<string, ProviderTestResult>>({});
   const [nameDraft, setNameDraft] = useState(profile.displayName);
   const [budgetError, setBudgetError] = useState<string | null>(null);
+  // Local-model technical settings (Base URL, num_ctx) start hidden behind a
+  // collapsed disclosure so they never look like a second "context" control next
+  // to the ordinary "Контекст диалога" budget. Not persisted; every mount starts
+  // collapsed.
+  const [localAdvancedOpen, setLocalAdvancedOpen] = useState(false);
 
   function load() {
     client.getSettings().then(setView).catch((e) => setError(String(e?.message ?? e)));
@@ -284,34 +289,48 @@ export function SettingsPanel({ client, profile, onProfileChange, onClose }: Pro
       </label>
       {budgetError && <p className="settings-warn" role="alert">{budgetError}</p>}
 
-      {/* Local model */}
+      {/* Local model -- technical Base URL + num_ctx live behind a collapsed
+          advanced disclosure so they don't compete with "Контекст диалога". */}
       <h3 className="settings-section">{t("settings.section.local")}</h3>
-      <label className="field">
-        <span>{t("settings.localBaseUrl")}</span>
-        <input
-          defaultValue={view.local.baseUrl}
-          onBlur={(e) => guard(client.setLocalSettings({ baseUrl: e.target.value })).then(setView)}
-        />
-      </label>
-      <label className="field">
-        <span>{t("settings.localNumCtx")}</span>
-        <input
-          type="number"
-          name="num_ctx"
-          min={view.local.numCtxMin}
-          max={view.local.numCtxMax}
-          defaultValue={view.local.numCtx ?? ""}
-          onBlur={(e) => {
-            const raw = e.target.value.trim();
-            const n = raw === "" ? null : Number(raw);
-            guard(client.setLocalSettings({ numCtx: n })).then(setView);
-          }}
-        />
-      </label>
-      {localContextWarning(view) && (
-        <p className="settings-warn" role="alert">
-          {t("settings.contextWarn", { hint: view.local.kiraSafeHint })}
-        </p>
+      <button
+        type="button"
+        className="btn btn-sm"
+        aria-expanded={localAdvancedOpen}
+        onClick={() => setLocalAdvancedOpen((v) => !v)}
+      >
+        {localAdvancedOpen ? "▾" : "▸"} {t("settings.section.localAdvanced")}
+      </button>
+      {localAdvancedOpen && (
+        <>
+          <label className="field">
+            <span>{t("settings.localBaseUrl")}</span>
+            <input
+              defaultValue={view.local.baseUrl}
+              onBlur={(e) => guard(client.setLocalSettings({ baseUrl: e.target.value })).then(setView)}
+            />
+          </label>
+          <label className="field">
+            <span>{t("settings.localNumCtx")}</span>
+            <input
+              type="number"
+              name="num_ctx"
+              min={view.local.numCtxMin}
+              max={view.local.numCtxMax}
+              defaultValue={view.local.numCtx ?? ""}
+              onBlur={(e) => {
+                const raw = e.target.value.trim();
+                const n = raw === "" ? null : Number(raw);
+                guard(client.setLocalSettings({ numCtx: n })).then(setView);
+              }}
+            />
+          </label>
+          <p className="settings-hint">{t("settings.localNumCtxHint")}</p>
+          {localContextWarning(view) && (
+            <p className="settings-warn" role="alert">
+              {t("settings.contextWarn", { hint: view.local.kiraSafeHint })}
+            </p>
+          )}
+        </>
       )}
 
       {/* Security status */}
