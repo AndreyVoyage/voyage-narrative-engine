@@ -297,6 +297,8 @@ class CompanionServer:
                     return self._call(lambda: transport.set_session_visibility(body))
                 if method == "POST" and parts == ["api", "companion", "messages", "visibility"]:
                     return self._call(lambda: transport.set_message_visibility(body))
+                if method == "POST" and parts == ["api", "companion", "writing-assistant", "suggest"]:
+                    return self._call(lambda: transport.writing_assistant_suggest(body))
                 if method == "POST" and parts == ["api", "companion", "writing-assistant", "rewrite"]:
                     return self._call(lambda: transport.writing_assistant_rewrite(body))
                 if method == "POST" and parts == ["api", "companion", "sessions", "cover"]:

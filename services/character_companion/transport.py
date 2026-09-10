@@ -44,6 +44,7 @@ _STATUS_BY_CODE = {
     "unsupported_model_role": 400,
     "unknown_message": 404,
     "invalid_draft": 400,
+    "context_budget_exceeded": 400,
     "assistant_not_configured": 409,
     "assistant_failed": 502,
     "provider_failed": 502,
@@ -262,18 +263,40 @@ class CompanionTransport:
             raise CompanionTransportError(400, "invalid_request", "'hidden' must be a boolean")
         return _run(lambda: _session_to_json(self._service.set_message_visibility(session_id, message_id, hidden)))
 
-    def writing_assistant_rewrite(self, payload: dict) -> dict:
+    @staticmethod
+    def _coauthor_common(payload: dict, *, allow_empty_draft: bool):
         if not isinstance(payload, dict):
             raise CompanionTransportError(400, "invalid_request", "request body must be a JSON object")
         draft = payload.get("draft")
-        if not isinstance(draft, str) or not draft.strip():
+        if not isinstance(draft, str):
+            raise CompanionTransportError(400, "invalid_draft", "'draft' must be a string")
+        if not allow_empty_draft and not draft.strip():
             raise CompanionTransportError(400, "invalid_draft", "'draft' must be a non-empty string")
+        if len(draft) > 4000:
+            raise CompanionTransportError(400, "invalid_draft", "'draft' is too long")
         locale_hint = payload.get("localeHint")
         if locale_hint is not None and not isinstance(locale_hint, str):
             raise CompanionTransportError(400, "invalid_request", "'localeHint' must be a string or null")
-        # NOTE: no conversation history, no Character Package, no KIRA memory is
-        # sent -- the assistant works only from this draft.
-        return _run(lambda: self._service.writing_assistant_rewrite(draft, locale_hint=locale_hint))
+        session_id = payload.get("sessionId")
+        if session_id is not None and not isinstance(session_id, str):
+            raise CompanionTransportError(400, "invalid_request", "'sessionId' must be a string or null")
+        return draft, locale_hint, (session_id or None)
+
+    def writing_assistant_suggest(self, payload: dict) -> dict:
+        """Generic V2 co-author endpoint. ``draft`` MAY be empty (COMPOSE);
+        a non-empty draft is EXPAND. The mode is derived by the service, never
+        supplied by the client. An optional ``sessionId`` unlocks the read-only
+        user-safe context snapshot."""
+        draft, locale_hint, session_id = self._coauthor_common(payload, allow_empty_draft=True)
+        return _run(lambda: self._service.writing_assistant_suggest(
+            draft, session_id=session_id, locale_hint=locale_hint))
+
+    def writing_assistant_rewrite(self, payload: dict) -> dict:
+        """Legacy endpoint. Still rejects an empty draft; a non-empty draft is
+        delegated to the shared co-author core (EXPAND). ``sessionId`` optional."""
+        draft, locale_hint, session_id = self._coauthor_common(payload, allow_empty_draft=False)
+        return _run(lambda: self._service.writing_assistant_rewrite(
+            draft, session_id=session_id, locale_hint=locale_hint))
 
     # ---------------------------------------------------------- chat
     def get_messages(self, session_id: str) -> dict:

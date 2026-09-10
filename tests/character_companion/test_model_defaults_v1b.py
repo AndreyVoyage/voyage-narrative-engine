@@ -151,14 +151,19 @@ def test_selected_model_reaches_payload_and_only_final_content_is_used(tmp_path,
         return {"choices": [{"message": {"content": "Финальный ответ.", "reasoning_content": REASONING}}]}
 
     service = _service(tmp_path, capture)
-    service.set_role(role, "deepseek", model)
     sid = service.create_session("kira").session_id
     if role == "DIALOGUE":
+        service.set_role("DIALOGUE", "deepseek", model)
         assert service.send_message(sid, "Привет.").response == "Финальный ответ."
         assert service.get_messages(sid)[-1].text == "Финальный ответ."
     else:
+        # V2A: the co-author executes on the DIALOGUE assignment; a separately
+        # stored WRITING_ASSISTANT assignment is IGNORED for execution.
+        service.set_role("DIALOGUE", "deepseek", model)
+        service.set_role("WRITING_ASSISTANT", "deepseek", FLASH if model == PRO else PRO)
         out = service.writing_assistant_rewrite("черновик")
-        assert out == {"suggestion": "Финальный ответ.", "provider": "deepseek", "model": model}
+        assert out == {"suggestion": "Финальный ответ.", "provider": "deepseek",
+                       "model": model, "mode": "EXPAND"}
         assert service.get_messages(sid) == ()
     assert len(calls) == 1
     url, payload = calls[0]
@@ -183,17 +188,23 @@ def test_provider_failure_never_retries_or_falls_back(tmp_path, role):
         raise CloudProviderError("provider_failed", "fixture failure")
 
     service = _service(tmp_path, fail)
-    service.set_role(role, "deepseek", PRO)
     sid = service.create_session("kira").session_id
-    with pytest.raises(CompanionError) as exc:
-        if role == "DIALOGUE":
+    if role == "DIALOGUE":
+        service.set_role("DIALOGUE", "deepseek", PRO)
+        with pytest.raises(CompanionError) as exc:
             service.send_message(sid, "Привет.")
-        else:
+        assert SettingsStore(tmp_path).load().roles["DIALOGUE"].model_id == PRO
+    else:
+        # V2A: co-author failure follows the DIALOGUE assignment; the stored
+        # WRITING_ASSISTANT assignment neither rescues nor redirects it.
+        service.set_role("DIALOGUE", "deepseek", PRO)
+        service.set_role("WRITING_ASSISTANT", "deepseek", FLASH)
+        with pytest.raises(CompanionError) as exc:
             service.writing_assistant_rewrite("черновик")
+        assert SettingsStore(tmp_path).load().roles["WRITING_ASSISTANT"].model_id == FLASH  # untouched
     assert exc.value.code in ("provider_failed", "assistant_failed")
-    assert calls == [PRO]
+    assert calls == [PRO]  # exactly one attempt, on the DIALOGUE model, never FLASH
     assert service.get_messages(sid) == ()
-    assert SettingsStore(tmp_path).load().roles[role].model_id == PRO
 
 
 @pytest.mark.parametrize("content", [None, ""])

@@ -86,19 +86,23 @@ def test_rewrite_rejects_empty_draft(tmp_path):
     assert e.value.code == "invalid_draft"
 
 
-def test_rewrite_rejects_unconfigured_assistant(tmp_path):
-    store = SettingsStore(tmp_path)                                  # no WRITING_ASSISTANT role
-    with pytest.raises(WritingAssistantError) as e:
-        rewrite_draft(DRAFT, settings=store.load(), vault=InMemoryCredentialVault(),
-                      fake_factory=make_fake_factory("x"))
-    assert e.value.code == "assistant_not_configured"
-    assert "Помощник написания" in e.value.message
+def test_coauthor_needs_no_separate_writing_assistant_config(tmp_path):
+    """V2A: the co-author inherits the DIALOGUE assignment. With no separate
+    WRITING_ASSISTANT role and the default fake DIALOGUE model it just works --
+    there is no 'assistant_not_configured' gate any more."""
+    store = SettingsStore(tmp_path)                                  # no roles at all
+    assert ROLE_WRITING_ASSISTANT not in store.load().roles
+    out = rewrite_draft(DRAFT, settings=store.load(), vault=InMemoryCredentialVault(),
+                        fake_factory=make_fake_factory("ok"))
+    assert out["suggestion"] == "ok" and out["provider"] == "fake" and out["model"] == "fake"
 
 
-def test_resolver_has_no_fallback_when_cloud_key_missing(tmp_path):
+def test_coauthor_has_no_fallback_and_ignores_writing_assistant_assignment(tmp_path):
+    """DIALOGUE -> openai without a key fails closed; a separately stored
+    WRITING_ASSISTANT assignment must NOT rescue or redirect it."""
     store = SettingsStore(tmp_path)
-    store.set_role(ROLE_DIALOGUE, "local", "llama3")                 # a working dialogue model exists
-    store.set_role(ROLE_WRITING_ASSISTANT, "openai", "gpt-4o-mini")  # but assistant -> openai, no key
+    store.set_role(ROLE_DIALOGUE, "openai", "gpt-4o-mini")           # co-author source, no key
+    store.set_role(ROLE_WRITING_ASSISTANT, "local", "llama3")        # must be ignored for execution
     with pytest.raises(WritingAssistantError) as e:
         rewrite_draft(DRAFT, settings=store.load(), vault=InMemoryCredentialVault(),
                       fake_factory=make_fake_factory("SHOULD-NOT-APPEAR"))
@@ -107,7 +111,7 @@ def test_resolver_has_no_fallback_when_cloud_key_missing(tmp_path):
 
 def test_fake_assistant_returns_suggestion(tmp_path):
     store = SettingsStore(tmp_path)
-    store.set_role(ROLE_WRITING_ASSISTANT, "fake", "fake")
+    store.set_role(ROLE_DIALOGUE, "fake", "fake")
     out = rewrite_draft(DRAFT, settings=store.load(), vault=InMemoryCredentialVault(),
                         fake_factory=make_fake_factory("Привет. Я сегодня устал — давай просто поговорим."))
     assert out["suggestion"].startswith("Привет.") and out["provider"] == "fake" and out["model"] == "fake"
@@ -231,10 +235,8 @@ def test_transport_rewrite_and_settings_expose_role(tmp_path):
     with pytest.raises(CompanionTransportError) as e1:
         t.writing_assistant_rewrite({"draft": "   "})
     assert e1.value.status == 400 and e1.value.code == "invalid_draft"
-    with pytest.raises(CompanionTransportError) as e2:
-        t.writing_assistant_rewrite({"draft": DRAFT})
-    assert e2.value.status == 409 and e2.value.code == "assistant_not_configured"
 
-    t.set_role({"role": "WRITING_ASSISTANT", "providerId": "fake", "modelId": "fake"})
+    # V2A: no separate WRITING_ASSISTANT config needed -- the default fake
+    # DIALOGUE model backs the legacy endpoint for a non-empty draft.
     res = t.writing_assistant_rewrite({"draft": DRAFT})
     assert isinstance(res["suggestion"], str) and res["suggestion"].strip()

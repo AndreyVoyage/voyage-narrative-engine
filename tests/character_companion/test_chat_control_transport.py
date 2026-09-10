@@ -56,16 +56,28 @@ def test_loopback_chat_control_and_writing_assistant(tmp_path):
         wa = next(r for r in view["roleCatalog"] if r["role"] == "WRITING_ASSISTANT")
         assert wa["runtimeWired"] is False
 
-        # unconfigured -> bounded 409
-        st, err = _http(b, "POST", "/api/companion/writing-assistant/rewrite", {"draft": "прив как дела"})
-        assert st == 409 and err["error"]["code"] == "assistant_not_configured"
-
-        # configure the fake assistant, then rewrite
-        _http(b, "POST", "/api/companion/settings/roles",
-              {"role": "WRITING_ASSISTANT", "providerId": "fake", "modelId": "fake"})
+        # V2A: the co-author executes on the DIALOGUE assignment. No separate
+        # WRITING_ASSISTANT assignment is required, and there is no
+        # assistant_not_configured gate based on its absence. Here DIALOGUE is
+        # the default fake provider, so a non-empty draft rewrites straight away.
         st, res = _http(b, "POST", "/api/companion/writing-assistant/rewrite",
                         {"draft": "прив я сегодня устал давай просто поговорим"})
         assert st == 200 and isinstance(res["suggestion"], str) and res["suggestion"].strip()
+
+        # storing a WRITING_ASSISTANT assignment neither is required nor changes
+        # execution (no auto-fallback semantics introduced).
+        _http(b, "POST", "/api/companion/settings/roles",
+              {"role": "WRITING_ASSISTANT", "providerId": "fake", "modelId": "fake"})
+        st, res = _http(b, "POST", "/api/companion/writing-assistant/rewrite",
+                        {"draft": "ещё один черновик для доработки"})
+        assert st == 200 and isinstance(res["suggestion"], str) and res["suggestion"].strip()
+
+        # legacy /rewrite still rejects an empty draft; the new /suggest endpoint
+        # accepts it and derives COMPOSE.
+        st, err = _http(b, "POST", "/api/companion/writing-assistant/rewrite", {"draft": "   "})
+        assert st == 400 and err["error"]["code"] == "invalid_draft"
+        st, sug = _http(b, "POST", "/api/companion/writing-assistant/suggest", {"draft": ""})
+        assert st == 200 and isinstance(sug["suggestion"], str) and sug["suggestion"].strip()
 
         # a session with real history
         _, session = _http(b, "POST", "/api/companion/sessions", {"characterId": "kira", "title": "RC"})

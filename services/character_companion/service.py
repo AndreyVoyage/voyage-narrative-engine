@@ -45,7 +45,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 
 from services.character_lab import GroundedV2Policy, RuntimeService
 from services.character_lab.runtime_policy import ContextBudgetExceededError
-from services.character_lab.scene import new_scene
+from services.character_lab.scene import new_scene, render_scene_block
 from services.character_lab.source_loader import build_repo_source_loader
 from services.character_runtime import RuntimeMemoryBackend
 
@@ -95,6 +95,14 @@ PURPOSE_COMPANION = "COMPANION"
 
 _ROLE_BY_EVENT_TYPE = {"USER_MESSAGE": "user", "CHARACTER_MESSAGE": "character"}
 _HISTORY_ROLE = {"user": "user", "character": "assistant"}
+
+# Co-author "user-originated memory" bound: newest USER_STATED statements from
+# OTHER sessions of the same profile, whole-block or omit. Provenance label is
+# the Character-Lab constant value (kept in sync; not imported to avoid a new
+# cross-package dependency in this slice).
+_COAUTHOR_USER_STATED_PROVENANCE = "USER_STATED"
+_COAUTHOR_USER_MEMORY_MAX_EVENTS = 20
+_COAUTHOR_USER_MEMORY_MAX_CHARS = 6000
 
 _REGISTRY_FILENAME = "companion_sessions.json"
 _SCENE_FIELDS = ("place", "time", "situation", "mood", "freeform")
@@ -428,20 +436,118 @@ class CompanionService:
         pres["hiddenMessageIds"] = sorted(set(current))
         return self._enrich(self._mutate_row(session_id, {"presentation": pres}))
 
-    def writing_assistant_rewrite(self, draft: str, *, locale_hint: Optional[str] = None) -> dict:
-        """Rewrite a composer draft with the configured WRITING_ASSISTANT model.
-        Never routes through Character Runtime / Memory; works only from `draft`."""
-        store, vault = self._require_secure_config()
-        from .writing_assistant import WritingAssistantError, rewrite_draft
+    def writing_assistant_suggest(
+        self,
+        draft: str,
+        *,
+        session_id: Optional[str] = None,
+        locale_hint: Optional[str] = None,
+    ) -> dict:
+        """Contextual co-author. COMPOSE when the trimmed draft is empty, else
+        EXPAND. Runs on the EFFECTIVE DIALOGUE provider/model (never a separate
+        WRITING_ASSISTANT assignment), with one provider call, no retry, no
+        fallback. Builds a READ-ONLY user-safe context snapshot when a
+        ``session_id`` is given; never routes through ``RuntimeService.turn`` /
+        ``policy.persist`` and never writes memory or state."""
+        store, _vault = self._require_secure_config()
+        from .writing_assistant import WritingAssistantError, coauthor_suggest, derive_mode
+
+        settings = store.load()
+        assignment = settings.dialogue()
+        factory = self._dialogue_factory()  # DIALOGUE inheritance + release fake-guard
+        ctx = self._coauthor_context(session_id) if session_id else {}
         try:
-            return rewrite_draft(
-                draft, settings=store.load(), vault=vault,
-                fake_factory=self._provider_factory,
-                http_post_local=self._http_post_local, http_post_cloud=self._http_post_cloud,
+            return coauthor_suggest(
+                draft,
+                mode=derive_mode(draft),
+                provider_factory=factory,
+                provider_id=assignment.provider_id,
+                model_id=assignment.model_id,
+                budget_est_tokens=settings.dialogue_context_budget_est_tokens,
+                visible_history=ctx.get("visible_history", ()),
+                scene_text=ctx.get("scene_text"),
+                user_memory_block=ctx.get("user_memory_block"),
                 locale_hint=locale_hint,
             )
         except WritingAssistantError as exc:
             raise CompanionError(exc.code, exc.message) from exc
+
+    def writing_assistant_rewrite(
+        self,
+        draft: str,
+        *,
+        session_id: Optional[str] = None,
+        locale_hint: Optional[str] = None,
+    ) -> dict:
+        """Legacy composer helper. A non-empty draft is delegated to the shared
+        co-author core in EXPAND mode; an empty draft stays invalid."""
+        if not isinstance(draft, str) or not draft.strip():
+            raise CompanionError("invalid_draft", "draft must be a non-empty string")
+        return self.writing_assistant_suggest(
+            draft, session_id=session_id, locale_hint=locale_hint
+        )
+
+    def _coauthor_context(self, session_id: str) -> dict:
+        """Assemble the READ-ONLY user-safe co-author context for one session:
+        visible dialogue history (presentation-hidden messages removed), the
+        shared Scene, and the user's own prior statements. Nothing character-
+        private (RELATIONSHIP / PSYCHOLOGY / epistemic / FACT / Accepted
+        package) and no KIRA core instruction. Opens no writable path."""
+        row = self._session_row(session_id)
+        entry = self._require_character(row["character_id"])
+        pres = row.get("presentation") if isinstance(row.get("presentation"), dict) else {}
+        hidden = {
+            int(x) for x in (pres.get("hiddenMessageIds") or [])
+            if isinstance(x, int) and not isinstance(x, bool)
+        }
+        visible_history = [
+            {"role": _HISTORY_ROLE[m.role], "content": m.text}
+            for m in self._history(row["character_id"], session_id)
+            if m.seq not in hidden
+        ]
+        scene = self._scene_for_turn(row, entry)
+        scene_text = render_scene_block(scene) if scene is not None else None
+        user_memory_block = self._coauthor_user_memory_block(entry, session_id)
+        return {
+            "visible_history": visible_history,
+            "scene_text": scene_text,
+            "user_memory_block": user_memory_block,
+        }
+
+    def _coauthor_user_memory_block(
+        self, entry: CompanionCharacterEntry, current_session_id: str
+    ) -> Optional[str]:
+        """Newest USER_STATED statements from OTHER sessions of this profile,
+        as bounded '- [со слов пользователя] ...' lines (whole block or omit).
+        Read-only: a SELECT over the shared causal event log."""
+        backend = RuntimeMemoryBackend(
+            self._char_root(entry.character_id) / "memory", entry.subject_id
+        )
+        try:
+            events = backend.load_events_causal(entry.subject_id)
+        finally:
+            backend.close()
+        lines: List[str] = []
+        total = 0
+        for e in reversed(events):
+            if e.session_id == current_session_id:
+                continue
+            if e.event_type != "USER_MESSAGE":
+                continue
+            if (e.provenance or "") != _COAUTHOR_USER_STATED_PROVENANCE:
+                continue
+            text = " ".join((e.meaning or "").split())
+            if not text:
+                continue
+            if (
+                len(lines) >= _COAUTHOR_USER_MEMORY_MAX_EVENTS
+                or total + len(text) > _COAUTHOR_USER_MEMORY_MAX_CHARS
+            ):
+                break
+            lines.append(f"- [со слов пользователя] {text}")
+            total += len(text)
+        lines.reverse()
+        return "\n".join(lines) if lines else None
 
     def _mutate_row(self, session_id: str, changes: Dict) -> dict:
         registry = self._load_registry()
