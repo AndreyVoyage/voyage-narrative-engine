@@ -23,10 +23,15 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
+from services.ass import OrderedASS, OrderedASSStore, build_ordered_ass, serialize_ordered_ass
+
 from .errors import (
+    AcceptanceError,
     AcceptedVersionImmutableError,
     AlreadyAcceptedError,
     PersistenceError,
@@ -113,6 +118,26 @@ class SceneDraftStore:
         except OSError:
             pass
 
+    @contextmanager
+    def _writing_scene(self, scene_id: str) -> Iterator[None]:
+        """Сериализация writers через exclusive lock-файл, без ожидания.
+
+        Все публичные mutations используют один lock на сцену. После аварийного
+        завершения stale lock блокирует запись; автоматически чужой lock не снимаем.
+        """
+        directory = self._scene_dir(scene_id)
+        directory.mkdir(parents=True, exist_ok=True)
+        lock = directory / ".scene_draft.lock"
+        try:
+            fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        except FileExistsError:
+            raise PersistenceError("scene writer already active or stale lock exists") from None
+        try:
+            os.close(fd)
+            yield
+        finally:
+            lock.unlink()
+
     # -------------------------------------------------------------- pointers
 
     def _write_pointer(self, scene_id: str, latest_version: int) -> None:
@@ -169,16 +194,17 @@ class SceneDraftStore:
 
     def create_initial_draft(self, scene_id: str, body: dict[str, Any]) -> SceneVersion:
         """Create version 1 as DRAFT. Fails if the scene history already exists."""
-        if self._pointer_path(scene_id).exists():
-            raise SceneHistoryExistsError(f"scene {scene_id!r} already has a version history")
-        record = SceneVersion(scene_id=scene_id, version=1, lifecycle=LIFECYCLE_DRAFT, body=body)
-        self._write_version_record(record)
-        try:
-            self._write_pointer(scene_id, 1)
-        except BaseException:
-            self._remove_version_file(scene_id, 1)
-            raise
-        return record
+        with self._writing_scene(scene_id):
+            if self._pointer_path(scene_id).exists():
+                raise SceneHistoryExistsError(f"scene {scene_id!r} already has a version history")
+            record = SceneVersion(scene_id=scene_id, version=1, lifecycle=LIFECYCLE_DRAFT, body=body)
+            self._write_version_record(record)
+            try:
+                self._write_pointer(scene_id, 1)
+            except BaseException:
+                self._remove_version_file(scene_id, 1)
+                raise
+            return record
 
     def save_draft(self, scene_id: str, version: int, body: dict[str, Any]) -> SceneVersion:
         """Replace an existing DRAFT record in place; never increments version.
@@ -187,14 +213,15 @@ class SceneDraftStore:
         immutable and raise ``AcceptedVersionImmutableError`` without touching the
         file.
         """
-        existing = self._read_version_record(scene_id, version)
-        if existing.lifecycle == LIFECYCLE_ACCEPTED:
-            raise AcceptedVersionImmutableError(
-                f"scene {scene_id!r} version {version} is ACCEPTED and immutable"
-            )
-        record = SceneVersion(scene_id=scene_id, version=version, lifecycle=LIFECYCLE_DRAFT, body=body)
-        self._write_version_record(record)
-        return record
+        with self._writing_scene(scene_id):
+            existing = self._read_version_record(scene_id, version)
+            if existing.lifecycle == LIFECYCLE_ACCEPTED:
+                raise AcceptedVersionImmutableError(
+                    f"scene {scene_id!r} version {version} is ACCEPTED and immutable"
+                )
+            record = SceneVersion(scene_id=scene_id, version=version, lifecycle=LIFECYCLE_DRAFT, body=body)
+            self._write_version_record(record)
+            return record
 
     def fork_draft_from_version(self, scene_id: str, source_version: int) -> SceneVersion:
         """Create a new highest-versioned DRAFT copied from an existing version.
@@ -202,48 +229,81 @@ class SceneDraftStore:
         Covers both "edit Accepted" and "restore an old version". Never modifies
         the source record. Allocates ``latest_version + 1``.
         """
-        source = self._read_version_record(scene_id, source_version)
-        latest = self._read_pointer(scene_id)
-        new_version = latest + 1
-        record = SceneVersion(
-            scene_id=scene_id,
-            version=new_version,
-            lifecycle=LIFECYCLE_DRAFT,
-            body=source.body_plain(),
-        )
-        self._write_version_record(record)
-        try:
-            self._write_pointer(scene_id, new_version)
-        except BaseException:
-            self._remove_version_file(scene_id, new_version)
-            raise
-        return record
+        with self._writing_scene(scene_id):
+            source = self._read_version_record(scene_id, source_version)
+            latest = self._read_pointer(scene_id)
+            new_version = latest + 1
+            record = SceneVersion(
+                scene_id=scene_id,
+                version=new_version,
+                lifecycle=LIFECYCLE_DRAFT,
+                body=source.body_plain(),
+            )
+            self._write_version_record(record)
+            try:
+                self._write_pointer(scene_id, new_version)
+            except BaseException:
+                self._remove_version_file(scene_id, new_version)
+                raise
+            return record
 
     def read_version(self, scene_id: str, version: int) -> SceneVersion:
         """Read a persisted version; read-only, fail closed, no mutation."""
         return self._read_version_record(scene_id, version)
 
     def commit_acceptance(
-        self, scene_id: str, version: int, acceptance: AcceptanceLink
+        self, scene_id: str, version: int, acceptance: AcceptanceLink,
+        *, expected_draft_content_hash: str, ass_store: OrderedASSStore,
+        verified_ass: OrderedASS,
     ) -> SceneVersion:
         """Atomically transition an existing DRAFT to ACCEPTED in place.
 
         Re-reads the persisted record (state on disk is authority), requires
         DRAFT, and preserves the exact authored body and content hash. The
         pointer is NOT changed. One-time: a second call raises
-        ``AlreadyAcceptedError``.
+        ``AlreadyAcceptedError``. Under the scene writer lock, verifies the
+        expected Draft hash, reloads canonical ASS, and checks its exact
+        projection/link before the lifecycle write.
         """
-        existing = self._read_version_record(scene_id, version)
-        if existing.lifecycle != LIFECYCLE_DRAFT:
-            raise AlreadyAcceptedError(
-                f"scene {scene_id!r} version {version} is not DRAFT"
+        with self._writing_scene(scene_id):
+            existing = self._read_version_record(scene_id, version)
+            if existing.lifecycle != LIFECYCLE_DRAFT:
+                raise AlreadyAcceptedError(
+                    f"scene {scene_id!r} version {version} is not DRAFT"
+                )
+            if existing.content_hash != expected_draft_content_hash:
+                raise AcceptanceError("Draft content changed before acceptance commit")
+            if not isinstance(acceptance, AcceptanceLink) or not isinstance(verified_ass, OrderedASS):
+                raise AcceptanceError("verified persisted OrderedASS and link required")
+            if (verified_ass.scene_id != scene_id or verified_ass.version != version
+                    or acceptance.ass_id != verified_ass.ass_id
+                    or acceptance.ass_content_hash != verified_ass.content_hash):
+                raise AcceptanceError("acceptance identity/link mismatch")
+            persisted = ass_store.load(
+                scene_id=scene_id, version=version,
+                expected_ass_id=acceptance.ass_id,
+                expected_content_hash=acceptance.ass_content_hash,
             )
-        record = SceneVersion(
-            scene_id=scene_id,
-            version=version,
-            lifecycle=LIFECYCLE_ACCEPTED,
-            body=existing.body_plain(),
-            acceptance=acceptance,
-        )
-        self._write_version_record(record)
-        return record
+            if serialize_ordered_ass(persisted) != serialize_ordered_ass(verified_ass):
+                raise AcceptanceError("verified ASS envelope mismatch")
+            if persisted.provenance.source_hash != expected_draft_content_hash:
+                raise AcceptanceError("ASS does not bind the expected authored hash")
+            # Публичный commit не доверяет даже поддельному source_hash: проверяем
+            # полную проекцию текущего Draft на реально сохранённый canonical ASS.
+            projected = build_ordered_ass(
+                existing.body, ass_id=persisted.ass_id, version=version,
+                source_ref=persisted.provenance.source_ref,
+                source_hash=existing.content_hash, supersedes=persisted.supersedes,
+                created_at=persisted.created_at, author=persisted.author,
+            )
+            if serialize_ordered_ass(projected) != serialize_ordered_ass(persisted):
+                raise AcceptanceError("persisted ASS differs from current Draft projection")
+            record = SceneVersion(
+                scene_id=scene_id,
+                version=version,
+                lifecycle=LIFECYCLE_ACCEPTED,
+                body=existing.body_plain(),
+                acceptance=acceptance,
+            )
+            self._write_version_record(record)
+            return record

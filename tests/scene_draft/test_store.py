@@ -32,58 +32,59 @@ def _with_title(body, title):
     return b
 
 
-def _accept(store, scene_id, version=1):
+def _accept(store, ass_store, scene_id, version=1):
     return accept_draft(
         store,
         scene_id,
         version,
+        ass_store=ass_store,
         ass_id=ASS_ID,
         source_ref=SOURCE_REF,
     )
 
 
-def test_create_initial_draft_gives_version_1(store, valid_body, scene_id):
+def test_create_initial_draft_gives_version_1(store, ass_store, valid_body, scene_id):
     v = store.create_initial_draft(scene_id, valid_body)
     assert v.version == 1
     assert v.lifecycle == LIFECYCLE_DRAFT
 
 
-def test_duplicate_initial_creation_rejected(store, valid_body, scene_id):
+def test_duplicate_initial_creation_rejected(store, ass_store, valid_body, scene_id):
     store.create_initial_draft(scene_id, valid_body)
     with pytest.raises(SceneHistoryExistsError):
         store.create_initial_draft(scene_id, valid_body)
 
 
-def test_save_draft_preserves_version(store, valid_body, scene_id):
+def test_save_draft_preserves_version(store, ass_store, valid_body, scene_id):
     store.create_initial_draft(scene_id, valid_body)
     v = store.save_draft(scene_id, 1, _with_title(valid_body, "Updated"))
     assert v.version == 1
     assert v.body.scene_title == "Updated"
 
 
-def test_save_draft_does_not_increment_latest(store, valid_body, scene_id):
+def test_save_draft_does_not_increment_latest(store, ass_store, valid_body, scene_id):
     store.create_initial_draft(scene_id, valid_body)
     store.save_draft(scene_id, 1, _with_title(valid_body, "Updated"))
     v2 = store.fork_draft_from_version(scene_id, 1)
     assert v2.version == 2  # pointer stayed at 1, so fork allocates 2
 
 
-def test_save_draft_scene_id_must_remain_identical(store, valid_body, scene_id):
+def test_save_draft_scene_id_must_remain_identical(store, ass_store, valid_body, scene_id):
     store.create_initial_draft(scene_id, valid_body)
     with pytest.raises(SceneIdMismatchError):
         store.save_draft(scene_id, 1, make_body(scene_id="SC_999"))
 
 
-def test_save_accepted_fails_closed(store, valid_body, scene_id):
+def test_save_accepted_fails_closed(store, ass_store, valid_body, scene_id):
     store.create_initial_draft(scene_id, valid_body)
-    _accept(store, scene_id)
+    _accept(store, ass_store, scene_id)
     with pytest.raises(AcceptedVersionImmutableError):
         store.save_draft(scene_id, 1, _with_title(valid_body, "MUTATED"))
 
 
-def test_accepted_file_unchanged_after_rejected_save(store, valid_body, scene_id):
+def test_accepted_file_unchanged_after_rejected_save(store, ass_store, valid_body, scene_id):
     store.create_initial_draft(scene_id, valid_body)
-    _accept(store, scene_id)
+    _accept(store, ass_store, scene_id)
     path = store._version_path(scene_id, 1)
     before = path.read_bytes()
     with pytest.raises(AcceptedVersionImmutableError):
@@ -91,16 +92,16 @@ def test_accepted_file_unchanged_after_rejected_save(store, valid_body, scene_id
     assert path.read_bytes() == before
 
 
-def test_fork_accepted_creates_new_highest_draft(store, valid_body, scene_id):
+def test_fork_accepted_creates_new_highest_draft(store, ass_store, valid_body, scene_id):
     store.create_initial_draft(scene_id, valid_body)
-    _accept(store, scene_id)
+    _accept(store, ass_store, scene_id)
     v2 = store.fork_draft_from_version(scene_id, 1)
     assert v2.version == 2
     assert v2.lifecycle == LIFECYCLE_DRAFT
     assert v2.acceptance is None
 
 
-def test_fork_old_historical_version_creates_new_highest(store, valid_body, scene_id):
+def test_fork_old_historical_version_creates_new_highest(store, ass_store, valid_body, scene_id):
     store.create_initial_draft(scene_id, valid_body)
     store.fork_draft_from_version(scene_id, 1)  # v2
     v3 = store.fork_draft_from_version(scene_id, 1)  # restore from v1 -> v3
@@ -109,14 +110,14 @@ def test_fork_old_historical_version_creates_new_highest(store, valid_body, scen
     assert v3.body_plain() == valid_body
 
 
-def test_fork_does_not_modify_source(store, valid_body, scene_id):
+def test_fork_does_not_modify_source(store, ass_store, valid_body, scene_id):
     store.create_initial_draft(scene_id, valid_body)
     before = store._version_path(scene_id, 1).read_bytes()
     store.fork_draft_from_version(scene_id, 1)
     assert store._version_path(scene_id, 1).read_bytes() == before
 
 
-def test_next_version_from_pointer_not_directory_scan(store, valid_body, scene_id):
+def test_next_version_from_pointer_not_directory_scan(store, ass_store, valid_body, scene_id):
     store.create_initial_draft(scene_id, valid_body)
     stray = store._version_path(scene_id, 99)
     stray.parent.mkdir(parents=True, exist_ok=True)
@@ -125,21 +126,21 @@ def test_next_version_from_pointer_not_directory_scan(store, valid_body, scene_i
     assert v2.version == 2  # from pointer (1 + 1), not from stray file 99
 
 
-def test_malformed_pointer_fails_closed(store, valid_body, scene_id):
+def test_malformed_pointer_fails_closed(store, ass_store, valid_body, scene_id):
     store.create_initial_draft(scene_id, valid_body)
     store._pointer_path(scene_id).write_text("not json", encoding="utf-8")
     with pytest.raises(PersistenceError):
         store.fork_draft_from_version(scene_id, 1)
 
 
-def test_malformed_version_file_fails_closed(store, valid_body, scene_id):
+def test_malformed_version_file_fails_closed(store, ass_store, valid_body, scene_id):
     store.create_initial_draft(scene_id, valid_body)
     store._version_path(scene_id, 1).write_text("not json", encoding="utf-8")
     with pytest.raises(PersistenceError):
         store.read_version(scene_id, 1)
 
 
-def test_version_mismatch_persisted_fails_closed(store, valid_body, scene_id):
+def test_version_mismatch_persisted_fails_closed(store, ass_store, valid_body, scene_id):
     store.create_initial_draft(scene_id, valid_body)
     v3 = SceneVersion(scene_id=scene_id, version=3, lifecycle=LIFECYCLE_DRAFT, body=valid_body)
     path = store._version_path(scene_id, 2)
@@ -149,7 +150,7 @@ def test_version_mismatch_persisted_fails_closed(store, valid_body, scene_id):
         store.read_version(scene_id, 2)
 
 
-def test_scene_id_mismatch_persisted_fails_closed(store, valid_body, scene_id):
+def test_scene_id_mismatch_persisted_fails_closed(store, ass_store, valid_body, scene_id):
     store.create_initial_draft(scene_id, valid_body)
     v2 = SceneVersion(scene_id="SC_999", version=2, lifecycle=LIFECYCLE_DRAFT, body=make_body(scene_id="SC_999"))
     path = store._version_path(scene_id, 2)
@@ -159,7 +160,7 @@ def test_scene_id_mismatch_persisted_fails_closed(store, valid_body, scene_id):
         store.read_version(scene_id, 2)
 
 
-def test_read_missing_version_fails(store, scene_id):
+def test_read_missing_version_fails(store, ass_store, scene_id):
     with pytest.raises(SceneVersionNotFoundError):
         store.read_version(scene_id, 1)
 
@@ -175,7 +176,7 @@ def test_deterministic_serialization(valid_body):
     assert serialize_version_record(v1) == serialize_version_record(v2)
 
 
-def test_atomic_write_leaves_no_temp_files(store, valid_body, scene_id):
+def test_atomic_write_leaves_no_temp_files(store, ass_store, valid_body, scene_id):
     store.create_initial_draft(scene_id, valid_body)
     store.save_draft(scene_id, 1, _with_title(valid_body, "Updated"))
     store.fork_draft_from_version(scene_id, 1)
@@ -183,3 +184,49 @@ def test_atomic_write_leaves_no_temp_files(store, valid_body, scene_id):
         p for p in store._scene_dir(scene_id).rglob("*.tmp") if p.name.startswith(".scene_draft_")
     ]
     assert leftovers == []
+
+
+def test_compare_and_commit_excludes_other_writers(store, ass_store, valid_body, scene_id, monkeypatch):
+    """Writer другого store не может вклиниться после сравнения Draft hash."""
+    from services.scene_draft import SceneDraftStore
+    store.create_initial_draft(scene_id, valid_body)
+    competing = SceneDraftStore(store._root)
+    original = store._write_version_record
+    def write_accepted(record):
+        with pytest.raises(PersistenceError, match="writer"):
+            competing.save_draft(scene_id, 1, _with_title(valid_body, "race"))
+        original(record)
+    monkeypatch.setattr(store, "_write_version_record", write_accepted)
+    accepted, _ = _accept(store, ass_store, scene_id)
+    assert accepted.body_plain() == valid_body
+    assert accepted.lifecycle == "ACCEPTED"
+    assert not (store._scene_dir(scene_id) / ".scene_draft.lock").exists()
+
+
+def test_existing_writer_lock_fails_closed_without_removing_it(store, ass_store, valid_body, scene_id):
+    store.create_initial_draft(scene_id, valid_body)
+    lock = store._scene_dir(scene_id) / ".scene_draft.lock"
+    lock.write_bytes(b"another writer")
+    with pytest.raises(PersistenceError, match="writer"):
+        store.save_draft(scene_id, 1, valid_body)
+    assert lock.read_bytes() == b"another writer"
+    assert store.read_version(scene_id, 1).lifecycle == LIFECYCLE_DRAFT
+
+
+def test_accept_record_replace_failure_preserves_draft(store, ass_store, valid_body, scene_id, monkeypatch):
+    """Ошибка атомарной замены record оставляет старые bytes и допускает retry."""
+    import services.scene_draft.store as module
+    store.create_initial_draft(scene_id, valid_body)
+    before = store._version_path(scene_id, 1).read_bytes()
+    original = module.os.replace
+    def fail(*args):
+        raise OSError("injected replace failure")
+    monkeypatch.setattr(module.os, "replace", fail)
+    with pytest.raises(OSError):
+        _accept(store, ass_store, scene_id)
+    assert store._version_path(scene_id, 1).read_bytes() == before
+    assert not (store._scene_dir(scene_id) / ".scene_draft.lock").exists()
+    assert list(store._version_path(scene_id, 1).parent.glob("*.tmp")) == []
+    monkeypatch.setattr(module.os, "replace", original)
+    updated, _ = _accept(store, ass_store, scene_id)
+    assert updated.lifecycle == "ACCEPTED"

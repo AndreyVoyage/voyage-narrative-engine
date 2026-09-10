@@ -10,6 +10,7 @@ from typing import Any
 import pytest
 
 from services.scene_draft import SceneDraftStore
+from services.ass import OrderedASSStore
 
 SCENE_ID = "SC_900"
 
@@ -72,3 +73,8 @@ def valid_body() -> dict[str, Any]:
 @pytest.fixture
 def store(tmp_path: Path) -> SceneDraftStore:
     return SceneDraftStore(tmp_path / "scene_draft")
+
+
+@pytest.fixture
+def ass_store(tmp_path: Path) -> OrderedASSStore:
+    return OrderedASSStore(tmp_path / "canonical_ass")

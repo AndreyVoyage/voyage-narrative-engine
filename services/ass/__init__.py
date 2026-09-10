@@ -3,7 +3,8 @@
 """
 Accepted Scene Snapshot (ASS v0) -- public API.
 
-Exposes the immutable ASS data model plus the scenario JSON v2 importer.
+Exposes the immutable ASS data model, scenario JSON v2 importer, and explicit
+canonical OrderedASS file store.
 This package is stdlib-only, has no provider/network calls, and never
 touches personas, scenarios (write-side), visual Canon, the exporter,
 Ren'Py, or Voyage.
@@ -15,7 +16,11 @@ an implicit PEP 420 namespace package (matching the existing
 
 from __future__ import annotations
 
-from .errors import ASSError, ASSInvariantError, ASSNormalizationError, ASSSourceError
+from .errors import (
+    ASSError, ASSInvariantError, ASSNormalizationError, ASSSourceError,
+    OrderedASSConflictError, OrderedASSIntegrityError,
+    OrderedASSNotFoundError, OrderedASSStoreError,
+)
 from .hashing import compute_content_hash, compute_source_hash
 from .importer import (
     ASS_SCHEMA_VERSION,
@@ -39,7 +44,12 @@ from .ordered import (
     build_ordered_ass,
 )
 
+from .store import OrderedASSStore, parse_ordered_ass, serialize_ordered_ass
+
 __all__ = [
+    "OrderedASSStore", "parse_ordered_ass", "serialize_ordered_ass",
+    "OrderedASSStoreError", "OrderedASSNotFoundError",
+    "OrderedASSConflictError", "OrderedASSIntegrityError",
     # Importer
     "import_scene",
     "ASS_SCHEMA_VERSION",

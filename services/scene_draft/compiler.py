@@ -12,7 +12,8 @@ Turns an existing DRAFT ``SceneVersion`` (whose authored body is a
 4. deterministically projecting it into an OrderedASS via
    ``services.ass.build_ordered_ass`` (location comes from the SceneBody);
 5. verifying scene_id / version equality;
-6. recording only an ``AcceptanceLink`` (ass_id + ass_content_hash).
+6. persisting and reloading the complete immutable canonical ASS;
+7. committing only its verified AcceptanceLink, guarded by the Draft hash.
 
 This compiler never calls the legacy ``services.ass.importer.import_scene`` and
 never introduces a second canonical accepted artifact. ASS/OrderedASS remains
@@ -25,7 +26,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from services.ass import OrderedASS, build_ordered_ass
+from services.ass import OrderedASS, OrderedASSStore, build_ordered_ass, serialize_ordered_ass
 from services.scene_body import validate_acceptance_complete
 
 from .errors import AcceptanceError, AcceptanceIncompleteError, AlreadyAcceptedError
@@ -38,6 +39,7 @@ def accept_draft(
     scene_id: str,
     version: int,
     *,
+    ass_store: OrderedASSStore,
     ass_id: str,
     source_ref: str,
     supersedes: Optional[str] = None,
@@ -85,9 +87,22 @@ def accept_draft(
             f"SceneVersion version {record.version}"
         )
 
-    acceptance = AcceptanceLink(
-        ass_id=ordered_ass.ass_id,
-        ass_content_hash=ordered_ass.content_hash,
+    ass_store.save(ordered_ass)
+    persisted = ass_store.load(
+        scene_id=record.scene_id, version=record.version,
+        expected_ass_id=ordered_ass.ass_id,
+        expected_content_hash=ordered_ass.content_hash,
     )
-    updated = store.commit_acceptance(scene_id, version, acceptance)
-    return updated, ordered_ass
+    if serialize_ordered_ass(persisted) != serialize_ordered_ass(ordered_ass):
+        raise AcceptanceError("persisted ASS envelope differs from acceptance result")
+
+    acceptance = AcceptanceLink(
+        ass_id=persisted.ass_id,
+        ass_content_hash=persisted.content_hash,
+    )
+    updated = store.commit_acceptance(
+        scene_id, version, acceptance,
+        expected_draft_content_hash=record.content_hash,
+        ass_store=ass_store, verified_ass=persisted,
+    )
+    return updated, persisted

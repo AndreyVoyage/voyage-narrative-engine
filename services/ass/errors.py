@@ -44,3 +44,19 @@ class ASSInvariantError(ASSError):
     ``ordered_flow`` is empty (an ass/0.2 object without a complete ordered flow
     must be impossible to construct).
     """
+
+
+class OrderedASSStoreError(ASSError):
+    """Ошибка явно заданного canonical ASS file store."""
+
+
+class OrderedASSNotFoundError(OrderedASSStoreError):
+    """Запрошенная сцена/версия отсутствует."""
+
+
+class OrderedASSConflictError(OrderedASSStoreError):
+    """Место сцены/версии уже занято другим полным envelope."""
+
+
+class OrderedASSIntegrityError(OrderedASSStoreError):
+    """Неверные структура, identity, canonical bytes или semantic hash."""
