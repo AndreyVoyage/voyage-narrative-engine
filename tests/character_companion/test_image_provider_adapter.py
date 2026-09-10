@@ -16,7 +16,11 @@ HARD SAFETY GATES proved here:
 from __future__ import annotations
 
 import base64
+import io
 import json
+import socket
+import urllib.error
+import urllib.request
 from pathlib import Path
 from typing import Optional
 
@@ -51,6 +55,17 @@ from services.character_companion.visual import (
     generate_text_to_image,
 )
 from services.character_companion.provider_resolution import resolve_role_config
+
+
+@pytest.fixture(autouse=True)
+def _forbid_network(monkeypatch):
+    def forbidden(*args, **kwargs):
+        pytest.fail("network access is forbidden in image provider tests")
+
+    monkeypatch.setattr(socket, "create_connection", forbidden)
+    monkeypatch.setattr(socket, "getaddrinfo", forbidden)
+    monkeypatch.setattr(socket.socket, "connect", forbidden)
+    monkeypatch.setattr(socket.socket, "connect_ex", forbidden)
 
 
 # ============================================================ fixtures
@@ -290,6 +305,121 @@ def test_transport_http_failure_is_terminal_no_retry():
             prompt="p", model="m", api_key="k-not-real", base_url="https://x.invalid", http_post=http
         )
     assert len(http.calls) == 1
+
+
+def _http_error_response(monkeypatch, raw, *, status=400):
+    calls = []
+    reads = []
+
+    class BoundedBody(io.BytesIO):
+        def read(self, size=-1):
+            reads.append(size)
+            assert 0 < size <= 16_385
+            return super().read(size)
+
+    def urlopen(request, *, timeout):
+        calls.append(request.full_url)
+        raise urllib.error.HTTPError(
+            request.full_url, status, "untrusted HTTP reason", {}, BoundedBody(raw)
+        )
+
+    monkeypatch.setattr(urllib.request, "urlopen", urlopen)
+    return calls, reads
+
+
+def _capture_http_failure():
+    with pytest.raises(ImageGenerationTransportError) as caught:
+        generate_text_to_image(
+            prompt="private request prompt", model="gpt-image-1", api_key="test-key-not-real",
+            base_url="https://images.test.invalid",
+        )
+    return caught.value
+
+
+def test_http_json_error_preserves_allowlisted_diagnostic(monkeypatch):
+    raw = json.dumps({"error": {
+        "message": "Organization verification required.\n Try the dashboard.",
+        "type": "invalid_request_error", "code": "organization_unverified",
+        "request": "private request body", "headers": {"Authorization": "Bearer test-key-not-real"},
+    }, "debug": "must never be retained"}).encode()
+    calls, reads = _http_error_response(monkeypatch, raw)
+    exc = _capture_http_failure()
+    assert exc.code == "image_generation_transport_failed"
+    assert exc.diagnostic.to_dict() == {
+        "httpStatus": 400, "providerErrorCode": "organization_unverified",
+        "providerErrorType": "invalid_request_error",
+        "providerMessage": "Organization verification required. Try the dashboard.",
+    }
+    assert len(calls) == 1 and reads == [16_385]
+    exposed = repr(exc) + str(exc) + repr(exc.diagnostic) + json.dumps(exc.diagnostic.to_dict())
+    for forbidden in ("test-key-not-real", "Authorization", "private request body", "debug"):
+        assert forbidden not in exposed
+
+
+@pytest.mark.parametrize("raw", [
+    b"<html>Authorization: Bearer test-key-not-real</html>" * 1000,
+    b'{"error":', b'[]', b'{"error":"not an object"}',
+    b'{"error":{"message":"' + b"x" * 20_000 + b'"}}',
+    b'{"error":{"message":"\xff"}}',
+], ids=["html", "truncated-json", "array", "scalar-error", "oversized-json", "invalid-utf8"])
+def test_http_unparseable_error_retains_status_only(monkeypatch, raw):
+    calls, _ = _http_error_response(monkeypatch, raw, status=502)
+    exc = _capture_http_failure()
+    assert exc.diagnostic.to_dict() == {"httpStatus": 502}
+    assert str(exc) == "image provider HTTP request failed"
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize("unsafe", [
+    "test-key-not-real", "Authorization: Bearer test-key-not-real",
+    "sk-other-credential-value", "API_KEY=another-value",
+    r"Cannot read C:\Users\owner\private.png", "/home/owner/private.png",
+    r"\\server\share\private.png", "data:image/png;base64,aGVsbG8=",
+    base64.b64encode(_RESULT_PNG).decode(),
+    base64.b64encode(_png(0)).decode(),
+    'Content-Disposition: form-data; name="image[]"',
+    "invalid\x00binary", "prompt: private request prompt",
+], ids=["credential", "authorization", "key-token", "key-label", "windows-path", "unix-path",
+        "unc-path", "data-url", "base64", "short-base64", "multipart", "binary", "request-echo"])
+def test_http_diagnostic_withholds_sensitive_fields(monkeypatch, unsafe):
+    raw = json.dumps({"error": {"message": unsafe, "code": unsafe, "type": unsafe}}).encode()
+    _http_error_response(monkeypatch, raw)
+    exc = _capture_http_failure()
+    assert exc.diagnostic.to_dict() == {
+        "httpStatus": 400, "providerMessage": "Provider error details withheld."
+    }
+    assert unsafe not in repr(exc) + str(exc) + repr(exc.diagnostic)
+
+
+def test_http_diagnostic_bounds_message_and_ignores_nonstring_fields(monkeypatch):
+    _http_error_response(monkeypatch, json.dumps({"error": {
+        "message": "Temporary provider failure. " * 50,
+        "code": {"secret": "test-key-not-real"}, "type": ["arbitrary", "data"],
+    }}).encode())
+    failure = _capture_http_failure().diagnostic.to_dict()
+    assert set(failure) == {"httpStatus", "providerMessage"}
+    assert len(failure["providerMessage"]) == 400
+
+
+def test_http_authentication_error_keeps_code_but_withholds_key(monkeypatch):
+    _http_error_response(monkeypatch, json.dumps({"error": {
+        "code": "invalid_api_key", "type": "authentication_error",
+        "message": "Incorrect API key provided: test-key-not-real",
+    }}).encode(), status=401)
+    assert _capture_http_failure().diagnostic.to_dict() == {
+        "httpStatus": 401, "providerErrorCode": "invalid_api_key",
+        "providerErrorType": "authentication_error", "providerMessage": "Provider error details withheld.",
+    }
+
+
+def test_non_http_transport_error_does_not_echo_reason(monkeypatch):
+    def urlopen(*args, **kwargs):
+        raise urllib.error.URLError("Authorization: Bearer test-key-not-real /private/path")
+
+    monkeypatch.setattr(urllib.request, "urlopen", urlopen)
+    exc = _capture_http_failure()
+    assert str(exc) == "image provider unreachable"
+    assert exc.diagnostic is None
 
 
 # ============================================ adapter routing + capability gate
@@ -542,6 +672,56 @@ def test_job_failed_when_transport_raises_exactly_one_call_no_retry(tmp_path):
     for _ in range(3):
         svc.tick()
     assert len(http.calls) == 1  # no automatic retry
+
+
+@pytest.mark.parametrize("message, expected_message", [
+    ("Organization verification required.", "Organization verification required."),
+    ("Authorization: Bearer test-key-not-real", "Provider error details withheld."),
+    ("Rejected: Kira by a window in the evening", "Provider error details withheld."),
+], ids=["safe", "credential", "request-echo"])
+def test_http_failure_is_persisted_without_mutating_source_context(tmp_path, monkeypatch, message, expected_message):
+    data_root = tmp_path / "data"
+    _seed_snapshot(data_root, tmp_path)
+    calls, _ = _http_error_response(monkeypatch, json.dumps({"error": {
+        "message": message, "type": "invalid_request_error", "code": "organization_unverified",
+    }}).encode())
+    source_context = {"scene": {"place": "quiet room"}, "marker": "preserve me"}
+    original = json.loads(json.dumps(source_context))
+    generator = _generator(data_root, None)
+    svc, job = _job(data_root, generator, context=source_context)
+    advance = generator.advance
+    observed = []
+
+    def observe_advance(job, **kwargs):
+        updated = advance(job, **kwargs)
+        if updated.state == STATE_FAILED:
+            observed.append(updated)
+            assert updated.context is not job.context
+            assert job.context == original
+        return updated
+
+    monkeypatch.setattr(generator, "advance", observe_advance)
+    svc.run_to_completion(job.job_id)
+    failed = observed[0]
+    assert source_context == original
+    assert failed.state == STATE_FAILED
+    assert failed.error == "image_generation_transport_failed"
+    assert failed.context["scene"] == original["scene"]
+    assert failed.context["marker"] == "preserve me"
+    assert failed.context["failure"] == {
+        "provider": "openai", "model": "gpt-image-1", "httpStatus": 400,
+        "providerErrorCode": "organization_unverified", "providerErrorType": "invalid_request_error",
+        "providerMessage": expected_message,
+    }
+    persisted = svc.get_job(job.job_id)
+    assert persisted.to_row() == failed.to_row()
+    serialized = (data_root / "companion_image_jobs.json").read_text(encoding="utf-8")
+    for forbidden in ("test-key-not-real", "Authorization", "Bearer", "multipart", "base64"):
+        assert forbidden not in serialized
+    assert persisted.result_ref is None
+    assert not (data_root / "images").exists()
+    svc.tick()
+    assert len(calls) == 1
 
 
 def test_job_failed_when_result_is_url_only(tmp_path):

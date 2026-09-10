@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import os
 import uuid
+from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -43,7 +44,10 @@ from ..provider_resolution import resolve_role_config
 from .context import REQUEST_KIND_CONTEXT, REQUEST_KIND_CUSTOM, build_visual_context
 from .image_provider_adapter import ImageProviderAdapter
 from .prompt import build_visual_prompt
-from .provider_errors import ImageGenerationConfigurationError, ImageGenerationError, ImageGenerationResultError
+from .provider_errors import (
+    ImageGenerationConfigurationError, ImageGenerationError, ImageGenerationResultError,
+    ImageGenerationTransportError,
+)
 from .provider_model import CONTENT_TYPE_TO_EXTENSION, DEFAULT_SIZE, ImageGenerationRequest
 from .reference_bundle import build_reference_bundle, validate_reference_bundle_integrity
 
@@ -92,6 +96,10 @@ class RealCompanionImageGenerator:
         try:
             return self._generate(job, images_dir=Path(images_dir))
         except ImageGenerationError as exc:
+            if isinstance(exc, ImageGenerationTransportError) and exc.diagnostic is not None:
+                context = dict(job.context or {})
+                context["failure"] = exc.diagnostic.to_dict()
+                return _advanced(job, state=STATE_FAILED, error=exc.code, context=context)
             return _advanced(job, state=STATE_FAILED, error=str(getattr(exc, "code", "image_generation_failed")))
         except Exception as exc:  # noqa: BLE001 -- bounded; never leak internals/secrets
             code = getattr(exc, "code", exc.__class__.__name__)
@@ -138,13 +146,25 @@ class RealCompanionImageGenerator:
         base_url = settings.base_urls.get(provider_id) or get_provider(provider_id).default_base_url
         api_key = self._resolve_key(role_config, provider_id)
 
-        image = self._adapter.generate(
-            request=request,
-            reference_bundle=reference_bundle,
-            role_config=role_config,
-            base_url=base_url,
-            api_key=api_key,
-        )
+        try:
+            image = self._adapter.generate(
+                request=request,
+                reference_bundle=reference_bundle,
+                role_config=role_config,
+                base_url=base_url,
+                api_key=api_key,
+            )
+        except ImageGenerationTransportError as exc:
+            if exc.diagnostic is None:
+                raise
+            # Идентичность вызова берём из уже разрешённой роли, не из ответа.
+            diagnostic = replace(
+                exc.diagnostic, provider=provider_id, model=model_id,
+                secrets=(api_key, job.prompt or "", package.prompt_text),
+            )
+            raise ImageGenerationTransportError(
+                "image provider HTTP request failed", diagnostic=diagnostic
+            ) from None
 
         result_ref = self._persist(images_dir, job.job_id, image)
         context = dict(job.context or {})

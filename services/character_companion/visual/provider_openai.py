@@ -37,6 +37,7 @@ from typing import Any, Callable, Optional, Sequence
 
 from ..character_import.reference_importer import sniff_image_format
 from .provider_errors import (
+    ImageHTTPFailureDiagnostic,
     ImageGenerationConfigurationError,
     ImageGenerationResultError,
     ImageGenerationTransportError,
@@ -57,6 +58,30 @@ EDIT_ENDPOINT_PATH = "/v1/images/edits"
 ImageHttpPost = Callable[[str, bytes, dict, float], Any]
 
 
+def _http_failure_diagnostic(exc: urllib.error.HTTPError, headers: dict) -> ImageHTTPFailureDiagnostic:
+    # Ограничиваем чтение; HTML, обрезанный JSON и лишние поля не сохраняются.
+    error = {}
+    try:
+        raw = exc.read(16_384 + 1)
+        if len(raw) <= 16_384:
+            data = json.loads(raw)
+            if isinstance(data, dict) and isinstance(data.get("error"), dict):
+                error = data["error"]
+    except (OSError, ValueError, RecursionError):
+        pass
+    finally:
+        exc.close()
+    authorization = next((v for k, v in headers.items() if k.lower() == "authorization"), "")
+    credential = authorization.partition(" ")[2]
+    return ImageHTTPFailureDiagnostic(
+        http_status=exc.code,
+        provider_error_code=error.get("code"),
+        provider_error_type=error.get("type"),
+        provider_message=error.get("message"),
+        secrets=(authorization, credential),
+    )
+
+
 def _default_image_http_post(url: str, body: bytes, headers: dict, timeout_s: float) -> Any:
     request = urllib.request.Request(
         url, data=body, method="POST", headers={"Accept": "application/json", **headers}
@@ -65,20 +90,17 @@ def _default_image_http_post(url: str, body: bytes, headers: dict, timeout_s: fl
         with urllib.request.urlopen(request, timeout=timeout_s) as response:  # noqa: S310
             raw = response.read().decode("utf-8")
     except urllib.error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")[:200]
         raise ImageGenerationTransportError(
-            f"image provider HTTP {exc.code}: {detail}", code="image_generation_transport_failed"
+            "image provider HTTP request failed", diagnostic=_http_failure_diagnostic(exc, headers)
         ) from None
-    except urllib.error.URLError as exc:
-        raise ImageGenerationTransportError(
-            f"image provider unreachable: {exc.reason}", code="image_generation_transport_failed"
-        ) from None
+    except urllib.error.URLError:
+        raise ImageGenerationTransportError("image provider unreachable") from None
     except TimeoutError:
         raise ImageGenerationTransportError("image provider timed out") from None
     try:
         data = json.loads(raw)
-    except json.JSONDecodeError as exc:
-        raise ImageGenerationTransportError(f"image provider returned invalid JSON: {exc}") from None
+    except json.JSONDecodeError:
+        raise ImageGenerationTransportError("image provider returned invalid JSON") from None
     if not isinstance(data, dict):
         raise ImageGenerationTransportError("image provider response must be a JSON object")
     return data
