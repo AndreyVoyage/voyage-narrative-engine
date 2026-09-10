@@ -49,6 +49,21 @@ from .model import (
     ProjectEntityRef,
     ProjectManifest,
 )
+from .accepted_batch import (
+    ACCEPTED_BATCH_SCHEMA_VERSION,
+    AcceptedBatchError,
+    AcceptedBatchNotFoundError,
+    AcceptedBatchResolutionError,
+    AcceptedBatchValidationError,
+    AcceptedOrderedASSBatch,
+    AcceptedOrderedASSRef,
+    load_accepted_batch,
+    parse_accepted_batch,
+    resolve_accepted_ordered_ass_batch,
+    save_accepted_batch,
+    serialize_accepted_batch,
+    validate_accepted_batch,
+)
 
 __all__ = [
     "SCENE",
@@ -76,4 +91,18 @@ __all__ = [
     "EntityNotFoundError",
     "DuplicateEntityError",
     "BrokenRegistrationError",
+    # Accepted OrderedASS batch (references-only production selection)
+    "ACCEPTED_BATCH_SCHEMA_VERSION",
+    "AcceptedOrderedASSRef",
+    "AcceptedOrderedASSBatch",
+    "serialize_accepted_batch",
+    "parse_accepted_batch",
+    "load_accepted_batch",
+    "save_accepted_batch",
+    "validate_accepted_batch",
+    "resolve_accepted_ordered_ass_batch",
+    "AcceptedBatchError",
+    "AcceptedBatchValidationError",
+    "AcceptedBatchNotFoundError",
+    "AcceptedBatchResolutionError",
 ]
