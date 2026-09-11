@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QStandardItem
 from PySide6.QtWidgets import QLineEdit, QPushButton, QTextEdit
 
 from services.editor_application import NOT_FOUND, EditorApplicationError
@@ -74,6 +75,44 @@ def test_application_error_code_and_message_are_surfaced_without_traceback(
         assert "Traceback" not in window.workspace_error.text()
     finally:
         window.close()
+
+
+def test_failed_reselection_hides_stale_workspace(qapp, populated_service, monkeypatch):
+    """SUCCESS on scene A, then FAILURE on different scene B must clear stale data."""
+    window = EditorMainWindow(populated_service)
+    window.show()
+    try:
+        qapp.processEvents()
+        index_a = window.scene_model.index(0, 0)
+        window.scene_view.setCurrentIndex(index_a)
+        qapp.processEvents()
+
+        assert window.workspace_form_container.isVisible()
+        assert window.workspace_values["scene_id"].text() == "sc_test_001"
+
+        def fail_scene_b(scene_id):
+            if scene_id == "sc_test_002":
+                raise EditorApplicationError(NOT_FOUND, "Scene is unavailable")
+            raise AssertionError(f"unexpected scene lookup: {scene_id}")
+
+        monkeypatch.setattr(populated_service, "get_scene_workspace", fail_scene_b)
+
+        item_b = QStandardItem("Scene B\nsc_test_002")
+        item_b.setEditable(False)
+        item_b.setData("sc_test_002", int(Qt.ItemDataRole.UserRole))
+        window.scene_model.appendRow(item_b)
+        window.scene_view.setCurrentIndex(window.scene_model.index(1, 0))
+        qapp.processEvents()
+
+        expected = "NOT_FOUND: Scene is unavailable"
+        assert window.workspace_error.text() == expected
+        assert not window.workspace_error.isHidden()
+        assert window.statusBar().currentMessage() == expected
+        assert not window.workspace_form_container.isVisible()
+        assert window.workspace_hint.text() == "Select a scene to inspect its current state."
+    finally:
+        window.close()
+        qapp.processEvents()
 
 
 def test_collection_failure_remains_visible(qapp, populated_service, monkeypatch):

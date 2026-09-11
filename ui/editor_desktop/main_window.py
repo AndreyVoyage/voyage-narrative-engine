@@ -295,4 +295,6 @@ class EditorMainWindow(QMainWindow):
         text = f"{code}: {message}"
         self.workspace_error.setText(text)
         self.workspace_error.setVisible(True)
+        self.workspace_hint.setText("Select a scene to inspect its current state.")
+        self.workspace_form_container.setVisible(False)
         self.statusBar().showMessage(text)
