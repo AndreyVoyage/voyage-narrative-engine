@@ -109,6 +109,13 @@ _SCENE_FIELDS = ("place", "time", "situation", "mood", "freeform")
 _CONTEXT_EXCERPT_MAX = 8      # "Кадр по контексту" bounded recent context
 _PREVIEW_MAX_CHARS = 120
 
+# V1C -- the visual context-frame feeds ONLY the externally-observable, structured
+# scene fields. ``freeform`` is deliberately excluded: free-form scene text may
+# carry private / hidden / intended / hypothetical content, and there is no
+# deterministic (no prompt-synthesis model) way to classify it as "visible" vs
+# "not visible". Fail conservative: use less context rather than guessing.
+_VISUAL_SCENE_FIELDS = ("place", "time", "situation", "mood")
+
 
 class CompanionError(RuntimeError):
     def __init__(self, code: str, message: str) -> None:
@@ -203,6 +210,19 @@ def _compose_situation(scene: CompanionScene) -> str:
     if scene.mood:
         parts.append(f"Настроение: {scene.mood}.")
     return " ".join(parts).strip()
+
+
+def _hidden_message_ids(row: dict) -> Tuple[int, ...]:
+    """Durable presentation-hidden message seqs for a session row.
+
+    Empty when no visibility metadata exists (older rows) -- we never invent
+    hidden-message metadata. Values are the stable Runtime Memory event ``seq``.
+    """
+    pres = row.get("presentation") if isinstance(row.get("presentation"), dict) else {}
+    return tuple(
+        int(x) for x in (pres.get("hiddenMessageIds") or [])
+        if isinstance(x, int) and not isinstance(x, bool)
+    )
 
 
 class CompanionService:
@@ -376,10 +396,7 @@ class CompanionService:
         pres = row.get("presentation") if isinstance(row.get("presentation"), dict) else {}
         override = pres.get("titleOverride")
         override = override.strip() if isinstance(override, str) and override.strip() else None
-        hidden_ids = tuple(
-            int(x) for x in (pres.get("hiddenMessageIds") or [])
-            if isinstance(x, int) and not isinstance(x, bool)
-        )
+        hidden_ids = _hidden_message_ids(row)
         return CompanionSession(
             session_id=row["session_id"],
             character_id=row["character_id"],
@@ -731,18 +748,26 @@ class CompanionService:
         )
 
     def _context_frame_request(self, row: dict) -> dict:
-        """Structured intent for a future visual pipeline. BOUNDED: only the
-        scene + the last few messages -- never the whole conversation."""
+        """Structured intent for the visual pipeline (V1C): a SAFER, VISIBLE-only
+        deterministic visual context.
+
+        BOUNDED + VISIBLE-ONLY: only the current scene's externally-observable
+        fields plus the last few NON-HIDDEN messages -- never the whole
+        conversation, never presentation-hidden messages, never free-form scene
+        text that may carry private / intended / hypothetical content.
+        """
         history = self._history(row["character_id"], row["session_id"])
+        hidden = set(_hidden_message_ids(row))
         excerpt = [
             {"role": m.role, "text": m.text}
-            for m in history[-_CONTEXT_EXCERPT_MAX:]
-        ]
+            for m in history
+            if m.seq not in hidden
+        ][-_CONTEXT_EXCERPT_MAX:]
         scene = CompanionScene.from_row(row.get("scene"))
         return {
             "characterId": row["character_id"],
             "sessionId": row["session_id"],
-            "scene": scene.to_row() if scene else None,
+            "scene": {k: getattr(scene, k) for k in _VISUAL_SCENE_FIELDS} if scene else None,
             "recentMessages": excerpt,
             "excerptLimit": _CONTEXT_EXCERPT_MAX,
         }

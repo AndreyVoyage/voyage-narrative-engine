@@ -11,9 +11,10 @@ Character Package.
 
 Conversation bound mirrors the existing product rule
 ``CompanionService._CONTEXT_EXCERPT_MAX`` (8): only the last <= 8 plain
-USER/CHARACTER messages, chronological, no SYSTEM/tool/metadata. Presentation
-("hidden") state is a UI concern and never independently filters the raw
-history handed in here.
+USER/CHARACTER messages, chronological, no SYSTEM/tool/metadata. Presentation-
+hidden messages are excluded by the caller (``CompanionService``) BEFORE the
+history is handed in here (V1C); this builder treats the messages it receives
+as already-eligible and never reads session presentation state itself.
 """
 
 from __future__ import annotations

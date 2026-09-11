@@ -974,3 +974,80 @@ def test_61_restart_orphan_claim_fails_closed_no_retry(tmp_path):
     assert final.state == STATE_FAILED
     assert final.error == "generation_interrupted_ambiguous"
     assert blocker1.calls == 1  # exactly one attempt was ever made, by svc1
+
+
+# ============================== V1C context visual grounding (visible-only)
+def test_62_context_excludes_presentation_hidden_messages(tmp_path):
+    svc = _service(tmp_path, http=FakeImageHttp())
+    _seed_snapshot(svc._data_root, tmp_path)
+    sid = _session(svc)
+    for i in range(6):
+        svc.send_message(sid, f"видимое {i}")
+    msgs = svc.get_messages(sid)
+    hidden_msg = next(m for m in reversed(msgs) if m.role == "user")
+    svc.set_message_visibility(sid, hidden_msg.seq, True)
+
+    job = svc.create_image_job(sid, kind="context")
+    excerpt = job.context.get("recentMessages") or []
+    texts = [m["text"] for m in excerpt]
+
+    assert hidden_msg.text not in texts
+    assert len(excerpt) <= 8
+    # bounded + chronological: the excerpt is a suffix of the visible history
+    visible = [m.text for m in msgs if m.seq != hidden_msg.seq]
+    assert texts == visible[-len(texts):]
+
+
+def test_63_context_scene_drops_freeform_keeps_structured(tmp_path):
+    svc = _service(tmp_path, http=FakeImageHttp())
+    _seed_snapshot(svc._data_root, tmp_path)
+    sid = svc.create_session("kira", scene={
+        "place": "кухня", "time": "вечер", "situation": "пьют чай",
+        "mood": "спокойно", "freeform": "КИРА_ТАЙНО_ПЛАНИРУЕТ",
+    }).session_id
+
+    job = svc.create_image_job(sid, kind="context")
+    scene = job.context.get("scene") or {}
+    assert scene.get("place") == "кухня"
+    assert scene.get("time") == "вечер"
+    assert scene.get("situation") == "пьют чай"
+    assert scene.get("mood") == "спокойно"
+    assert "freeform" not in scene
+    assert "КИРА_ТАЙНО_ПЛАНИРУЕТ" not in json.dumps(job.context)
+
+
+def test_64_context_prompt_is_visible_only(tmp_path):
+    http = FakeImageHttp()
+    svc = _service(tmp_path, http=http)
+    _seed_snapshot(svc._data_root, tmp_path)
+    sid = svc.create_session("kira", scene={
+        "place": "кухня", "time": "вечер", "situation": "пьют чай", "mood": "спокойно",
+        "freeform": "КИРА_ТАЙНО_ПЛАНИРУЕТ",
+    }).session_id
+    svc.send_message(sid, "СКРЫТОЕ_НАМЕРЕНИЕ")
+    msgs = svc.get_messages(sid)
+    hidden_msg = next(m for m in reversed(msgs) if m.role == "user")
+    svc.set_message_visibility(sid, hidden_msg.seq, True)
+
+    job = svc.create_image_job(sid, kind="context")
+    svc.poll_image_jobs(sid)
+    svc.poll_image_jobs(sid)
+    done = svc.get_image_job(job.job_id)
+    assert done.state == STATE_READY and len(http.calls) == 1
+
+    body = http.calls[0]["body"]
+    assert "кухня".encode("utf-8") in body            # location/time remain available
+    assert "пьют чай".encode("utf-8") in body         # observable situation preserved
+    assert "СКРЫТОЕ_НАМЕРЕНИЕ".encode("utf-8") not in body    # hidden message excluded
+    assert "КИРА_ТАЙНО_ПЛАНИРУЕТ".encode("utf-8") not in body  # freeform excluded
+
+
+def test_65_manual_custom_is_context_free_except_identity(tmp_path):
+    svc = _service(tmp_path, http=FakeImageHttp())
+    _seed_snapshot(svc._data_root, tmp_path)
+    sid = _session(svc)
+    svc.send_message(sid, "контекст")
+    job = svc.create_image_job(sid, kind="custom", prompt="портрет")
+    assert job.kind == "custom"
+    assert job.context.get("scene") is None
+    assert job.context.get("recentMessages") is None
