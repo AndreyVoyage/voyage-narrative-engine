@@ -157,7 +157,8 @@ async function main(): Promise<void> {
   ok("41. scene parameters render (место/время/ситуация/настроение)");
 
   // 42 + 43 — image job states render, composer never disabled by a job
-  let s = companionReducer(focus0, { type: "imageJobsLoaded", jobs: [
+  const focus0WithSession = { ...focus0, selectedSessionId: "x" };
+  let s = companionReducer(focus0WithSession, { type: "imageJobsLoaded", sessionId: "x", jobs: [
     { jobId: "j1", sessionId: "x", characterId: "kira", kind: "context", state: "GENERATING",
       createdAt: "", updatedAt: "", prompt: null, resultRef: null, error: null },
   ] });
@@ -976,7 +977,9 @@ async function main(): Promise<void> {
 
   // 3 — custom description UI no longer uses window.prompt
   assert(!appD.includes("window.prompt("), "App no longer uses window.prompt for images");
-  assert(appD.includes("CreateImageDialog") && appD.includes("setShowCreateImage(true)"), "custom uses a Companion-native dialog");
+  assert(appD.includes("CreateImageDialog") && appD.includes("setManualImageIntent((current) =>")
+    && appD.includes("{ sessionId, requestId: globalThis.crypto.randomUUID() }"),
+    "custom uses a Companion-native dialog");
   assert(dialogD.includes('role="dialog"') && dialogD.includes("image-create-input") && dialogD.includes('t("image.createSubmit")'),
     "CreateImageDialog is a real dialog with a description field");
   ok("IGW.3 custom description UI is a native dialog, not window.prompt");
@@ -1069,6 +1072,69 @@ async function main(): Promise<void> {
   }
   assert(igRu["image.readiness.activeSnapshotMissing"].length > 0, "RU readiness copy present");
   ok("IGW.18 all new image labels localized in five locales");
+
+  // ================================================================
+  // COMPANION_IMAGE_IDENTITY_V1B  (job concurrency + idempotency, frontend)
+  // ================================================================
+  const v1bApp = read("App.tsx");
+  const v1bComposer = read("features/Composer.tsx");
+  const v1bRightWing = read("features/RightWing.tsx");
+  const v1bHttp = read("client/httpCompanionClient.ts");
+  const v1bTypes = read("client/types.ts");
+  const v1bState = read("app/companionState.ts");
+
+  // A/B — the frontend sends a browser-native requestId, no dependency
+  assert(v1bHttp.includes('requestId: requestId ?? null')
+    && /createImageJob\(sessionId: string, kind: ImageJobKind, prompt\?: string, requestId\?: string\)/.test(v1bHttp),
+    "V1B.A httpCompanionClient sends requestId in the /images POST body");
+  assert(v1bApp.includes("globalThis.crypto.randomUUID()") && !/from ["']uuid["']/.test(v1bApp),
+    "V1B.B requestId comes from the browser-native crypto.randomUUID, no uuid dependency");
+  assert(/createImageJob\(sessionId: string, kind: ImageJobKind, prompt\?: string, requestId\?: string\)/.test(v1bTypes),
+    "V1B.A CompanionClient/ImageJob types carry requestId");
+
+  // C — synchronous local ownership claim happens BEFORE the first await (POST)
+  const submitBodyImg = v1bApp.slice(v1bApp.indexOf("async function submitImageJob"), v1bApp.indexOf("function makeCover"));
+  assert(/imageCreateOwnersRef\.current\.set\(sessionId, requestId\);[\s\S]*?await client\.createImageJob/.test(submitBodyImg),
+    "V1B.C the ref-based ownership claim is set before the first await, not gated by React state timing");
+  assert(/if \(imageCreateOwnersRef\.current\.has\(sessionId\)[\s\S]{0,40}\|\|[\s\S]{0,40}anyImageJobActive\(state\.imageJobs\)\)\s*return;/.test(submitBodyImg),
+    "V1B.C submitImageJob re-checks the synchronous guard at its own top (defense in depth)");
+
+  // D/E — manual dialog captures its origin session; a session switch closes it;
+  // a stale submit for a no-longer-selected session is rejected before any POST
+  assert(v1bApp.includes("{ sessionId, requestId: globalThis.crypto.randomUUID() }"),
+    "V1B.D the manual dialog intent carries its own origin sessionId + requestId");
+  assert(v1bApp.includes("setManualImageIntent((current) =>") && v1bApp.includes("current.sessionId === sessionId"),
+    "V1B.D a redundant same-session reopen reuses the existing intent instead of regenerating requestId");
+  assert(/setManualImageIntent\(\(intent\) =>\s*\n\s*intent && intent\.sessionId !== state\.selectedSessionId \? null : intent,?\s*\n?\s*\);/.test(v1bApp),
+    "V1B.E a session switch closes a manual dialog opened in a different session (CLOSE_ON_SESSION_CHANGE)");
+  assert(/if \(selectedSessionRef\.current !== sessionId\) \{[\s\S]{0,160}return;\s*\}/.test(submitBodyImg),
+    "V1B.E a stale submit (session changed after the dialog was opened) is rejected before any POST");
+
+  // F/G/H — create + poll/list responses carry explicit session ownership; a
+  // stale response for a no-longer-selected session cannot mutate visible state
+  assert(v1bState.includes('{ type: "imageJobsLoaded"; sessionId: string; jobs: ImageJob[] }')
+    && v1bState.includes('{ type: "imageJobCreated"; sessionId: string; job: ImageJob }'),
+    "V1B.F/G image-job actions carry an explicit sessionId, never inferred from payload shape");
+  assert(/case "imageJobsLoaded":[\s\S]{0,120}if \(action\.sessionId !== state\.selectedSessionId\) return state;/.test(v1bState)
+    && /case "imageJobCreated":[\s\S]{0,120}if \(action\.sessionId !== state\.selectedSessionId\) return state;/.test(v1bState),
+    "V1B.H the reducer drops a stale-session action instead of applying it to the current session");
+  assert(/if \(selectedSessionRef\.current !== sessionId\) return;\s*\n\s*setManualImageIntent/.test(v1bApp)
+    && v1bApp.includes('dispatch({ type: "imageJobsLoaded", sessionId, jobs })')
+    && v1bApp.includes('dispatch({ type: "imageJobCreated", sessionId, job })'),
+    "V1B.F/G App also gates the create response on the CURRENT selected session before dispatching, and every dispatch site names its sessionId explicitly");
+
+  // I — create/context-frame controls are disabled while a job is pending or active
+  assert(v1bApp.includes("export const ImageActionsDisabledContext")
+    || v1bComposer.includes("export const ImageActionsDisabledContext"), "V1B.I a shared disabled-state context exists");
+  assert(/const imageActionsDisabled = Boolean\([\s\S]{0,40}state\.selectedSessionId[\s\S]{0,40}imageCreatePendingSessions\.has\(state\.selectedSessionId\) \|\| activeJob/.test(v1bApp),
+    "V1B.I disabled state reflects an in-flight create OR an active QUEUED/GENERATING job");
+  assert(/disabled=\{imageActionsDisabled\}[\s\S]{0,40}onClick=\{\(\) => \{ setMenuOpen\(false\); onCreateImage\(\); \}\}/.test(v1bComposer)
+    && /disabled=\{imageActionsDisabled\}[\s\S]{0,40}onClick=\{\(\) => \{ setMenuOpen\(false\); onContextFrame\(\); \}\}/.test(v1bComposer),
+    "V1B.I both the manual-create and context-frame composer actions are disabled while active");
+  assert(/disabled=\{imageActionsDisabled\}[\s\S]{0,20}onClick=\{onCreateImage\}/.test(v1bRightWing)
+    && /disabled=\{imageActionsDisabled\}[\s\S]{0,20}onClick=\{onContextFrame\}/.test(v1bRightWing),
+    "V1B.I the right-wing create/context-frame buttons are disabled while active");
+  ok("V1B.A..I frontend request ownership, synchronous double-click guard, session-scoped responses, active-job disable");
 
   // ================================================================
   // COMPANION CONTEXT UI V1D  (dialogue operational context budget)

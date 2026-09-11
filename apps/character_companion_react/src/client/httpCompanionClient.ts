@@ -151,8 +151,13 @@ export class HttpCompanionClient implements CompanionClient {
     );
   }
 
-  async createImageJob(sessionId: string, kind: ImageJobKind, prompt?: string): Promise<ImageJob> {
-    return call<ImageJob>("POST", "/images", { sessionId, kind, prompt: prompt ?? null });
+  async createImageJob(sessionId: string, kind: ImageJobKind, prompt?: string, requestId?: string): Promise<ImageJob> {
+    return call<ImageJob>("POST", "/images", {
+      sessionId,
+      kind,
+      prompt: prompt ?? null,
+      requestId: requestId ?? null,
+    });
   }
 
   async listImageJobs(sessionId: string): Promise<ImageJob[]> {

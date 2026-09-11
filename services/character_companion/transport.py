@@ -54,6 +54,8 @@ _STATUS_BY_CODE = {
     "provider_config": 409,
     "provider_not_configured": 409,
     "settings_unavailable": 409,
+    "image_job_idempotency_conflict": 409,
+    "image_job_active_conflict": 409,
     "secret_in_settings": 500,
     "vault_unavailable": 503,
 }
@@ -163,6 +165,7 @@ def _job_to_json(j) -> dict:
         "state": j.state,
         "createdAt": j.created_at,
         "updatedAt": j.updated_at,
+        "requestId": j.request_id,
         "prompt": j.prompt,
         "resultRef": j.result_ref,
         "error": j.error,
@@ -352,8 +355,13 @@ class CompanionTransport:
         prompt = payload.get("prompt")
         if prompt is not None and not isinstance(prompt, str):
             raise CompanionTransportError(400, "invalid_request", "'prompt' must be a string or null")
+        request_id = payload.get("requestId")
+        if request_id is not None and not isinstance(request_id, str):
+            raise CompanionTransportError(400, "invalid_request", "'requestId' must be a string or null")
         return _run(lambda: _job_to_json(
-            self._service.create_image_job(session_id, kind=kind, prompt=prompt)
+            self._service.create_image_job(
+                session_id, kind=kind, prompt=prompt, request_id=request_id
+            )
         ))
 
     def list_image_jobs(self, session_id: str) -> dict:

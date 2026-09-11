@@ -114,6 +114,40 @@ def test_28_29_30_31_image_jobs_and_cover(tmp_path):
     assert [m["role"] for m in msgs] == ["user", "character", "user", "character"]
 
 
+# ---------------------------------- COMPANION_IMAGE_IDENTITY_V1B (requestId)
+def test_v1b_request_id_idempotent_and_conflicts_over_transport(tmp_path):
+    t = _transport(tmp_path)
+    sid = t.create_session({"characterId": "kira", "scene": SCENE})["sessionId"]
+
+    first = t.create_image_job(
+        {"sessionId": sid, "kind": "custom", "prompt": "Kira reading", "requestId": "req-http-1"}
+    )
+    assert first["requestId"] == "req-http-1" and first["state"] == "QUEUED"
+
+    replay = t.create_image_job(
+        {"sessionId": sid, "kind": "custom", "prompt": "Kira reading", "requestId": "req-http-1"}
+    )
+    assert replay["jobId"] == first["jobId"]  # idempotent replay, no duplicate job
+
+    with pytest.raises(CompanionTransportError) as exc_conflict:
+        t.create_image_job(
+            {"sessionId": sid, "kind": "custom", "prompt": "a different prompt", "requestId": "req-http-1"}
+        )
+    assert exc_conflict.value.status == 409 and exc_conflict.value.code == "image_job_idempotency_conflict"
+
+    with pytest.raises(CompanionTransportError) as exc_active:
+        t.create_image_job({"sessionId": sid, "kind": "custom", "prompt": "another attempt"})
+    assert exc_active.value.status == 409 and exc_active.value.code == "image_job_active_conflict"
+
+    with pytest.raises(CompanionTransportError) as exc_bad_type:
+        t.create_image_job({"sessionId": sid, "kind": "context", "requestId": 123})
+    assert exc_bad_type.value.status == 400 and exc_bad_type.value.code == "invalid_request"
+
+    # the still-active job for this session is untouched by the rejected attempts
+    jobs = t.list_image_jobs(sid)["jobs"]
+    assert len(jobs) == 1 and jobs[0]["jobId"] == first["jobId"]
+
+
 # ---------------------------------------------------- 32 loopback + restart
 def _free_port():
     s = socket.socket(); s.bind(("127.0.0.1", 0)); p = s.getsockname()[1]; s.close(); return p

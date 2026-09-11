@@ -28,7 +28,7 @@ import { draftToInput } from "./app/newDialog.js";
 import { setFocusBackgroundRef } from "./app/focusBackground.js";
 import { loadUserProfile, saveUserProfile, type LocalUserProfile } from "./app/userProfile.js";
 import { useLocale } from "./i18n/react.js";
-import type { ComposerAssistant } from "./features/Composer.js";
+import { ImageActionsDisabledContext, type ComposerAssistant } from "./features/Composer.js";
 
 const client: CompanionClient =
   import.meta.env.MODE === "mock" ? new MockCompanionClient() : new HttpCompanionClient();
@@ -54,11 +54,20 @@ export function App() {
   const [profileLoading, setProfileLoading] = useState(false);
   // IMAGE_GENERATION product wiring — readiness is provider-call-free.
   const [imageReadiness, setImageReadiness] = useState<ImageGenerationReadiness | null>(null);
-  const [showCreateImage, setShowCreateImage] = useState(false);
+  const [manualImageIntent, setManualImageIntent] = useState<{
+    sessionId: string;
+    requestId: string;
+  } | null>(null);
+  const [imageCreatePendingSessions, setImageCreatePendingSessions] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
   const [release, setRelease] = useState<import("./client/types.js").ReleaseInfo | null>(null);
   const [userProfile, setUserProfile] = useState<LocalUserProfile>(loadUserProfile);
   const [assistantReady, setAssistantReady] = useState(false);
   const pollRef = useRef<number | null>(null);
+  const selectedSessionRef = useRef(state.selectedSessionId);
+  selectedSessionRef.current = state.selectedSessionId;
+  const imageCreateOwnersRef = useRef<Map<string, string>>(new Map());
 
   // Unsent composer drafts, keyed by session id, IN MEMORY ONLY (no backend, no
   // localStorage). Owned here so switching view / entering or leaving Focus Mode
@@ -131,7 +140,7 @@ export function App() {
       .getMessages(sessionId)
       .then((messages) => dispatch({ type: "messagesLoaded", messages }))
       .catch((e) => dispatch({ type: "loadFailed", ...errorOf(e) }));
-    client.listImageJobs(sessionId).then((jobs) => dispatch({ type: "imageJobsLoaded", jobs })).catch(() => undefined);
+    client.listImageJobs(sessionId).then((jobs) => dispatch({ type: "imageJobsLoaded", sessionId, jobs })).catch(() => undefined);
   }, []);
 
   // ---- image-job polling (non-blocking; never gates the chat) -------
@@ -140,11 +149,20 @@ export function App() {
     if (!state.selectedSessionId) return;
     const sid = state.selectedSessionId;
     pollRef.current = window.setInterval(() => {
-      client.listImageJobs(sid).then((jobs) => dispatch({ type: "imageJobsLoaded", jobs })).catch(() => undefined);
+      client.listImageJobs(sid).then((jobs) => dispatch({ type: "imageJobsLoaded", sessionId: sid, jobs })).catch(() => undefined);
     }, 700);
     return () => {
       if (pollRef.current) window.clearInterval(pollRef.current);
     };
+  }, [state.selectedSessionId]);
+
+  // A manual intent belongs to the session in which its dialog was opened.
+  // Switching sessions closes it; the submit guard below also rejects the
+  // stale intent synchronously before any POST.
+  useEffect(() => {
+    setManualImageIntent((intent) =>
+      intent && intent.sessionId !== state.selectedSessionId ? null : intent,
+    );
   }, [state.selectedSessionId]);
 
   // ---- image-generation readiness (provider-call-free) -----------
@@ -229,29 +247,68 @@ export function App() {
   // "context" uses the existing bounded context-frame path. Neither generates
   // anything until the user confirms, and both are guarded by readiness.
   function createImageJob(kind: ImageJobKind) {
-    if (!state.selectedSessionId) return;
+    const sessionId = state.selectedSessionId;
+    if (!sessionId) return;
+    if (imageCreateOwnersRef.current.has(sessionId) || anyImageJobActive(state.imageJobs)) return;
     if (kind === "custom") {
-      setShowCreateImage(true);
+      // A redundant re-click while the SAME session's dialog is already open
+      // reuses that intent's requestId -- it is a retry of the same active UI
+      // intent, not a new one, per the create-idempotency contract.
+      setManualImageIntent((current) =>
+        current && current.sessionId === sessionId
+          ? current
+          : { sessionId, requestId: globalThis.crypto.randomUUID() },
+      );
       return;
     }
     if (imageReadiness && !imageReadiness.ready) {
       dispatch({ type: "sendFailed", code: "image_generation_not_configured", message: imageReadiness.messageKey });
       return;
     }
-    submitImageJob("context");
+    void submitImageJob("context", undefined, sessionId, globalThis.crypto.randomUUID());
   }
 
-  function submitImageJob(kind: ImageJobKind, description?: string) {
-    const sessionId = state.selectedSessionId;
-    if (!sessionId) return;
+  async function submitImageJob(
+    kind: ImageJobKind,
+    description: string | undefined,
+    sessionId: string,
+    requestId: string,
+  ) {
+    if (selectedSessionRef.current !== sessionId) {
+      setManualImageIntent((intent) => intent?.requestId === requestId ? null : intent);
+      return;
+    }
     if (kind === "custom" && !(description && description.trim())) return;
-    client
-      .createImageJob(sessionId, kind, kind === "custom" ? description!.trim() : undefined)
-      .then((job) => {
-        setShowCreateImage(false);
-        dispatch({ type: "imageJobCreated", job });
-      })
-      .catch((e) => dispatch({ type: "sendFailed", ...errorOf(e) }));
+    if (imageCreateOwnersRef.current.has(sessionId) || anyImageJobActive(state.imageJobs)) return;
+
+    // Claim before the first await. React state alone cannot stop two event
+    // handlers in the same render from issuing duplicate POSTs.
+    imageCreateOwnersRef.current.set(sessionId, requestId);
+    setImageCreatePendingSessions((current) => new Set(current).add(sessionId));
+    try {
+      const job = await client.createImageJob(
+        sessionId,
+        kind,
+        kind === "custom" ? description!.trim() : undefined,
+        requestId,
+      );
+      if (selectedSessionRef.current !== sessionId) return;
+      setManualImageIntent((intent) => intent?.requestId === requestId ? null : intent);
+      dispatch({ type: "imageJobCreated", sessionId, job });
+    } catch (e) {
+      if (selectedSessionRef.current === sessionId) {
+        dispatch({ type: "sendFailed", ...errorOf(e) });
+      }
+    } finally {
+      if (imageCreateOwnersRef.current.get(sessionId) === requestId) {
+        imageCreateOwnersRef.current.delete(sessionId);
+      }
+      setImageCreatePendingSessions((current) => {
+        const next = new Set(current);
+        next.delete(sessionId);
+        return next;
+      });
+    }
   }
 
   function makeCover(resultRef: string) {
@@ -305,25 +362,32 @@ export function App() {
     state.characters.find((c) => c.characterId === state.selectedCharacterId)?.displayName ?? "";
   const readyImages = state.imageJobs.filter((j) => j.state === "READY" && j.resultRef);
   const activeJob = state.imageJobs.find((j) => j.state === "QUEUED" || j.state === "GENERATING") ?? null;
+  const imageActionsDisabled = Boolean(
+    state.selectedSessionId
+    && (imageCreatePendingSessions.has(state.selectedSessionId) || activeJob),
+  );
   const coverUrl = selectedSession?.sceneCoverRef
     ? imageUrl(selectedSession.sceneCoverRef)
     : readyImages.length
       ? imageUrl(readyImages[readyImages.length - 1].resultRef as string)
       : null;
 
-  const createImageDialog = showCreateImage ? (
+  const createImageDialog = manualImageIntent
+    && manualImageIntent.sessionId === state.selectedSessionId ? (
     <CreateImageDialog
       readiness={imageReadiness}
-      busy={anyImageJobActive(state.imageJobs)}
-      onSubmit={(description) => submitImageJob("custom", description)}
-      onCancel={() => setShowCreateImage(false)}
-      onOpenSettings={() => { setShowCreateImage(false); setShowSettings(true); }}
+      busy={imageActionsDisabled}
+      onSubmit={(description) => void submitImageJob(
+        "custom", description, manualImageIntent.sessionId, manualImageIntent.requestId,
+      )}
+      onCancel={() => setManualImageIntent(null)}
+      onOpenSettings={() => { setManualImageIntent(null); setShowSettings(true); }}
     />
   ) : null;
 
   if (state.focusActive && selectedSession) {
     return (
-      <>
+      <ImageActionsDisabledContext.Provider value={imageActionsDisabled}>
       {createImageDialog}
       <FocusMode
         layout={state.focusLayout}
@@ -349,11 +413,12 @@ export function App() {
         onExit={() => dispatch({ type: "focusExit" })}
         onMakeCover={makeCover}
       />
-      </>
+      </ImageActionsDisabledContext.Provider>
     );
   }
 
   return (
+    <ImageActionsDisabledContext.Provider value={imageActionsDisabled}>
     <div className="app">
       <header className="app-bar">
         <span>{release ? release.release.name : t("app.brandFallback")}</span>
@@ -442,6 +507,7 @@ export function App() {
           imageUrl={imageUrl}
           readyImages={readyImages}
           activeJob={activeJob}
+          imageActionsDisabled={imageActionsDisabled}
           imageReadiness={imageReadiness}
           onMakeCover={makeCover}
           onMakeBackground={makeBackground}
@@ -459,5 +525,6 @@ export function App() {
         onClose={closeProfile}
       />
     </div>
+    </ImageActionsDisabledContext.Provider>
   );
 }

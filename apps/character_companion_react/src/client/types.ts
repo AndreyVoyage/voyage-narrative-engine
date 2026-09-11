@@ -144,6 +144,7 @@ export interface ImageJob {
   state: ImageJobState;
   createdAt: string;
   updatedAt: string;
+  requestId?: string | null;
   prompt: string | null;
   resultRef: string | null;
   error: string | null;
@@ -325,7 +326,7 @@ export interface CompanionClient {
   rewriteDraft(draft: string, opts?: { localeHint?: string }): Promise<WritingAssistantResult>;
   randomScenario(opts?: { field?: SceneField; seed?: number }): Promise<RandomScenarioResult>;
   imageGenerationReadiness(characterId: string): Promise<ImageGenerationReadiness>;
-  createImageJob(sessionId: string, kind: ImageJobKind, prompt?: string): Promise<ImageJob>;
+  createImageJob(sessionId: string, kind: ImageJobKind, prompt?: string, requestId?: string): Promise<ImageJob>;
   listImageJobs(sessionId: string): Promise<ImageJob[]>;
   setSceneCover(sessionId: string, resultRef: string): Promise<CompanionSession>;
   getSettings(): Promise<CompanionSettingsView>;

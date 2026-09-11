@@ -11,6 +11,7 @@ interface Props {
   imageUrl: (resultRef: string) => string;
   readyImages: ImageJob[];
   activeJob: ImageJob | null;
+  imageActionsDisabled: boolean;
   imageReadiness: ImageGenerationReadiness | null;
   onMakeCover: (resultRef: string) => void;
   onMakeBackground: (resultRef: string) => void;
@@ -41,7 +42,7 @@ function readinessKey(messageKey: string): TranslationKey {
  */
 export function RightWing({
   characterId, characterName, scene, coverRef, imageUrl, readyImages, activeJob,
-  imageReadiness, onMakeCover, onMakeBackground, onCreateImage, onContextFrame,
+  imageActionsDisabled, imageReadiness, onMakeCover, onMakeBackground, onCreateImage, onContextFrame,
 }: Props) {
   const { t } = useLocale();
   const NOT_SET = t("scene.notSet");
@@ -63,8 +64,8 @@ export function RightWing({
       )}
 
       <div className="wing-image-actions">
-        <button type="button" className="btn btn-sm" onClick={onCreateImage}>{t("wing.createImage")}</button>
-        <button type="button" className="btn btn-sm" onClick={onContextFrame}>{t("wing.contextFrame")}</button>
+        <button type="button" className="btn btn-sm" disabled={imageActionsDisabled} onClick={onCreateImage}>{t("wing.createImage")}</button>
+        <button type="button" className="btn btn-sm" disabled={imageActionsDisabled} onClick={onContextFrame}>{t("wing.contextFrame")}</button>
       </div>
 
       {notReady && imageReadiness && (

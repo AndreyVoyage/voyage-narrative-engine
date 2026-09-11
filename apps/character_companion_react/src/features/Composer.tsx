@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { isSendableMessage } from "../app/companionState.js";
 import {
   beginRun,
@@ -21,6 +21,10 @@ export interface ComposerAssistant {
    *  backend derives the mode). Rejects with a bounded error code string. */
   suggest: (source: string) => Promise<string>;
 }
+
+/** App-level image-create ownership reaches both normal and Focus composers
+ * without adding image-job state to either presentation wrapper. */
+export const ImageActionsDisabledContext = createContext(false);
 
 interface Props {
   sending: boolean;
@@ -50,6 +54,7 @@ interface Props {
  */
 export function Composer({ sending, t, assistant, sessionId, draft, onDraftChange, onSend, onCreateImage, onContextFrame }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const imageActionsDisabled = useContext(ImageActionsDisabledContext);
   const [assist, setAssist] = useState<AssistantState>(initialAssistantState());
   // Always-current view of the controlled draft for the async late-response guard.
   const draftRef = useRef(draft);
@@ -171,10 +176,10 @@ export function Composer({ sending, t, assistant, sessionId, draft, onDraftChang
         {menuOpen && (
           <div className="composer-menu" role="menu">
             <p className="composer-menu-group">{t("composer.menuCreate")}</p>
-            <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onCreateImage(); }}>
+            <button type="button" role="menuitem" disabled={imageActionsDisabled} onClick={() => { setMenuOpen(false); onCreateImage(); }}>
               {t("composer.createImage")}
             </button>
-            <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onContextFrame(); }}>
+            <button type="button" role="menuitem" disabled={imageActionsDisabled} onClick={() => { setMenuOpen(false); onContextFrame(); }}>
               {t("composer.contextFrame")}
             </button>
             <p className="composer-menu-group">{t("composer.menuAttach")}</p>

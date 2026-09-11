@@ -20,6 +20,8 @@ from __future__ import annotations
 
 import base64
 import json
+import threading
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -35,6 +37,7 @@ from services.character_companion.image_jobs import (
     STATE_GENERATING,
     STATE_QUEUED,
     STATE_READY,
+    ImageJob,
     ImageJobService,
     UnavailableImageGenerator,
 )
@@ -166,6 +169,86 @@ def _service(
         settings_store=settings_store,
         credential_vault=vault,
     )
+
+
+def _advance_row(job: ImageJob, **changes) -> ImageJob:
+    """Local equivalent of image_jobs._with -- kept test-side so no private
+    helper needs to be exported."""
+    row = job.to_row()
+    row.update(changes)
+    row["updated_at"] = "2020-01-01T00:00:00+00:00"
+    return ImageJob.from_row(row)
+
+
+class _BlockingGenerator:
+    """Deterministic thread-control generator for concurrency tests. QUEUED ->
+    GENERATING is instant (no provider call); a GENERATING call blocks on
+    `release` until the test lets it proceed, then returns READY. Never opens a
+    socket. `prepare_generation_spec` is delegated to a real generator bound to
+    a fake HTTP transport (spec computation is provider-call-free per V1A)."""
+
+    def __init__(self, spec_source) -> None:
+        self._spec_source = spec_source
+        self.calls = 0
+        self._calls_lock = threading.Lock()
+        self.entered = threading.Event()   # set once a GENERATING call is blocking
+        self.release = threading.Event()   # the test sets this to let it finish
+
+    def prepare_generation_spec(self, *, character_id: str):
+        return self._spec_source.prepare_generation_spec(character_id=character_id)
+
+    def advance(self, job: ImageJob, *, images_dir: Path) -> ImageJob:
+        if job.state == STATE_QUEUED:
+            return _advance_row(job, state=STATE_GENERATING)
+        if job.state == STATE_GENERATING:
+            with self._calls_lock:
+                self.calls += 1
+            self.entered.set()
+            if not self.release.wait(timeout=10):
+                raise TimeoutError("test blocking generator was never released")
+            return _advance_row(job, state=STATE_READY, result_ref=f"images/{job.job_id}.svg")
+        return job
+
+
+class _CountingGenerator:
+    """Counts every advance() call; used to prove a restarted/orphan-detecting
+    instance never reaches the provider."""
+
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def advance(self, job: ImageJob, *, images_dir: Path) -> ImageJob:
+        self.calls += 1
+        return job
+
+    def prepare_generation_spec(self, *, character_id: str):
+        raise NotImplementedError
+
+
+def _blocking_service(tmp_path, *, data_root=None):
+    """A CompanionService bound to a _BlockingGenerator, for deterministic
+    concurrency control. Returns (service, generator)."""
+    data_root = Path(data_root or (tmp_path / "companion-data"))
+    _seed_snapshot(data_root, tmp_path)
+    settings_store = _configured_settings_store(data_root)
+    vault = _vault_with_key()
+    spec_source = RealCompanionImageGenerator(
+        data_root=data_root,
+        settings_store=settings_store,
+        credential_vault=vault,
+        adapter=ImageProviderAdapter(http_post=FakeImageHttp()),
+    )
+    blocker = _BlockingGenerator(spec_source)
+    svc = CompanionService(
+        acceptance_root=ACCEPTED_ROOT,
+        data_root=data_root,
+        provider_factory=make_fake_factory(),
+        provider_info=FAKE_PROVIDER_INFO,
+        image_generator=blocker,
+        settings_store=settings_store,
+        credential_vault=vault,
+    )
+    return svc, blocker
 
 
 # ==================================== 30/31 composition root + library default
@@ -645,3 +728,249 @@ def test_41_unapproved_local_snapshot_fails_at_creation_without_provider(tmp_pat
     assert exc.value.code == "image_generation_snapshot_not_approved"
     assert not (svc._data_root / "companion_image_jobs.json").exists()
     assert http.calls == []
+
+
+# ============================================================================
+# COMPANION_IMAGE_IDENTITY_V1B -- job concurrency and idempotency
+#
+# Safety invariant under test: ONE persisted ImageJob may initiate AT MOST ONE
+# image-provider operation. Rapid clicks, concurrent POSTs, overlapping
+# polling, and backend-restart recovery must never cause provider attempt #2
+# for the same job. Offline: fake/blocking generators only, temp data roots.
+# ============================================================================
+
+# ---------------------------------------------------- 50 create idempotency
+def test_50_idempotent_same_request_returns_same_job(tmp_path):
+    svc = _service(tmp_path)
+    _seed_snapshot(svc._data_root, tmp_path)
+    sid = _session(svc)
+    j1 = svc.create_image_job(sid, kind="custom", prompt="hello", request_id="req-1")
+    j2 = svc.create_image_job(sid, kind="custom", prompt="hello", request_id="req-1")
+    assert j1.job_id == j2.job_id
+    rows = json.loads((svc._data_root / "companion_image_jobs.json").read_text(encoding="utf-8"))
+    assert len(rows) == 1
+
+
+def test_51_requestid_conflict_different_prompt(tmp_path):
+    svc = _service(tmp_path)
+    _seed_snapshot(svc._data_root, tmp_path)
+    sid = _session(svc)
+    svc.create_image_job(sid, kind="custom", prompt="hello", request_id="req-1")
+    with pytest.raises(CompanionError) as exc:
+        svc.create_image_job(sid, kind="custom", prompt="different", request_id="req-1")
+    assert exc.value.code == "image_job_idempotency_conflict"
+    rows = json.loads((svc._data_root / "companion_image_jobs.json").read_text(encoding="utf-8"))
+    assert len(rows) == 1  # the conflicting attempt created nothing
+
+
+def test_52_requestid_conflict_different_session(tmp_path):
+    svc = _service(tmp_path)
+    _seed_snapshot(svc._data_root, tmp_path)
+    sid_a = _session(svc)
+    sid_b = _session(svc)
+    svc.create_image_job(sid_a, kind="custom", prompt="hello", request_id="req-1")
+    with pytest.raises(CompanionError) as exc:
+        svc.create_image_job(sid_b, kind="custom", prompt="hello", request_id="req-1")
+    assert exc.value.code == "image_job_idempotency_conflict"
+
+
+def test_53_requestid_conflict_different_kind(tmp_path):
+    svc = _service(tmp_path)
+    _seed_snapshot(svc._data_root, tmp_path)
+    sid = _session(svc)
+    svc.create_image_job(sid, kind="custom", prompt="hello", request_id="req-1")
+    with pytest.raises(CompanionError) as exc:
+        svc.create_image_job(sid, kind="context", request_id="req-1")
+    assert exc.value.code == "image_job_idempotency_conflict"
+
+
+def test_54_terminal_idempotent_replay_returns_original(tmp_path):
+    http = FakeImageHttp()
+    svc = _service(tmp_path, http=http)
+    _seed_snapshot(svc._data_root, tmp_path)
+    sid = _session(svc)
+    job = svc.create_image_job(sid, kind="custom", prompt="hello", request_id="req-1")
+    svc.poll_image_jobs(sid)
+    svc.poll_image_jobs(sid)
+    done = svc.get_image_job(job.job_id)
+    assert done.state == STATE_READY and len(http.calls) == 1
+
+    replay = svc.create_image_job(sid, kind="custom", prompt="hello", request_id="req-1")
+    assert replay.job_id == job.job_id
+    assert replay.state == STATE_READY
+    assert len(http.calls) == 1  # the replay never touched the provider
+
+
+def test_55_new_request_after_terminal_creates_new_job(tmp_path):
+    http = FakeImageHttp()
+    svc = _service(tmp_path, http=http)
+    _seed_snapshot(svc._data_root, tmp_path)
+    sid = _session(svc)
+    job1 = svc.create_image_job(sid, kind="custom", prompt="hello", request_id="req-1")
+    svc.poll_image_jobs(sid)
+    svc.poll_image_jobs(sid)
+    assert svc.get_image_job(job1.job_id).state == STATE_READY
+
+    job2 = svc.create_image_job(sid, kind="custom", prompt="hello again", request_id="req-2")
+    assert job2.job_id != job1.job_id
+    assert job2.state == STATE_QUEUED
+
+
+def test_56_request_id_validation_and_legacy_caller(tmp_path):
+    svc = _service(tmp_path)
+    _seed_snapshot(svc._data_root, tmp_path)
+    sid = _session(svc)
+    with pytest.raises(CompanionError) as exc:
+        svc.create_image_job(sid, kind="custom", prompt="x", request_id="has a space")
+    assert exc.value.code == "invalid_request"
+    with pytest.raises(CompanionError) as exc2:
+        svc.create_image_job(sid, kind="custom", prompt="x", request_id="x" * 200)
+    assert exc2.value.code == "invalid_request"
+    assert not (svc._data_root / "companion_image_jobs.json").exists()
+
+    # a legacy caller with no requestId at all still works and is still
+    # protected by the session+character single-flight check.
+    job = svc.create_image_job(sid, kind="custom", prompt="legacy ok")
+    assert job.request_id is None
+    with pytest.raises(CompanionError) as exc3:
+        svc.create_image_job(sid, kind="custom", prompt="legacy ok 2")
+    assert exc3.value.code == "image_job_active_conflict"
+
+
+# ---------------------------------------------------- 57/58 single-flight create
+def test_57_concurrent_create_same_session_exactly_one_active(tmp_path):
+    svc = _service(tmp_path)
+    _seed_snapshot(svc._data_root, tmp_path)
+    sid = _session(svc)
+
+    barrier = threading.Barrier(2)
+    results: dict[str, tuple] = {}
+
+    def attempt(name: str, request_id: str) -> None:
+        try:
+            barrier.wait(timeout=5)
+            job = svc.create_image_job(sid, kind="custom", prompt="race", request_id=request_id)
+            results[name] = ("ok", job)
+        except CompanionError as exc:
+            results[name] = ("error", exc.code)
+
+    t1 = threading.Thread(target=attempt, args=("a", "req-race-a"))
+    t2 = threading.Thread(target=attempt, args=("b", "req-race-b"))
+    t1.start()
+    t2.start()
+    t1.join(timeout=10)
+    t2.join(timeout=10)
+
+    outcomes = [results["a"], results["b"]]
+    oks = [o for o in outcomes if o[0] == "ok"]
+    errs = [o for o in outcomes if o[0] == "error"]
+    assert len(oks) == 1 and len(errs) == 1
+    assert errs[0][1] == "image_job_active_conflict"
+
+    rows = json.loads((svc._data_root / "companion_image_jobs.json").read_text(encoding="utf-8"))
+    active = [r for r in rows if r.get("session_id") == sid and r.get("state") not in ("READY", "FAILED", "CANCELLED")]
+    assert len(active) == 1  # exactly one active job persisted -- no duplicate work
+
+
+def test_58_different_sessions_get_independent_active_jobs(tmp_path):
+    svc = _service(tmp_path)
+    _seed_snapshot(svc._data_root, tmp_path)
+    sid_a = _session(svc)
+    sid_b = _session(svc)
+    job_a = svc.create_image_job(sid_a, kind="custom", prompt="A scene", request_id="req-a")
+    job_b = svc.create_image_job(sid_b, kind="custom", prompt="B scene", request_id="req-b")
+    assert job_a.job_id != job_b.job_id
+    assert job_a.state == STATE_QUEUED and job_b.state == STATE_QUEUED
+
+
+# ---------------------------------------------------- 59 concurrent poll
+def test_59_concurrent_poll_exactly_one_provider_call(tmp_path):
+    svc, blocker = _blocking_service(tmp_path)
+    sid = _session(svc)
+    job = svc.create_image_job(sid, kind="custom", prompt="race poll", request_id="req-poll")
+    svc.poll_image_jobs(sid)  # QUEUED -> GENERATING, 0 provider calls
+    assert svc.get_image_job(job.job_id).state == STATE_GENERATING
+
+    t = threading.Thread(target=lambda: svc.poll_image_jobs(sid))
+    t.start()
+    assert blocker.entered.wait(timeout=5), "thread A never entered the provider call"
+
+    # a second, concurrent poll on the SAME process must not call the provider
+    # again and must not fail the legitimate in-flight job.
+    svc.poll_image_jobs(sid)
+    assert blocker.calls == 1
+    assert svc.get_image_job(job.job_id).state == STATE_GENERATING
+
+    blocker.release.set()
+    t.join(timeout=5)
+    done = svc.get_image_job(job.job_id)
+    assert done.state == STATE_READY
+    assert blocker.calls == 1  # exactly one provider attempt for the whole job
+
+
+# ---------------------------------------------------- 60 provider outside lock
+def test_60_provider_call_does_not_hold_the_registry_lock(tmp_path):
+    svc, blocker = _blocking_service(tmp_path)
+    sid_a = _session(svc)
+    sid_b = _session(svc)
+    job_a = svc.create_image_job(sid_a, kind="custom", prompt="A", request_id="req-a")
+    svc.poll_image_jobs(sid_a)  # QUEUED -> GENERATING
+
+    t = threading.Thread(target=lambda: svc.poll_image_jobs(sid_a))
+    t.start()
+    assert blocker.entered.wait(timeout=5), "thread never entered the provider call"
+
+    # while A's provider call is deliberately blocked, an unrelated create for a
+    # DIFFERENT session must proceed promptly -- proving the registry lock is
+    # released before the (potentially long) provider call, never held across it.
+    started = time.monotonic()
+    job_b = svc.create_image_job(sid_b, kind="custom", prompt="B", request_id="req-b")
+    elapsed = time.monotonic() - started
+    assert job_b.state == STATE_QUEUED
+    assert elapsed < 5.0, "create for an unrelated session waited on the blocked provider call"
+
+    blocker.release.set()
+    t.join(timeout=5)
+    assert svc.get_image_job(job_a.job_id).state == STATE_READY
+
+
+# ---------------------------------------------------- 61 restart / orphan claim
+def test_61_restart_orphan_claim_fails_closed_no_retry(tmp_path):
+    data_root = tmp_path / "companion-data"
+    svc1, blocker1 = _blocking_service(tmp_path, data_root=data_root)
+    sid = _session(svc1)
+    job = svc1.create_image_job(sid, kind="custom", prompt="orphan", request_id="req-orphan")
+    svc1.poll_image_jobs(sid)  # QUEUED -> GENERATING
+
+    t = threading.Thread(target=lambda: svc1.poll_image_jobs(sid))
+    t.start()
+    assert blocker1.entered.wait(timeout=5), "thread never entered the provider call"
+
+    # the claim is durably persisted BEFORE the (still-blocked) provider call returns
+    rows = json.loads((data_root / "companion_image_jobs.json").read_text(encoding="utf-8"))
+    row = next(r for r in rows if r["job_id"] == job.job_id)
+    assert row["execution"]["state"] == "CLAIMED"
+    assert "execution" not in (row.get("context") or {})  # claim never pollutes the pinned context
+
+    # A FRESH ImageJobService instance against the SAME data root -- no live
+    # ownership of this claim -- simulates a restarted process. It must fail the
+    # job closed without ever calling its own generator, and without waiting for
+    # svc1's still-blocked call.
+    counting = _CountingGenerator()
+    svc2_images = ImageJobService(data_root, generator=counting)
+    moved = svc2_images.tick()
+    assert moved >= 1
+    assert counting.calls == 0  # zero provider attempts after "restart"
+
+    after = svc2_images.get_job(job.job_id)
+    assert after.state == STATE_FAILED
+    assert after.error == "generation_interrupted_ambiguous"
+
+    # releasing the original blocked call must NOT resurrect or overwrite the
+    # already-failed-closed job -- no automatic retry, no reviving a stale attempt.
+    blocker1.release.set()
+    t.join(timeout=5)
+    final = svc2_images.get_job(job.job_id)
+    assert final.state == STATE_FAILED
+    assert final.error == "generation_interrupted_ambiguous"
+    assert blocker1.calls == 1  # exactly one attempt was ever made, by svc1

@@ -58,8 +58,8 @@ export type CompanionAction =
   | { type: "sendStart" }
   | { type: "sendSucceeded"; messages: CompanionMessage[] }
   | { type: "sendFailed"; code: string; message: string }
-  | { type: "imageJobsLoaded"; jobs: ImageJob[] }
-  | { type: "imageJobCreated"; job: ImageJob }
+  | { type: "imageJobsLoaded"; sessionId: string; jobs: ImageJob[] }
+  | { type: "imageJobCreated"; sessionId: string; job: ImageJob }
   | { type: "setSearch"; value: string }
   | { type: "focusEnter" }
   | { type: "focusExit" }
@@ -120,8 +120,10 @@ export function companionReducer(state: CompanionState, action: CompanionAction)
       return { ...state, loading: "idle", error: { code: action.code, message: action.message } };
     case "imageJobsLoaded":
       // never touches `loading` — image jobs must not block the chat
+      if (action.sessionId !== state.selectedSessionId) return state;
       return { ...state, imageJobs: action.jobs };
     case "imageJobCreated":
+      if (action.sessionId !== state.selectedSessionId) return state;
       return { ...state, imageJobs: [...state.imageJobs.filter((j) => j.jobId !== action.job.jobId), action.job] };
     case "setSearch":
       return { ...state, search: action.value };

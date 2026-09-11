@@ -23,11 +23,13 @@ from __future__ import annotations
 
 import json
 import os
+import re
+import threading
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Protocol, Tuple
+from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple
 
 STATE_QUEUED = "QUEUED"
 STATE_GENERATING = "GENERATING"
@@ -40,6 +42,22 @@ KIND_CUSTOM = "custom"       # "Создать изображение..." -- use
 KIND_CONTEXT = "context"     # "Кадр по контексту" -- derived from scene + excerpt
 
 _JOBS_FILENAME = "companion_image_jobs.json"
+_MAX_REQUEST_ID_LENGTH = 128
+_REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]+$")
+
+_EXECUTION_CLAIMED = "CLAIMED"
+_EXECUTION_INTERRUPTED = "generation_interrupted_ambiguous"
+
+# Services that point at the same registry share one in-process persistence
+# lock. Provider work is deliberately performed outside this lock.
+_REGISTRY_LOCKS_GUARD = threading.Lock()
+_REGISTRY_LOCKS: Dict[str, Any] = {}
+
+
+def _registry_lock(path: Path):
+    key = os.path.normcase(str(path.resolve()))
+    with _REGISTRY_LOCKS_GUARD:
+        return _REGISTRY_LOCKS.setdefault(key, threading.RLock())
 
 PINNED_GENERATION_SPEC_SCHEMA_VERSION = "companion_pinned_generation_spec/0.1"
 _MIN_PINNED_REFERENCES = 2
@@ -289,10 +307,17 @@ class ImageJob:
     state: str
     created_at: str
     updated_at: str
+    request_id: Optional[str] = None
     prompt: Optional[str] = None
     context: Optional[dict] = None
     result_ref: Optional[str] = None
     error: Optional[str] = None
+    # Internal V1B execution-claim bookkeeping. Deliberately a SIBLING of
+    # `context`, never nested inside it: `context` is the exact pinned-at-
+    # creation input the generator reads (V1A), and must stay byte-identical
+    # across every advance() call. The claim marker is service-internal
+    # metadata the generator never sees or touches.
+    execution: Optional[dict] = None
 
     @classmethod
     def from_row(cls, row: dict) -> "ImageJob":
@@ -304,10 +329,12 @@ class ImageJob:
             state=row.get("state", STATE_QUEUED),
             created_at=row.get("created_at", ""),
             updated_at=row.get("updated_at", row.get("created_at", "")),
+            request_id=row.get("request_id"),
             prompt=row.get("prompt"),
             context=row.get("context"),
             result_ref=row.get("result_ref"),
             error=row.get("error"),
+            execution=row.get("execution"),
         )
 
     def to_row(self) -> dict:
@@ -319,10 +346,12 @@ class ImageJob:
             "state": self.state,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
+            "request_id": self.request_id,
             "prompt": self.prompt,
             "context": self.context,
             "result_ref": self.result_ref,
             "error": self.error,
+            "execution": self.execution,
         }
 
 
@@ -391,6 +420,9 @@ class ImageJobService:
         self._data_root = Path(data_root)
         self._data_root.mkdir(parents=True, exist_ok=True)
         self._generator = generator or UnavailableImageGenerator()
+        self._persistence_lock = _registry_lock(self._path())
+        self._owned_claims: set[str] = set()
+        self._owned_claims_lock = threading.Lock()
 
     @property
     def generator_name(self) -> str:
@@ -443,81 +475,213 @@ class ImageJobService:
         session_id: str,
         character_id: str,
         kind: str,
+        request_id: Optional[str] = None,
         prompt: Optional[str] = None,
         context: Optional[dict] = None,
         generation_spec: Optional[PinnedGenerationSpec | dict] = None,
+        generation_spec_factory: Optional[Callable[[], PinnedGenerationSpec | dict]] = None,
     ) -> ImageJob:
         if kind not in (KIND_CUSTOM, KIND_CONTEXT):
             raise CompanionImageError("invalid_request", f"unknown image kind {kind!r}")
         if kind == KIND_CUSTOM and not (isinstance(prompt, str) and prompt.strip()):
             raise CompanionImageError("invalid_request", "a description is required for a custom image")
-        if generation_spec is None:
-            raise CompanionImageError(
-                "generation_spec_missing", "a pinned generation specification is required"
+        normalized_prompt = prompt.strip() if isinstance(prompt, str) else None
+        normalized_request_id = self._validate_request_id(request_id)
+
+        # Request replay, active-job exclusion, input pinning, and the append are
+        # one critical section. This makes concurrent POSTs deterministic.
+        with self._persistence_lock:
+            rows = self._load()
+            if normalized_request_id is not None:
+                for row in rows:
+                    if row.get("request_id") != normalized_request_id:
+                        continue
+                    existing = ImageJob.from_row(row)
+                    if (
+                        existing.session_id != session_id
+                        or existing.character_id != character_id
+                        or existing.kind != kind
+                        or (kind == KIND_CUSTOM and existing.prompt != normalized_prompt)
+                    ):
+                        raise CompanionImageError(
+                            "image_job_idempotency_conflict",
+                            "requestId was already used for different image-job inputs",
+                        )
+                    return existing
+
+            for row in rows:
+                existing = ImageJob.from_row(row)
+                if (
+                    existing.session_id == session_id
+                    and existing.character_id == character_id
+                    and existing.state not in TERMINAL_STATES
+                ):
+                    raise CompanionImageError(
+                        "image_job_active_conflict",
+                        "an image job is already active for this session and character",
+                    )
+
+            if generation_spec is not None and generation_spec_factory is not None:
+                raise CompanionImageError(
+                    "generation_spec_invalid", "generation specification has multiple sources"
+                )
+            raw_spec = generation_spec
+            if raw_spec is None and generation_spec_factory is not None:
+                raw_spec = generation_spec_factory()
+            if raw_spec is None:
+                raise CompanionImageError(
+                    "generation_spec_missing", "a pinned generation specification is required"
+                )
+            try:
+                spec = (
+                    raw_spec
+                    if isinstance(raw_spec, PinnedGenerationSpec)
+                    else PinnedGenerationSpec.from_dict(raw_spec)
+                )
+            except (TypeError, ValueError) as exc:
+                raise CompanionImageError(
+                    "generation_spec_invalid", "invalid generation specification"
+                ) from exc
+            if spec.character_id != character_id:
+                raise CompanionImageError(
+                    "generation_spec_invalid", "generation specification character mismatch"
+                )
+            job_context = dict(context or {})
+            if "generationSpec" in job_context:
+                raise CompanionImageError(
+                    "generation_spec_invalid", "reserved job metadata was supplied"
+                )
+            job_context["generationSpec"] = spec.to_dict()
+            now = _now_iso()
+            job = ImageJob(
+                job_id="img-" + uuid.uuid4().hex,
+                session_id=session_id,
+                character_id=character_id,
+                kind=kind,
+                state=STATE_QUEUED,
+                created_at=now,
+                updated_at=now,
+                request_id=normalized_request_id,
+                prompt=normalized_prompt,
+                context=job_context,
             )
-        try:
-            spec = (
-                generation_spec
-                if isinstance(generation_spec, PinnedGenerationSpec)
-                else PinnedGenerationSpec.from_dict(generation_spec)
-            )
-        except (TypeError, ValueError) as exc:
-            raise CompanionImageError("generation_spec_invalid", "invalid generation specification") from exc
-        if spec.character_id != character_id:
-            raise CompanionImageError(
-                "generation_spec_invalid", "generation specification character mismatch"
-            )
-        job_context = dict(context or {})
-        if "generationSpec" in job_context:
-            raise CompanionImageError(
-                "generation_spec_invalid", "generationSpec is reserved job metadata"
-            )
-        job_context["generationSpec"] = spec.to_dict()
-        now = _now_iso()
-        job = ImageJob(
-            job_id="img-" + uuid.uuid4().hex,
-            session_id=session_id,
-            character_id=character_id,
-            kind=kind,
-            state=STATE_QUEUED,
-            created_at=now,
-            updated_at=now,
-            prompt=prompt.strip() if isinstance(prompt, str) else None,
-            context=job_context,
-        )
-        rows = self._load()
-        rows.append(job.to_row())
-        self._save(rows)
-        return job
+            rows.append(job.to_row())
+            self._save(rows)
+            return job
+
+    @staticmethod
+    def _validate_request_id(request_id: Optional[str]) -> Optional[str]:
+        if request_id is None:
+            return None
+        if not isinstance(request_id, str):
+            raise CompanionImageError("invalid_request", "requestId must be a string")
+        value = request_id.strip()
+        if (
+            not value
+            or len(value) > _MAX_REQUEST_ID_LENGTH
+            or _REQUEST_ID_PATTERN.fullmatch(value) is None
+        ):
+            raise CompanionImageError("invalid_request", "requestId has an invalid format")
+        return value
 
     # ------------------------------------------------------------ advance
     def tick(self) -> int:
         """Advance every non-terminal job by one step. Returns how many moved.
         Called by the poll/list transport methods -- never by send_message."""
-        rows = self._load()
-        moved = 0
-        for i, row in enumerate(rows):
-            job = ImageJob.from_row(row)
+        with self._persistence_lock:
+            job_ids = [
+                row.get("job_id") for row in self._load()
+                if row.get("state") not in TERMINAL_STATES and isinstance(row.get("job_id"), str)
+            ]
+        return sum(self._advance_one(job_id) for job_id in job_ids)
+
+    def _advance_one(self, job_id: str) -> int:
+        claimed_job: Optional[ImageJob] = None
+        with self._persistence_lock:
+            rows = self._load()
+            index = next((i for i, row in enumerate(rows) if row.get("job_id") == job_id), None)
+            if index is None:
+                return 0
+            job = ImageJob.from_row(rows[index])
             if job.state in TERMINAL_STATES:
-                continue
+                return 0
+
             raw_spec = (job.context or {}).get("generationSpec")
             if raw_spec is None:
-                updated = _with(job, state=STATE_FAILED, error="generation_spec_missing")
-            else:
-                try:
-                    spec = PinnedGenerationSpec.from_dict(raw_spec)
-                    if spec.character_id != job.character_id:
-                        raise ValueError("generation specification character mismatch")
-                except (TypeError, ValueError):
-                    updated = _with(job, state=STATE_FAILED, error="generation_spec_invalid")
-                else:
-                    updated = self._generator.advance(job, images_dir=self._images_dir())
-            if updated.state != job.state or updated.result_ref != job.result_ref:
-                rows[i] = updated.to_row()
-                moved += 1
-        if moved:
+                rows[index] = _with(
+                    job, state=STATE_FAILED, error="generation_spec_missing"
+                ).to_row()
+                self._save(rows)
+                return 1
+            try:
+                spec = PinnedGenerationSpec.from_dict(raw_spec)
+                if spec.character_id != job.character_id:
+                    raise ValueError("generation specification character mismatch")
+            except (TypeError, ValueError):
+                rows[index] = _with(
+                    job, state=STATE_FAILED, error="generation_spec_invalid"
+                ).to_row()
+                self._save(rows)
+                return 1
+
+            if job.state == STATE_QUEUED:
+                rows[index] = _with(job, state=STATE_GENERATING).to_row()
+                self._save(rows)
+                return 1
+
+            execution = job.execution
+            if isinstance(execution, dict) and execution.get("state") == _EXECUTION_CLAIMED:
+                with self._owned_claims_lock:
+                    locally_owned = job_id in self._owned_claims
+                if locally_owned:
+                    return 0
+                rows[index] = _with(
+                    job,
+                    state=STATE_FAILED,
+                    error=_EXECUTION_INTERRUPTED,
+                ).to_row()
+                self._save(rows)
+                return 1
+
+            # Claim bookkeeping lives OUTSIDE `context` -- the generator must
+            # see exactly the pinned-at-creation context on every call (V1A).
+            claimed_job = _with(
+                job,
+                execution={"state": _EXECUTION_CLAIMED, "claimedAt": _now_iso()},
+            )
+            rows[index] = claimed_job.to_row()
+            with self._owned_claims_lock:
+                self._owned_claims.add(job_id)
             self._save(rows)
-        return moved
+
+        # This is the only provider-capable call. The durable claim is already
+        # on disk, and no registry lock is held while it runs.
+        try:
+            try:
+                updated = self._generator.advance(claimed_job, images_dir=self._images_dir())
+            except Exception:
+                updated = _with(claimed_job, state=STATE_FAILED, error="generation_failed")
+            if updated.state not in TERMINAL_STATES:
+                updated = _with(
+                    claimed_job,
+                    state=STATE_FAILED,
+                    error=_EXECUTION_INTERRUPTED,
+                )
+
+            with self._persistence_lock:
+                rows = self._load()
+                index = next((i for i, row in enumerate(rows) if row.get("job_id") == job_id), None)
+                if index is None:
+                    return 1
+                current = ImageJob.from_row(rows[index])
+                if current.state in TERMINAL_STATES:
+                    return 1
+                rows[index] = updated.to_row()
+                self._save(rows)
+            return 1
+        finally:
+            with self._owned_claims_lock:
+                self._owned_claims.discard(job_id)
 
     def run_to_completion(self, job_id: str, *, max_steps: int = 8) -> ImageJob:
         """Test/dev helper: tick until the job is terminal."""
@@ -529,13 +693,16 @@ class ImageJobService:
 
     # ------------------------------------------------------------ read
     def get_job(self, job_id: str) -> ImageJob:
-        for row in self._load():
+        with self._persistence_lock:
+            rows = self._load()
+        for row in rows:
             if row.get("job_id") == job_id:
                 return ImageJob.from_row(row)
         raise CompanionImageError("unknown_job", f"unknown image job {job_id!r}")
 
     def list_jobs(self, *, session_id: Optional[str] = None) -> Tuple[ImageJob, ...]:
-        jobs = [ImageJob.from_row(r) for r in self._load()]
+        with self._persistence_lock:
+            jobs = [ImageJob.from_row(r) for r in self._load()]
         if session_id is not None:
             jobs = [j for j in jobs if j.session_id == session_id]
         jobs.sort(key=lambda j: (j.created_at, j.job_id))
@@ -550,16 +717,17 @@ class ImageJobService:
         """Explicit user action only. Removes the job row; if it produced an
         image file, remove only that file. Never touches other jobs, portrait,
         history, or scene metadata."""
-        rows = self._load()
-        kept, removed = [], None
-        for row in rows:
-            if row.get("job_id") == job_id:
-                removed = ImageJob.from_row(row)
-            else:
-                kept.append(row)
-        if removed is None:
-            raise CompanionImageError("unknown_job", f"unknown image job {job_id!r}")
-        self._save(kept)
+        with self._persistence_lock:
+            rows = self._load()
+            kept, removed = [], None
+            for row in rows:
+                if row.get("job_id") == job_id:
+                    removed = ImageJob.from_row(row)
+                else:
+                    kept.append(row)
+            if removed is None:
+                raise CompanionImageError("unknown_job", f"unknown image job {job_id!r}")
+            self._save(kept)
         if removed.result_ref:
             try:
                 (self._data_root / removed.result_ref).unlink(missing_ok=True)

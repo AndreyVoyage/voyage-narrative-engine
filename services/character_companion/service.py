@@ -689,6 +689,7 @@ class CompanionService:
         *,
         kind: str,
         prompt: Optional[str] = None,
+        request_id: Optional[str] = None,
     ) -> ImageJob:
         row = self._session_row(session_id)
         character_id = row["character_id"]
@@ -702,10 +703,12 @@ class CompanionService:
         if kind == KIND_CONTEXT:
             context = self._context_frame_request(row)
         try:
-            generation_spec = self._images.prepare_generation_spec(character_id=character_id)
             return self._images.create_job(
                 session_id=session_id, character_id=character_id, kind=kind,
-                prompt=prompt, context=context, generation_spec=generation_spec,
+                request_id=request_id, prompt=prompt, context=context,
+                generation_spec_factory=lambda: self._images.prepare_generation_spec(
+                    character_id=character_id
+                ),
             )
         except CompanionImageError as exc:
             raise CompanionError(exc.code, exc.message) from exc
