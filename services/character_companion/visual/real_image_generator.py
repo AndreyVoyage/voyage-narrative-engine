@@ -242,14 +242,32 @@ class RealCompanionImageGenerator:
         result_ref = self._persist(images_dir, job.job_id, image)
         context = dict(job.context or {})
         context["result"] = {
+            # attribution (points back to the pinned V1A generationSpec)
+            "jobId": job.job_id,
+            "sessionId": job.session_id,
+            "characterId": job.character_id,
+            "kind": job.kind,
+            "snapshotVersion": spec.snapshot_version,
+            "snapshotHash": spec.snapshot_hash,
+            "referenceAssetIds": [r.asset_id for r in spec.references],
+            "referenceSha256": [r.sha256 for r in spec.references],
             "provider": spec.provider_id,
             "model": image.model,
+            "baseUrl": spec.base_url,
+            "size": spec.size,
+            "quality": spec.quality,
             "endpointKind": endpoint_kind,
-            "payloadSha256": image.payload_sha256,
+            # exact effective prompt (non-secret; may contain local story text)
+            "effectivePrompt": package.prompt_text,
+            "promptSha256": compute_sha256(package.prompt_text.encode("utf-8")),
             "visualPromptHash": package.content_hash,
             "visualContextHash": package.visual_context_hash,
             "referenceBundleHash": package.reference_bundle_hash,
-            "snapshotVersion": spec.snapshot_version,
+            # output facts (never image bytes, never credentials)
+            "payloadSha256": image.payload_sha256,
+            "outputByteLength": len(image.payload),
+            "outputContentType": image.content_type,
+            "generatedAt": _now_iso(),
         }
         return _advanced(job, state=STATE_READY, result_ref=result_ref, error=None, context=context)
 

@@ -10,8 +10,8 @@ catalog of :class:`ModelEntry` records. Each model carries *capability* flags
 *known-fact* media metadata. The UI and the role resolver read this table;
 nothing hardcodes "these four forever" and nothing hardcodes model ids in React.
 
-Only ``DIALOGUE`` is wired to the runtime in this release
-(:data:`RUNTIME_WIRED_ROLES`). Every media role is configuration metadata
+``DIALOGUE`` and ``IMAGE_GENERATION`` are wired to the runtime in this release
+(:data:`RUNTIME_WIRED_ROLES`). Every other media role is configuration metadata
 (foundation) and is never presented as an implemented feature. Capabilities that
 are not safely known from repository configuration are marked ``unverified`` /
 ``UNKNOWN`` rather than guessed, and this module makes **no** provider-policy
@@ -41,7 +41,10 @@ ALL_ROLES: Tuple[str, ...] = (
     ROLE_STT, ROLE_TTS, ROLE_REALTIME, ROLE_LOCAL_ALTERNATIVE, ROLE_WRITING_ASSISTANT,
 )
 #: Roles this release actually routes at runtime. Everything else is foundation.
-RUNTIME_WIRED_ROLES: Tuple[str, ...] = (ROLE_DIALOGUE,)
+#: IMAGE_GENERATION has a real release execution path (Slice C/D); its
+#: ``gpt-image-1`` model remains ``unverified`` (not yet live-accepted) --
+#: runtime-wired is NOT the same fact as live-verified.
+RUNTIME_WIRED_ROLES: Tuple[str, ...] = (ROLE_DIALOGUE, ROLE_IMAGE_GENERATION)
 
 #: Canonical presentation order for the "models by task" settings section.
 ROLE_DISPLAY_ORDER: Tuple[str, ...] = (
@@ -285,7 +288,7 @@ _ENTRIES: Tuple[ProviderEntry, ...] = (
             ModelEntry("gpt-image-1", "GPT Image 1",
                        (CAP_IMAGE_GENERATION, CAP_IMAGE_TO_IMAGE, CAP_CLOUD),
                        status=MODEL_UNVERIFIED,
-                       notes="Возможности изображения — метаданные каталога; не подключено в этой сборке.",
+                       notes="Генерация изображений подключена в runtime; модель ещё не проверена вживую.",
                        content_policy_profile=POLICY_PROVIDER_POLICY_DEPENDENT,
                        supports_image_to_image=True, supports_reference_image=True),
             ModelEntry("sora-2", "Sora 2", (CAP_VIDEO_GENERATION, CAP_CLOUD),
@@ -304,7 +307,7 @@ _ENTRIES: Tuple[ProviderEntry, ...] = (
                        content_policy_profile=POLICY_PROVIDER_POLICY_DEPENDENT),
         ),
         default_model="gpt-4o-mini",
-        notes="Широкий мультимодальный набор возможностей (метаданные; в этом релизе используется только диалог).",
+        notes="Широкий мультимодальный набор возможностей; в этом релизе подключены диалог и генерация изображений.",
     ),
     ProviderEntry(
         provider_id="qwen",

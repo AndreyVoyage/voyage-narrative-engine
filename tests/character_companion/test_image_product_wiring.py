@@ -1051,3 +1051,102 @@ def test_65_manual_custom_is_context_free_except_identity(tmp_path):
     assert job.kind == "custom"
     assert job.context.get("scene") is None
     assert job.context.get("recentMessages") is None
+
+
+# ============================== V1D provenance + runtime-wiring truth
+def test_66_manual_job_persists_effective_prompt_and_prompt_hash(tmp_path):
+    import hashlib
+
+    http = FakeImageHttp()
+    svc = _service(tmp_path, http=http)
+    _seed_snapshot(svc._data_root, tmp_path)
+    sid = _session(svc)
+    job = svc.create_image_job(sid, kind="custom", prompt="Kira by a window in the evening")
+    svc.poll_image_jobs(sid)
+    svc.poll_image_jobs(sid)
+    done = svc.get_image_job(job.job_id)
+    assert done.state == STATE_READY and len(http.calls) == 1
+
+    result = done.context["result"]
+    assert "Kira by a window in the evening" in result["effectivePrompt"]
+    assert "[CHARACTER IDENTITY]" in result["effectivePrompt"]
+    assert "[REFERENCE GUIDANCE]" in result["effectivePrompt"]
+    assert len(result["promptSha256"]) == 64
+    assert result["promptSha256"] == hashlib.sha256(
+        result["effectivePrompt"].encode("utf-8")
+    ).hexdigest()
+    # the exact prompt the provider received matches the persisted effective prompt
+    assert b"[CHARACTER IDENTITY]" in http.calls[0]["body"]
+
+
+def test_67_context_job_persists_v1c_filtered_effective_prompt(tmp_path):
+    http = FakeImageHttp()
+    svc = _service(tmp_path, http=http)
+    _seed_snapshot(svc._data_root, tmp_path)
+    sid = svc.create_session("kira", scene={
+        "place": "кухня", "time": "вечер", "situation": "пьют чай", "mood": "спокойно",
+        "freeform": "КИРА_ТАЙНО_ПЛАНИРУЕТ",
+    }).session_id
+    svc.send_message(sid, "СКРЫТОЕ_НАМЕРЕНИЕ")
+    msgs = svc.get_messages(sid)
+    hidden_msg = next(m for m in reversed(msgs) if m.role == "user")
+    svc.set_message_visibility(sid, hidden_msg.seq, True)
+
+    job = svc.create_image_job(sid, kind="context")
+    svc.poll_image_jobs(sid)
+    svc.poll_image_jobs(sid)
+    done = svc.get_image_job(job.job_id)
+    assert done.state == STATE_READY and len(http.calls) == 1
+
+    result = done.context["result"]
+    assert result["kind"] == "context"
+    assert "кухня" in result["effectivePrompt"]          # current scene remains
+    assert "КИРА_ТАЙНО_ПЛАНИРУЕТ" not in result["effectivePrompt"]  # freeform excluded (V1C)
+    assert "СКРЫТОЕ_НАМЕРЕНИЕ" not in result["effectivePrompt"]      # hidden excluded (V1C)
+
+
+def test_68_result_provenance_attributes_identity_and_output(tmp_path):
+    from services.character_companion.character_import.hashing import compute_sha256
+
+    http = FakeImageHttp()
+    svc = _service(tmp_path, http=http)
+    _seed_snapshot(svc._data_root, tmp_path)
+    sid = _session(svc)
+    job = svc.create_image_job(sid, kind="custom", prompt="provenance portrait")
+    spec = _assert_pinned_spec(job, kind="custom")
+    svc.poll_image_jobs(sid)
+    svc.poll_image_jobs(sid)
+    done = svc.get_image_job(job.job_id)
+
+    result = done.context["result"]
+    # exact snapshot + reference attribution (matches the pinned V1A generationSpec)
+    assert result["snapshotVersion"] == spec["identity"]["snapshotVersion"]
+    assert result["snapshotHash"] == spec["identity"]["snapshotHash"]
+    assert result["referenceAssetIds"] == [r["assetId"] for r in spec["references"]]
+    assert result["referenceSha256"] == [r["sha256"] for r in spec["references"]]
+    # provider/model/baseUrl/size/quality attributable
+    assert result["provider"] == spec["provider"]["providerId"]
+    assert result["model"] == spec["provider"]["modelId"]
+    assert result["baseUrl"] == spec["provider"]["baseUrl"]
+    assert result["size"] == spec["parameters"]["size"]
+    assert result["quality"] == spec["parameters"]["quality"]
+    # output facts
+    assert result["payloadSha256"] == compute_sha256(_RESULT_PNG)
+    assert result["outputByteLength"] == len(_RESULT_PNG)
+    assert result["outputContentType"] == "image/png"
+
+
+def test_69_result_provenance_has_no_secrets(tmp_path):
+    http = FakeImageHttp()
+    svc = _service(tmp_path, http=http)
+    _seed_snapshot(svc._data_root, tmp_path)
+    sid = _session(svc)
+    job = svc.create_image_job(sid, kind="custom", prompt="no secret portrait")
+    svc.poll_image_jobs(sid)
+    svc.poll_image_jobs(sid)
+    done = svc.get_image_job(job.job_id)
+    assert done.state == STATE_READY
+
+    blob = json.dumps(done.context["result"], ensure_ascii=False)
+    for banned in ("test-key-not-real", "Authorization", "Bearer", "multipart", "base64"):
+        assert banned not in blob

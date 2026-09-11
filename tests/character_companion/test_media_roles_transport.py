@@ -50,7 +50,7 @@ def test_catalog_carries_models_capabilities_and_role_catalog(tmp_path):
     assert roles[0] == "DIALOGUE"
     for r in ("VISION", "IMAGE_GENERATION", "VIDEO_GENERATION", "STT", "TTS", "REALTIME"):
         assert r in roles
-    assert view["runtimeWiredRoles"] == ["DIALOGUE"]
+    assert view["runtimeWiredRoles"] == ["DIALOGUE", "IMAGE_GENERATION"]
 
 
 def test_save_media_roles_reload_and_bounded_errors(tmp_path):
@@ -85,11 +85,11 @@ def test_resolve_role_endpoint_is_metadata_only_no_secret(tmp_path):
     t.set_role({"role": "IMAGE_GENERATION", "providerId": "openai", "modelId": "gpt-image-1"})
     res = t.resolve_role("IMAGE_GENERATION")
     assert res["providerId"] == "openai" and res["modelId"] == "gpt-image-1"
-    assert res["runtimeWired"] is False
+    assert res["runtimeWired"] is True
     assert res["readiness"] == "CONFIGURED_CREDENTIAL_MISSING"
     t.store_credential({"providerId": "openai", "secret": KEY})
     res2 = t.resolve_role("IMAGE_GENERATION")
-    assert res2["readiness"] == "FUTURE_NOT_WIRED"
+    assert res2["readiness"] == "READY"
     assert KEY not in json.dumps(res2, ensure_ascii=False)
     with pytest.raises(CompanionTransportError) as e:
         t.resolve_role("BOGUS_ROLE")
@@ -160,11 +160,11 @@ def test_loopback_media_roles_catalog_assignments_and_resolve(tmp_path):
         assert reloaded["roles"]["VIDEO_GENERATION"] == {"providerId": "openai", "modelId": "sora-2"}
         # DIALOGUE remains runtime-wired and unchanged by media edits
         assert reloaded["roles"]["DIALOGUE"] == dialogue_before
-        assert reloaded["runtimeWiredRoles"] == ["DIALOGUE"]
+        assert reloaded["runtimeWiredRoles"] == ["DIALOGUE", "IMAGE_GENERATION"]
 
         # narrow resolver endpoint
         rc, res = _http(b, "GET", "/api/companion/settings/resolve/IMAGE_GENERATION")
-        assert rc == 200 and res["providerId"] == "openai" and res["runtimeWired"] is False
+        assert rc == 200 and res["providerId"] == "openai" and res["runtimeWired"] is True
 
         # unsupported pair -> bounded 400
         bc, err = _http(b, "POST", "/api/companion/settings/roles",

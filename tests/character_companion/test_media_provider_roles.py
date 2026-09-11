@@ -54,11 +54,14 @@ KEY = "sk-media-roles-test-SECRET-abc123def456"
 
 
 # --------------------------------------------------------------- registry
-def test_all_media_roles_exist_and_only_dialogue_is_runtime_wired():
+def test_media_roles_exist_and_dialogue_plus_image_generation_runtime_wired():
     for role in (ROLE_DIALOGUE, *MEDIA_ROLES, "LOCAL_ALTERNATIVE"):
         assert role in ALL_ROLES
     from services.character_companion.provider_registry import RUNTIME_WIRED_ROLES
-    assert RUNTIME_WIRED_ROLES == (ROLE_DIALOGUE,)
+    # V1D: IMAGE_GENERATION has a real release execution path -> runtime-wired.
+    assert RUNTIME_WIRED_ROLES == (ROLE_DIALOGUE, ROLE_IMAGE_GENERATION)
+    # ...but its catalog model stays unverified (runtime-wired != live-verified).
+    assert get_provider("openai").get_model("gpt-image-1").status == MODEL_UNVERIFIED
     assert ROLE_VIDEO_GENERATION in ALL_ROLES  # added additively
 
 
@@ -210,7 +213,7 @@ def test_resolver_returns_only_selected_provider_and_no_fallback(tmp_path):
     vault = InMemoryCredentialVault()                 # no key stored
     res = resolve_role_config(ROLE_IMAGE_GENERATION, store.load(), vault)
     assert res["providerId"] == "openai" and res["modelId"] == "gpt-image-1"
-    assert res["runtimeWired"] is False
+    assert res["runtimeWired"] is True
     # credential missing -> bounded readiness, NOT a switch to another provider
     assert res["readiness"] == READINESS_CREDENTIAL_MISSING
     assert "deepseek" not in json.dumps(res) and "qwen" not in json.dumps(res)
@@ -277,7 +280,7 @@ def test_settings_view_exposes_catalog_capabilities_and_role_readiness(tmp_path)
     for r in MEDIA_ROLES:
         assert r in roles
     img_row = next(r for r in view["roleCatalog"] if r["role"] == ROLE_IMAGE_GENERATION)
-    assert img_row["runtimeWired"] is False
+    assert img_row["runtimeWired"] is True
     assert "openai" in img_row["providerIds"]
     assert img_row["readiness"] == READINESS_NOT_CONFIGURED
 
