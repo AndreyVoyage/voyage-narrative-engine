@@ -692,13 +692,20 @@ class CompanionService:
     ) -> ImageJob:
         row = self._session_row(session_id)
         character_id = row["character_id"]
+        if kind not in (KIND_CUSTOM, KIND_CONTEXT):
+            raise CompanionError("invalid_request", f"unknown image kind {kind!r}")
+        if kind == KIND_CUSTOM and not (isinstance(prompt, str) and prompt.strip()):
+            raise CompanionError(
+                "invalid_request", "a description is required for a custom image"
+            )
         context: Optional[dict] = None
         if kind == KIND_CONTEXT:
             context = self._context_frame_request(row)
         try:
+            generation_spec = self._images.prepare_generation_spec(character_id=character_id)
             return self._images.create_job(
                 session_id=session_id, character_id=character_id, kind=kind,
-                prompt=prompt, context=context,
+                prompt=prompt, context=context, generation_spec=generation_spec,
             )
         except CompanionImageError as exc:
             raise CompanionError(exc.code, exc.message) from exc

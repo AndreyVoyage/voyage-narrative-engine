@@ -37,6 +37,7 @@ from services.character_companion.image_jobs import (
     STATE_READY,
     ImageJob,
     ImageJobService,
+    CompanionImageError,
 )
 from services.character_companion.provider_registry import ROLE_IMAGE_GENERATION
 from services.character_companion.settings import CompanionSettings, RoleAssignment
@@ -584,7 +585,11 @@ def _generator(data_root: Path, http, *, settings=None, vault=None) -> RealCompa
 
 def _job(data_root: Path, gen, *, kind=KIND_CUSTOM, prompt="Kira by a window in the evening", context=None):
     svc = ImageJobService(data_root, gen)
-    job = svc.create_job(session_id="s1", character_id="kira", kind=kind, prompt=prompt, context=context)
+    spec = svc.prepare_generation_spec(character_id="kira")
+    job = svc.create_job(
+        session_id="s1", character_id="kira", kind=kind, prompt=prompt,
+        context=context, generation_spec=spec,
+    )
     return svc, job
 
 
@@ -689,6 +694,7 @@ def test_http_failure_is_persisted_without_mutating_source_context(tmp_path, mon
     original = json.loads(json.dumps(source_context))
     generator = _generator(data_root, None)
     svc, job = _job(data_root, generator, context=source_context)
+    pinned_context = json.loads(json.dumps(job.context))
     advance = generator.advance
     observed = []
 
@@ -697,7 +703,7 @@ def test_http_failure_is_persisted_without_mutating_source_context(tmp_path, mon
         if updated.state == STATE_FAILED:
             observed.append(updated)
             assert updated.context is not job.context
-            assert job.context == original
+            assert job.context == pinned_context
         return updated
 
     monkeypatch.setattr(generator, "advance", observe_advance)
@@ -736,42 +742,50 @@ def test_job_failed_when_result_is_url_only(tmp_path):
     assert len(http.calls) == 1
 
 
-def test_job_failed_when_no_active_snapshot_before_provider(tmp_path):
+def test_job_creation_fails_when_no_active_snapshot_before_provider(tmp_path):
     data_root = tmp_path / "data"       # nothing seeded -> no snapshot
     (data_root).mkdir(parents=True)
     http = FakeImageHttp()
-    svc, job = _job(data_root, _generator(data_root, http))
-    svc.run_to_completion(job.job_id)
-    done = svc.get_job(job.job_id)
-    assert done.state == STATE_FAILED
-    assert done.error == "image_generation_active_snapshot_missing"
+    gen = _generator(data_root, http)
+    with pytest.raises(ImageGenerationConfigurationError) as exc:
+        gen.prepare_generation_spec(character_id="kira")
+    assert exc.value.code == "image_generation_active_snapshot_missing"
     assert http.calls == []
 
 
-def test_job_failed_when_role_unassigned_before_provider(tmp_path):
+def test_job_creation_fails_when_role_unassigned_before_provider(tmp_path):
     data_root = tmp_path / "data"
     _seed_snapshot(data_root, tmp_path)
     http = FakeImageHttp()
     gen = _generator(data_root, http, settings=CompanionSettings(roles={}))
-    svc, job = _job(data_root, gen)
-    svc.run_to_completion(job.job_id)
-    done = svc.get_job(job.job_id)
-    assert done.state == STATE_FAILED
-    assert done.error == "image_generation_role_unassigned"
+    with pytest.raises(ImageGenerationConfigurationError) as exc:
+        gen.prepare_generation_spec(character_id="kira")
+    assert exc.value.code == "image_generation_role_unassigned"
     assert http.calls == []
 
 
-def test_job_failed_when_credential_missing_before_provider(tmp_path):
+def test_job_creation_fails_when_credential_missing_before_provider(tmp_path):
     data_root = tmp_path / "data"
     _seed_snapshot(data_root, tmp_path)
     http = FakeImageHttp()
     gen = _generator(data_root, http, vault=InMemoryCredentialVault())
-    svc, job = _job(data_root, gen)
-    svc.run_to_completion(job.job_id)
-    done = svc.get_job(job.job_id)
-    assert done.state == STATE_FAILED
-    assert done.error == "image_generation_credential_missing"
+    with pytest.raises(ImageGenerationConfigurationError) as exc:
+        gen.prepare_generation_spec(character_id="kira")
+    assert exc.value.code == "image_generation_credential_missing"
     assert http.calls == []
+
+
+def test_new_job_without_generation_spec_is_rejected_before_queued(tmp_path):
+    data_root = tmp_path / "data"
+    data_root.mkdir(parents=True)
+    svc = ImageJobService(data_root, _generator(data_root, FakeImageHttp()))
+    with pytest.raises(CompanionImageError) as exc:
+        svc.create_job(
+            session_id="s1", character_id="kira", kind=KIND_CUSTOM,
+            prompt="Kira by a window",
+        )
+    assert exc.value.code == "generation_spec_missing"
+    assert not (data_root / "companion_image_jobs.json").exists()
 
 
 def test_default_image_job_service_generator_is_unavailable(tmp_path):

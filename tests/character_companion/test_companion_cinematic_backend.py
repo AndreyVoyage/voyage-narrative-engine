@@ -2,11 +2,12 @@
 # -*- coding: utf-8 -*-
 """CINEMATIC COMPANION FIRST RELEASE UX V1 -- backend (multi-chat, scene,
 random scenario, async image jobs). Offline; deterministic fake provider +
-deterministic fake image generator; no network."""
+approved synthetic visual snapshot + injected fake image transport; no network."""
 
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -18,27 +19,53 @@ from services.character_companion import (
     CompanionError,
     CompanionScene,
     CompanionService,
-    FakeImageGenerator,
-    UnavailableImageGenerator,
     random_field,
     random_scenario,
 )
+from services.character_companion.character_import import SnapshotStore
 from services.character_companion.scenarios import SCENE_FIELDS
+from services.character_companion.visual import ImageProviderAdapter, RealCompanionImageGenerator
 from services.character_runtime import RuntimeMemoryBackend
 
 from tests.character_companion.conftest import ACCEPTED_ROOT, FAKE_PROVIDER_INFO, make_fake_factory
+from tests.character_companion.test_image_product_wiring import (
+    FakeImageHttp,
+    _configured_settings_store,
+    _seed_snapshot,
+    _vault_with_key,
+)
 
 SCENE = {"place": "Кухня", "time": "Вечер", "situation": "Пьют чай", "mood": "Спокойное",
          "freeform": "За окном тихий дождь."}
 
 
+def _pinned_image_generator(tmp_path, data_root: Path):
+    if SnapshotStore(data_root).read_active_version("kira") is None:
+        _seed_snapshot(data_root, tmp_path)
+    settings_store = _configured_settings_store(data_root)
+    vault = _vault_with_key()
+    return RealCompanionImageGenerator(
+        data_root=data_root,
+        settings_store=settings_store,
+        credential_vault=vault,
+        adapter=ImageProviderAdapter(http_post=FakeImageHttp()),
+    ), settings_store, vault
+
+
 def _svc(tmp_path, *, data_root=None, image_generator=None, factory=None):
+    data_root = Path(data_root or (tmp_path / "cd"))
+    settings_store = None
+    vault = None
+    if image_generator is None:
+        image_generator, settings_store, vault = _pinned_image_generator(tmp_path, data_root)
     return CompanionService(
         acceptance_root=ACCEPTED_ROOT,
-        data_root=data_root or (tmp_path / "cd"),
+        data_root=data_root,
         provider_factory=factory or make_fake_factory("Ответ Киры."),
         provider_info=FAKE_PROVIDER_INFO,
-        image_generator=image_generator or FakeImageGenerator(),
+        image_generator=image_generator,
+        settings_store=settings_store,
+        credential_vault=vault,
     )
 
 
@@ -136,7 +163,7 @@ def test_10_session_character_isolation(tmp_path):
     ))
     svc = CompanionService(acceptance_root=ACCEPTED_ROOT, data_root=tmp_path / "cd",
                            provider_factory=make_fake_factory(), provider_info=FAKE_PROVIDER_INFO,
-                           catalog=cat, image_generator=FakeImageGenerator())
+                           catalog=cat)
     ak = svc.create_session("kira")
     bk = svc.create_session("synthetic-b")
     assert [s.session_id for s in svc.list_sessions("kira")] == [ak.session_id]
@@ -200,7 +227,7 @@ def test_15_image_job_state_transitions_deterministic(tmp_path):
 def test_16_ready_image_persists_across_reopen(tmp_path):
     data_root = tmp_path / "cd"
     s1 = _svc(tmp_path, data_root=data_root)
-    sid = s1.create_session("kira").session_id
+    sid = s1.create_session("kira", scene=SCENE).session_id
     job = s1.create_image_job(sid, kind=KIND_CONTEXT)
     s1._images.run_to_completion(job.job_id)
     ref = s1.get_image_job(job.job_id).result_ref
@@ -213,7 +240,7 @@ def test_16_ready_image_persists_across_reopen(tmp_path):
 
 def test_17_previous_images_not_auto_deleted(tmp_path):
     svc = _svc(tmp_path)
-    sid = svc.create_session("kira").session_id
+    sid = svc.create_session("kira", scene=SCENE).session_id
     j1 = svc.create_image_job(sid, kind=KIND_CONTEXT)
     svc._images.run_to_completion(j1.job_id)
     j2 = svc.create_image_job(sid, kind=KIND_CONTEXT)
@@ -226,7 +253,7 @@ def test_17_previous_images_not_auto_deleted(tmp_path):
 def test_18_19_cover_selection_explicit_and_persists(tmp_path):
     data_root = tmp_path / "cd"
     s1 = _svc(tmp_path, data_root=data_root)
-    sid = s1.create_session("kira").session_id
+    sid = s1.create_session("kira", scene=SCENE).session_id
     assert s1.get_session(sid).scene_cover_ref is None          # never auto-set
     job = s1.create_image_job(sid, kind=KIND_CONTEXT)
     s1._images.run_to_completion(job.job_id)

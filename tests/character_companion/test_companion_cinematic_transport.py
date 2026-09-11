@@ -3,35 +3,55 @@
 """CINEMATIC COMPANION FIRST RELEASE UX V1 -- transport + loopback HTTP.
 
 Dict-level CompanionTransport roundtrip plus a real loopback roundtrip through
-tools/character_companion_server.py. Offline fake provider + fake image
-generator; no external network."""
+tools/character_companion_server.py. Offline fake dialogue provider + approved
+synthetic visual snapshot + injected fake image transport; no external network."""
 
 from __future__ import annotations
 
 import json
 import socket
 import urllib.request
+from pathlib import Path
 
 import pytest
 
 from services.character_companion import (
     CompanionService,
     CompanionTransport,
-    FakeImageGenerator,
 )
+from services.character_companion.character_import import SnapshotStore
 from services.character_companion.transport import CompanionTransportError
+from services.character_companion.visual import ImageProviderAdapter, RealCompanionImageGenerator
 
 from tests.character_companion.conftest import ACCEPTED_ROOT, FAKE_PROVIDER_INFO, make_fake_factory
+from tests.character_companion.test_image_product_wiring import (
+    FakeImageHttp,
+    _configured_settings_store,
+    _seed_snapshot,
+    _vault_with_key,
+)
 
 SCENE = {"place": "Крыша", "time": "Ночь", "situation": "Смотрят на город", "mood": "Тихое",
          "freeform": "Город внизу мерцает."}
 
 
 def _transport(tmp_path, *, data_root=None):
+    data_root = Path(data_root or (tmp_path / "cd"))
+    if SnapshotStore(data_root).read_active_version("kira") is None:
+        _seed_snapshot(data_root, tmp_path)
+    settings_store = _configured_settings_store(data_root)
+    vault = _vault_with_key()
+    image_generator = RealCompanionImageGenerator(
+        data_root=data_root,
+        settings_store=settings_store,
+        credential_vault=vault,
+        adapter=ImageProviderAdapter(http_post=FakeImageHttp()),
+    )
     svc = CompanionService(
-        acceptance_root=ACCEPTED_ROOT, data_root=data_root or (tmp_path / "cd"),
+        acceptance_root=ACCEPTED_ROOT, data_root=data_root,
         provider_factory=make_fake_factory("Ответ."), provider_info=FAKE_PROVIDER_INFO,
-        image_generator=FakeImageGenerator(),
+        image_generator=image_generator, settings_store=settings_store,
+        credential_vault=vault,
     )
     return CompanionTransport(svc)
 
@@ -108,13 +128,11 @@ def _http(base, method, path, body=None):
 
 
 def test_32_loopback_server_and_restart_retains_metadata_and_ready_result(tmp_path):
-    from tools.character_companion_server import CompanionServer, build_transport
+    from tools.character_companion_server import CompanionServer
 
     data_root = tmp_path / "cd"
-    env = {"COMPANION_PROVIDER": "fake", "COMPANION_IMAGE_GENERATOR": "fake"}
 
-    s1 = CompanionServer(build_transport(data_root=data_root, response="Ответ HTTP.", env=env),
-                         port=_free_port())
+    s1 = CompanionServer(_transport(tmp_path, data_root=data_root), port=_free_port())
     s1.start()
     try:
         base = s1.base_url
@@ -130,7 +148,7 @@ def test_32_loopback_server_and_restart_retains_metadata_and_ready_result(tmp_pa
     finally:
         s1.shutdown()
 
-    s2 = CompanionServer(build_transport(data_root=data_root, env=env), port=_free_port())
+    s2 = CompanionServer(_transport(tmp_path, data_root=data_root), port=_free_port())
     s2.start()
     try:
         base = s2.base_url

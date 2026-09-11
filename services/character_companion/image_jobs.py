@@ -27,7 +27,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional, Protocol, Tuple
+from typing import Any, Dict, List, Optional, Protocol, Tuple
 
 STATE_QUEUED = "QUEUED"
 STATE_GENERATING = "GENERATING"
@@ -40,6 +40,233 @@ KIND_CUSTOM = "custom"       # "Создать изображение..." -- use
 KIND_CONTEXT = "context"     # "Кадр по контексту" -- derived from scene + excerpt
 
 _JOBS_FILENAME = "companion_image_jobs.json"
+
+PINNED_GENERATION_SPEC_SCHEMA_VERSION = "companion_pinned_generation_spec/0.1"
+_MIN_PINNED_REFERENCES = 2
+_MAX_PINNED_REFERENCES = 4
+_PINNED_FILE_TYPES = frozenset({"PNG", "JPEG", "WEBP"})
+
+
+def _required_text(value: Any, field: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"{field} must be a non-empty string")
+    return value.strip()
+
+
+def _optional_text(value: Any) -> Optional[str]:
+    return value if isinstance(value, str) and value else None
+
+
+def _required_sha256(value: Any, field: str) -> str:
+    text = _required_text(value, field).lower()
+    if len(text) != 64 or any(ch not in "0123456789abcdef" for ch in text):
+        raise ValueError(f"{field} must be a sha256 hex digest")
+    return text
+
+
+@dataclass(frozen=True)
+class PinnedReferenceSpec:
+    """Exact non-secret identity-reference metadata captured for one job."""
+
+    asset_id: str
+    roles: Tuple[str, ...]
+    relative_path: str
+    sha256: str
+    file_type: str
+    byte_length: int
+    source_semantic_key: Optional[str] = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "asset_id", _required_text(self.asset_id, "assetId"))
+        roles = tuple(_required_text(role, "reference role") for role in self.roles)
+        if not roles:
+            raise ValueError("a pinned reference must have at least one role")
+        object.__setattr__(self, "roles", roles)
+        object.__setattr__(self, "relative_path", _required_text(self.relative_path, "relativePath"))
+        object.__setattr__(self, "sha256", _required_sha256(self.sha256, "reference sha256"))
+        file_type = _required_text(self.file_type, "fileType")
+        if file_type not in _PINNED_FILE_TYPES:
+            raise ValueError(f"unsupported pinned reference fileType {file_type!r}")
+        object.__setattr__(self, "file_type", file_type)
+        if isinstance(self.byte_length, bool) or not isinstance(self.byte_length, int) or self.byte_length <= 0:
+            raise ValueError("byteLength must be a positive integer")
+        object.__setattr__(self, "source_semantic_key", _optional_text(self.source_semantic_key))
+
+    @classmethod
+    def from_reference_entry(cls, entry) -> "PinnedReferenceSpec":
+        return cls(
+            asset_id=entry.asset_id,
+            roles=tuple(entry.roles),
+            relative_path=entry.relative_path,
+            sha256=entry.sha256,
+            file_type=entry.image_format,
+            byte_length=entry.byte_length,
+            source_semantic_key=entry.source_semantic_key,
+        )
+
+    @classmethod
+    def from_dict(cls, data: Any) -> "PinnedReferenceSpec":
+        if not isinstance(data, dict):
+            raise ValueError("pinned reference must be an object")
+        roles = data.get("roles")
+        if not isinstance(roles, (list, tuple)):
+            raise ValueError("pinned reference roles must be an array")
+        return cls(
+            asset_id=data.get("assetId"),
+            roles=tuple(roles),
+            relative_path=data.get("relativePath"),
+            sha256=data.get("sha256"),
+            file_type=data.get("fileType"),
+            byte_length=data.get("byteLength"),
+            source_semantic_key=data.get("sourceSemanticKey"),
+        )
+
+    def to_dict(self) -> dict:
+        out = {
+            "assetId": self.asset_id,
+            "roles": list(self.roles),
+            "relativePath": self.relative_path,
+            "sha256": self.sha256,
+            "fileType": self.file_type,
+            "byteLength": self.byte_length,
+        }
+        if self.source_semantic_key is not None:
+            out["sourceSemanticKey"] = self.source_semantic_key
+        return out
+
+
+@dataclass(frozen=True)
+class PinnedGenerationSpec:
+    """Immutable identity/provider inputs selected before a job becomes QUEUED."""
+
+    schema_version: str
+    character_id: str
+    snapshot_version: str
+    snapshot_hash: str
+    source_canon_status: str
+    source_canon_content_hash: str
+    source_canon_source_hash: Optional[str]
+    source_canon_character_id: Optional[str]
+    references: Tuple[PinnedReferenceSpec, ...]
+    provider_id: str
+    model_id: str
+    base_url: str
+    size: str
+    quality: str
+
+    def __post_init__(self) -> None:
+        if self.schema_version != PINNED_GENERATION_SPEC_SCHEMA_VERSION:
+            raise ValueError(f"unexpected generation spec schema {self.schema_version!r}")
+        object.__setattr__(self, "character_id", _required_text(self.character_id, "characterId"))
+        object.__setattr__(self, "snapshot_version", _required_text(self.snapshot_version, "snapshotVersion"))
+        object.__setattr__(self, "snapshot_hash", _required_sha256(self.snapshot_hash, "snapshotHash"))
+        source_status = _required_text(self.source_canon_status, "sourceCanon.status")
+        if source_status != "APPROVED_AS_CANON":
+            raise ValueError("generation spec source Canon is not approved for production")
+        object.__setattr__(self, "source_canon_status", source_status)
+        object.__setattr__(
+            self, "source_canon_content_hash",
+            _required_sha256(self.source_canon_content_hash, "sourceCanon.contentHash"),
+        )
+        object.__setattr__(self, "source_canon_source_hash", _optional_text(self.source_canon_source_hash))
+        object.__setattr__(self, "source_canon_character_id", _optional_text(self.source_canon_character_id))
+        refs = tuple(self.references)
+        if not (_MIN_PINNED_REFERENCES <= len(refs) <= _MAX_PINNED_REFERENCES):
+            raise ValueError(
+                f"generation spec must pin {_MIN_PINNED_REFERENCES}..{_MAX_PINNED_REFERENCES} references"
+            )
+        if len({ref.asset_id for ref in refs}) != len(refs):
+            raise ValueError("generation spec contains duplicate reference assetId")
+        object.__setattr__(self, "references", refs)
+        object.__setattr__(self, "provider_id", _required_text(self.provider_id, "providerId"))
+        object.__setattr__(self, "model_id", _required_text(self.model_id, "modelId"))
+        object.__setattr__(self, "base_url", _required_text(self.base_url, "baseUrl"))
+        object.__setattr__(self, "size", _required_text(self.size, "size"))
+        object.__setattr__(self, "quality", _required_text(self.quality, "quality"))
+
+    @classmethod
+    def from_inputs(
+        cls, *, snapshot, reference_bundle, provider_id: str, model_id: str,
+        base_url: str, size: str, quality: str,
+    ) -> "PinnedGenerationSpec":
+        source = snapshot.source_canon
+        return cls(
+            schema_version=PINNED_GENERATION_SPEC_SCHEMA_VERSION,
+            character_id=snapshot.character_id,
+            snapshot_version=snapshot.snapshot_version,
+            snapshot_hash=snapshot.snapshot_hash or snapshot.compute_hash(),
+            source_canon_status=source.get("status"),
+            source_canon_content_hash=source.get("contentHash"),
+            source_canon_source_hash=source.get("sourceHash"),
+            source_canon_character_id=source.get("sourceCharacterId"),
+            references=tuple(
+                PinnedReferenceSpec.from_reference_entry(ref)
+                for ref in reference_bundle.references
+            ),
+            provider_id=provider_id,
+            model_id=model_id,
+            base_url=base_url,
+            size=size,
+            quality=quality,
+        )
+
+    @classmethod
+    def from_dict(cls, data: Any) -> "PinnedGenerationSpec":
+        if not isinstance(data, dict):
+            raise ValueError("generation spec must be an object")
+        identity = data.get("identity")
+        provider = data.get("provider")
+        parameters = data.get("parameters")
+        if not all(isinstance(part, dict) for part in (identity, provider, parameters)):
+            raise ValueError("generation spec identity/provider/parameters must be objects")
+        source = identity.get("sourceCanon")
+        if not isinstance(source, dict):
+            raise ValueError("generation spec sourceCanon must be an object")
+        references = data.get("references")
+        if not isinstance(references, (list, tuple)):
+            raise ValueError("generation spec references must be an array")
+        return cls(
+            schema_version=data.get("schemaVersion"),
+            character_id=identity.get("characterId"),
+            snapshot_version=identity.get("snapshotVersion"),
+            snapshot_hash=identity.get("snapshotHash"),
+            source_canon_status=source.get("status"),
+            source_canon_content_hash=source.get("contentHash"),
+            source_canon_source_hash=source.get("sourceHash"),
+            source_canon_character_id=source.get("sourceCharacterId"),
+            references=tuple(PinnedReferenceSpec.from_dict(ref) for ref in references),
+            provider_id=provider.get("providerId"),
+            model_id=provider.get("modelId"),
+            base_url=provider.get("baseUrl"),
+            size=parameters.get("size"),
+            quality=parameters.get("quality"),
+        )
+
+    def to_dict(self) -> dict:
+        source = {
+            "status": self.source_canon_status,
+            "contentHash": self.source_canon_content_hash,
+        }
+        if self.source_canon_source_hash is not None:
+            source["sourceHash"] = self.source_canon_source_hash
+        if self.source_canon_character_id is not None:
+            source["sourceCharacterId"] = self.source_canon_character_id
+        return {
+            "schemaVersion": self.schema_version,
+            "identity": {
+                "characterId": self.character_id,
+                "snapshotVersion": self.snapshot_version,
+                "snapshotHash": self.snapshot_hash,
+                "sourceCanon": source,
+            },
+            "references": [ref.to_dict() for ref in self.references],
+            "provider": {
+                "providerId": self.provider_id,
+                "modelId": self.model_id,
+                "baseUrl": self.base_url,
+            },
+            "parameters": {"size": self.size, "quality": self.quality},
+        }
 
 
 class CompanionImageError(RuntimeError):
@@ -108,6 +335,9 @@ class CompanionImageGenerator(Protocol):
     """
 
     def advance(self, job: ImageJob, *, images_dir: Path) -> ImageJob:  # pragma: no cover - protocol
+        ...
+
+    def prepare_generation_spec(self, *, character_id: str) -> PinnedGenerationSpec:  # pragma: no cover
         ...
 
 
@@ -188,6 +418,24 @@ class ImageJobService:
         tmp.write_text(json.dumps(rows, ensure_ascii=False, indent=2), encoding="utf-8")
         os.replace(tmp, path)
 
+    def prepare_generation_spec(self, *, character_id: str) -> PinnedGenerationSpec:
+        prepare = getattr(self._generator, "prepare_generation_spec", None)
+        if not callable(prepare):
+            raise CompanionImageError(
+                "generation_spec_unavailable",
+                "the configured image generator cannot pin generation inputs",
+            )
+        try:
+            spec = prepare(character_id=character_id)
+            return spec if isinstance(spec, PinnedGenerationSpec) else PinnedGenerationSpec.from_dict(spec)
+        except CompanionImageError:
+            raise
+        except Exception as exc:  # bounded product error; no paths/secrets cross this boundary
+            raise CompanionImageError(
+                str(getattr(exc, "code", "generation_spec_invalid")),
+                "image generation inputs could not be pinned",
+            ) from exc
+
     # ------------------------------------------------------------ create
     def create_job(
         self,
@@ -197,11 +445,34 @@ class ImageJobService:
         kind: str,
         prompt: Optional[str] = None,
         context: Optional[dict] = None,
+        generation_spec: Optional[PinnedGenerationSpec | dict] = None,
     ) -> ImageJob:
         if kind not in (KIND_CUSTOM, KIND_CONTEXT):
             raise CompanionImageError("invalid_request", f"unknown image kind {kind!r}")
         if kind == KIND_CUSTOM and not (isinstance(prompt, str) and prompt.strip()):
             raise CompanionImageError("invalid_request", "a description is required for a custom image")
+        if generation_spec is None:
+            raise CompanionImageError(
+                "generation_spec_missing", "a pinned generation specification is required"
+            )
+        try:
+            spec = (
+                generation_spec
+                if isinstance(generation_spec, PinnedGenerationSpec)
+                else PinnedGenerationSpec.from_dict(generation_spec)
+            )
+        except (TypeError, ValueError) as exc:
+            raise CompanionImageError("generation_spec_invalid", "invalid generation specification") from exc
+        if spec.character_id != character_id:
+            raise CompanionImageError(
+                "generation_spec_invalid", "generation specification character mismatch"
+            )
+        job_context = dict(context or {})
+        if "generationSpec" in job_context:
+            raise CompanionImageError(
+                "generation_spec_invalid", "generationSpec is reserved job metadata"
+            )
+        job_context["generationSpec"] = spec.to_dict()
         now = _now_iso()
         job = ImageJob(
             job_id="img-" + uuid.uuid4().hex,
@@ -212,7 +483,7 @@ class ImageJobService:
             created_at=now,
             updated_at=now,
             prompt=prompt.strip() if isinstance(prompt, str) else None,
-            context=context,
+            context=job_context,
         )
         rows = self._load()
         rows.append(job.to_row())
@@ -229,7 +500,18 @@ class ImageJobService:
             job = ImageJob.from_row(row)
             if job.state in TERMINAL_STATES:
                 continue
-            updated = self._generator.advance(job, images_dir=self._images_dir())
+            raw_spec = (job.context or {}).get("generationSpec")
+            if raw_spec is None:
+                updated = _with(job, state=STATE_FAILED, error="generation_spec_missing")
+            else:
+                try:
+                    spec = PinnedGenerationSpec.from_dict(raw_spec)
+                    if spec.character_id != job.character_id:
+                        raise ValueError("generation specification character mismatch")
+                except (TypeError, ValueError):
+                    updated = _with(job, state=STATE_FAILED, error="generation_spec_invalid")
+                else:
+                    updated = self._generator.advance(job, images_dir=self._images_dir())
             if updated.state != job.state or updated.result_ref != job.result_ref:
                 rows[i] = updated.to_row()
                 moved += 1
