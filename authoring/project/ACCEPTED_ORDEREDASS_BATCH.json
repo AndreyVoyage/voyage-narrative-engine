@@ -3,6 +3,12 @@
   "project_id": "narrative_game",
   "scene_refs": [
     {
+      "scene_id": "sc_kira_hidden_problem_001",
+      "version": 1,
+      "ass_id": "ass_sc_kira_hidden_problem_001_v1",
+      "ass_content_hash": "df8bc151c385a070d3b2a6636eed342b9d51e837469aebaa671d0090657f7e70"
+    },
+    {
       "scene_id": "sc_kira_yoga_hall_warmup_001",
       "version": 1,
       "ass_id": "ass_sc_kira_yoga_hall_warmup_001_v1",

@@ -4,6 +4,11 @@
   "entities": [
     {
       "entity_kind": "SCENE",
+      "stable_id": "sc_kira_hidden_problem_001",
+      "source_ref": "authoring/scene_drafts/sc_kira_hidden_problem_001/pointer.json"
+    },
+    {
+      "entity_kind": "SCENE",
       "stable_id": "sc_kira_yoga_hall_warmup_001",
       "source_ref": "authoring/scene_drafts/sc_kira_yoga_hall_warmup_001/pointer.json"
     }

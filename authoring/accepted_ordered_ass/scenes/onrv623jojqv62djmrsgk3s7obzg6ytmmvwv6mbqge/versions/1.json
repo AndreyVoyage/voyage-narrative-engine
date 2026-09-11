@@ -1,0 +1,132 @@
+{
+  "ass_id": "ass_sc_kira_hidden_problem_001_v1",
+  "content_hash": "df8bc151c385a070d3b2a6636eed342b9d51e837469aebaa671d0090657f7e70",
+  "content_rating": "PG-13",
+  "location_id": "home",
+  "ordered_flow": [
+    {
+      "entry_id": "choice_cp_1",
+      "kind": "CHOICE",
+      "options": [
+        {
+          "display_text": "Кира говорит прямо: она не будет давить, но его молчание касается и её.",
+          "option_id": "o1",
+          "target": {
+            "target_id": "1a_b1",
+            "target_kind": "ENTRY"
+          }
+        }
+      ],
+      "prompt": "Кира чувствует, что Андрей что-то недоговаривает. Как она поступит?"
+    },
+    {
+      "character_id": "KIRA",
+      "entry_id": "1a_b1",
+      "kind": "TEXT",
+      "presentation": "THOUGHT",
+      "text": "Он что-то недоговаривает. Я чувствую это слишком ясно. Но если спрошу сейчас, он просто закроется.",
+      "thought_visibility": "hidden"
+    },
+    {
+      "character_id": null,
+      "entry_id": "1a_b2",
+      "kind": "TEXT",
+      "presentation": "NARRATIVE",
+      "text": "Кира медленно снимает пальто. Пальцы на секунду задерживаются на вешалке. Она касается шеи, быстро убирает руку и только тогда поворачивается к Андрею.",
+      "thought_visibility": null
+    },
+    {
+      "character_id": "KIRA",
+      "entry_id": "1a_b3",
+      "kind": "TEXT",
+      "presentation": "DIALOGUE",
+      "text": "Я не молчу. Просто не хочу сейчас спрашивать. Если тебе есть что сказать — скажешь сам.",
+      "thought_visibility": null
+    },
+    {
+      "character_id": "ANDREY",
+      "entry_id": "1a_b4",
+      "kind": "TEXT",
+      "presentation": "DIALOGUE",
+      "text": "Я не хотел тебя втягивать, пока сам не разберусь. Это не про тебя.",
+      "thought_visibility": null
+    },
+    {
+      "character_id": "KIRA",
+      "entry_id": "1a_b5",
+      "kind": "TEXT",
+      "presentation": "THOUGHT",
+      "text": "«Не про меня». Значит, я здесь ни при чём. А то, что я сижу и жду — это так, мебель. Он решает, что мне знать, а что нет. Как удобно.",
+      "thought_visibility": "hidden"
+    },
+    {
+      "character_id": null,
+      "entry_id": "1a_b6",
+      "kind": "TEXT",
+      "presentation": "NARRATIVE",
+      "text": "Кира медленно выпрямляется и убирает руку со стола на колени, сцепляя пальцы в замок — не от злости, а чтобы не потянуться к нему.",
+      "thought_visibility": null
+    },
+    {
+      "character_id": "KIRA",
+      "entry_id": "1a_b7",
+      "kind": "TEXT",
+      "presentation": "DIALOGUE",
+      "text": "Не про меня. Понятно.",
+      "thought_visibility": null
+    },
+    {
+      "character_id": "ANDREY",
+      "entry_id": "1a_b8",
+      "kind": "TEXT",
+      "presentation": "DIALOGUE",
+      "text": "Кира, я не хотел сказать, что ты для меня посторонняя. Я просто боялся, что, если расскажу сейчас, ты начнёшь решать эту проблему вместе со мной. А я пока даже не понимаю, что именно произошло.",
+      "thought_visibility": null
+    },
+    {
+      "character_id": "KIRA",
+      "entry_id": "1a_b9",
+      "kind": "TEXT",
+      "presentation": "THOUGHT",
+      "text": "Он не отталкивает меня. Он правда боится, что я сразу полезу помогать. Но когда он молчит, я всё равно чувствую, что что-то не так.",
+      "thought_visibility": "hidden"
+    },
+    {
+      "character_id": null,
+      "entry_id": "1a_b10",
+      "kind": "TEXT",
+      "presentation": "NARRATIVE",
+      "text": "Кира опускает плечи, медленно выдыхает и садится чуть ближе, но не касается Андрея.",
+      "thought_visibility": null
+    },
+    {
+      "character_id": "KIRA",
+      "entry_id": "1a_b11",
+      "kind": "TEXT",
+      "presentation": "DIALOGUE",
+      "text": "Я не прошу тебя всё рассказать сейчас. Но когда ты молчишь, это всё равно касается меня. Просто помни об этом.",
+      "thought_visibility": null
+    }
+  ],
+  "participants": [
+    {
+      "character_id": "KIRA",
+      "present": true,
+      "role": ""
+    },
+    {
+      "character_id": "ANDREY",
+      "present": true,
+      "role": ""
+    }
+  ],
+  "provenance": {
+    "source_hash": "f84b8c5ef90252658e48d067bd822cce645d6cb2642b01a9a3c926c3937f0a89",
+    "source_kind": "scene_body_ordered_acceptance",
+    "source_ref": "authoring/scene_drafts/sc_kira_hidden_problem_001/versions/1.json",
+    "source_schema_version": "scene_body/1.0"
+  },
+  "scene_id": "sc_kira_hidden_problem_001",
+  "schema_version": "ass/0.2",
+  "version": 1
+}
