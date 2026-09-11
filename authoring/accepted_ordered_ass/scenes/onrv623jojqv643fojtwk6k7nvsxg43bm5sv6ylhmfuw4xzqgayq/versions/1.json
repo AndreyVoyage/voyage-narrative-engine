@@ -1,0 +1,197 @@
+{
+  "ass_id": "ass_sc_kira_sergey_message_again_001_v1",
+  "content_hash": "29175b557598a696db562c8154a2bb52eaee9df71929c2dac5fed0456dcffbd9",
+  "content_rating": "PG-13",
+  "location_id": "home",
+  "ordered_flow": [
+    {
+      "character_id": null,
+      "entry_id": "e1",
+      "kind": "TEXT",
+      "presentation": "NARRATIVE",
+      "text": "Телефон загорается новым сообщением от Сергея. Утренний разговор с Яковым ещё не успел стать привычкой.",
+      "thought_visibility": null
+    },
+    {
+      "entry_id": "choice_cp_1",
+      "kind": "CHOICE",
+      "options": [
+        {
+          "display_text": "Показывает сообщение Якову сразу. Прозрачность прежде реакции.",
+          "option_id": "o1A",
+          "target": {
+            "target_id": "1a_b1",
+            "target_kind": "ENTRY"
+          }
+        },
+        {
+          "display_text": "Сначала читает сама. Просит одну минуту, прежде чем делиться.",
+          "option_id": "o1B",
+          "target": {
+            "target_id": "1b_b1",
+            "target_kind": "ENTRY"
+          }
+        },
+        {
+          "display_text": "Не отвечает пока. Отказывается быть сразу втянутой в чужую срочность.",
+          "option_id": "o1C",
+          "target": {
+            "target_id": "1c_b1",
+            "target_kind": "ENTRY"
+          }
+        }
+      ],
+      "prompt": "Телефон загорается новым сообщением от Сергея. Утренний разговор с Яковым ещё не успел стать привычкой. Что делает Кира?"
+    },
+    {
+      "character_id": null,
+      "entry_id": "1a_b1",
+      "kind": "TEXT",
+      "presentation": "NARRATIVE",
+      "text": "Показывает сообщение Якову сразу. Прозрачность прежде реакции.",
+      "thought_visibility": null
+    },
+    {
+      "character_id": "KIRA",
+      "entry_id": "1a_b2",
+      "kind": "TEXT",
+      "presentation": "DIALOGUE",
+      "text": "Он написал.",
+      "thought_visibility": null
+    },
+    {
+      "character_id": "KIRA",
+      "entry_id": "1a_b3",
+      "kind": "TEXT",
+      "presentation": "DIALOGUE",
+      "text": "Я показываю тебе это до ответа. Не потому что прошу разрешения. Потому что не хочу тайны.",
+      "thought_visibility": null
+    },
+    {
+      "character_id": "YAKOV",
+      "entry_id": "1a_b4",
+      "kind": "TEXT",
+      "presentation": "DIALOGUE",
+      "text": "Ты показываешь мне это до ответа?",
+      "thought_visibility": null
+    },
+    {
+      "character_id": "YAKOV",
+      "entry_id": "1a_b5",
+      "kind": "TEXT",
+      "next_target": {
+        "target_kind": "END"
+      },
+      "presentation": "DIALOGUE",
+      "text": "Тогда я рядом. Но отвечать будешь ты. Я не буду читать за тебя и не буду решать вместо тебя.",
+      "thought_visibility": null
+    },
+    {
+      "character_id": null,
+      "entry_id": "1b_b1",
+      "kind": "TEXT",
+      "presentation": "NARRATIVE",
+      "text": "Сначала читает сама. Просит одну минуту, прежде чем делиться.",
+      "thought_visibility": null
+    },
+    {
+      "character_id": "KIRA",
+      "entry_id": "1b_b2",
+      "kind": "TEXT",
+      "presentation": "DIALOGUE",
+      "text": "Я прочитаю сначала сама. Одну минуту.",
+      "thought_visibility": null
+    },
+    {
+      "character_id": "KIRA",
+      "entry_id": "1b_b3",
+      "kind": "TEXT",
+      "presentation": "DIALOGUE",
+      "text": "Мне нужно понять, что я чувствую, прежде чем объяснять это тебе.",
+      "thought_visibility": null
+    },
+    {
+      "character_id": "YAKOV",
+      "entry_id": "1b_b4",
+      "kind": "TEXT",
+      "presentation": "DIALOGUE",
+      "text": "Я хочу спросить, почему не сразу. Но я подожду.",
+      "thought_visibility": null
+    },
+    {
+      "character_id": "YAKOV",
+      "entry_id": "1b_b5",
+      "kind": "TEXT",
+      "next_target": {
+        "target_kind": "END"
+      },
+      "presentation": "DIALOGUE",
+      "text": "Только не исчезай в этом одна.",
+      "thought_visibility": null
+    },
+    {
+      "character_id": null,
+      "entry_id": "1c_b1",
+      "kind": "TEXT",
+      "presentation": "NARRATIVE",
+      "text": "Не отвечает пока. Отказывается быть сразу втянутой в чужую срочность.",
+      "thought_visibility": null
+    },
+    {
+      "character_id": "KIRA",
+      "entry_id": "1c_b2",
+      "kind": "TEXT",
+      "presentation": "DIALOGUE",
+      "text": "Я не буду отвечать сейчас.",
+      "thought_visibility": null
+    },
+    {
+      "character_id": "KIRA",
+      "entry_id": "1c_b3",
+      "kind": "TEXT",
+      "presentation": "DIALOGUE",
+      "text": "Не потому что боюсь. Потому что не хочу, чтобы его боль снова стала моим расписанием.",
+      "thought_visibility": null
+    },
+    {
+      "character_id": "YAKOV",
+      "entry_id": "1c_b4",
+      "kind": "TEXT",
+      "presentation": "DIALOGUE",
+      "text": "Тогда пусть сообщение подождёт. А мы — нет.",
+      "thought_visibility": null
+    },
+    {
+      "character_id": "YAKOV",
+      "entry_id": "1c_b5",
+      "kind": "TEXT",
+      "next_target": {
+        "target_kind": "END"
+      },
+      "presentation": "DIALOGUE",
+      "text": "Ты имеешь право выбирать свой темп.",
+      "thought_visibility": null
+    }
+  ],
+  "participants": [
+    {
+      "character_id": "KIRA",
+      "present": true,
+      "role": ""
+    },
+    {
+      "character_id": "YAKOV",
+      "present": true,
+      "role": ""
+    }
+  ],
+  "provenance": {
+    "source_hash": "2871fef786e827568f5c4cdf6b2adf43f02a8cbfad09547051cd2f6869607e7d",
+    "source_kind": "scene_body_ordered_acceptance",
+    "source_ref": "authoring/scene_drafts/sc_kira_sergey_message_again_001/versions/1.json",
+    "source_schema_version": "scene_body/1.0"
+  },
+  "scene_id": "sc_kira_sergey_message_again_001",
+  "schema_version": "ass/0.2",
+  "version": 1
+}
