@@ -198,3 +198,29 @@ def read_character_canon(
     )
     content_hash = compute_content_hash(provisional.semantic_payload())
     return dataclasses.replace(provisional, content_hash=content_hash)
+
+
+def list_character_ids(canon_root: Path) -> tuple[str, ...]:
+    """List the stable character IDs present in a Character Canon root.
+
+    Read-only discovery: mirrors ``_read_preset``'s exact layout
+    (``AI_CHARACTERS/<id>/10_notes/<id>_REFERENCE_PRESETS.json``) and returns
+    the discovered IDs sorted ascending. Returns an empty tuple when the root
+    or the ``AI_CHARACTERS`` directory does not exist or is empty. Discovery is
+    lenient and never validates content -- use ``read_character_canon`` for the
+    authoritative read of one id. Never writes to Character Canon.
+    """
+    presets_dir = Path(canon_root).joinpath(*_PRESET_REL_DIR)
+    if not presets_dir.is_dir():
+        return ()
+    ids: list[str] = []
+    for char_dir in sorted(presets_dir.iterdir()):
+        if not char_dir.is_dir():
+            continue
+        character_id = char_dir.name
+        if not character_id:
+            continue
+        preset_path = char_dir / "10_notes" / f"{character_id}_REFERENCE_PRESETS.json"
+        if preset_path.is_file():
+            ids.append(character_id)
+    return tuple(sorted(ids))

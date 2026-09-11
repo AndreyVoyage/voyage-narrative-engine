@@ -30,11 +30,13 @@ from .model import (
 )
 from .reader import (
     SNAPSHOT_SCHEMA_VERSION,
+    list_character_ids,
     read_character_canon,
 )
 
 __all__ = [
     "read_character_canon",
+    "list_character_ids",
     "SNAPSHOT_SCHEMA_VERSION",
     "CharacterCanonSnapshot",
     "CanonReference",

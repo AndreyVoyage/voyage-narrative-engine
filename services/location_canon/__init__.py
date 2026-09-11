@@ -20,6 +20,7 @@ from .hashing import compute_content_hash
 from .loader import (
     LOCATION_CANON_SCHEMA_VERSION,
     default_locations_dir,
+    list_location_ids,
     load_location,
 )
 from .model import (
@@ -30,6 +31,7 @@ from .model import (
 
 __all__ = [
     "load_location",
+    "list_location_ids",
     "default_locations_dir",
     "LOCATION_CANON_SCHEMA_VERSION",
     "compute_content_hash",

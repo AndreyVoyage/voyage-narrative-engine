@@ -52,6 +52,26 @@ def default_locations_dir(repo_root: Path) -> Path:
     return Path(repo_root).joinpath(*_CANONICAL_DIR)
 
 
+def list_location_ids(repo_root: Path) -> tuple[str, ...]:
+    """List the stable location IDs present in the canonical locations dir.
+
+    Read-only discovery: scans ``scenarios/locations/*.json`` and returns the
+    discovered lowercase-slug IDs sorted ascending. Returns an empty tuple when
+    the directory does not exist or is empty. Discovery is lenient and never
+    validates content -- use ``load_location`` for the authoritative read of one
+    id. Never writes to Location Canon.
+    """
+    locations_dir = default_locations_dir(repo_root)
+    if not locations_dir.is_dir():
+        return ()
+    ids: list[str] = []
+    for source_path in locations_dir.glob("*.json"):
+        location_id = source_path.stem
+        if LOCATION_ID_RE.match(location_id):
+            ids.append(location_id)
+    return tuple(sorted(ids))
+
+
 def _require_non_empty_string(value: Any, field: str) -> str:
     if not isinstance(value, str) or value.strip() == "":
         raise LocationCanonValidationError(f"{field}: required non-empty string")
