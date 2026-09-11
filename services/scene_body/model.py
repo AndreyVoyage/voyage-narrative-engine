@@ -70,7 +70,8 @@ VISUAL_OPS = (VISUAL_OP_SET, VISUAL_OP_CLEAR)
 
 TARGET_KIND_ENTRY = "ENTRY"
 TARGET_KIND_SCENE = "SCENE"
-TARGET_KINDS = (TARGET_KIND_ENTRY, TARGET_KIND_SCENE)
+TARGET_KIND_END = "END"
+TARGET_KINDS = (TARGET_KIND_ENTRY, TARGET_KIND_SCENE, TARGET_KIND_END)
 
 
 # ---------------------------------------------------------------------------
@@ -161,13 +162,21 @@ class Participant:
 
 @dataclass(frozen=True)
 class TextEntry(Entry):
-    """An authored text entry (NARRATIVE / DIALOGUE / THOUGHT)."""
+    """An authored text entry (NARRATIVE / DIALOGUE / THOUGHT).
+
+    ``next_target`` is an optional explicit successor (OD-ORDEREDASS-CONTROL-
+    FLOW-01): ``None`` preserves the existing implicit ordered-flow fallthrough
+    to whatever entry comes next; when present it names an explicit ENTRY,
+    SCENE, or END successor. It is omitted from serialization when absent, so
+    existing authored/accepted content is byte-identical.
+    """
 
     entry_id: str
     presentation: str
     text: str
     character_id: Optional[str] = None
     thought_visibility: Optional[str] = None
+    next_target: Optional["ChoiceTarget"] = None
     kind: str = field(init=False, default=ENTRY_KIND_TEXT, repr=True)
 
     def __post_init__(self) -> None:
@@ -180,9 +189,11 @@ class TextEntry(Entry):
             raise SceneBodyValidationError("text_entry.text: expected string")
         _require_optional_string(self.character_id, "text_entry.character_id")
         _require_optional_string(self.thought_visibility, "text_entry.thought_visibility")
+        if self.next_target is not None and not isinstance(self.next_target, ChoiceTarget):
+            raise SceneBodyValidationError("text_entry.next_target: expected ChoiceTarget or None")
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        result: dict[str, Any] = {
             "entry_id": self.entry_id,
             "kind": self.kind,
             "presentation": self.presentation,
@@ -190,24 +201,49 @@ class TextEntry(Entry):
             "character_id": self.character_id,
             "thought_visibility": self.thought_visibility,
         }
+        if self.next_target is not None:
+            result["next_target"] = self.next_target.to_dict()
+        return result
 
 
 @dataclass(frozen=True)
 class ChoiceTarget:
-    """A stable choice-option target: an entry inside this body, or another scene."""
+    """A stable successor target: an entry inside this body, another scene, or
+    the reserved scene-terminal ``END``.
+
+    Used both by ``ChoiceOption.target`` (branch selection) and by
+    ``TextEntry.next_target`` / ``VisualChangeEvent.next_target`` (explicit
+    successor control flow, OD-ORDEREDASS-CONTROL-FLOW-01).
+
+    ``target_id`` is required non-empty for ``ENTRY``/``SCENE`` (it names the
+    entry or scene being transferred to) and MUST be absent (``None``) for
+    ``END`` -- ``END`` never semantically references another entry or scene,
+    it names the current scene's own generated terminal label. This is the one
+    deterministic JSON representation for ``END``: ``{"target_kind": "END"}``
+    with no ``target_id`` key at all.
+    """
 
     target_kind: str
-    target_id: str
+    target_id: Optional[str] = None
 
     def __post_init__(self) -> None:
         if self.target_kind not in TARGET_KINDS:
             raise SceneBodyValidationError(
                 f"choice_target.target_kind: expected one of {TARGET_KINDS!r}"
             )
-        _require_non_empty_string(self.target_id, "choice_target.target_id")
+        if self.target_kind == TARGET_KIND_END:
+            if self.target_id is not None:
+                raise SceneBodyValidationError(
+                    "choice_target.target_id: must be absent for target_kind END"
+                )
+        else:
+            _require_non_empty_string(self.target_id, "choice_target.target_id")
 
     def to_dict(self) -> dict[str, Any]:
-        return {"target_kind": self.target_kind, "target_id": self.target_id}
+        result: dict[str, Any] = {"target_kind": self.target_kind}
+        if self.target_id is not None:
+            result["target_id"] = self.target_id
+        return result
 
 
 @dataclass(frozen=True)
@@ -261,12 +297,17 @@ class ChoiceEntry(Entry):
 
 @dataclass(frozen=True)
 class VisualChangeEvent(Entry):
-    """An ordered visual change (SET or CLEAR) with an optional transition."""
+    """An ordered visual change (SET or CLEAR) with an optional transition.
+
+    ``next_target`` is an optional explicit successor (OD-ORDEREDASS-CONTROL-
+    FLOW-01) -- same semantics/serialization convention as ``TextEntry.next_target``.
+    """
 
     entry_id: str
     operation: str
     asset_id: Optional[str] = None
     transition: Optional[str] = None
+    next_target: Optional["ChoiceTarget"] = None
     kind: str = field(init=False, default=ENTRY_KIND_VISUAL_CHANGE, repr=True)
 
     def __post_init__(self) -> None:
@@ -283,15 +324,20 @@ class VisualChangeEvent(Entry):
             raise SceneBodyValidationError(
                 "visual_entry: CLEAR must not carry an asset_id (structurally invalid)"
             )
+        if self.next_target is not None and not isinstance(self.next_target, ChoiceTarget):
+            raise SceneBodyValidationError("visual_entry.next_target: expected ChoiceTarget or None")
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        result: dict[str, Any] = {
             "entry_id": self.entry_id,
             "kind": self.kind,
             "operation": self.operation,
             "asset_id": self.asset_id,
             "transition": self.transition,
         }
+        if self.next_target is not None:
+            result["next_target"] = self.next_target.to_dict()
+        return result
 
 
 @dataclass(frozen=True)
@@ -480,6 +526,18 @@ def _option_from_dict(data: Any) -> ChoiceOption:
     )
 
 
+def _next_target_from_dict(data: Any) -> Optional[ChoiceTarget]:
+    """Parse an optional explicit successor (OD-ORDEREDASS-CONTROL-FLOW-01).
+
+    Absent/``None`` in the source data yields ``None`` (existing implicit
+    fallthrough); this is the exact inverse of ``to_dict()``'s "omit when
+    absent" rule, so old JSON without ``next_target`` round-trips unchanged.
+    """
+    if data is None:
+        return None
+    return _target_from_dict(data)
+
+
 def _entry_from_dict(data: Any) -> Entry:
     if not isinstance(data, dict):
         raise SceneBodyValidationError("entry: expected object")
@@ -491,6 +549,7 @@ def _entry_from_dict(data: Any) -> Entry:
             text=data.get("text", ""),
             character_id=data.get("character_id"),
             thought_visibility=data.get("thought_visibility"),
+            next_target=_next_target_from_dict(data.get("next_target")),
         )
     if kind == ENTRY_KIND_CHOICE:
         raw_options = data.get("options", [])
@@ -507,5 +566,6 @@ def _entry_from_dict(data: Any) -> Entry:
             operation=data.get("operation"),
             asset_id=data.get("asset_id"),
             transition=data.get("transition"),
+            next_target=_next_target_from_dict(data.get("next_target")),
         )
     raise SceneBodyValidationError(f"unknown entry kind: {kind!r}")

@@ -35,11 +35,13 @@ from services.scene_body import (
     TEXT_PRESENTATION_DIALOGUE,
     TEXT_PRESENTATION_NARRATIVE,
     TEXT_PRESENTATION_THOUGHT,
+    TARGET_KIND_END,
     TARGET_KIND_ENTRY,
     TARGET_KIND_SCENE,
     VISUAL_OP_CLEAR,
     VISUAL_OP_SET,
     ChoiceEntry,
+    ChoiceTarget,
     TextEntry,
     VisualChangeEvent,
 )
@@ -225,6 +227,15 @@ def _validate_known_scene_ids(ass: OrderedASS, known_scene_ids: frozenset[str]) 
                                 target.target_id
                             )
                         )
+        elif isinstance(entry, (TextEntry, VisualChangeEvent)):
+            next_target = entry.next_target
+            if next_target is not None and next_target.target_kind == TARGET_KIND_SCENE:
+                if next_target.target_id not in known_scene_ids:
+                    raise OrderedExportError(
+                        "next_target SCENE {!r} is not in known_scene_ids".format(
+                            next_target.target_id
+                        )
+                    )
 
 
 def _validate_resolved_assets(
@@ -285,6 +296,40 @@ def _render_text_entry(
     else:
         raise OrderedExportError(
             "unsupported presentation {!r}".format(entry.presentation)
+        )
+
+
+def _render_next_target(
+    next_target: ChoiceTarget | None,
+    ass: OrderedASS,
+    entry_ids: frozenset[str],
+    lines: list[str],
+) -> None:
+    """Render an entry's optional explicit successor (OD-ORDEREDASS-CONTROL-FLOW-01).
+
+    ``None`` emits nothing -- the existing implicit ordered-flow fallthrough is
+    preserved exactly as before. This performs no branch-boundary inference of
+    its own: it only ever emits the one jump the model already names.
+    """
+    if next_target is None:
+        return
+    if next_target.target_kind == TARGET_KIND_ENTRY:
+        if next_target.target_id not in entry_ids:
+            raise OrderedExportError(
+                "next_target ENTRY {!r} does not exist in this OrderedASS".format(
+                    next_target.target_id
+                )
+            )
+        lines.append(
+            "    jump {}".format(entry_label(ass.scene_id, next_target.target_id))
+        )
+    elif next_target.target_kind == TARGET_KIND_SCENE:
+        lines.append("    jump {}".format(scene_start_label(next_target.target_id)))
+    elif next_target.target_kind == TARGET_KIND_END:
+        lines.append("    jump {}".format(scene_end_label(ass.scene_id)))
+    else:
+        raise OrderedExportError(
+            "unsupported next_target kind {!r}".format(next_target.target_kind)
         )
 
 
@@ -387,10 +432,12 @@ def render_ordered_ass(
         lines.append("label {}:".format(entry_label(ass.scene_id, entry.entry_id)))
         if isinstance(entry, TextEntry):
             _render_text_entry(entry, reading_mode, symbols, lines)
+            _render_next_target(entry.next_target, ass, entry_ids, lines)
         elif isinstance(entry, ChoiceEntry):
             _render_choice_entry(ass, entry, entry_ids, lines)
         elif isinstance(entry, VisualChangeEvent):
             _render_visual_entry(entry, assets, lines)
+            _render_next_target(entry.next_target, ass, entry_ids, lines)
         else:
             raise OrderedExportError(
                 "unsupported entry type {!r}".format(type(entry).__name__)

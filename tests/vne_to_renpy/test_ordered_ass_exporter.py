@@ -555,3 +555,185 @@ def test_header_has_stable_fields_only():
     assert "# reading_mode: classic_vn" in src
     # no process-specific or time-dependent metadata
     assert "ass_id" not in src.split("\n\n")[0]
+
+
+# ---------------------------------------------------------------------------
+# next_target -- explicit successor contract (OD-ORDEREDASS-CONTROL-FLOW-01)
+# ---------------------------------------------------------------------------
+
+def _label_line(entry_id: str) -> str:
+    return "label {}:".format(entry_label(SCENE_ID, entry_id))
+
+
+def _entry_block(src: str, entry_id: str) -> str:
+    """Return the exact rendered lines for one entry: from its own label up
+    to (but excluding) the next ``label `` line."""
+    start_marker = _label_line(entry_id) + "\n"
+    start = src.index(start_marker) + len(start_marker)
+    rest = src[start:]
+    next_label_pos = rest.find("\nlabel ")
+    return rest[:next_label_pos] if next_label_pos != -1 else rest
+
+
+def test_next_target_none_preserves_fallthrough():
+    entries = (_narrative("e1"), _narrative("e2"))
+    src = _render(_ass(entries=entries))
+    assert "jump" not in _entry_block(src, "e1")
+
+
+def test_next_target_entry_emits_jump():
+    entries = (
+        TextEntry(entry_id="e1", presentation="NARRATIVE", text="A",
+                  next_target=ChoiceTarget(target_kind="ENTRY", target_id="e2")),
+        _narrative("e2"),
+    )
+    src = _render(_ass(entries=entries))
+    assert "jump {}".format(entry_label(SCENE_ID, "e2")) in _entry_block(src, "e1")
+
+
+def test_next_target_scene_emits_jump():
+    entries = (
+        TextEntry(entry_id="e1", presentation="NARRATIVE", text="A",
+                  next_target=ChoiceTarget(target_kind="SCENE", target_id="SC_901")),
+    )
+    src = _render(_ass(entries=entries))
+    assert "jump {}".format(scene_start_label("SC_901")) in _entry_block(src, "e1")
+
+
+def test_next_target_end_emits_jump_to_scene_end():
+    entries = (
+        TextEntry(entry_id="e1", presentation="NARRATIVE", text="A",
+                  next_target=ChoiceTarget(target_kind="END")),
+    )
+    src = _render(_ass(entries=entries))
+    assert "jump {}".format(scene_end_label(SCENE_ID)) in _entry_block(src, "e1")
+
+
+def test_visual_next_target_end_emits_jump():
+    entries = (
+        VisualChangeEvent(entry_id="v1", operation="CLEAR", asset_id=None,
+                           next_target=ChoiceTarget(target_kind="END")),
+    )
+    src = _render(_ass(entries=entries))
+    assert "jump {}".format(scene_end_label(SCENE_ID)) in _entry_block(src, "v1")
+
+
+def test_hidden_thought_next_target_still_honored():
+    entries = (
+        TextEntry(entry_id="e1", presentation="THOUGHT", text="A", character_id="KIRA",
+                  thought_visibility="hidden", next_target=ChoiceTarget(target_kind="END")),
+    )
+    src = _render(_ass(entries=entries))
+    block = _entry_block(src, "e1")
+    # hidden-thought behavior unchanged: still a bare "pass" anchor line...
+    assert "    pass" in block
+    # ...and the explicit successor is still honored after it.
+    assert "jump {}".format(scene_end_label(SCENE_ID)) in block
+
+
+def test_next_target_unknown_entry_rejected():
+    entries = (
+        TextEntry(entry_id="e1", presentation="NARRATIVE", text="A",
+                  next_target=ChoiceTarget(target_kind="ENTRY", target_id="NOPE")),
+    )
+    with pytest.raises(OrderedExportError):
+        _render(_ass_direct(entries=entries))
+
+
+def test_next_target_unknown_scene_rejected():
+    entries = (
+        TextEntry(entry_id="e1", presentation="NARRATIVE", text="A",
+                  next_target=ChoiceTarget(target_kind="SCENE", target_id="SC_999")),
+    )
+    with pytest.raises(OrderedExportError):
+        _render(_ass_direct(entries=entries), known_scene_ids=frozenset({SCENE_ID}))
+
+
+# ---------------------------------------------------------------------------
+# Multibranch fixture (test-only; NOT SC_017 authority) -- Stage 10
+# ---------------------------------------------------------------------------
+
+def test_three_branch_choice_structural_isolation():
+    """A genuine 3-option ChoiceEntry with 3 distinct multi-entry branches,
+    each terminated explicitly via next_target=END. Proves the generated
+    Ren'Py never relies on accidental fallthrough between branches.
+
+    Test-only fixture. Does not create or represent SC_017 authority.
+    """
+    entries = (
+        ChoiceEntry(
+            entry_id="c1", prompt="Pick",
+            options=(
+                _option("o1", "Branch A", target_kind="ENTRY", target_id="a1"),
+                _option("o2", "Branch B", target_kind="ENTRY", target_id="b1"),
+                _option("o3", "Branch C", target_kind="ENTRY", target_id="c1_start"),
+            ),
+        ),
+        TextEntry(entry_id="a1", presentation="NARRATIVE", text="Branch A first."),
+        TextEntry(entry_id="a2", presentation="NARRATIVE", text="Branch A second.",
+                  next_target=ChoiceTarget(target_kind="END")),
+        TextEntry(entry_id="b1", presentation="NARRATIVE", text="Branch B first."),
+        TextEntry(entry_id="b2", presentation="NARRATIVE", text="Branch B second.",
+                  next_target=ChoiceTarget(target_kind="END")),
+        TextEntry(entry_id="c1_start", presentation="NARRATIVE", text="Branch C first."),
+        TextEntry(entry_id="c2", presentation="NARRATIVE", text="Branch C second.",
+                  next_target=ChoiceTarget(target_kind="END")),
+    )
+    ass = _ass(entries=entries)  # requires acceptance-completeness to pass
+    src = _render(ass)
+
+    # All 3 menu options present.
+    assert '"Branch A":' in src
+    assert '"Branch B":' in src
+    assert '"Branch C":' in src
+
+    # Each option jumps to its own, distinct branch start.
+    assert "jump {}".format(entry_label(SCENE_ID, "a1")) in src
+    assert "jump {}".format(entry_label(SCENE_ID, "b1")) in src
+    assert "jump {}".format(entry_label(SCENE_ID, "c1_start")) in src
+
+    # Each branch's final entry explicitly jumps to scene_end (no fallthrough).
+    end_label = scene_end_label(SCENE_ID)
+    for final_id in ("a2", "b2", "c2"):
+        block = _entry_block(src, final_id)
+        assert block.strip().splitlines()[-1] == "    jump {}".format(end_label)
+
+    # No branch's rendered block contains another branch's own label -- proves
+    # branch A/B never silently continue into a sibling branch's content.
+    a_block = _entry_block(src, "a1") + _entry_block(src, "a2")
+    for other in ("b1", "b2", "c1_start", "c2"):
+        assert entry_label(SCENE_ID, other) not in a_block
+    b_block = _entry_block(src, "b1") + _entry_block(src, "b2")
+    for other in ("a1", "a2", "c1_start", "c2"):
+        assert entry_label(SCENE_ID, other) not in b_block
+
+
+# ---------------------------------------------------------------------------
+# Convergent branches (test-only) -- Stage 11
+# ---------------------------------------------------------------------------
+
+def test_convergent_branches_render_to_shared_join():
+    """Two branches explicitly converge on one shared join entry via
+    next_target=ENTRY, without any renderer-side inference."""
+    entries = (
+        ChoiceEntry(
+            entry_id="c1", prompt="Pick",
+            options=(
+                _option("o1", "Branch A", target_kind="ENTRY", target_id="a1"),
+                _option("o2", "Branch B", target_kind="ENTRY", target_id="b1"),
+            ),
+        ),
+        TextEntry(entry_id="a1", presentation="NARRATIVE", text="A",
+                  next_target=ChoiceTarget(target_kind="ENTRY", target_id="join")),
+        TextEntry(entry_id="b1", presentation="NARRATIVE", text="B",
+                  next_target=ChoiceTarget(target_kind="ENTRY", target_id="join")),
+        TextEntry(entry_id="join", presentation="NARRATIVE", text="Shared continuation."),
+    )
+    ass = _ass(entries=entries)
+    src = _render(ass)
+
+    join_label = entry_label(SCENE_ID, "join")
+    assert "jump {}".format(join_label) in _entry_block(src, "a1")
+    assert "jump {}".format(join_label) in _entry_block(src, "b1")
+    # join is the last ordered_flow entry: falls through to scene_end as-is.
+    assert "jump" not in _entry_block(src, "join")

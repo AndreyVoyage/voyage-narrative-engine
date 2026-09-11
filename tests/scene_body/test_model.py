@@ -10,6 +10,7 @@ import pytest
 
 from services.scene_body import (
     AUTHORING_SCHEMA_VERSION,
+    TARGET_KIND_END,
     ChoiceEntry,
     ChoiceOption,
     ChoiceTarget,
@@ -289,3 +290,265 @@ def test_to_dict_returns_fresh_data() -> None:
     d["scene_id"] = "MUTATED"
     assert body.scene_id == "SC_900"
     assert body.to_dict()["scene_id"] == "SC_900"
+
+
+# ---------------------------------------------------------------------------
+# next_target -- explicit successor contract (OD-ORDEREDASS-CONTROL-FLOW-01)
+# ---------------------------------------------------------------------------
+
+def test_text_entry_without_next_target_serializes_unchanged() -> None:
+    entry = _narrative("e1")
+    assert entry.next_target is None
+    assert "next_target" not in entry.to_dict()
+
+
+def test_visual_entry_without_next_target_serializes_unchanged() -> None:
+    entry = _visual("v1")
+    assert entry.next_target is None
+    assert "next_target" not in entry.to_dict()
+
+
+def test_text_entry_entry_next_target_roundtrip() -> None:
+    entry = TextEntry(
+        entry_id="e1", presentation="NARRATIVE", text="A",
+        next_target=ChoiceTarget(target_kind="ENTRY", target_id="e2"),
+    )
+    d = entry.to_dict()
+    assert d["next_target"] == {"target_kind": "ENTRY", "target_id": "e2"}
+    rebuilt = _entry_from_dict_via_body(d)
+    assert rebuilt.next_target == ChoiceTarget(target_kind="ENTRY", target_id="e2")
+    assert rebuilt.to_dict() == d
+
+
+def test_text_entry_scene_next_target_roundtrip() -> None:
+    entry = TextEntry(
+        entry_id="e1", presentation="NARRATIVE", text="A",
+        next_target=ChoiceTarget(target_kind="SCENE", target_id="SC_901"),
+    )
+    d = entry.to_dict()
+    assert d["next_target"] == {"target_kind": "SCENE", "target_id": "SC_901"}
+    rebuilt = _entry_from_dict_via_body(d)
+    assert rebuilt.next_target == ChoiceTarget(target_kind="SCENE", target_id="SC_901")
+    assert rebuilt.to_dict() == d
+
+
+def test_text_entry_end_next_target_roundtrip() -> None:
+    entry = TextEntry(
+        entry_id="e1", presentation="NARRATIVE", text="A",
+        next_target=ChoiceTarget(target_kind="END"),
+    )
+    d = entry.to_dict()
+    # Exact deterministic END representation: target_kind only, no target_id key.
+    assert d["next_target"] == {"target_kind": "END"}
+    assert "target_id" not in d["next_target"]
+    rebuilt = _entry_from_dict_via_body(d)
+    assert rebuilt.next_target == ChoiceTarget(target_kind="END")
+    assert rebuilt.next_target.target_id is None
+    assert rebuilt.to_dict() == d
+
+
+def test_visual_entry_end_next_target_roundtrip() -> None:
+    entry = VisualChangeEvent(
+        entry_id="v1", operation="CLEAR", asset_id=None,
+        next_target=ChoiceTarget(target_kind="END"),
+    )
+    d = entry.to_dict()
+    assert d["next_target"] == {"target_kind": "END"}
+    rebuilt = SceneBody.from_dict(
+        _body(entries=(entry,), location_id=None, content_rating=None).to_dict()
+    ).entries[0]
+    assert rebuilt.next_target == ChoiceTarget(target_kind="END")
+
+
+def test_end_with_target_id_rejected() -> None:
+    with pytest.raises(SceneBodyValidationError):
+        ChoiceTarget(target_kind="END", target_id="e1")
+
+
+def test_end_is_recognized_target_kind() -> None:
+    assert TARGET_KIND_END == "END"
+    ChoiceTarget(target_kind="END")  # does not raise
+
+
+def test_invalid_entry_next_target_rejected_at_acceptance() -> None:
+    body = _body(
+        entries=(
+            TextEntry(
+                entry_id="e1", presentation="NARRATIVE", text="A",
+                next_target=ChoiceTarget(target_kind="ENTRY", target_id="DOES_NOT_EXIST"),
+            ),
+        ),
+    )
+    errors = validate_acceptance_complete(body)
+    assert any("next_target ENTRY" in e and "does not resolve" in e for e in errors)
+
+
+def test_valid_entry_next_target_accepted() -> None:
+    body = _body(
+        entries=(
+            TextEntry(
+                entry_id="e1", presentation="NARRATIVE", text="A",
+                next_target=ChoiceTarget(target_kind="ENTRY", target_id="e2"),
+            ),
+            _narrative("e2"),
+        ),
+    )
+    assert validate_acceptance_complete(body) == []
+
+
+def _entry_from_dict_via_body(entry_dict: dict) -> TextEntry:
+    """Round-trip one entry dict through SceneBody.from_dict (no private API)."""
+    body = _body(entries=(), location_id=None, content_rating=None)
+    raw = body.to_dict()
+    raw["entries"] = [entry_dict]
+    return SceneBody.from_dict(raw).entries[0]
+
+
+# ---------------------------------------------------------------------------
+# Old-JSON backward compatibility (no next_target key anywhere)
+# ---------------------------------------------------------------------------
+
+def test_old_serialized_text_entry_loads_without_mutation() -> None:
+    old_dict = {
+        "entry_id": "e1", "kind": "TEXT", "presentation": "NARRATIVE",
+        "text": "A", "character_id": None, "thought_visibility": None,
+    }
+    entry = _entry_from_dict_via_body(old_dict)
+    assert entry.next_target is None
+    assert entry.to_dict() == old_dict
+
+
+def test_old_serialized_visual_entry_loads_without_mutation() -> None:
+    old_dict = {
+        "entry_id": "v1", "kind": "VISUAL_CHANGE", "operation": "CLEAR",
+        "asset_id": None, "transition": None,
+    }
+    entry = _entry_from_dict_via_body(old_dict)
+    assert entry.next_target is None
+    assert entry.to_dict() == old_dict
+
+
+# ---------------------------------------------------------------------------
+# Silent multi-branch fallthrough (OD-ORDEREDASS-CONTROL-FLOW-01)
+# ---------------------------------------------------------------------------
+
+def _branch_choice(entry_id="c1", targets=("b_a", "b_b", "b_c")) -> ChoiceEntry:
+    return ChoiceEntry(
+        entry_id=entry_id,
+        prompt="Pick",
+        options=tuple(
+            ChoiceOption(
+                option_id=f"o{i + 1}", display_text=f"Option {i + 1}",
+                target=ChoiceTarget(target_kind="ENTRY", target_id=t),
+            )
+            for i, t in enumerate(targets)
+        ),
+    )
+
+
+def test_two_branch_missing_successor_rejected() -> None:
+    # branch A (b_a) has no next_target and directly precedes branch B's start:
+    # silent fallthrough from b_a into b_b.
+    body = _body(
+        entries=(
+            _branch_choice(targets=("b_a", "b_b")),
+            _narrative("b_a"),
+            _narrative("b_b"),
+        ),
+    )
+    errors = validate_acceptance_complete(body)
+    assert any("silent branch fallthrough" in e for e in errors)
+
+
+def test_two_branch_explicit_end_successor_accepted() -> None:
+    body = _body(
+        entries=(
+            _branch_choice(targets=("b_a", "b_b")),
+            TextEntry(
+                entry_id="b_a", presentation="NARRATIVE", text="A",
+                next_target=ChoiceTarget(target_kind="END"),
+            ),
+            _narrative("b_b"),
+        ),
+    )
+    assert validate_acceptance_complete(body) == []
+
+
+def test_three_branch_multi_entry_missing_successor_rejected() -> None:
+    # Mirrors the proven SC_017-shaped defect: three 2-entry branches, no
+    # explicit successors on the non-final branches.
+    body = _body(
+        entries=(
+            _branch_choice(entry_id="ch1", targets=("a1", "b1", "c1")),
+            _narrative("a1"), _narrative("a2"),
+            _narrative("b1"), _narrative("b2"),
+            _narrative("c1"), _narrative("c2"),
+        ),
+    )
+    errors = validate_acceptance_complete(body)
+    # a2 (last entry of branch A, immediately before branch B's start b1) and
+    # b2 (last entry of branch B, immediately before branch C's start c1) both
+    # lack an explicit successor.
+    assert any("a2" in e and "silent branch fallthrough" in e for e in errors)
+    assert any("b2" in e and "silent branch fallthrough" in e for e in errors)
+    assert not any("c2" in e for e in errors)  # last branch: no next branch to bleed into
+
+
+def test_three_branch_all_explicit_end_accepted() -> None:
+    body = _body(
+        entries=(
+            _branch_choice(entry_id="ch1", targets=("a1", "b1", "c1")),
+            _narrative("a1"),
+            TextEntry(entry_id="a2", presentation="NARRATIVE", text="A2",
+                      next_target=ChoiceTarget(target_kind="END")),
+            _narrative("b1"),
+            TextEntry(entry_id="b2", presentation="NARRATIVE", text="B2",
+                      next_target=ChoiceTarget(target_kind="END")),
+            _narrative("c1"), _narrative("c2"),
+        ),
+    )
+    assert validate_acceptance_complete(body) == []
+
+
+def test_backward_entry_target_not_treated_as_branch_start() -> None:
+    # A single forward ENTRY target plus a backward self-reference must not
+    # trigger the multi-branch check (only one forward branch start exists).
+    body = _body(
+        entries=(
+            _narrative("e0"),
+            ChoiceEntry(
+                entry_id="c1",
+                options=(
+                    ChoiceOption(option_id="o1", display_text="Forward",
+                                 target=ChoiceTarget(target_kind="ENTRY", target_id="e1")),
+                    ChoiceOption(option_id="o2", display_text="Back",
+                                 target=ChoiceTarget(target_kind="ENTRY", target_id="e0")),
+                ),
+            ),
+            _narrative("e1"),
+        ),
+    )
+    assert validate_acceptance_complete(body) == []
+
+
+def test_single_branch_scene_unaffected() -> None:
+    # The exact shape of the two existing real accepted scenes (one option,
+    # one forward branch): never triggers the new invariant.
+    body = _body(entries=(_narrative("e1"), _choice(target_kind="ENTRY", target_id="e1")))
+    assert validate_acceptance_complete(body) == []
+
+
+def test_convergent_branches_to_common_join_accepted() -> None:
+    # Two branches explicitly converge on a shared join entry via ENTRY
+    # next_target, rather than each independently reaching END.
+    body = _body(
+        entries=(
+            _branch_choice(targets=("a1", "b1")),
+            TextEntry(entry_id="a1", presentation="NARRATIVE", text="A",
+                      next_target=ChoiceTarget(target_kind="ENTRY", target_id="join")),
+            TextEntry(entry_id="b1", presentation="NARRATIVE", text="B",
+                      next_target=ChoiceTarget(target_kind="ENTRY", target_id="join")),
+            _narrative("join", text="Shared continuation."),
+        ),
+    )
+    assert validate_acceptance_complete(body) == []

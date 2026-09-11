@@ -17,6 +17,7 @@ from .model import (
     ENTRY_KIND_TEXT,
     ENTRY_KIND_VISUAL_CHANGE,
     TARGET_KIND_ENTRY,
+    TARGET_KIND_END,
     TARGET_KIND_SCENE,
     TEXT_PRESENTATION_DIALOGUE,
     TEXT_PRESENTATION_NARRATIVE,
@@ -63,6 +64,7 @@ __all__ = [
     "VISUAL_OP_CLEAR",
     "TARGET_KIND_ENTRY",
     "TARGET_KIND_SCENE",
+    "TARGET_KIND_END",
     # Validation
     "validate_acceptance_complete",
     "is_acceptance_complete",
