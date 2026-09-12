@@ -10,12 +10,25 @@ The prompt body has a FIXED section order::
     [SCENE]
     [RECENT CONTEXT]
     [CHARACTER IDENTITY]
+    [IDENTITY PRESERVATION]
+    [IDENTITY NEGATIVE CONSTRAINTS]
     [REFERENCE GUIDANCE]
 
 Every header is always emitted (``(none)`` when a section has no content) so the
 layout -- and therefore the content hash -- is stable across calls. Reference
 guidance names asset ids and roles ONLY: never a relative path, never an
 absolute path, never bytes.
+
+``[IDENTITY PRESERVATION]`` / ``[IDENTITY NEGATIVE CONSTRAINTS]`` (V1F) render
+ALREADY-PINNED standing-identity text handed in by the caller (the exact
+``PinnedGenerationSpec.standing_identity`` texts) -- this module never reads
+Character Canon, a snapshot's standing_identity, or any source file itself.
+Multiple sources for one category are concatenated in the caller-supplied
+order, separated by a blank line; simple deterministic text concatenation,
+never LLM synthesis. Absent/empty (legacy jobs and snapshots without any
+standing identity) renders ``(none)``, exactly like every other optional
+section in this module (``[SCENE]``, ``[RECENT CONTEXT]``, ``[REFERENCE
+GUIDANCE]``).
 
 This module deliberately does NOT contain: a SceneInterpretationArtifact, a
 MediaPlan, the VNE PromptPackage chain, branch/supersession awareness, or any
@@ -26,7 +39,7 @@ Ren'Py concern. Slice C (a real provider call) consumes ``prompt_text`` +
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Mapping, Optional
+from typing import Any, Mapping, Optional, Sequence
 
 from .context import (
     REQUEST_KIND_CONTEXT,
@@ -45,6 +58,8 @@ _SECTION_ORDER = (
     "[SCENE]",
     "[RECENT CONTEXT]",
     "[CHARACTER IDENTITY]",
+    "[IDENTITY PRESERVATION]",
+    "[IDENTITY NEGATIVE CONSTRAINTS]",
     "[REFERENCE GUIDANCE]",
 )
 
@@ -142,6 +157,13 @@ def _render_character_identity(
     return f"{header}\n{block}" if block else header
 
 
+def _render_identity_standing_texts(texts: Sequence[str]) -> str:
+    """Deterministic concatenation of already-pinned standing-identity texts,
+    in caller-supplied order. No LLM synthesis, no reordering, no dedup."""
+    cleaned = [t for t in texts if t]
+    return "\n\n".join(cleaned) if cleaned else _NONE
+
+
 def _render_reference_guidance(bundle: ReferenceBundle) -> str:
     if not bundle.references:
         return _NONE
@@ -163,6 +185,8 @@ def build_visual_prompt(
     reference_bundle: ReferenceBundle,
     physical: Optional[Mapping[str, Any]] = None,
     alias: Optional[str] = None,
+    identity_preservation_texts: Sequence[str] = (),
+    identity_negative_constraint_texts: Sequence[str] = (),
 ) -> VisualPromptPackage:
     """Assemble the deterministic ``VisualPromptPackage`` (offline).
 
@@ -170,6 +194,14 @@ def build_visual_prompt(
     and the same snapshot version -- the package binds one identity, one
     snapshot. ``physical`` defaults to an empty profile (weight, and indeed the
     whole block, may legitimately be absent).
+
+    ``identity_preservation_texts`` / ``identity_negative_constraint_texts``
+    (V1F) are the caller's ALREADY-PINNED standing-identity texts, in the exact
+    order to render (multiple sources render in that order, joined by a blank
+    line). Empty (the default) renders ``(none)`` -- this is the legacy /
+    no-standing-identity behavior. This function does not read Canon, a
+    snapshot, or any source file for these texts; the caller is fully
+    responsible for having already pinned them.
     """
     if not isinstance(visual_context, VisualContext):
         raise VisualPromptError("visual_context must be a VisualContext")
@@ -204,6 +236,10 @@ def build_visual_prompt(
         "[RECENT CONTEXT]": _render_recent_context(visual_context),
         "[CHARACTER IDENTITY]": _render_character_identity(
             visual_context, prof, resolved_alias
+        ),
+        "[IDENTITY PRESERVATION]": _render_identity_standing_texts(identity_preservation_texts),
+        "[IDENTITY NEGATIVE CONSTRAINTS]": _render_identity_standing_texts(
+            identity_negative_constraint_texts
         ),
         "[REFERENCE GUIDANCE]": _render_reference_guidance(reference_bundle),
     }

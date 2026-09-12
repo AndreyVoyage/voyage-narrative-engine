@@ -21,6 +21,7 @@ client polling a real async service. No generated image is ever auto-deleted.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -154,6 +155,140 @@ class PinnedReferenceSpec:
 
 
 @dataclass(frozen=True)
+class PinnedStandingIdentitySource:
+    """One exact pinned standing-identity text + its SHA-256 (V1F).
+
+    Fails closed at construction time -- including every deserialization via
+    :meth:`from_dict` -- if ``text`` does not hash to ``text_sha256``: a stale
+    or tampered pinned source must never reach provider execution.
+    """
+
+    source_ref: str
+    text: str
+    text_sha256: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "source_ref", _required_text(self.source_ref, "sourceRef"))
+        if not isinstance(self.text, str) or not self.text:
+            raise ValueError("pinned standing identity text must be a non-empty string")
+        text_sha256 = _required_sha256(self.text_sha256, "textSha256")
+        expected = hashlib.sha256(self.text.encode("utf-8")).hexdigest()
+        if text_sha256 != expected:
+            raise ValueError(
+                f"pinned standing identity hash mismatch for {self.source_ref!r} "
+                "(stale or tampered text/hash pair)"
+            )
+        object.__setattr__(self, "text_sha256", text_sha256)
+
+    @classmethod
+    def from_snapshot_entry(cls, entry) -> "PinnedStandingIdentitySource":
+        return cls(source_ref=entry.source_ref, text=entry.text, text_sha256=entry.text_sha256)
+
+    @classmethod
+    def from_dict(cls, data: Any) -> "PinnedStandingIdentitySource":
+        if not isinstance(data, dict):
+            raise ValueError("pinned standing identity source must be an object")
+        return cls(
+            source_ref=data.get("sourceRef"),
+            text=data.get("text"),
+            text_sha256=data.get("textSha256"),
+        )
+
+    def to_dict(self) -> dict:
+        return {"sourceRef": self.source_ref, "text": self.text, "textSha256": self.text_sha256}
+
+
+@dataclass(frozen=True)
+class PinnedStandingIdentityCategory:
+    """Ordered, non-empty tuple of pinned standing-identity sources for one
+    category. Order is preserved exactly as pinned (Canon preset list order)."""
+
+    sources: Tuple[PinnedStandingIdentitySource, ...]
+
+    def __post_init__(self) -> None:
+        sources = tuple(self.sources)
+        if not sources:
+            raise ValueError("a pinned standing identity category must pin at least one source")
+        object.__setattr__(self, "sources", sources)
+
+    @classmethod
+    def from_dict(cls, data: Any) -> "PinnedStandingIdentityCategory":
+        if not isinstance(data, dict):
+            raise ValueError("pinned standing identity category must be an object")
+        sources = data.get("sources")
+        if not isinstance(sources, (list, tuple)):
+            raise ValueError("pinned standing identity category sources must be an array")
+        return cls(sources=tuple(PinnedStandingIdentitySource.from_dict(s) for s in sources))
+
+    def to_dict(self) -> dict:
+        return {"sources": [s.to_dict() for s in self.sources]}
+
+
+@dataclass(frozen=True)
+class PinnedStandingIdentity:
+    """Character-generic pinned standing-identity input (V1F). Either category
+    may be absent -- absence here always mirrors an absent Canon category, it
+    is never fabricated."""
+
+    preservation_rules: Optional[PinnedStandingIdentityCategory] = None
+    negative_constraints: Optional[PinnedStandingIdentityCategory] = None
+
+    @classmethod
+    def from_snapshot(cls, standing) -> Optional["PinnedStandingIdentity"]:
+        """Pin from a ``CharacterLocalSnapshot.standing_identity`` (or ``None``)."""
+        if standing is None:
+            return None
+        pr = (
+            PinnedStandingIdentityCategory(
+                sources=tuple(
+                    PinnedStandingIdentitySource.from_snapshot_entry(s)
+                    for s in standing.preservation_rules.sources
+                )
+            )
+            if standing.preservation_rules is not None
+            else None
+        )
+        nc = (
+            PinnedStandingIdentityCategory(
+                sources=tuple(
+                    PinnedStandingIdentitySource.from_snapshot_entry(s)
+                    for s in standing.negative_constraints.sources
+                )
+            )
+            if standing.negative_constraints is not None
+            else None
+        )
+        if pr is None and nc is None:
+            return None
+        return cls(preservation_rules=pr, negative_constraints=nc)
+
+    @classmethod
+    def from_dict(cls, data: Any) -> Optional["PinnedStandingIdentity"]:
+        if data is None:
+            return None
+        if not isinstance(data, dict):
+            raise ValueError("pinned standingIdentity must be an object")
+        pr_raw = data.get("preservationRules")
+        nc_raw = data.get("negativeConstraints")
+        return cls(
+            preservation_rules=(
+                PinnedStandingIdentityCategory.from_dict(pr_raw) if pr_raw is not None else None
+            ),
+            negative_constraints=(
+                PinnedStandingIdentityCategory.from_dict(nc_raw) if nc_raw is not None else None
+            ),
+        )
+
+    def to_dict(self) -> dict:
+        out: dict = {}
+        if self.preservation_rules is not None:
+            out["preservationRules"] = self.preservation_rules.to_dict()
+        if self.negative_constraints is not None:
+            out["negativeConstraints"] = self.negative_constraints.to_dict()
+        return out
+
+
+@dataclass(frozen=True)
 class PinnedGenerationSpec:
     """Immutable identity/provider inputs selected before a job becomes QUEUED."""
 
@@ -171,6 +306,7 @@ class PinnedGenerationSpec:
     base_url: str
     size: str
     quality: str
+    standing_identity: Optional[PinnedStandingIdentity] = None
 
     def __post_init__(self) -> None:
         if self.schema_version != PINNED_GENERATION_SPEC_SCHEMA_VERSION:
@@ -201,6 +337,10 @@ class PinnedGenerationSpec:
         object.__setattr__(self, "base_url", _required_text(self.base_url, "baseUrl"))
         object.__setattr__(self, "size", _required_text(self.size, "size"))
         object.__setattr__(self, "quality", _required_text(self.quality, "quality"))
+        if self.standing_identity is not None and not isinstance(
+            self.standing_identity, PinnedStandingIdentity
+        ):
+            raise ValueError("standingIdentity must be a PinnedStandingIdentity or None")
 
     @classmethod
     def from_inputs(
@@ -226,6 +366,9 @@ class PinnedGenerationSpec:
             base_url=base_url,
             size=size,
             quality=quality,
+            standing_identity=PinnedStandingIdentity.from_snapshot(
+                getattr(snapshot, "standing_identity", None)
+            ),
         )
 
     @classmethod
@@ -258,6 +401,7 @@ class PinnedGenerationSpec:
             base_url=provider.get("baseUrl"),
             size=parameters.get("size"),
             quality=parameters.get("quality"),
+            standing_identity=PinnedStandingIdentity.from_dict(data.get("standingIdentity")),
         )
 
     def to_dict(self) -> dict:
@@ -269,7 +413,7 @@ class PinnedGenerationSpec:
             source["sourceHash"] = self.source_canon_source_hash
         if self.source_canon_character_id is not None:
             source["sourceCharacterId"] = self.source_canon_character_id
-        return {
+        out = {
             "schemaVersion": self.schema_version,
             "identity": {
                 "characterId": self.character_id,
@@ -285,6 +429,9 @@ class PinnedGenerationSpec:
             },
             "parameters": {"size": self.size, "quality": self.quality},
         }
+        if self.standing_identity is not None:
+            out["standingIdentity"] = self.standing_identity.to_dict()
+        return out
 
 
 class CompanionImageError(RuntimeError):

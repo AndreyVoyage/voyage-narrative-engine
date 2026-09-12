@@ -28,7 +28,7 @@ from pathlib import Path
 from typing import Optional, Tuple
 
 from .canon_model import CanonReference, CharacterCanonSnapshot
-from .canon_reader import read_character_canon
+from .canon_reader import read_character_canon, read_standing_identity
 from .errors import CanonFormatError, SnapshotError, SnapshotOperationError
 from .hashing import compute_sha256
 from .local_snapshot import (
@@ -204,6 +204,10 @@ class CharacterImportService:
         physical = physical_profile_from_preset(
             preset_json, source_character_id, source_preset_sha256=source_preset_sha256
         )
+        # V1F: optional, character-generic standing-identity bridge -- reads
+        # ONLY the explicit source_refs the Canon preset declares; None when
+        # the preset has no standing_identity section at all.
+        standing_identity = read_standing_identity(canon_root, preset_json)
 
         # 2. NO-OP identity check for UPDATE (hashes, never timestamps)
         if operation == "update":
@@ -287,6 +291,7 @@ class CharacterImportService:
                 references=tuple(snap_refs),
                 physical=physical,
                 portrait=portrait,
+                standing_identity=standing_identity,
             )
             snap = dataclasses.replace(snap, snapshot_hash=snap.compute_hash())
             (staging / "manifest.json").write_text(

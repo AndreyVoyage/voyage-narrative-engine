@@ -68,6 +68,21 @@ _EFFECTIVE_CONDITIONED_QUALITY = "low"
 _FORMAT_KEY_TO_FILE_TYPE = {"png": "PNG", "jpg": "JPEG", "webp": "WEBP"}
 
 
+def _pinned_standing_texts(standing, category: str) -> tuple:
+    """Ordered texts for one pinned standing-identity category (V1F).
+
+    Reads ONLY the already-pinned ``PinnedGenerationSpec.standing_identity``
+    (never Canon, never the snapshot, never a source file) -- the caller is
+    responsible for having pinned it at job-creation time. Absent spec or
+    absent category -> empty tuple -> prompt renders ``(none)`` (legacy)."""
+    if standing is None:
+        return ()
+    cat = getattr(standing, category, None)
+    if cat is None:
+        return ()
+    return tuple(source.text for source in cat.sources)
+
+
 def _now_iso() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
@@ -197,6 +212,12 @@ class RealCompanionImageGenerator:
             reference_bundle=reference_bundle,
             physical=snapshot.physical,
             alias=job.character_id,
+            identity_preservation_texts=_pinned_standing_texts(
+                spec.standing_identity, "preservation_rules"
+            ),
+            identity_negative_constraint_texts=_pinned_standing_texts(
+                spec.standing_identity, "negative_constraints"
+            ),
         )
 
         endpoint_kind = "conditioned" if reference_bundle.references else "text"

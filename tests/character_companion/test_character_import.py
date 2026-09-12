@@ -11,6 +11,7 @@ docs/character_companion/VISUAL_PIPELINE_VENDOR_PROVENANCE_V1.md).
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import shutil
 from pathlib import Path
@@ -23,16 +24,27 @@ from services.character_companion.character_import import (
     UPDATED_NEW_VERSION,
     AmbiguousCharacterError,
     AssetIdCollisionError,
+    CanonFormatError,
     CanonStatusUnknownError,
     CharacterImportService,
+    CharacterLocalSnapshot,
     FormatMismatchError,
     ProductionNotAllowedError,
     ReferencePathSafetyError,
     ReferenceValidationError,
     SnapshotNotFoundError,
     SnapshotOperationError,
+    SnapshotStore,
     SnapshotValidationError,
     import_reference,
+)
+from services.character_companion.character_import.canon_reader import read_standing_identity
+from services.character_companion.character_import.hashing import compute_sha256
+from services.character_companion.character_import.local_snapshot import (
+    SnapshotReference,
+    StandingIdentity,
+    StandingIdentityCategory,
+    StandingIdentitySource,
 )
 from services.character_companion.character_import.reference_manifest import REFERENCES_DIR
 
@@ -75,6 +87,7 @@ def make_canon(
     write_files: bool = True,
     file_bytes: dict | None = None,
     dirname: str = "canon",
+    standing_identity: dict | None = None,
 ) -> Path:
     canon_root = tmp_path / dirname
     gen_rel = f"AI_CHARACTERS/{character_id}/07_generated"
@@ -96,6 +109,8 @@ def make_canon(
         "identity_confirmed_traits": ["green eyes", "faint freckles"],
         "safety_rules": ["adults only; no minors"],
     }
+    if standing_identity is not None:
+        preset["standing_identity"] = standing_identity
     notes_dir = canon_root / "AI_CHARACTERS" / character_id / "10_notes"
     notes_dir.mkdir(parents=True)
     (notes_dir / f"{character_id}_REFERENCE_PRESETS.json").write_text(
@@ -526,3 +541,241 @@ def test_42_mapping_update_flow(tmp_path):
     assert svc.active_version("kira") == "v1"             # UPDATE never auto-activates
     assert svc.list_snapshot_versions("kira") == ("v1", "v2")
     assert svc.load_snapshot("kira", "v2").source_canon["sourceCharacterId"] == "KIRA"
+
+
+# ============================ V1F STANDING IDENTITY CANON BRIDGE ============
+# Character-generic, whole-file standing-identity source_refs: Canon reader
+# (A), legacy local-snapshot compatibility (B), and new-snapshot round-trip /
+# hashing (C). No filename guessing, no hard-coded character name, ever.
+STANDING_CHAR = "STANDING_TEST"
+PRESERVATION_TEXT = "preserve same face, same eyes, same hair.\n"
+PRESERVATION_TEXT_2 = "preserve the same warm smile.\n"
+NEGATIVE_TEXT = "avoid distorted anatomy, avoid extra limbs.\n"
+
+
+def _standing_section(preservation_refs, negative_refs=None) -> dict:
+    out = {"preservation_rules": {"source_refs": list(preservation_refs)}}
+    if negative_refs is not None:
+        out["negative_constraints"] = {"source_refs": list(negative_refs)}
+    return out
+
+
+def _write_text_source(canon_root: Path, rel_path: str, text: str) -> None:
+    full = canon_root / rel_path
+    full.parent.mkdir(parents=True, exist_ok=True)
+    full.write_text(text, encoding="utf-8", newline="\n")
+
+
+def _load_preset(canon_root: Path, character_id: str) -> dict:
+    return json.loads(
+        (canon_root / "AI_CHARACTERS" / character_id / "10_notes"
+         / f"{character_id}_REFERENCE_PRESETS.json").read_text(encoding="utf-8")
+    )
+
+
+def _standing_canon(tmp_path, *, dirname: str, multi: bool = False, negative: bool = True) -> Path:
+    rel1 = f"AI_CHARACTERS/{STANDING_CHAR}/06_prompts/PRESERVATION_1.txt"
+    rel_neg = f"AI_CHARACTERS/{STANDING_CHAR}/06_prompts/NEGATIVE.txt"
+    preservation_refs = [rel1]
+    files = {rel1: PRESERVATION_TEXT}
+    if multi:
+        rel2 = f"AI_CHARACTERS/{STANDING_CHAR}/06_prompts/PRESERVATION_2.txt"
+        preservation_refs.append(rel2)
+        files[rel2] = PRESERVATION_TEXT_2
+    negative_refs = None
+    if negative:
+        negative_refs = [rel_neg]
+        files[rel_neg] = NEGATIVE_TEXT
+    canon_root = make_canon(
+        tmp_path, character_id=STANDING_CHAR, dirname=dirname,
+        standing_identity=_standing_section(preservation_refs, negative_refs),
+    )
+    for rel, text in files.items():
+        _write_text_source(canon_root, rel, text)
+    return canon_root
+
+
+# ---------------------------------------------------------------- A. CANON READER
+def test_43_standing_identity_source_refs_resolve(tmp_path):
+    canon_root = _standing_canon(tmp_path, dirname="standing_ok")
+    standing = read_standing_identity(canon_root, _load_preset(canon_root, STANDING_CHAR))
+    assert isinstance(standing, StandingIdentity)
+    assert standing.preservation_rules.sources[0].text == PRESERVATION_TEXT
+    assert standing.negative_constraints.sources[0].text == NEGATIVE_TEXT
+    assert standing.preservation_rules.sources[0].text_sha256 == compute_sha256(
+        PRESERVATION_TEXT.encode("utf-8")
+    )
+
+
+def test_44_multiple_source_refs_preserve_order(tmp_path):
+    canon_root = _standing_canon(tmp_path, dirname="standing_multi", multi=True)
+    standing = read_standing_identity(canon_root, _load_preset(canon_root, STANDING_CHAR))
+    texts = [s.text for s in standing.preservation_rules.sources]
+    assert texts == [PRESERVATION_TEXT, PRESERVATION_TEXT_2]
+
+
+def test_45_absolute_source_ref_rejected(tmp_path):
+    canon_root = make_canon(
+        tmp_path, character_id=STANDING_CHAR, dirname="standing_abs",
+        standing_identity=_standing_section(["/etc/passwd"]),
+    )
+    with pytest.raises(ReferencePathSafetyError):
+        read_standing_identity(canon_root, _load_preset(canon_root, STANDING_CHAR))
+
+
+def test_46_dotdot_source_ref_rejected(tmp_path):
+    canon_root = make_canon(
+        tmp_path, character_id=STANDING_CHAR, dirname="standing_dotdot",
+        standing_identity=_standing_section(["../outside.txt"]),
+    )
+    with pytest.raises(ReferencePathSafetyError):
+        read_standing_identity(canon_root, _load_preset(canon_root, STANDING_CHAR))
+
+
+def test_47_drive_qualified_source_ref_rejected(tmp_path):
+    """A distinct escape vector from a relative '..': a Windows drive-qualified
+    path, rejected by the same path-safety guard the reader reuses unmodified
+    from the existing active_canon reference check."""
+    canon_root = make_canon(
+        tmp_path, character_id=STANDING_CHAR, dirname="standing_drive",
+        standing_identity=_standing_section(["C:/Windows/System32/config.txt"]),
+    )
+    with pytest.raises(ReferencePathSafetyError):
+        read_standing_identity(canon_root, _load_preset(canon_root, STANDING_CHAR))
+
+
+def test_48_missing_source_file_fails_closed(tmp_path):
+    canon_root = make_canon(
+        tmp_path, character_id=STANDING_CHAR, dirname="standing_missing",
+        standing_identity=_standing_section(
+            [f"AI_CHARACTERS/{STANDING_CHAR}/06_prompts/DOES_NOT_EXIST.txt"]
+        ),
+    )
+    with pytest.raises(CanonFormatError):
+        read_standing_identity(canon_root, _load_preset(canon_root, STANDING_CHAR))
+
+
+def test_49_no_standing_identity_key_never_invents_one(tmp_path):
+    """No filename guessing: a plausibly-named file sitting on disk at a
+    conventional path is NOT auto-discovered when the preset omits
+    standing_identity entirely."""
+    canon_root = make_canon(tmp_path, character_id=STANDING_CHAR, dirname="standing_absent")
+    _write_text_source(
+        canon_root, f"AI_CHARACTERS/{STANDING_CHAR}/06_prompts/{STANDING_CHAR}_BASE_PROMPT.txt",
+        "preserve nothing -- must not be auto-discovered\n",
+    )
+    assert read_standing_identity(canon_root, _load_preset(canon_root, STANDING_CHAR)) is None
+
+
+# ---------------------------------------------------------- B/C. LOCAL SNAPSHOT
+def _write_local_snapshot(
+    data_root: Path, character_id: str, version: str, *, standing_identity=None,
+) -> CharacterLocalSnapshot:
+    store = SnapshotStore(data_root)
+    vdir = store.version_dir(character_id, version)
+    (vdir / "references").mkdir(parents=True, exist_ok=True)
+    data = _png()
+    (vdir / "references" / "face.png").write_bytes(data)
+    ref = SnapshotReference(
+        asset_id="face", roles=("face",), relative_path="references/face.png",
+        sha256=compute_sha256(data), file_type="PNG", byte_length=len(data),
+    )
+    snap = CharacterLocalSnapshot(
+        schema_version="companion_character_local_snapshot/0.1",
+        character_id=character_id,
+        snapshot_version=version,
+        source_canon={
+            "sourceKind": "canon", "sourceRef": "x", "contentHash": "a" * 64,
+            "status": "APPROVED_AS_CANON",
+        },
+        source_preset_sha256="0" * 64,
+        imported_at="2026-01-01T00:00:00Z",
+        references=(ref,),
+        physical={},
+        standing_identity=standing_identity,
+    )
+    snap = dataclasses.replace(snap, snapshot_hash=snap.compute_hash())
+    vdir.mkdir(parents=True, exist_ok=True)
+    (vdir / "manifest.json").write_text(
+        json.dumps(snap.to_dict(), indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
+    return snap
+
+
+def test_50_legacy_snapshot_without_standing_identity_round_trips(tmp_path):
+    data_root = tmp_path / "companion-data"
+    snap = _write_local_snapshot(data_root, "legacy_char", "v1", standing_identity=None)
+    loaded = SnapshotStore(data_root).load_snapshot("legacy_char", "v1")
+    assert loaded.standing_identity is None
+    assert loaded.snapshot_hash == snap.snapshot_hash
+    manifest = json.loads(
+        (SnapshotStore(data_root).version_dir("legacy_char", "v1") / "manifest.json")
+        .read_text(encoding="utf-8")
+    )
+    assert "standingIdentity" not in manifest    # never fabricated
+
+
+def test_51_legacy_semantic_payload_omits_standing_identity_key(tmp_path):
+    data_root = tmp_path / "companion-data"
+    snap = _write_local_snapshot(data_root, "legacy_char2", "v1", standing_identity=None)
+    assert "standingIdentity" not in snap.semantic_payload()
+
+
+def test_52_new_snapshot_standing_sources_round_trip(tmp_path):
+    standing = StandingIdentity(
+        preservation_rules=StandingIdentityCategory(sources=(
+            StandingIdentitySource(
+                "AI_CHARACTERS/X/06_prompts/P.txt", PRESERVATION_TEXT,
+                compute_sha256(PRESERVATION_TEXT.encode("utf-8")),
+            ),
+        )),
+        negative_constraints=StandingIdentityCategory(sources=(
+            StandingIdentitySource(
+                "AI_CHARACTERS/X/06_prompts/N.txt", NEGATIVE_TEXT,
+                compute_sha256(NEGATIVE_TEXT.encode("utf-8")),
+            ),
+        )),
+    )
+    data_root = tmp_path / "companion-data"
+    _write_local_snapshot(data_root, "new_char", "v1", standing_identity=standing)
+    loaded = SnapshotStore(data_root).load_snapshot("new_char", "v1")
+    pr = loaded.standing_identity.preservation_rules.sources[0]
+    nc = loaded.standing_identity.negative_constraints.sources[0]
+    assert pr.source_ref == "AI_CHARACTERS/X/06_prompts/P.txt"
+    assert pr.text == PRESERVATION_TEXT
+    assert pr.text_sha256 == compute_sha256(PRESERVATION_TEXT.encode("utf-8"))
+    assert nc.text == NEGATIVE_TEXT
+
+
+def test_53_standing_material_changes_snapshot_hash(tmp_path):
+    data_root = tmp_path / "companion-data"
+    without = _write_local_snapshot(data_root, "hashcmp1", "v1", standing_identity=None)
+    standing = StandingIdentity(preservation_rules=StandingIdentityCategory(sources=(
+        StandingIdentitySource("ref.txt", PRESERVATION_TEXT,
+                               compute_sha256(PRESERVATION_TEXT.encode("utf-8"))),
+    )))
+    with_standing = _write_local_snapshot(data_root, "hashcmp2", "v1", standing_identity=standing)
+    assert without.snapshot_hash != with_standing.snapshot_hash
+
+
+def test_54_tampered_standing_text_hash_pair_fails_closed_on_load(tmp_path):
+    standing = StandingIdentity(preservation_rules=StandingIdentityCategory(sources=(
+        StandingIdentitySource("ref.txt", PRESERVATION_TEXT,
+                               compute_sha256(PRESERVATION_TEXT.encode("utf-8"))),
+    )))
+    data_root = tmp_path / "companion-data"
+    _write_local_snapshot(data_root, "tampered", "v1", standing_identity=standing)
+    manifest_path = SnapshotStore(data_root).version_dir("tampered", "v1") / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    # Change the text but keep the now-stale textSha256, then recompute the
+    # OUTER snapshotHash so only the inner standing-identity text/hash pair is
+    # inconsistent -- isolating the V1F-specific integrity check from the
+    # pre-existing whole-manifest hash check.
+    manifest["standingIdentity"]["preservationRules"]["sources"][0]["text"] = "tampered text\n"
+    recomputed = CharacterLocalSnapshot.from_dict(manifest)
+    manifest["snapshotHash"] = recomputed.compute_hash()
+    manifest_path.write_text(
+        json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
+    with pytest.raises(SnapshotValidationError, match="standing identity text/hash mismatch"):
+        SnapshotStore(data_root).load_snapshot("tampered", "v1")

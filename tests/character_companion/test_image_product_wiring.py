@@ -128,6 +128,68 @@ def _seed_snapshot(data_root: Path, tmp_path: Path, character_id: str = "kira") 
     CharacterImportService(data_root).import_character(_make_canon(tmp_path, character_id), character_id, "add")
 
 
+# --------------------------------------------- V1F standing identity fixtures
+_STANDING_PRESERVATION_TEXT = "preserve same face, same eyes, same hair.\n"
+_STANDING_NEGATIVE_TEXT = "avoid distorted anatomy, avoid extra limbs.\n"
+
+
+def _make_canon_with_standing(
+    tmp_path: Path, character_id: str = "kira", *, dirname: str = "fake-canon-standing",
+    preservation_text: str = _STANDING_PRESERVATION_TEXT,
+    negative_text: str = _STANDING_NEGATIVE_TEXT,
+) -> Path:
+    """Same shape as ``_make_canon`` plus a character-generic
+    ``standing_identity`` section and its two whole-file sources."""
+    root = tmp_path / dirname
+    gen_rel = f"AI_CHARACTERS/{character_id}/07_generated"
+    prompts_rel = f"AI_CHARACTERS/{character_id}/06_prompts"
+    preset = {
+        "character": character_id,
+        "status": "APPROVED_AS_CANON",
+        "active_canon": {
+            "primary_face_reference": f"{gen_rel}/face.png",
+            "body_canon_a": f"{gen_rel}/body_a.jpg",
+            "body_canon_b": f"{gen_rel}/body_b.jpg",
+            "expression_canon": f"{gen_rel}/expr.webp",
+            "motion_reference": f"{gen_rel}/motion.png",
+        },
+        "identity_summary": {
+            "role": "female", "height_cm": 168, "height_direction": "athletic and slender",
+            "body_direction": "athletic build", "face_direction": "oval face",
+            "hair_direction": "shoulder-length wavy hair", "style_direction": "casual modern",
+        },
+        "identity_confirmed_traits": ["green eyes"],
+        "safety_rules": ["adults only; no minors"],
+        "standing_identity": {
+            "preservation_rules": {"source_refs": [f"{prompts_rel}/PRESERVATION.txt"]},
+            "negative_constraints": {"source_refs": [f"{prompts_rel}/NEGATIVE.txt"]},
+        },
+    }
+    notes = root / "AI_CHARACTERS" / character_id / "10_notes"
+    notes.mkdir(parents=True)
+    (notes / f"{character_id}_REFERENCE_PRESETS.json").write_text(
+        json.dumps(preset, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    gen = root / "AI_CHARACTERS" / character_id / "07_generated"
+    gen.mkdir(parents=True)
+    (gen / "face.png").write_bytes(_png(10))
+    (gen / "body_a.jpg").write_bytes(_jpeg(20))
+    (gen / "body_b.jpg").write_bytes(_jpeg(30))
+    (gen / "expr.webp").write_bytes(_webp(16))
+    (gen / "motion.png").write_bytes(_png(24))
+    prompts = root / "AI_CHARACTERS" / character_id / "06_prompts"
+    prompts.mkdir(parents=True)
+    (prompts / "PRESERVATION.txt").write_text(preservation_text, encoding="utf-8", newline="\n")
+    (prompts / "NEGATIVE.txt").write_text(negative_text, encoding="utf-8", newline="\n")
+    return root
+
+
+def _seed_snapshot_with_standing(data_root: Path, tmp_path: Path, character_id: str = "kira") -> Path:
+    canon_root = _make_canon_with_standing(tmp_path, character_id)
+    CharacterImportService(data_root).import_character(canon_root, character_id, "add")
+    return canon_root
+
+
 def _configured_settings_store(data_root: Path, *, model="gpt-image-1") -> SettingsStore:
     store = SettingsStore(data_root)
     s = store.load()
@@ -1150,3 +1212,128 @@ def test_69_result_provenance_has_no_secrets(tmp_path):
     blob = json.dumps(done.context["result"], ensure_ascii=False)
     for banned in ("test-key-not-real", "Authorization", "Bearer", "multipart", "base64"):
         assert banned not in blob
+
+
+# ================================ V1F STANDING CONSTRAINTS (GENERATION SPEC)
+def test_70_standing_identity_pinned_into_generation_spec(tmp_path):
+    from services.character_companion.character_import.hashing import compute_sha256
+
+    http = FakeImageHttp()
+    svc = _service(tmp_path, http=http)
+    _seed_snapshot_with_standing(svc._data_root, tmp_path)
+    sid = _session(svc)
+
+    job = svc.create_image_job(sid, kind="custom", prompt="pinned standing portrait")
+    spec = _assert_pinned_spec(job, kind="custom")
+    standing = spec["standingIdentity"]
+    pr = standing["preservationRules"]["sources"]
+    nc = standing["negativeConstraints"]["sources"]
+    assert len(pr) == 1 and len(nc) == 1
+    assert pr[0]["sourceRef"] == "AI_CHARACTERS/kira/06_prompts/PRESERVATION.txt"
+    assert pr[0]["text"] == _STANDING_PRESERVATION_TEXT
+    assert pr[0]["textSha256"] == compute_sha256(_STANDING_PRESERVATION_TEXT.encode("utf-8"))
+    assert nc[0]["text"] == _STANDING_NEGATIVE_TEXT
+    # attributable to the same pinned snapshot version/hash as everything else
+    assert spec["identity"]["snapshotVersion"] == "v1"
+    assert len(spec["identity"]["snapshotHash"]) == 64
+
+    svc.poll_image_jobs(sid)
+    svc.poll_image_jobs(sid)
+    done = svc.get_image_job(job.job_id)
+    assert done.state == STATE_READY and len(http.calls) == 1
+    body = http.calls[0]["body"]
+    assert b"[IDENTITY PRESERVATION]" in body and b"[IDENTITY NEGATIVE CONSTRAINTS]" in body
+    assert _STANDING_PRESERVATION_TEXT.strip().encode("utf-8") in body
+    assert _STANDING_NEGATIVE_TEXT.strip().encode("utf-8") in body
+    # forensic reconstruction from generationSpec + result alone, no duplicate registry
+    result = done.context["result"]
+    assert _STANDING_PRESERVATION_TEXT.strip() in result["effectivePrompt"]
+
+
+def test_71_mutating_canon_source_after_spec_creation_does_not_change_execution_input(tmp_path):
+    http = FakeImageHttp()
+    svc = _service(tmp_path, http=http)
+    canon_root = _seed_snapshot_with_standing(svc._data_root, tmp_path)
+    sid = _session(svc)
+
+    job = svc.create_image_job(sid, kind="custom", prompt="unaffected by later Canon edits")
+    _assert_pinned_spec(job, kind="custom")
+
+    # mutate the Canon standing-identity SOURCE FILE itself after the spec was pinned
+    (canon_root / "AI_CHARACTERS" / "kira" / "06_prompts" / "PRESERVATION.txt").write_text(
+        "MUTATED AFTER SPEC CREATION -- must never reach the provider\n",
+        encoding="utf-8", newline="\n",
+    )
+
+    svc.poll_image_jobs(sid)
+    svc.poll_image_jobs(sid)
+    done = svc.get_image_job(job.job_id)
+    assert done.state == STATE_READY and len(http.calls) == 1
+    body = http.calls[0]["body"]
+    assert _STANDING_PRESERVATION_TEXT.strip().encode("utf-8") in body
+    assert b"MUTATED AFTER SPEC CREATION" not in body
+
+
+def test_72_mutating_active_snapshot_after_spec_creation_does_not_change_execution_input(tmp_path):
+    http = FakeImageHttp()
+    svc = _service(tmp_path, http=http)
+    canon_root = _seed_snapshot_with_standing(svc._data_root, tmp_path)
+    sid = _session(svc)
+
+    job = svc.create_image_job(sid, kind="custom", prompt="unaffected by later ACTIVE changes")
+    _assert_pinned_spec(job, kind="custom")
+
+    # a later import + activation produces v2 with DIFFERENT standing identity
+    # (the preset JSON itself must change too, or the importer's unrelated
+    # NO-OP-detection-by-preset-hash correctly treats it as unchanged -- same
+    # rule test_37 already relies on for its own v2 fixture).
+    importer = CharacterImportService(svc._data_root)
+    (canon_root / "AI_CHARACTERS" / "kira" / "06_prompts" / "PRESERVATION.txt").write_text(
+        "v2 preservation text -- must not leak into the already-pinned v1 job\n",
+        encoding="utf-8", newline="\n",
+    )
+    preset_path = (
+        canon_root / "AI_CHARACTERS" / "kira" / "10_notes" / "kira_REFERENCE_PRESETS.json"
+    )
+    preset = json.loads(preset_path.read_text(encoding="utf-8"))
+    preset["identity_summary"]["hair_direction"] = "long straight auburn hair"
+    preset_path.write_text(json.dumps(preset, ensure_ascii=False, indent=2), encoding="utf-8")
+    v2_face = b"\x89PNG\r\n\x1a\n" + b"v2-face-bytes" * 3
+    (canon_root / "AI_CHARACTERS" / "kira" / "07_generated" / "face.png").write_bytes(v2_face)
+    updated = importer.import_character(canon_root, "kira", "update")
+    assert updated.snapshot_version == "v2"
+    importer.activate_snapshot("kira", "v2")
+
+    svc.poll_image_jobs(sid)
+    svc.poll_image_jobs(sid)
+    done = svc.get_image_job(job.job_id)
+    assert done.state == STATE_READY and len(http.calls) == 1
+    body = http.calls[0]["body"]
+    assert _STANDING_PRESERVATION_TEXT.strip().encode("utf-8") in body
+    assert b"v2 preservation text" not in body
+    assert done.context["result"]["snapshotVersion"] == "v1"
+
+
+def test_73_tampered_pinned_standing_hash_fails_closed_no_provider_call(tmp_path):
+    http = FakeImageHttp()
+    svc = _service(tmp_path, http=http)
+    _seed_snapshot_with_standing(svc._data_root, tmp_path)
+    sid = _session(svc)
+
+    job = svc.create_image_job(sid, kind="custom", prompt="tamper target")
+    _assert_pinned_spec(job, kind="custom")
+
+    jobs_path = svc._data_root / "companion_image_jobs.json"
+    persisted = json.loads(jobs_path.read_text(encoding="utf-8"))
+    row = next(r for r in persisted if r["job_id"] == job.job_id)
+    row["context"]["generationSpec"]["standingIdentity"]["preservationRules"]["sources"][0]["text"] = (
+        "tampered text, stale hash\n"
+    )
+    jobs_path.write_text(json.dumps(persisted, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    svc.poll_image_jobs(sid)
+    svc.poll_image_jobs(sid)
+    failed = svc.get_image_job(job.job_id)
+    assert failed.state == STATE_FAILED
+    assert failed.error == "generation_spec_invalid"
+    assert http.calls == []

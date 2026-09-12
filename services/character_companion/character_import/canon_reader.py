@@ -21,7 +21,7 @@ import dataclasses
 import json
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from .canon_model import CanonReference, CharacterCanonSnapshot, Provenance
 from .canon_status import is_known_canon_status, is_production_approved
@@ -35,7 +35,8 @@ from .errors import (
     ReferencePathSafetyError,
     UnsupportedUsageContextError,
 )
-from .hashing import compute_content_hash, compute_source_hash
+from .hashing import compute_content_hash, compute_sha256, compute_source_hash
+from .local_snapshot import StandingIdentity, StandingIdentityCategory, StandingIdentitySource
 
 SNAPSHOT_SCHEMA_VERSION = "character_canon/0.1"
 
@@ -44,6 +45,11 @@ _PRESET_REL_DIR = ("AI_CHARACTERS",)
 
 # Supported usage contexts.
 _USAGE_CONTEXTS = frozenset({"draft", "authoring", "production"})
+
+# Bounded, character-generic standing-identity categories (V1F). The Canon
+# preset key names are used verbatim; no character-specific name is ever
+# hard-coded here.
+_STANDING_IDENTITY_CATEGORIES = ("preservation_rules", "negative_constraints")
 
 
 def _non_empty_string(value: Any, field: str) -> str:
@@ -199,3 +205,79 @@ def read_character_canon(
     )
     content_hash = compute_content_hash(provisional.semantic_payload())
     return dataclasses.replace(provisional, content_hash=content_hash)
+
+
+def read_standing_identity(canon_root: Path, preset: dict[str, Any]) -> Optional[StandingIdentity]:
+    """Read whole-file standing-identity sources from an already-parsed Canon
+    ``preset`` (the same dict a caller already loaded from
+    ``<char>_REFERENCE_PRESETS.json``), returning a :class:`StandingIdentity`
+    or ``None`` when the preset declares no ``standing_identity`` at all.
+
+    Character-generic: reads ONLY the ``source_refs`` lists declared under the
+    known categories (``preservation_rules``, ``negative_constraints``). Never
+    scans directories, never guesses a filename, never parses prompt sections
+    -- the whole referenced file's decoded text is used verbatim.
+
+    Text/hash contract: each file is decoded via ``Path.read_text(encoding=
+    "utf-8")`` -- this repository's existing text-reading convention (see
+    ``_read_preset`` above), which applies Python's universal-newline
+    translation on read. The SHA-256 persisted alongside the text is computed
+    over that exact decoded text (re-encoded UTF-8) -- the same text object
+    that later flows unchanged into the snapshot manifest, the pinned
+    generation spec, and prompt assembly. No separate raw-byte hash is kept;
+    this repository's manifest write/read path (``write_text``/``read_text``,
+    both text-mode with symmetric newline translation) round-trips this exact
+    string, so the hash stays valid end-to-end without it.
+    """
+    standing = preset.get("standing_identity")
+    if standing is None:
+        return None
+    if not isinstance(standing, dict):
+        raise CanonFormatError("standing_identity: expected object")
+
+    root = Path(canon_root).resolve()
+    categories: dict[str, StandingIdentityCategory] = {}
+    for category in _STANDING_IDENTITY_CATEGORIES:
+        section = standing.get(category)
+        if section is None:
+            continue
+        if not isinstance(section, dict):
+            raise CanonFormatError(f"standing_identity.{category}: expected object")
+        source_refs = section.get("source_refs")
+        if not isinstance(source_refs, list) or not source_refs:
+            raise CanonFormatError(
+                f"standing_identity.{category}.source_refs: expected a non-empty array"
+            )
+        sources: list[StandingIdentitySource] = []
+        for index, ref in enumerate(source_refs):
+            if not isinstance(ref, str):
+                raise CanonFormatError(
+                    f"standing_identity.{category}.source_refs[{index}]: expected string"
+                )
+            if not _is_safe_relative(ref):
+                raise ReferencePathSafetyError(f"unsafe standing_identity source_ref: {ref!r}")
+            resolved = (root / ref).resolve()
+            try:
+                resolved.relative_to(root)
+            except ValueError:
+                raise ReferencePathSafetyError(
+                    f"standing_identity source_ref escapes Canon root: {ref!r}"
+                ) from None
+            if not resolved.is_file():
+                raise CanonFormatError(f"standing_identity source file missing: {ref!r}")
+            text = resolved.read_text(encoding="utf-8")
+            sources.append(
+                StandingIdentitySource(
+                    source_ref=ref,
+                    text=text,
+                    text_sha256=compute_sha256(text.encode("utf-8")),
+                )
+            )
+        categories[category] = StandingIdentityCategory(sources=tuple(sources))
+
+    if not categories:
+        return None
+    return StandingIdentity(
+        preservation_rules=categories.get("preservation_rules"),
+        negative_constraints=categories.get("negative_constraints"),
+    )

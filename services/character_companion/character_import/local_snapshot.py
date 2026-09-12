@@ -118,6 +118,96 @@ class PortraitRef:
             raise SnapshotValidationError(f"malformed portrait: {exc}") from exc
 
 
+# ======================================================================
+# Standing identity (V1F): optional, character-generic, whole-file Canon
+# ``standing_identity`` sources pinned onto the local snapshot. Each source
+# carries its exact decoded text plus the SHA-256 of that exact text (never a
+# separately-normalized copy) so downstream consumers (prompt assembly,
+# PinnedGenerationSpec) can verify nothing drifted since import.
+# ======================================================================
+#: bounded standing-identity categories, mirroring the Canon preset shape.
+STANDING_IDENTITY_CATEGORIES = ("preservationRules", "negativeConstraints")
+
+
+@dataclass(frozen=True)
+class StandingIdentitySource:
+    source_ref: str
+    text: str
+    text_sha256: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"sourceRef": self.source_ref, "text": self.text, "textSha256": self.text_sha256}
+
+    @classmethod
+    def from_dict(cls, data: Any) -> "StandingIdentitySource":
+        if not isinstance(data, dict):
+            raise SnapshotValidationError("standing identity source entry must be an object")
+        try:
+            return cls(
+                source_ref=str(data["sourceRef"]),
+                text=str(data["text"]),
+                text_sha256=str(data["textSha256"]),
+            )
+        except (KeyError, TypeError) as exc:
+            raise SnapshotValidationError(f"malformed standing identity source: {exc}") from exc
+
+
+@dataclass(frozen=True)
+class StandingIdentityCategory:
+    """Ordered, non-empty tuple of pinned sources for one standing-identity
+    category (``preservationRules`` or ``negativeConstraints``). Order is the
+    Canon preset's ``source_refs`` list order -- never reordered."""
+
+    sources: Tuple[StandingIdentitySource, ...]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "sources", tuple(self.sources))
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"sources": [s.to_dict() for s in self.sources]}
+
+    @classmethod
+    def from_dict(cls, data: Any) -> "StandingIdentityCategory":
+        if not isinstance(data, dict):
+            raise SnapshotValidationError("standing identity category must be an object")
+        sources = data.get("sources")
+        if not isinstance(sources, list):
+            raise SnapshotValidationError("standing identity category sources must be an array")
+        return cls(sources=tuple(StandingIdentitySource.from_dict(s) for s in sources))
+
+
+@dataclass(frozen=True)
+class StandingIdentity:
+    """Character-generic container: either category may be absent (a Canon
+    preset need not declare both). Never fabricated when the Canon preset
+    omits a category -- absence here always means the preset omitted it."""
+
+    preservation_rules: Optional[StandingIdentityCategory] = None
+    negative_constraints: Optional[StandingIdentityCategory] = None
+
+    def is_empty(self) -> bool:
+        return self.preservation_rules is None and self.negative_constraints is None
+
+    def to_dict(self) -> dict[str, Any]:
+        out: dict[str, Any] = {}
+        if self.preservation_rules is not None:
+            out["preservationRules"] = self.preservation_rules.to_dict()
+        if self.negative_constraints is not None:
+            out["negativeConstraints"] = self.negative_constraints.to_dict()
+        return out
+
+    @classmethod
+    def from_dict(cls, data: Any) -> "StandingIdentity":
+        if not isinstance(data, dict):
+            raise SnapshotValidationError("standingIdentity must be an object")
+        pr = data.get("preservationRules")
+        nc = data.get("negativeConstraints")
+        return cls(
+            preservation_rules=StandingIdentityCategory.from_dict(pr) if pr is not None else None,
+            negative_constraints=StandingIdentityCategory.from_dict(nc) if nc is not None else None,
+        )
+
+
 @dataclass(frozen=True)
 class CharacterLocalSnapshot:
     schema_version: str
@@ -130,6 +220,7 @@ class CharacterLocalSnapshot:
     physical: dict
     portrait: Optional[PortraitRef] = None
     snapshot_hash: str = ""
+    standing_identity: Optional[StandingIdentity] = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "references", tuple(self.references))
@@ -144,7 +235,7 @@ class CharacterLocalSnapshot:
             ),
             key=lambda d: d["assetId"],
         )
-        return {
+        payload: dict[str, Any] = {
             "characterId": self.character_id,
             "sourceCanonCharacterId": self.source_canon.get("sourceCharacterId"),
             "sourceCanonContentHash": self.source_canon.get("contentHash"),
@@ -154,12 +245,18 @@ class CharacterLocalSnapshot:
             "physical": self.physical,
             "portraitAssetId": self.portrait.asset_id if self.portrait else None,
         }
+        # Omitted entirely (not even as null) when absent, so a legacy snapshot
+        # without standing_identity keeps its exact pre-V1F semantic payload and
+        # therefore its exact pre-V1F hash. Only present + non-empty changes it.
+        if self.standing_identity is not None and not self.standing_identity.is_empty():
+            payload["standingIdentity"] = self.standing_identity.to_dict()
+        return payload
 
     def compute_hash(self) -> str:
         return sha256_hex(self.semantic_payload())
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        out: dict[str, Any] = {
             "schemaVersion": self.schema_version,
             "characterId": self.character_id,
             "snapshotVersion": self.snapshot_version,
@@ -171,6 +268,9 @@ class CharacterLocalSnapshot:
             "portrait": self.portrait.to_dict() if self.portrait else None,
             "snapshotHash": self.snapshot_hash or self.compute_hash(),
         }
+        if self.standing_identity is not None:
+            out["standingIdentity"] = self.standing_identity.to_dict()
+        return out
 
     @classmethod
     def from_dict(cls, data: Any) -> "CharacterLocalSnapshot":
@@ -178,6 +278,7 @@ class CharacterLocalSnapshot:
             raise SnapshotValidationError("snapshot manifest must be an object")
         try:
             portrait = data.get("portrait")
+            standing_raw = data.get("standingIdentity")
             return cls(
                 schema_version=str(data["schemaVersion"]),
                 character_id=str(data["characterId"]),
@@ -189,6 +290,7 @@ class CharacterLocalSnapshot:
                 physical=dict(data["physical"]),
                 portrait=PortraitRef.from_dict(portrait) if portrait else None,
                 snapshot_hash=str(data.get("snapshotHash") or ""),
+                standing_identity=StandingIdentity.from_dict(standing_raw) if standing_raw else None,
             )
         except (KeyError, TypeError) as exc:
             raise SnapshotValidationError(f"malformed snapshot manifest: {exc}") from exc
@@ -317,3 +419,17 @@ class SnapshotStore:
                 raise SnapshotValidationError("portrait does not point to an imported reference")
             if p.sha256 != snap.portrait.sha256 or p.relative_path != snap.portrait.relative_path:
                 raise SnapshotValidationError("portrait reference identity mismatch")
+
+        if snap.standing_identity is not None:
+            for category in (snap.standing_identity.preservation_rules, snap.standing_identity.negative_constraints):
+                if category is None:
+                    continue
+                for source in category.sources:
+                    if not is_valid_sha256(source.text_sha256):
+                        raise SnapshotValidationError(
+                            f"standing identity textSha256 malformed for {source.source_ref!r}"
+                        )
+                    if compute_sha256(source.text.encode("utf-8")) != source.text_sha256:
+                        raise SnapshotValidationError(
+                            f"standing identity text/hash mismatch for {source.source_ref!r}"
+                        )

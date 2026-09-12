@@ -641,6 +641,109 @@ def test_38_bundle_entries_keep_bytes_but_prompt_does_not(tmp_path):
         assert e.relative_path not in pkg.prompt_text
 
 
+_V1F_SECTIONS = (
+    "[REQUEST]", "[SCENE]", "[RECENT CONTEXT]", "[CHARACTER IDENTITY]",
+    "[IDENTITY PRESERVATION]", "[IDENTITY NEGATIVE CONSTRAINTS]", "[REFERENCE GUIDANCE]",
+)
+
+
+# ============================== 40-45  V1F STANDING IDENTITY PROMPT SECTIONS
+def test_40_standing_identity_sections_in_fixed_order(tmp_path):
+    snap, sdir = _kira_like(tmp_path)
+    pkg = build_visual_prompt(
+        visual_context=_context_ctx(snap),
+        reference_bundle=build_reference_bundle(snapshot=snap, snapshot_dir=sdir),
+        physical=snap.physical,
+        alias="Kira",
+        identity_preservation_texts=("preserve same face.\n",),
+        identity_negative_constraint_texts=("avoid extra limbs.\n",),
+    )
+    positions = [pkg.prompt_text.index(h) for h in _V1F_SECTIONS]
+    assert positions == sorted(positions)
+    assert all(h in pkg.prompt_text for h in _V1F_SECTIONS)
+
+
+def test_41_preservation_section_carries_pinned_text(tmp_path):
+    snap, sdir = _kira_like(tmp_path)
+    pkg = build_visual_prompt(
+        visual_context=_custom_ctx(snap),
+        reference_bundle=build_reference_bundle(snapshot=snap, snapshot_dir=sdir),
+        physical=snap.physical,
+        identity_preservation_texts=("preserve same face, same eyes.\n",),
+    )
+    section = pkg.prompt_text.split("[IDENTITY PRESERVATION]", 1)[1].split(
+        "[IDENTITY NEGATIVE CONSTRAINTS]", 1
+    )[0]
+    assert "preserve same face, same eyes." in section
+
+
+def test_42_negative_constraints_section_carries_pinned_text(tmp_path):
+    snap, sdir = _kira_like(tmp_path)
+    pkg = build_visual_prompt(
+        visual_context=_custom_ctx(snap),
+        reference_bundle=build_reference_bundle(snapshot=snap, snapshot_dir=sdir),
+        physical=snap.physical,
+        identity_negative_constraint_texts=("avoid distorted anatomy.\n",),
+    )
+    section = pkg.prompt_text.split("[IDENTITY NEGATIVE CONSTRAINTS]", 1)[1].split(
+        "[REFERENCE GUIDANCE]", 1
+    )[0]
+    assert "avoid distorted anatomy." in section
+
+
+def test_43_multiple_source_texts_join_in_caller_order(tmp_path):
+    snap, sdir = _kira_like(tmp_path)
+    pkg = build_visual_prompt(
+        visual_context=_custom_ctx(snap),
+        reference_bundle=build_reference_bundle(snapshot=snap, snapshot_dir=sdir),
+        physical=snap.physical,
+        identity_preservation_texts=("first source text.\n", "second source text.\n"),
+    )
+    section = pkg.prompt_text.split("[IDENTITY PRESERVATION]", 1)[1].split(
+        "[IDENTITY NEGATIVE CONSTRAINTS]", 1
+    )[0]
+    assert section.index("first source text.") < section.index("second source text.")
+
+
+def test_44_legacy_absent_standing_identity_renders_none(tmp_path):
+    """No caller-supplied standing texts (the legacy/no-standing-identity
+    default) -- both new sections render '(none)', exactly like every other
+    optional section in this module."""
+    snap, sdir = _kira_like(tmp_path)
+    pkg = build_visual_prompt(
+        visual_context=_custom_ctx(snap),
+        reference_bundle=build_reference_bundle(snapshot=snap, snapshot_dir=sdir),
+        physical=snap.physical,
+    )
+    preservation = pkg.prompt_text.split("[IDENTITY PRESERVATION]", 1)[1].split(
+        "[IDENTITY NEGATIVE CONSTRAINTS]", 1
+    )[0]
+    negative = pkg.prompt_text.split("[IDENTITY NEGATIVE CONSTRAINTS]", 1)[1].split(
+        "[REFERENCE GUIDANCE]", 1
+    )[0]
+    assert "(none)" in preservation and "(none)" in negative
+
+
+def test_45_standing_identity_prompt_deterministic_and_affects_hash(tmp_path):
+    snap, sdir = _kira_like(tmp_path)
+    bundle = build_reference_bundle(snapshot=snap, snapshot_dir=sdir)
+    ctx = _custom_ctx(snap)
+    baseline = build_visual_prompt(visual_context=ctx, reference_bundle=bundle, physical=snap.physical)
+    a = build_visual_prompt(
+        visual_context=ctx, reference_bundle=bundle, physical=snap.physical,
+        identity_preservation_texts=("preserve same face.\n",),
+    )
+    b = build_visual_prompt(
+        visual_context=ctx, reference_bundle=bundle, physical=snap.physical,
+        identity_preservation_texts=("preserve same face.\n",),
+    )
+    assert a.prompt_text == b.prompt_text and a.content_hash == b.content_hash
+    assert a.content_hash != baseline.content_hash    # standing text changes the hash
+    assert baseline.content_hash == build_visual_prompt(
+        visual_context=ctx, reference_bundle=bundle, physical=snap.physical
+    ).content_hash    # no standing text -> deterministic legacy hash, unaffected
+
+
 def test_39_selection_bounds_match_published_constants(tmp_path):
     assert (MIN_AUTO_REFS, MAX_AUTO_REFS) == (2, 4)
     snap, _ = _kira_like(tmp_path)
