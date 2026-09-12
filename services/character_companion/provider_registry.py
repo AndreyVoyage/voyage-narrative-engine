@@ -95,6 +95,7 @@ POLICY_UNKNOWN = "UNKNOWN"
 
 # ---- transports -------------------------------------------------------
 TRANSPORT_OPENAI_COMPAT = "openai_compat"   # POST <base>/v1/chat/completions
+TRANSPORT_ANTHROPIC_NATIVE = "anthropic_native"   # POST <base>/v1/messages
 TRANSPORT_OLLAMA_NATIVE = "ollama_native"   # POST <base>/api/chat
 TRANSPORT_FAKE = "fake"
 
@@ -327,6 +328,22 @@ _ENTRIES: Tuple[ProviderEntry, ...] = (
         ),
         default_model="qwen-plus",
         notes="Совместимый OpenAI-протокол; альтернативное облачное семейство.",
+    ),
+    ProviderEntry(
+        provider_id="anthropic",
+        display_name="Anthropic (Claude)",
+        kind=KIND_CLOUD,
+        transport=TRANSPORT_ANTHROPIC_NATIVE,
+        credential_required=True,
+        default_base_url="https://api.anthropic.com",
+        models=(
+            ModelEntry("claude-sonnet-5", "Claude Sonnet 5", (CAP_DIALOGUE, CAP_CLOUD),
+                       content_policy_profile=POLICY_PROVIDER_POLICY_DEPENDENT),
+            ModelEntry("claude-haiku-4-5-20251001", "Claude Haiku 4.5", (CAP_DIALOGUE, CAP_CLOUD),
+                       content_policy_profile=POLICY_PROVIDER_POLICY_DEPENDENT),
+        ),
+        default_model="claude-sonnet-5",
+        notes="Нативный Anthropic Messages API; компактный диалоговый каталог.",
     ),
     ProviderEntry(
         provider_id="local",

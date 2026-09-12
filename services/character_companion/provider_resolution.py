@@ -13,6 +13,11 @@ from __future__ import annotations
 
 from typing import Callable, Optional
 
+from .anthropic_provider import (
+    AnthropicProviderConfig,
+    AnthropicProviderError,
+    build_anthropic_provider_factory,
+)
 from .cloud_provider import (
     CloudProviderConfig,
     CloudProviderError,
@@ -23,6 +28,7 @@ from .local_provider import LocalLLMConfig, build_local_llm_provider_factory
 from .provider_registry import (
     ROLE_DIALOGUE,
     RUNTIME_WIRED_ROLES,
+    TRANSPORT_ANTHROPIC_NATIVE,
     TRANSPORT_FAKE,
     TRANSPORT_OLLAMA_NATIVE,
     TRANSPORT_OPENAI_COMPAT,
@@ -105,6 +111,18 @@ def _factory_for(
             raise CompanionConfigError(exc.code, exc.message) from exc
         cfg = CloudProviderConfig(provider_id=entry.provider_id, model=model, base_url=base_url)
         return build_openai_compat_provider_factory(cfg, api_key=api_key, http_post=http_post_cloud)
+    if entry.transport == TRANSPORT_ANTHROPIC_NATIVE:
+        try:
+            if not vault.has(entry.provider_id):
+                raise CompanionConfigError(
+                    "missing_credential",
+                    f"Не задан ключ API для провайдера «{entry.display_name}».",
+                )
+            api_key = vault.resolve(entry.provider_id)
+        except CredentialError as exc:
+            raise CompanionConfigError(exc.code, exc.message) from exc
+        cfg = AnthropicProviderConfig(provider_id=entry.provider_id, model=model, base_url=base_url)
+        return build_anthropic_provider_factory(cfg, api_key=api_key, http_post=http_post_cloud)
 
     raise CompanionConfigError("unknown_transport", f"unknown transport {entry.transport!r}")
 
@@ -211,7 +229,7 @@ def test_provider_connection(
         return {"ok": bool(isinstance(text, str) and text.strip()), "status": "ok"}
     except CompanionConfigError as exc:
         return {"ok": False, "status": exc.code, "message": exc.message}
-    except (CloudProviderError,) as exc:
+    except (CloudProviderError, AnthropicProviderError) as exc:
         return {"ok": False, "status": exc.code, "message": exc.message}
     except Exception as exc:  # noqa: BLE001 -- bounded; never leak internals/secrets
         code = getattr(exc, "code", "provider_failed")
