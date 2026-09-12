@@ -819,6 +819,11 @@ class EditorMainWindow(QMainWindow):
         existing read path) so a PARTIAL_PROJECT_STATE result -- where the
         scene may already be durably ACCEPTED even though ``result.ok`` is
         False -- is rendered truthfully rather than silently kept as DRAFT.
+        After ``accept_scene`` is invoked, EVERY exit path -- success, bounded
+        failure, ``EditorApplicationError``, or unexpected exception -- re-reads
+        authoritative scene state before finalizing the error presentation, so
+        the UI never shows a stale editable DRAFT when authority has already
+        become ACCEPTED. The reload is strictly read-only.
         Never auto-saves, never auto-validates, never retries, never repairs.
         """
         if not self._can_accept():
@@ -830,9 +835,11 @@ class EditorMainWindow(QMainWindow):
         try:
             result = self._service.accept_scene(scene_id, version)
         except EditorApplicationError as exc:
+            self._load_scene_workspace(scene_id, preserve_workspace_on_error=True)
             self._show_workspace_operation_error(exc.code, exc.message)
             return False
         except Exception:
+            self._load_scene_workspace(scene_id, preserve_workspace_on_error=True)
             self._show_workspace_operation_error(
                 INTERNAL_ERROR, "Unable to accept the current scene."
             )

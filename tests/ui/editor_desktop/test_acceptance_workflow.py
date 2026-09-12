@@ -13,6 +13,7 @@ from PySide6.QtCore import Qt
 from services.editor_application import (
     ACCEPTED_IMMUTABLE,
     PARTIAL_PROJECT_STATE,
+    EditorApplicationError,
     EditorOperationResult,
 )
 from services.workspace_project import WorkspaceProjectError
@@ -388,3 +389,91 @@ def test_accept_scene_is_idempotent_on_already_accepted_version(populated_servic
     assert second_state.acceptance == first_state.acceptance
     assert second_state.body == first_state.body
     assert second_state.latest_version == first_state.latest_version
+
+
+# ---------------------------------------------------------------------------
+# 10. EXCEPTION-PATH AUTHORITATIVE RELOAD (F-M4-QA-02 correction)
+# ---------------------------------------------------------------------------
+
+
+def test_raw_exception_after_acceptance_reloads_authority(
+    qapp, populated_service, monkeypatch
+):
+    """F-M4-QA-02: when ``accept_draft`` durably ACCEPTS the SceneVersion but a
+    later project-inclusion step raises an unwrapped exception, ``accept_scene``
+    propagates it and the UI must reload authority and render the true ACCEPTED
+    state rather than a stale editable DRAFT."""
+
+    calls: list[tuple] = []
+    real_accept = populated_service.accept_scene
+
+    def counting_accept(*args):
+        calls.append(args)
+        return real_accept(*args)
+
+    def broken_manifest_inclusion(_scene_id):
+        raise RuntimeError("simulated raw inclusion failure")
+
+    monkeypatch.setattr(populated_service, "accept_scene", counting_accept)
+    monkeypatch.setattr(
+        populated_service, "_ensure_manifest_inclusion", broken_manifest_inclusion
+    )
+    window = _validated_pass_window(qapp, populated_service)
+    monkeypatch.setattr(window, "_confirm_accept_scene", lambda *_: True)
+    try:
+        window.accept_scene_button.click()
+        qapp.processEvents()
+
+        # REAL AUTHORITY: durably ACCEPTED despite the raw exception escaping.
+        real_state = populated_service.get_scene_workspace("sc_test_001")
+        assert real_state.lifecycle == "ACCEPTED"
+        assert real_state.acceptance is not None
+
+        # UI reloaded to the true ACCEPTED state; no stale editable DRAFT.
+        assert window.workspace_values["lifecycle"].text() == "ACCEPTED"
+        assert not window.draft_editor_container.isVisible()
+        assert window.accepted_immutable_label.isVisible()
+        assert not window.save_draft_button.isEnabled()
+        assert not window.accept_scene_button.isEnabled()
+
+        # INTERNAL_ERROR remains surfaced.
+        assert "INTERNAL_ERROR" in window.workspace_error.text()
+        assert not window.workspace_error.isHidden()
+
+        # Exactly one accept call; no retry/repair/second mutation.
+        assert len(calls) == 1
+    finally:
+        window.close()
+
+
+def test_editor_application_error_branch_reloads_before_error(
+    qapp, populated_service, monkeypatch
+):
+    """After ``accept_scene`` raises ``EditorApplicationError``, the UI must
+    attempt an authoritative reload before finalizing the bounded error."""
+
+    window = _validated_pass_window(qapp, populated_service)
+    monkeypatch.setattr(window, "_confirm_accept_scene", lambda *_: True)
+
+    reloaded_scenes: list[str] = []
+    real_load = window._load_scene_workspace
+
+    def spying_load(scene_id, *, preserve_workspace_on_error=False):
+        reloaded_scenes.append(scene_id)
+        return real_load(scene_id, preserve_workspace_on_error=preserve_workspace_on_error)
+
+    monkeypatch.setattr(window, "_load_scene_workspace", spying_load)
+
+    def raise_eae(_scene_id, _version):
+        raise EditorApplicationError("NOT_FOUND", "Simulated bounded acceptance error")
+
+    monkeypatch.setattr(populated_service, "accept_scene", raise_eae)
+    try:
+        window.accept_scene_button.click()
+        qapp.processEvents()
+
+        assert reloaded_scenes == ["sc_test_001"]  # reload attempted before finalize
+        assert "NOT_FOUND" in window.workspace_error.text()
+        assert not window.workspace_error.isHidden()
+    finally:
+        window.close()
