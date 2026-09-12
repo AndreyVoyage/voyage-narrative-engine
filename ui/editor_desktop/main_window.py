@@ -113,6 +113,7 @@ class EditorMainWindow(QMainWindow):
         self._draft_session: DraftEditSession | None = None
         self._validation_state: ValidationState | None = None
         self._validated_scene_version: tuple[str, int] | None = None
+        self._last_validation_passed: bool | None = None
         self._restoring_selection = False
         self.entry_text_edits: dict[str, QPlainTextEdit] = {}
         self.reload_project()
@@ -226,9 +227,17 @@ class EditorMainWindow(QMainWindow):
         self.validate_scene_button = QPushButton("Validate")
         self.validate_scene_button.setEnabled(False)
         self.validate_scene_button.clicked.connect(self._validate_current_scene)
+        self.accept_scene_button = QPushButton("Accept scene")
+        self.accept_scene_button.setToolTip(
+            "Available only when the current saved version has a passing, "
+            "still-current validation result."
+        )
+        self.accept_scene_button.setEnabled(False)
+        self.accept_scene_button.clicked.connect(self._accept_current_scene)
         header.addWidget(self.dirty_label, 1)
         header.addWidget(self.save_draft_button)
         header.addWidget(self.validate_scene_button)
+        header.addWidget(self.accept_scene_button)
         editor_layout.addLayout(header)
 
         self.validation_status_label = QLabel()
@@ -612,10 +621,12 @@ class EditorMainWindow(QMainWindow):
     def _reset_validation_presentation(self) -> None:
         self._validation_state = None
         self._validated_scene_version = None
+        self._last_validation_passed = None
         self.validation_status_label.clear()
         self.validation_diagnostics_list.clear()
         self.validation_diagnostics_list.setVisible(False)
         self.validate_scene_button.setEnabled(False)
+        self.accept_scene_button.setEnabled(False)
 
     def _set_validation_state(
         self,
@@ -623,12 +634,16 @@ class EditorMainWindow(QMainWindow):
         *,
         message: str | None = None,
         validated_scene_version: tuple[str, int] | None = None,
+        passed: bool | None = None,
     ) -> None:
         self._validation_state = state
         self._validated_scene_version = (
             validated_scene_version
             if state is ValidationState.VALIDATED_CURRENT
             else None
+        )
+        self._last_validation_passed = (
+            passed if state is ValidationState.VALIDATED_CURRENT else None
         )
         self.validation_diagnostics_list.clear()
         self.validation_diagnostics_list.setVisible(False)
@@ -648,6 +663,22 @@ class EditorMainWindow(QMainWindow):
             and not session.is_dirty
             and state is not ValidationState.DIRTY
         )
+        self.accept_scene_button.setEnabled(self._can_accept())
+
+    def _can_accept(self) -> bool:
+        """Accept is eligible only for the exact current, saved, PASS-validated draft.
+
+        Never true for a dirty buffer, a stale/absent validation result, or a
+        validation result belonging to a different scene/version.
+        """
+        session = self._draft_session
+        if session is None or not session.editable or session.is_dirty:
+            return False
+        if self._validation_state is not ValidationState.VALIDATED_CURRENT:
+            return False
+        if self._last_validation_passed is not True:
+            return False
+        return self._validated_scene_version == (session.scene_id, session.version)
 
     def _show_validation_diagnostics(self, diagnostics) -> None:
         for diagnostic in diagnostics:
@@ -708,6 +739,7 @@ class EditorMainWindow(QMainWindow):
                 ValidationState.VALIDATED_CURRENT,
                 message="Validation passed",
                 validated_scene_version=scene_version,
+                passed=True,
             )
             self.statusBar().showMessage("Validation passed")
             return True
@@ -716,6 +748,7 @@ class EditorMainWindow(QMainWindow):
                 ValidationState.VALIDATED_CURRENT,
                 message="Validation failed — review the diagnostics below.",
                 validated_scene_version=scene_version,
+                passed=False,
             )
             self._show_validation_diagnostics(result.diagnostics)
             self.statusBar().showMessage(result.message)
@@ -771,6 +804,61 @@ class EditorMainWindow(QMainWindow):
         box.setInformativeText(
             "The accepted version will remain unchanged. "
             "A new editable draft revision will be created."
+        )
+        box.setStandardButtons(
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel
+        )
+        box.setDefaultButton(QMessageBox.StandardButton.Cancel)
+        return box.exec() == QMessageBox.StandardButton.Yes
+
+    def _accept_current_scene(self) -> bool:
+        """Accept the exact current, saved, PASS-validated draft.
+
+        Confirmed once, then calls ``accept_scene`` exactly once. The
+        authoritative workspace is always re-read afterward (through the
+        existing read path) so a PARTIAL_PROJECT_STATE result -- where the
+        scene may already be durably ACCEPTED even though ``result.ok`` is
+        False -- is rendered truthfully rather than silently kept as DRAFT.
+        Never auto-saves, never auto-validates, never retries, never repairs.
+        """
+        if not self._can_accept():
+            return False
+        session = self._draft_session
+        scene_id, version = session.scene_id, session.version
+        if not self._confirm_accept_scene(scene_id, version):
+            return False
+        try:
+            result = self._service.accept_scene(scene_id, version)
+        except EditorApplicationError as exc:
+            self._show_workspace_operation_error(exc.code, exc.message)
+            return False
+        except Exception:
+            self._show_workspace_operation_error(
+                INTERNAL_ERROR, "Unable to accept the current scene."
+            )
+            return False
+
+        reloaded = self._load_scene_workspace(scene_id, preserve_workspace_on_error=True)
+
+        if not result.ok:
+            self._show_workspace_operation_error(result.code, result.message)
+            return False
+
+        self.statusBar().showMessage(result.message)
+        return reloaded is not None and reloaded.lifecycle == _LIFECYCLE_ACCEPTED
+
+    def _confirm_accept_scene(self, scene_id: str, version: int) -> bool:
+        """Explicit authority-consequence confirmation before acceptance."""
+
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Icon.Question)
+        box.setWindowTitle("Accept scene")
+        box.setText(f"Accept {scene_id} version {version}?")
+        box.setInformativeText(
+            "This draft version will become ACCEPTED. The accepted version "
+            "becomes immutable — further editing requires Start New Revision. "
+            "This scene will also be added to (or updated in) the project's "
+            "accepted scene list."
         )
         box.setStandardButtons(
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel

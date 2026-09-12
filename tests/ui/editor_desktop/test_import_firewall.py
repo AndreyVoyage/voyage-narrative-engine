@@ -27,14 +27,15 @@ def test_ui_imports_only_editor_application_from_services():
 
 
 def test_ui_mutation_calls_are_limited_to_approved_facade_methods():
-    """M3-S1 firewall: validation is read-only; mutations remain bounded.
+    """M4-S1 firewall: acceptance is now approved; mutations remain bounded.
 
     The UI MAY call approved mutation methods on the editor_application
-    facade; it MUST NOT call not-yet-approved mutations from any UI module.
+    facade; it MUST NOT call not-yet-approved mutations (``create_scene``)
+    from any UI module.
     """
     repo_root = Path(__file__).resolve().parents[3]
-    forbidden = {"create_scene", "accept_scene"}
-    approved_mutations = {"save_draft", "fork_scene_version"}
+    forbidden = {"create_scene"}
+    approved_mutations = {"save_draft", "fork_scene_version", "accept_scene"}
     approved_read_actions = {"validate_scene"}
     violations: list[str] = []
     approved_calls: list[str] = []
