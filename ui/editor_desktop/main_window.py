@@ -13,6 +13,8 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QListWidget,
+    QListWidgetItem,
     QListView,
     QMainWindow,
     QMessageBox,
@@ -29,6 +31,7 @@ from PySide6.QtWidgets import (
 
 from services.editor_application import (
     INTERNAL_ERROR,
+    VALIDATION_FAILED,
     EditorApplicationError,
     EditorApplicationService,
     EditorCharacterSummary,
@@ -37,10 +40,16 @@ from services.editor_application import (
     EditorSceneWorkspace,
 )
 
-from .draft_editing import LIFECYCLE_DRAFT, DraftEditSession, UnsavedDecision
+from .draft_editing import (
+    LIFECYCLE_DRAFT,
+    DraftEditSession,
+    UnsavedDecision,
+    ValidationState,
+)
 
 _T = TypeVar("_T")
 _ID_ROLE = int(Qt.ItemDataRole.UserRole)
+_DIAGNOSTIC_ENTRY_ROLE = _ID_ROLE + 1
 _LIFECYCLE_ACCEPTED = "ACCEPTED"
 
 
@@ -102,6 +111,8 @@ class EditorMainWindow(QMainWindow):
         )
         self._current_workspace: EditorSceneWorkspace | None = None
         self._draft_session: DraftEditSession | None = None
+        self._validation_state: ValidationState | None = None
+        self._validated_scene_version: tuple[str, int] | None = None
         self._restoring_selection = False
         self.entry_text_edits: dict[str, QPlainTextEdit] = {}
         self.reload_project()
@@ -212,9 +223,26 @@ class EditorMainWindow(QMainWindow):
         self.save_draft_button = QPushButton("Save draft")
         self.save_draft_button.setEnabled(False)
         self.save_draft_button.clicked.connect(self._save_current_draft)
+        self.validate_scene_button = QPushButton("Validate")
+        self.validate_scene_button.setEnabled(False)
+        self.validate_scene_button.clicked.connect(self._validate_current_scene)
         header.addWidget(self.dirty_label, 1)
         header.addWidget(self.save_draft_button)
+        header.addWidget(self.validate_scene_button)
         editor_layout.addLayout(header)
+
+        self.validation_status_label = QLabel()
+        self.validation_status_label.setWordWrap(True)
+        editor_layout.addWidget(self.validation_status_label)
+
+        self.validation_diagnostics_list = QListWidget()
+        self.validation_diagnostics_list.setAccessibleName("Validation diagnostics")
+        self.validation_diagnostics_list.setMaximumHeight(170)
+        self.validation_diagnostics_list.setVisible(False)
+        self.validation_diagnostics_list.itemActivated.connect(
+            self._focus_validation_diagnostic
+        )
+        editor_layout.addWidget(self.validation_diagnostics_list)
 
         fields = QFormLayout()
         fields.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
@@ -237,6 +265,7 @@ class EditorMainWindow(QMainWindow):
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
+        self.entries_scroll = scroll
         entries_host = QWidget()
         self._entries_layout = QVBoxLayout(entries_host)
         self._entries_layout.setContentsMargins(0, 0, 0, 0)
@@ -400,6 +429,7 @@ class EditorMainWindow(QMainWindow):
         return QModelIndex()
 
     def _show_workspace(self, workspace: EditorSceneWorkspace) -> None:
+        self._reset_validation_presentation()
         self._current_workspace = workspace
         self._refresh_workspace_summary(workspace)
         self._refresh_scene_item(workspace)
@@ -414,6 +444,7 @@ class EditorMainWindow(QMainWindow):
                 workspace.body,
             )
             self._rebuild_draft_editor()
+            self._set_validation_state(ValidationState.SAVED_NOT_VALIDATED)
             self.accepted_immutable_label.setVisible(False)
             self.start_revision_button.setVisible(False)
             self.start_revision_button.setEnabled(False)
@@ -476,6 +507,7 @@ class EditorMainWindow(QMainWindow):
         self.start_revision_button.setEnabled(False)
         self._current_workspace = None
         self._draft_session = None
+        self._reset_validation_presentation()
         self.statusBar().showMessage(text)
 
     def _show_workspace_operation_error(self, code: str, message: str) -> None:
@@ -548,6 +580,10 @@ class EditorMainWindow(QMainWindow):
         dirty = session is not None and session.editable and session.is_dirty
         self.dirty_label.setText("Unsaved changes" if dirty else "")
         self.save_draft_button.setEnabled(dirty)
+        if dirty:
+            self._set_validation_state(ValidationState.DIRTY)
+        elif self._validation_state is ValidationState.DIRTY:
+            self._set_validation_state(ValidationState.SAVED_NOT_VALIDATED)
 
     def _save_current_draft(self) -> bool:
         """Save through the facade only; False leaves the buffer dirty."""
@@ -569,8 +605,127 @@ class EditorMainWindow(QMainWindow):
         except EditorApplicationError:
             pass
         self._update_dirty_ui()
+        self._set_validation_state(ValidationState.SAVED_NOT_VALIDATED)
         self.statusBar().showMessage(result.message)
         return True
+
+    def _reset_validation_presentation(self) -> None:
+        self._validation_state = None
+        self._validated_scene_version = None
+        self.validation_status_label.clear()
+        self.validation_diagnostics_list.clear()
+        self.validation_diagnostics_list.setVisible(False)
+        self.validate_scene_button.setEnabled(False)
+
+    def _set_validation_state(
+        self,
+        state: ValidationState,
+        *,
+        message: str | None = None,
+        validated_scene_version: tuple[str, int] | None = None,
+    ) -> None:
+        self._validation_state = state
+        self._validated_scene_version = (
+            validated_scene_version
+            if state is ValidationState.VALIDATED_CURRENT
+            else None
+        )
+        self.validation_diagnostics_list.clear()
+        self.validation_diagnostics_list.setVisible(False)
+        if message is None:
+            message = {
+                ValidationState.DIRTY: "Save changes before validation.",
+                ValidationState.SAVED_NOT_VALIDATED: (
+                    "Saved version has not been validated."
+                ),
+                ValidationState.VALIDATED_CURRENT: "Validation completed.",
+            }[state]
+        self.validation_status_label.setText(message)
+        session = self._draft_session
+        self.validate_scene_button.setEnabled(
+            session is not None
+            and session.editable
+            and not session.is_dirty
+            and state is not ValidationState.DIRTY
+        )
+
+    def _show_validation_diagnostics(self, diagnostics) -> None:
+        for diagnostic in diagnostics:
+            location = (
+                f"Entry: {diagnostic.entry_id}"
+                if diagnostic.entry_id
+                else "Scene-level"
+            )
+            item = QListWidgetItem(
+                f"{diagnostic.code} · {location}\n{diagnostic.message}"
+            )
+            if diagnostic.entry_id:
+                item.setData(_DIAGNOSTIC_ENTRY_ROLE, diagnostic.entry_id)
+            self.validation_diagnostics_list.addItem(item)
+        self.validation_diagnostics_list.setVisible(
+            self.validation_diagnostics_list.count() > 0
+        )
+
+    def _focus_validation_diagnostic(self, item: QListWidgetItem) -> None:
+        entry_id = item.data(_DIAGNOSTIC_ENTRY_ROLE)
+        if not isinstance(entry_id, str):
+            return
+        edit = self.entry_text_edits.get(entry_id)
+        if edit is None:
+            return
+        self.entries_scroll.ensureWidgetVisible(edit)
+        edit.setFocus(Qt.FocusReason.ShortcutFocusReason)
+        edit.selectAll()
+
+    def _validate_current_scene(self) -> bool:
+        """Validate only the exact persisted version shown by a clean DRAFT."""
+
+        session = self._draft_session
+        if session is None or not session.editable or session.is_dirty:
+            return False
+        scene_version = (session.scene_id, session.version)
+        try:
+            result = self._service.validate_scene(*scene_version)
+        except EditorApplicationError as exc:
+            self._set_validation_state(
+                ValidationState.SAVED_NOT_VALIDATED,
+                message="Validation could not be completed.",
+            )
+            self._show_workspace_operation_error(exc.code, exc.message)
+            return False
+        except Exception:
+            self._set_validation_state(
+                ValidationState.SAVED_NOT_VALIDATED,
+                message="Validation could not be completed.",
+            )
+            self._show_workspace_operation_error(
+                INTERNAL_ERROR, "Unable to validate the current scene."
+            )
+            return False
+        self.workspace_error.setVisible(False)
+        if result.ok:
+            self._set_validation_state(
+                ValidationState.VALIDATED_CURRENT,
+                message="Validation passed",
+                validated_scene_version=scene_version,
+            )
+            self.statusBar().showMessage("Validation passed")
+            return True
+        if result.code == VALIDATION_FAILED:
+            self._set_validation_state(
+                ValidationState.VALIDATED_CURRENT,
+                message="Validation failed — review the diagnostics below.",
+                validated_scene_version=scene_version,
+            )
+            self._show_validation_diagnostics(result.diagnostics)
+            self.statusBar().showMessage(result.message)
+            return False
+        self._set_validation_state(
+            ValidationState.SAVED_NOT_VALIDATED,
+            message="Validation could not be completed.",
+        )
+        self._show_workspace_operation_error(result.code, result.message)
+        return False
 
     def _start_new_revision(self) -> bool:
         """Fork the exact loaded ACCEPTED version, then reload the same scene."""

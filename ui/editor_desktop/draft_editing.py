@@ -36,6 +36,14 @@ class UnsavedDecision(enum.Enum):
     CANCEL = "cancel"
 
 
+class ValidationState(enum.Enum):
+    """Presentation state for validation of the persisted draft version."""
+
+    DIRTY = "dirty"
+    SAVED_NOT_VALIDATED = "saved_not_validated"
+    VALIDATED_CURRENT = "validated_current"
+
+
 class DraftEditSession:
     """Editable presentation buffer for one scene version.
 

@@ -27,14 +27,15 @@ def test_ui_imports_only_editor_application_from_services():
 
 
 def test_ui_mutation_calls_are_limited_to_approved_facade_methods():
-    """M2-S1 firewall: only save and fork are approved UI mutations.
+    """M3-S1 firewall: validation is read-only; mutations remain bounded.
 
     The UI MAY call approved mutation methods on the editor_application
     facade; it MUST NOT call not-yet-approved mutations from any UI module.
     """
     repo_root = Path(__file__).resolve().parents[3]
     forbidden = {"create_scene", "accept_scene"}
-    approved = {"save_draft", "fork_scene_version"}
+    approved_mutations = {"save_draft", "fork_scene_version"}
+    approved_read_actions = {"validate_scene"}
     violations: list[str] = []
     approved_calls: list[str] = []
     for path in sorted((repo_root / "ui").rglob("*.py")):
@@ -44,8 +45,8 @@ def test_ui_mutation_calls_are_limited_to_approved_facade_methods():
                 name = node.func.attr
                 if name in forbidden:
                     violations.append(f"{path.relative_to(repo_root)}:{node.lineno}: {name}")
-                elif name in approved:
+                elif name in approved_mutations | approved_read_actions:
                     approved_calls.append(f"{path.relative_to(repo_root)}:{node.lineno}: {name}")
     assert violations == []
     called_methods = {call.rsplit(": ", 1)[-1] for call in approved_calls}
-    assert called_methods == approved
+    assert called_methods == approved_mutations | approved_read_actions
