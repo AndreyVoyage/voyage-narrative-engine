@@ -26,15 +26,25 @@ def test_ui_imports_only_editor_application_from_services():
     assert violations == []
 
 
-def test_main_window_contains_no_mutation_facade_calls():
+def test_ui_mutation_calls_are_limited_to_approved_facade_methods():
+    """M1-S1 firewall: ``save_draft`` is the only approved UI mutation.
+
+    The UI MAY call approved mutation methods on the editor_application
+    facade; it MUST NOT call not-yet-approved mutations from any UI module.
+    """
     repo_root = Path(__file__).resolve().parents[3]
-    tree = ast.parse(
-        (repo_root / "ui" / "editor_desktop" / "main_window.py").read_text(encoding="utf-8")
-    )
-    forbidden = {"create_scene", "save_draft", "fork_scene_version", "accept_scene"}
-    calls = {
-        node.func.attr
-        for node in ast.walk(tree)
-        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
-    }
-    assert calls.isdisjoint(forbidden)
+    forbidden = {"create_scene", "fork_scene_version", "accept_scene"}
+    approved = {"save_draft"}
+    violations: list[str] = []
+    approved_calls: list[str] = []
+    for path in sorted((repo_root / "ui").rglob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+                name = node.func.attr
+                if name in forbidden:
+                    violations.append(f"{path.relative_to(repo_root)}:{node.lineno}: {name}")
+                elif name in approved:
+                    approved_calls.append(f"{path.relative_to(repo_root)}:{node.lineno}: {name}")
+    assert violations == []
+    assert approved_calls, "expected the approved save_draft facade call to be wired"

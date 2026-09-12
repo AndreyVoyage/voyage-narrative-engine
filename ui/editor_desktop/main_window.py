@@ -12,8 +12,13 @@ from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QListView,
     QMainWindow,
+    QMessageBox,
+    QPlainTextEdit,
+    QPushButton,
+    QScrollArea,
     QSizePolicy,
     QSplitter,
     QStatusBar,
@@ -31,6 +36,8 @@ from services.editor_application import (
     EditorSceneSummary,
     EditorSceneWorkspace,
 )
+
+from .draft_editing import LIFECYCLE_DRAFT, DraftEditSession, UnsavedDecision
 
 _T = TypeVar("_T")
 _ID_ROLE = int(Qt.ItemDataRole.UserRole)
@@ -92,6 +99,9 @@ class EditorMainWindow(QMainWindow):
         self.scene_view.selectionModel().currentChanged.connect(
             self._on_scene_selected
         )
+        self._draft_session: DraftEditSession | None = None
+        self._restoring_selection = False
+        self.entry_text_edits: dict[str, QPlainTextEdit] = {}
         self.reload_project()
 
     @staticmethod
@@ -166,8 +176,62 @@ class EditorMainWindow(QMainWindow):
         form_container.setVisible(False)
         self.workspace_form_container = form_container
         layout.addWidget(form_container)
+
+        self.accepted_immutable_label = QLabel(
+            "This scene version is ACCEPTED and immutable — editing is disabled."
+        )
+        self.accepted_immutable_label.setWordWrap(True)
+        self.accepted_immutable_label.setVisible(False)
+        layout.addWidget(self.accepted_immutable_label)
+
+        self.draft_editor_container = self._build_draft_editor()
+        self.draft_editor_container.setVisible(False)
+        layout.addWidget(self.draft_editor_container)
+
         layout.addStretch(1)
         return panel
+
+    def _build_draft_editor(self) -> QWidget:
+        container = QWidget()
+        editor_layout = QVBoxLayout(container)
+        editor_layout.setContentsMargins(0, 12, 0, 0)
+
+        header = QHBoxLayout()
+        self.dirty_label = QLabel("")
+        self.save_draft_button = QPushButton("Save draft")
+        self.save_draft_button.setEnabled(False)
+        self.save_draft_button.clicked.connect(self._save_current_draft)
+        header.addWidget(self.dirty_label, 1)
+        header.addWidget(self.save_draft_button)
+        editor_layout.addLayout(header)
+
+        fields = QFormLayout()
+        fields.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
+        self.scene_title_edit = QLineEdit()
+        self.location_edit = QLineEdit()
+        self.content_rating_edit = QLineEdit()
+        self.scene_title_edit.textChanged.connect(
+            lambda value: self._on_scene_field_edited("scene_title", value)
+        )
+        self.location_edit.textChanged.connect(
+            lambda value: self._on_scene_field_edited("location_id", value)
+        )
+        self.content_rating_edit.textChanged.connect(
+            lambda value: self._on_scene_field_edited("content_rating", value)
+        )
+        fields.addRow("Scene title", self.scene_title_edit)
+        fields.addRow("Location", self.location_edit)
+        fields.addRow("Content rating", self.content_rating_edit)
+        editor_layout.addLayout(fields)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        entries_host = QWidget()
+        self._entries_layout = QVBoxLayout(entries_host)
+        self._entries_layout.setContentsMargins(0, 0, 0, 0)
+        scroll.setWidget(entries_host)
+        editor_layout.addWidget(scroll, 1)
+        return container
 
     @staticmethod
     def _item(text: str, stable_id: str, tooltip: str) -> QStandardItem:
@@ -250,9 +314,13 @@ class EditorMainWindow(QMainWindow):
         self.location_view.setVisible(has_items)
         self.location_empty_label.setVisible(not has_items)
 
-    def _on_scene_selected(self, current: QModelIndex, _previous: QModelIndex) -> None:
+    def _on_scene_selected(self, current: QModelIndex, previous: QModelIndex) -> None:
+        if self._restoring_selection:
+            return
         scene_id = current.data(_ID_ROLE)
         if not isinstance(scene_id, str) or not scene_id:
+            return
+        if not self._confirm_leaving_dirty_session(scene_id, previous):
             return
         try:
             workspace = self._service.get_scene_workspace(scene_id)
@@ -263,9 +331,68 @@ class EditorMainWindow(QMainWindow):
             self._show_error(INTERNAL_ERROR, "Unable to open the selected scene.")
             return
         self._show_workspace(workspace)
-        self.statusBar().showMessage(f"Opened {workspace.scene_id} read-only")
+        if workspace.lifecycle == LIFECYCLE_DRAFT:
+            self.statusBar().showMessage(
+                f"Opened {workspace.scene_id} — draft editable"
+            )
+        else:
+            self.statusBar().showMessage(f"Opened {workspace.scene_id} read-only")
+
+    def _confirm_leaving_dirty_session(
+        self, target_scene_id: str, previous: QModelIndex
+    ) -> bool:
+        """Unsaved-change protection before switching scenes.
+
+        SAVE continues only when the save actually succeeds; DISCARD drops the
+        buffer; CANCEL (or a failed SAVE) restores the previous selection.
+        """
+        session = self._draft_session
+        if session is None or not session.is_dirty or session.scene_id == target_scene_id:
+            return True
+        decision = self._ask_unsaved_changes()
+        if decision is UnsavedDecision.DISCARD:
+            return True
+        if decision is UnsavedDecision.SAVE and self._save_current_draft():
+            return True
+        self._restore_scene_selection(session.scene_id, previous)
+        return False
+
+    def _restore_scene_selection(self, scene_id: str, previous: QModelIndex) -> None:
+        index = self._index_for_scene(scene_id)
+        if not index.isValid():
+            index = previous
+        self._restoring_selection = True
+        self.scene_view.setCurrentIndex(index)
+        self._restoring_selection = False
+
+    def _index_for_scene(self, scene_id: str) -> QModelIndex:
+        for row in range(self.scene_model.rowCount()):
+            index = self.scene_model.index(row, 0)
+            if index.data(_ID_ROLE) == scene_id:
+                return index
+        return QModelIndex()
 
     def _show_workspace(self, workspace: EditorSceneWorkspace) -> None:
+        self._refresh_workspace_summary(workspace)
+        self.workspace_hint.setText("Current scene state (read-only)")
+        self.workspace_error.setVisible(False)
+        self.workspace_form_container.setVisible(True)
+        if workspace.lifecycle == LIFECYCLE_DRAFT:
+            self._draft_session = DraftEditSession(
+                workspace.scene_id,
+                workspace.latest_version,
+                workspace.lifecycle,
+                workspace.body,
+            )
+            self._rebuild_draft_editor()
+            self.accepted_immutable_label.setVisible(False)
+            self.draft_editor_container.setVisible(True)
+        else:
+            self._draft_session = None
+            self.draft_editor_container.setVisible(False)
+            self.accepted_immutable_label.setVisible(True)
+
+    def _refresh_workspace_summary(self, workspace: EditorSceneWorkspace) -> None:
         body = workspace.body if isinstance(workspace.body, dict) else {}
         entries = body.get("entries")
         entry_count = len(entries) if isinstance(entries, list) else "Unavailable"
@@ -287,9 +414,6 @@ class EditorMainWindow(QMainWindow):
         }
         for key, value in values.items():
             self.workspace_values[key].setText(str(value))
-        self.workspace_hint.setText("Current scene state (read-only)")
-        self.workspace_error.setVisible(False)
-        self.workspace_form_container.setVisible(True)
 
     def _show_error(self, code: str, message: str) -> None:
         text = f"{code}: {message}"
@@ -297,4 +421,129 @@ class EditorMainWindow(QMainWindow):
         self.workspace_error.setVisible(True)
         self.workspace_hint.setText("Select a scene to inspect its current state.")
         self.workspace_form_container.setVisible(False)
+        self.draft_editor_container.setVisible(False)
+        self.accepted_immutable_label.setVisible(False)
+        self._draft_session = None
         self.statusBar().showMessage(text)
+
+    def _show_save_error(self, code: str, message: str) -> None:
+        """Save-failure surface: error shown, buffer and dirty state preserved."""
+        text = f"{code}: {message}"
+        self.workspace_error.setText(text)
+        self.workspace_error.setVisible(True)
+        self.statusBar().showMessage(text)
+
+    def _rebuild_draft_editor(self) -> None:
+        session = self._draft_session
+        if session is None:
+            return
+        self.scene_title_edit.setText(session.scene_field("scene_title"))
+        self.location_edit.setText(session.scene_field("location_id"))
+        self.content_rating_edit.setText(session.scene_field("content_rating"))
+
+        while self._entries_layout.count():
+            item = self._entries_layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
+        self.entry_text_edits = {}
+        for entry in session.entries():
+            entry_id = str(entry.get("entry_id") or "")
+            if session.is_text_entry(entry):
+                caption = QLabel(
+                    f"Text entry '{entry_id}' · {entry.get('presentation') or '—'}"
+                )
+                self._entries_layout.addWidget(caption)
+                edit = QPlainTextEdit()
+                edit.setObjectName(f"entry_text_{entry_id}")
+                edit.setPlainText(session.entry_text(entry_id))
+                edit.textChanged.connect(
+                    lambda entry_id=entry_id: self._on_entry_text_edited(entry_id)
+                )
+                self.entry_text_edits[entry_id] = edit
+                self._entries_layout.addWidget(edit)
+            else:
+                label = QLabel(
+                    f"Entry '{entry_id}' ({entry.get('kind') or 'unknown'}) — "
+                    "not editable in this version; preserved on save."
+                )
+                label.setWordWrap(True)
+                self._entries_layout.addWidget(label)
+        self._entries_layout.addStretch(1)
+        self._update_dirty_ui()
+
+    def _on_scene_field_edited(self, key: str, value: str) -> None:
+        if self._draft_session is None:
+            return
+        self._draft_session.set_scene_field(key, value)
+        self._update_dirty_ui()
+
+    def _on_entry_text_edited(self, entry_id: str) -> None:
+        if self._draft_session is None:
+            return
+        edit = self.entry_text_edits.get(entry_id)
+        if edit is None:
+            return
+        self._draft_session.set_entry_text(entry_id, edit.toPlainText())
+        self._update_dirty_ui()
+
+    def _update_dirty_ui(self) -> None:
+        session = self._draft_session
+        dirty = session is not None and session.editable and session.is_dirty
+        self.dirty_label.setText("Unsaved changes" if dirty else "")
+        self.save_draft_button.setEnabled(dirty)
+
+    def _save_current_draft(self) -> bool:
+        """Save through the facade only; False leaves the buffer dirty."""
+        session = self._draft_session
+        if session is None or not session.editable or not session.is_dirty:
+            return False
+        result = self._service.save_draft(
+            session.scene_id, session.version, session.body_for_save()
+        )
+        if not result.ok:
+            self._show_save_error(result.code, result.message)
+            return False
+        session.mark_saved()
+        self.workspace_error.setVisible(False)
+        try:
+            self._refresh_workspace_summary(
+                self._service.get_scene_workspace(session.scene_id)
+            )
+        except EditorApplicationError:
+            pass
+        self._update_dirty_ui()
+        self.statusBar().showMessage(result.message)
+        return True
+
+    def _ask_unsaved_changes(self) -> UnsavedDecision:
+        """Built-in modal prompt; extracted so tests can stub the decision."""
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Icon.Warning)
+        box.setWindowTitle("Unsaved changes")
+        box.setText("The current draft has unsaved changes.")
+        box.setInformativeText("Do you want to save them before continuing?")
+        box.setStandardButtons(
+            QMessageBox.StandardButton.Save
+            | QMessageBox.StandardButton.Discard
+            | QMessageBox.StandardButton.Cancel
+        )
+        box.setDefaultButton(QMessageBox.StandardButton.Save)
+        result = box.exec()
+        if result == QMessageBox.StandardButton.Save:
+            return UnsavedDecision.SAVE
+        if result == QMessageBox.StandardButton.Discard:
+            return UnsavedDecision.DISCARD
+        return UnsavedDecision.CANCEL
+
+    def closeEvent(self, event) -> None:  # noqa: N802 - Qt override
+        session = self._draft_session
+        if session is not None and session.editable and session.is_dirty:
+            decision = self._ask_unsaved_changes()
+            if decision is UnsavedDecision.CANCEL:
+                event.ignore()
+                return
+            if decision is UnsavedDecision.SAVE and not self._save_current_draft():
+                event.ignore()
+                return
+        super().closeEvent(event)

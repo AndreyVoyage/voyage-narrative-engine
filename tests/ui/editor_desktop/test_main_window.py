@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QStandardItem
-from PySide6.QtWidgets import QLineEdit, QPushButton, QTextEdit
 
 from services.editor_application import NOT_FOUND, EditorApplicationError
+from ui.editor_desktop.draft_editing import UnsavedDecision
 from ui.editor_desktop.main_window import EditorMainWindow
 
 
@@ -32,7 +32,7 @@ def test_window_populates_facade_collections_and_selects_scene(qapp, populated_s
         assert window.workspace_values["acceptance"].text() == "Not accepted"
         assert window.workspace_values["entries"].text() == "2"
         assert window.workspace_values["manifest"].text() == "Included"
-        assert "Opened sc_test_001 read-only" == window.statusBar().currentMessage()
+        assert "Opened sc_test_001 — draft editable" == window.statusBar().currentMessage()
     finally:
         window.close()
         qapp.processEvents()
@@ -129,12 +129,25 @@ def test_collection_failure_remains_visible(qapp, populated_service, monkeypatch
         window.close()
 
 
-def test_shell_has_no_mutation_controls_or_editors(qapp, populated_service):
+def test_mutation_controls_are_gated_until_draft_selection(qapp, populated_service):
     window = EditorMainWindow(populated_service)
+    window.show()
     try:
-        assert window.findChildren(QPushButton) == []
-        assert window.findChildren(QLineEdit) == []
-        assert window.findChildren(QTextEdit) == []
+        qapp.processEvents()
+        assert not window.draft_editor_container.isVisible()
+        assert not window.save_draft_button.isEnabled()
         assert window.scene_view.editTriggers().value == 0
+
+        index = window.scene_model.index(0, 0)
+        window.scene_view.setCurrentIndex(index)
+        qapp.processEvents()
+        assert window.draft_editor_container.isVisible()
+        assert not window.save_draft_button.isEnabled()
+
+        window.scene_title_edit.setText("Changed title")
+        qapp.processEvents()
+        assert window.save_draft_button.isEnabled()
     finally:
+        window._ask_unsaved_changes = lambda: UnsavedDecision.DISCARD
         window.close()
+        qapp.processEvents()

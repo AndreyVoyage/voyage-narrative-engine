@@ -125,6 +125,9 @@ def test_real_project_window_is_strictly_read_only(qapp):
         assert window.workspace_values["scene_id"].text() == EXPECTED_SCENES[0]
         assert window.workspace_values["lifecycle"].text() == "ACCEPTED"
         assert window.workspace_values["acceptance"].text().startswith("Accepted")
+        assert not window.draft_editor_container.isVisible()
+        assert window.accepted_immutable_label.isVisible()
+        assert not window.save_draft_button.isEnabled()
         assert guarded.calls == [
             "list_scenes",
             "list_characters",
