@@ -1,4 +1,4 @@
-"""Qt-native read-only editor shell over ``services.editor_application``."""
+"""Qt-native editor shell over ``services.editor_application``."""
 
 from __future__ import annotations
 
@@ -41,10 +41,11 @@ from .draft_editing import LIFECYCLE_DRAFT, DraftEditSession, UnsavedDecision
 
 _T = TypeVar("_T")
 _ID_ROLE = int(Qt.ItemDataRole.UserRole)
+_LIFECYCLE_ACCEPTED = "ACCEPTED"
 
 
 class EditorMainWindow(QMainWindow):
-    """Small read-only project browser backed exclusively by the app facade."""
+    """Small project editor backed exclusively by the application facade."""
 
     def __init__(self, service: EditorApplicationService, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -99,6 +100,7 @@ class EditorMainWindow(QMainWindow):
         self.scene_view.selectionModel().currentChanged.connect(
             self._on_scene_selected
         )
+        self._current_workspace: EditorSceneWorkspace | None = None
         self._draft_session: DraftEditSession | None = None
         self._restoring_selection = False
         self.entry_text_edits: dict[str, QPlainTextEdit] = {}
@@ -183,6 +185,15 @@ class EditorMainWindow(QMainWindow):
         self.accepted_immutable_label.setWordWrap(True)
         self.accepted_immutable_label.setVisible(False)
         layout.addWidget(self.accepted_immutable_label)
+
+        self.start_revision_button = QPushButton("Start new revision")
+        self.start_revision_button.setToolTip(
+            "Keep the accepted version unchanged and create a new editable draft."
+        )
+        self.start_revision_button.setVisible(False)
+        self.start_revision_button.setEnabled(False)
+        self.start_revision_button.clicked.connect(self._start_new_revision)
+        layout.addWidget(self.start_revision_button, 0, Qt.AlignmentFlag.AlignLeft)
 
         self.draft_editor_container = self._build_draft_editor()
         self.draft_editor_container.setVisible(False)
@@ -322,14 +333,29 @@ class EditorMainWindow(QMainWindow):
             return
         if not self._confirm_leaving_dirty_session(scene_id, previous):
             return
+        self._load_scene_workspace(scene_id)
+
+    def _load_scene_workspace(
+        self, scene_id: str, *, preserve_workspace_on_error: bool = False
+    ) -> EditorSceneWorkspace | None:
+        """Load and render one scene through the existing facade read path."""
+
         try:
             workspace = self._service.get_scene_workspace(scene_id)
         except EditorApplicationError as exc:
-            self._show_error(exc.code, exc.message)
-            return
+            if preserve_workspace_on_error:
+                self._show_workspace_operation_error(exc.code, exc.message)
+            else:
+                self._show_error(exc.code, exc.message)
+            return None
         except Exception:
-            self._show_error(INTERNAL_ERROR, "Unable to open the selected scene.")
-            return
+            if preserve_workspace_on_error:
+                self._show_workspace_operation_error(
+                    INTERNAL_ERROR, "Unable to reload the scene workspace."
+                )
+            else:
+                self._show_error(INTERNAL_ERROR, "Unable to open the selected scene.")
+            return None
         self._show_workspace(workspace)
         if workspace.lifecycle == LIFECYCLE_DRAFT:
             self.statusBar().showMessage(
@@ -337,6 +363,7 @@ class EditorMainWindow(QMainWindow):
             )
         else:
             self.statusBar().showMessage(f"Opened {workspace.scene_id} read-only")
+        return workspace
 
     def _confirm_leaving_dirty_session(
         self, target_scene_id: str, previous: QModelIndex
@@ -373,7 +400,9 @@ class EditorMainWindow(QMainWindow):
         return QModelIndex()
 
     def _show_workspace(self, workspace: EditorSceneWorkspace) -> None:
+        self._current_workspace = workspace
         self._refresh_workspace_summary(workspace)
+        self._refresh_scene_item(workspace)
         self.workspace_hint.setText("Current scene state (read-only)")
         self.workspace_error.setVisible(False)
         self.workspace_form_container.setVisible(True)
@@ -386,11 +415,31 @@ class EditorMainWindow(QMainWindow):
             )
             self._rebuild_draft_editor()
             self.accepted_immutable_label.setVisible(False)
+            self.start_revision_button.setVisible(False)
+            self.start_revision_button.setEnabled(False)
             self.draft_editor_container.setVisible(True)
         else:
             self._draft_session = None
             self.draft_editor_container.setVisible(False)
-            self.accepted_immutable_label.setVisible(True)
+            is_accepted = workspace.lifecycle == _LIFECYCLE_ACCEPTED
+            self.accepted_immutable_label.setVisible(is_accepted)
+            self.start_revision_button.setVisible(is_accepted)
+            self.start_revision_button.setEnabled(
+                is_accepted and workspace.can_fork_next_version
+            )
+
+    def _refresh_scene_item(self, workspace: EditorSceneWorkspace) -> None:
+        index = self._index_for_scene(workspace.scene_id)
+        item = self.scene_model.itemFromIndex(index) if index.isValid() else None
+        if item is None:
+            return
+        body = workspace.body if isinstance(workspace.body, dict) else {}
+        title = body.get("scene_title") or "Untitled scene"
+        details = (
+            f"{workspace.scene_id}  ·  v{workspace.latest_version}  ·  "
+            f"{workspace.lifecycle}"
+        )
+        item.setText(f"{title}\n{details}")
 
     def _refresh_workspace_summary(self, workspace: EditorSceneWorkspace) -> None:
         body = workspace.body if isinstance(workspace.body, dict) else {}
@@ -423,15 +472,22 @@ class EditorMainWindow(QMainWindow):
         self.workspace_form_container.setVisible(False)
         self.draft_editor_container.setVisible(False)
         self.accepted_immutable_label.setVisible(False)
+        self.start_revision_button.setVisible(False)
+        self.start_revision_button.setEnabled(False)
+        self._current_workspace = None
         self._draft_session = None
         self.statusBar().showMessage(text)
 
-    def _show_save_error(self, code: str, message: str) -> None:
-        """Save-failure surface: error shown, buffer and dirty state preserved."""
+    def _show_workspace_operation_error(self, code: str, message: str) -> None:
+        """Show a mutation error without discarding the visible workspace."""
         text = f"{code}: {message}"
         self.workspace_error.setText(text)
         self.workspace_error.setVisible(True)
         self.statusBar().showMessage(text)
+
+    def _show_save_error(self, code: str, message: str) -> None:
+        """Save-failure surface: error shown, buffer and dirty state preserved."""
+        self._show_workspace_operation_error(code, message)
 
     def _rebuild_draft_editor(self) -> None:
         session = self._draft_session
@@ -515,6 +571,57 @@ class EditorMainWindow(QMainWindow):
         self._update_dirty_ui()
         self.statusBar().showMessage(result.message)
         return True
+
+    def _start_new_revision(self) -> bool:
+        """Fork the exact loaded ACCEPTED version, then reload the same scene."""
+
+        workspace = self._current_workspace
+        if (
+            workspace is None
+            or workspace.lifecycle != _LIFECYCLE_ACCEPTED
+            or not workspace.can_fork_next_version
+        ):
+            return False
+        scene_id = workspace.scene_id
+        source_version = workspace.latest_version
+        if not self._confirm_start_new_revision(scene_id, source_version):
+            return False
+        try:
+            result = self._service.fork_scene_version(scene_id, source_version)
+        except EditorApplicationError as exc:
+            self._show_workspace_operation_error(exc.code, exc.message)
+            return False
+        except Exception:
+            self._show_workspace_operation_error(
+                INTERNAL_ERROR, "Unable to start a new scene revision."
+            )
+            return False
+        if not result.ok:
+            self._show_workspace_operation_error(result.code, result.message)
+            return False
+        if self._load_scene_workspace(
+            scene_id, preserve_workspace_on_error=True
+        ) is None:
+            return False
+        self.statusBar().showMessage(result.message)
+        return True
+
+    def _confirm_start_new_revision(self, scene_id: str, version: int) -> bool:
+        """Ask before creating the persistent next SceneVersion."""
+
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Icon.Question)
+        box.setWindowTitle("Start new revision")
+        box.setText(f"Start a new revision of {scene_id} from version {version}?")
+        box.setInformativeText(
+            "The accepted version will remain unchanged. "
+            "A new editable draft revision will be created."
+        )
+        box.setStandardButtons(
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel
+        )
+        box.setDefaultButton(QMessageBox.StandardButton.Cancel)
+        return box.exec() == QMessageBox.StandardButton.Yes
 
     def _ask_unsaved_changes(self) -> UnsavedDecision:
         """Built-in modal prompt; extracted so tests can stub the decision."""

@@ -127,6 +127,8 @@ def test_real_project_window_is_strictly_read_only(qapp):
         assert window.workspace_values["acceptance"].text().startswith("Accepted")
         assert not window.draft_editor_container.isVisible()
         assert window.accepted_immutable_label.isVisible()
+        assert window.start_revision_button.isVisible()
+        assert window.start_revision_button.isEnabled()
         assert not window.save_draft_button.isEnabled()
         assert guarded.calls == [
             "list_scenes",
