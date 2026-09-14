@@ -72,6 +72,14 @@ from .package_importer import (
     CharacterPackageImportService,
     PackageImportResult,
 )
+from .package_management import (
+    CharacterPackageManagementError,
+    CharacterPackageManagementService,
+    InstalledCharacter,
+    InstalledPackageCorruptError,
+    InstalledPackageNotFoundError,
+    InstalledPackageRelease,
+)
 from .package_v1 import (
     CharacterPackageContractError,
     CharacterPackageIntegrityError,
@@ -147,4 +155,10 @@ __all__ = [
     "PACKAGE_IMPORTED",
     "PACKAGE_NO_OP_ALREADY_INSTALLED",
     "TRUST_LOCAL_UNTRUSTED",
+    "CharacterPackageManagementError",
+    "InstalledPackageCorruptError",
+    "InstalledPackageNotFoundError",
+    "InstalledPackageRelease",
+    "InstalledCharacter",
+    "CharacterPackageManagementService",
 ]
