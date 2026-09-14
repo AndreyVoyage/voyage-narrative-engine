@@ -63,6 +63,24 @@ from .local_snapshot import (
     SnapshotStore,
 )
 from .physical import physical_profile_from_preset
+from .package_importer import (
+    PACKAGE_IMPORTED,
+    PACKAGE_NO_OP_ALREADY_INSTALLED,
+    TRUST_LOCAL_UNTRUSTED,
+    CharacterPackageCollisionError,
+    CharacterPackageImportError,
+    CharacterPackageImportService,
+    PackageImportResult,
+)
+from .package_v1 import (
+    CharacterPackageContractError,
+    CharacterPackageIntegrityError,
+    CharacterPackagePathError,
+    CharacterPackageV1Error,
+    PackageFileDescriptor,
+    VerifiedCharacterPackage,
+    verify_character_package_v1,
+)
 from .reference_importer import ImportResult as ReferenceImportOutcome
 from .reference_importer import import_reference
 from .service import (
@@ -115,4 +133,18 @@ __all__ = [
     "SnapshotNotFoundError",
     "SnapshotValidationError",
     "SnapshotOperationError",
+    "CharacterPackageV1Error",
+    "CharacterPackageContractError",
+    "CharacterPackageIntegrityError",
+    "CharacterPackagePathError",
+    "PackageFileDescriptor",
+    "VerifiedCharacterPackage",
+    "verify_character_package_v1",
+    "CharacterPackageImportError",
+    "CharacterPackageCollisionError",
+    "PackageImportResult",
+    "CharacterPackageImportService",
+    "PACKAGE_IMPORTED",
+    "PACKAGE_NO_OP_ALREADY_INSTALLED",
+    "TRUST_LOCAL_UNTRUSTED",
 ]
