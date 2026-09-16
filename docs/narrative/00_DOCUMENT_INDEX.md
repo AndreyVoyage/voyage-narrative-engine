@@ -95,6 +95,16 @@
 
 ---
 
+## 5b. Workflow governance (Fast Lane)
+
+| Документ | Статус | Зачем |
+|---|---|---|
+| [`docs/workflows/VOYAGE_REVERSIBLE_FAST_LANE_V1.md`](../workflows/VOYAGE_REVERSIBLE_FAST_LANE_V1.md) | CANONICAL | Нормативное governance рабочего процесса разработки (Fast Lane Phase 0): green path fast, red path fail-closed. |
+| [`docs/workflows/VOYAGE_AI_QA_AND_EVIDENCE_POLICY_V1.md`](../workflows/VOYAGE_AI_QA_AND_EVIDENCE_POLICY_V1.md) | CANONICAL | Операционная политика AI-QA триггеров, переиспользования evidence и таксономии отказов. |
+| [`docs/workflows/VOYAGE_FAST_LANE_JOURNAL_V1.md`](../workflows/VOYAGE_FAST_LANE_JOURNAL_V1.md) | ACTIVE | Ненормативный журнал метрик / lessons-learned / framework-update наблюдений (не gate). |
+
+---
+
 ## 6. Роли
 
 | Где | Что |

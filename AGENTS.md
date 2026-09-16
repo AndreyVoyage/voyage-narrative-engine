@@ -81,6 +81,8 @@ VNE repo содержит три orthogonal слоя. Агент должен з
 1. `AGENTS.md` (этот файл).
 2. `.voyage/project.yaml` — project config, canonical sources, quality gates.
 2a. `FRAMEWORK_VNE_INTEGRATION.md` — boundary между VNE и Voyage Framework.
+2b. `docs/workflows/VOYAGE_REVERSIBLE_FAST_LANE_V1.md` — нормативное governance рабочего процесса разработки (Fast Lane Phase 0).
+2c. `docs/workflows/VOYAGE_AI_QA_AND_EVIDENCE_POLICY_V1.md` — операционная политика AI-QA триггеров и evidence.
 3. `docs/VOYAGE_MASTER_PLAN_v1.0.md` — стратегия развития, дорожная карта, приоритеты.
 4. `docs/VOYAGE_MASTER_DOCUMENT_v3.md` — архитектурная vision.
 4a. `docs/narrative/NARRATIVE_ROADMAP.md` — N5 RenPy/JSON track roadmap.
