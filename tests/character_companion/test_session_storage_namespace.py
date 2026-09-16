@@ -283,7 +283,8 @@ def test_U_pinned_execution_guards_remain_blocked(tmp_path):
     # rejected by the generic guard; it needs no package or provider.
     assert service.get_messages("cmp-pinned") == ()
 
-    # Operations still outside S8C1 remain blocked.
+    # S8C2: pinned co-author is no longer generically blocked; it advances to
+    # exact-definition resolution, failing closed on the unresolved package.
     with pytest.raises(CompanionError) as exc:
         service._coauthor_context("cmp-pinned")
-    assert exc.value.code == "pinned_execution_blocked"
+    assert exc.value.code == "package_missing"

@@ -673,18 +673,14 @@ def test_23_pinned_history_reads_pinned_namespace(tmp_path):
     assert [m.text for m in messages] == ["hello"]
 
 
-def test_24_pinned_coauthor_fails_before_cross_session_memory(tmp_path, monkeypatch):
+def test_24_pinned_coauthor_resolves_exact_definition(tmp_path):
     service, selection, _data_root, _src = _setup_pinned(tmp_path)
     session = service.create_pinned_session(selection)
 
-    calls = []
-    monkeypatch.setattr(
-        service, "_coauthor_user_memory_block", lambda *a, **k: calls.append(1)
-    )
-    with pytest.raises(CompanionError) as exc:
-        service._coauthor_context(session.session_id)
-    assert exc.value.code == "pinned_execution_blocked"
-    assert calls == []
+    # S8C2: pinned co-author is no longer generically blocked; it proceeds
+    # through exact Package V1 definition resolution and context assembly.
+    ctx = service._coauthor_context(session.session_id)
+    assert set(ctx) == {"visible_history", "scene_text", "user_memory_block"}
 
 
 def test_25_pinned_image_execution_fails_before_provider(tmp_path, monkeypatch):
@@ -710,7 +706,6 @@ def test_26_still_blocked_pinned_paths_have_stable_error(tmp_path):
     session = service.create_pinned_session(selection)
 
     for op in (
-        lambda: service._coauthor_context(session.session_id),
         lambda: service.create_image_job(session.session_id, kind=KIND_CONTEXT),
         lambda: service.set_message_visibility(session.session_id, 1, hidden=True),
     ):

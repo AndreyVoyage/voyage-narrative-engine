@@ -409,11 +409,12 @@ def test_T_image_remains_blocked(tmp_path):
     assert exc.value.code == "pinned_execution_blocked"
 
 
-def test_U_coauthor_remains_blocked(tmp_path):
+def test_U_coauthor_context_resolves_pinned(tmp_path):
     service, selection, session, data_root, src = _pinned_session(tmp_path)
-    with pytest.raises(CompanionError) as exc:
-        service._coauthor_context(session.session_id)
-    assert exc.value.code == "pinned_execution_blocked"
+    # S8C2: pinned co-author is no longer generically blocked; it resolves the
+    # exact Package V1 definition and returns a local context snapshot.
+    ctx = service._coauthor_context(session.session_id)
+    assert set(ctx) == {"visible_history", "scene_text", "user_memory_block"}
 
 
 def test_V_visibility_hidden_remains_blocked(tmp_path):

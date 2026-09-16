@@ -585,15 +585,16 @@ class CompanionService:
         return SessionCharacterPinStatus.PINNED_V1, pin
 
     def _require_executable_session(self, row: dict) -> None:
-        """Centralized fail-closed guard: a PINNED_V1 session is metadata-only
-        until S8B2. Must run BEFORE any memory/state/runtime/provider/image work.
+        """Centralized fail-closed guard for the PINNED_V1 operations that
+        remain blocked after S8C2 (image execution, hidden visibility mutation).
+        Must run BEFORE any memory/state/runtime/provider/image work.
         """
         pin_status, _pin = self._pin_for_row(row)
         if pin_status is SessionCharacterPinStatus.PINNED_V1:
             raise CompanionError(
                 "pinned_execution_blocked",
-                "PINNED_V1 sessions are metadata-only until S8B2; "
-                "dialogue/history/co-author/image execution is blocked",
+                "PINNED_V1 image execution and hidden visibility mutation are "
+                "blocked until a later slice",
             )
 
     def _enrich(self, row: dict) -> CompanionSession:
@@ -731,13 +732,38 @@ class CompanionService:
         private (RELATIONSHIP / PSYCHOLOGY / epistemic / FACT / Accepted
         package) and no KIRA core instruction. Opens no writable path."""
         row = self._session_row(session_id)
-        self._require_executable_session(row)
-        entry = self._require_character(row["character_id"])
         pres = row.get("presentation") if isinstance(row.get("presentation"), dict) else {}
         hidden = {
             int(x) for x in (pres.get("hiddenMessageIds") or [])
             if isinstance(x, int) and not isinstance(x, bool)
         }
+
+        pin_status, pin = self._pin_for_row(row)
+        if pin_status is SessionCharacterPinStatus.PINNED_V1:
+            # S8C2: exact Package V1 definition validates BEFORE any pinned
+            # storage resolution/read. display_name + scene come only from the
+            # resolved definition (no catalog/legacy fallback). Dimension
+            # semantics are intentionally NOT part of this context.
+            definition = self._resolve_exact_definition(self._selection_from_pin(pin))
+            storage_root = self._pinned_storage_root(pin)
+            subject_id = pin.character_id
+            visible_history = [
+                {"role": _HISTORY_ROLE[m.role], "content": m.text}
+                for m in self._history_for_row(row)
+                if m.seq not in hidden
+            ]
+            scene = self._scene_for_display_name(row, definition.display_name)
+            scene_text = render_scene_block(scene) if scene is not None else None
+            user_memory_block = self._coauthor_user_memory_block_for_root(
+                storage_root / "memory", subject_id, session_id
+            )
+            return {
+                "visible_history": visible_history,
+                "scene_text": scene_text,
+                "user_memory_block": user_memory_block,
+            }
+
+        entry = self._require_character(row["character_id"])
         visible_history = [
             {"role": _HISTORY_ROLE[m.role], "content": m.text}
             for m in self._history(row["character_id"], session_id)
@@ -755,14 +781,21 @@ class CompanionService:
     def _coauthor_user_memory_block(
         self, entry: CompanionCharacterEntry, current_session_id: str
     ) -> Optional[str]:
+        return self._coauthor_user_memory_block_for_root(
+            self._char_root(entry.character_id) / "memory",
+            entry.subject_id,
+            current_session_id,
+        )
+
+    def _coauthor_user_memory_block_for_root(
+        self, memory_root: Path, subject_id: str, current_session_id: str
+    ) -> Optional[str]:
         """Newest USER_STATED statements from OTHER sessions of this profile,
         as bounded '- [со слов пользователя] ...' lines (whole block or omit).
         Read-only: a SELECT over the shared causal event log."""
-        backend = RuntimeMemoryBackend(
-            self._char_root(entry.character_id) / "memory", entry.subject_id
-        )
+        backend = RuntimeMemoryBackend(memory_root, subject_id)
         try:
-            events = backend.load_events_causal(entry.subject_id)
+            events = backend.load_events_causal(subject_id)
         finally:
             backend.close()
         lines: List[str] = []
