@@ -20,6 +20,7 @@ from typing import Callable, Optional, Sequence
 
 from services.character_core.epistemics import EpistemicEnvelope
 from services.character_runtime import (
+    AcceptedCharacter,
     RuntimeMemoryBackend,
     RuntimeSession,
     load_accepted_character,
@@ -284,6 +285,94 @@ class RuntimeService:
             acceptance_root=self._acceptance_root,
             source_loader=self._source_loader,
         )
+        return self._turn_resolved(
+            accepted,
+            subject_id,
+            policy=policy,
+            history=history,
+            user_message=user_message,
+            provider=provider,
+            memory_root=memory_root,
+            session_id=session_id,
+            provider_info=provider_info,
+            capture=capture,
+            turn_id=turn_id,
+            provider_factory=provider_factory,
+            scene=scene,
+            state_root=state_root,
+            explicit_epistemic_envelopes=explicit_epistemic_envelopes,
+            epistemic_at_seq=epistemic_at_seq,
+        )
+
+    def turn_with_resolved_character(
+        self,
+        accepted: AcceptedCharacter,
+        subject_id: str,
+        *,
+        policy: RuntimePolicy,
+        history: list,
+        user_message: str,
+        provider: ProviderCallable,
+        memory_root: Path,
+        session_id: Optional[str] = None,
+        provider_info: Optional[dict] = None,
+        capture: Optional[TurnCapture] = None,
+        turn_id: Optional[str] = None,
+        provider_factory: Optional[ProviderFactory] = None,
+        scene=None,
+        state_root: Optional[Path] = None,
+        explicit_epistemic_envelopes: Sequence[EpistemicEnvelope] = (),
+        epistemic_at_seq: Optional[int] = None,
+        dimension_set=None,
+    ) -> TurnResult:
+        """Execute a turn from pre-resolved native character inputs.
+
+        Unlike :meth:`turn`, this does NOT load the legacy accepted character;
+        the caller supplies the resolved character and, for the Grounded v2
+        variant, the Package V1 dimension semantics. Legacy callers continue to
+        use :meth:`turn`.
+        """
+        return self._turn_resolved(
+            accepted,
+            subject_id,
+            policy=policy,
+            history=history,
+            user_message=user_message,
+            provider=provider,
+            memory_root=memory_root,
+            session_id=session_id,
+            provider_info=provider_info,
+            capture=capture,
+            turn_id=turn_id,
+            provider_factory=provider_factory,
+            scene=scene,
+            state_root=state_root,
+            explicit_epistemic_envelopes=explicit_epistemic_envelopes,
+            epistemic_at_seq=epistemic_at_seq,
+            dimension_set=dimension_set,
+        )
+
+    def _turn_resolved(
+        self,
+        accepted: AcceptedCharacter,
+        subject_id: str,
+        *,
+        policy: RuntimePolicy,
+        history: list,
+        user_message: str,
+        provider: ProviderCallable,
+        memory_root: Path,
+        session_id: Optional[str] = None,
+        provider_info: Optional[dict] = None,
+        capture: Optional[TurnCapture] = None,
+        turn_id: Optional[str] = None,
+        provider_factory: Optional[ProviderFactory] = None,
+        scene=None,
+        state_root: Optional[Path] = None,
+        explicit_epistemic_envelopes: Sequence[EpistemicEnvelope] = (),
+        epistemic_at_seq: Optional[int] = None,
+        dimension_set=None,
+    ) -> TurnResult:
         sid = session_id or f"session-{uuid.uuid4().hex}"
         backend = RuntimeMemoryBackend(Path(memory_root), subject_id)
         session = RuntimeSession(accepted, backend, sid)
@@ -316,11 +405,13 @@ class RuntimeService:
             # is left unset and Character Core falls back to raw numeric
             # rendering. Beta v1 never receives this key.
             if getattr(policy, "variant_id", None) == KIRA_GROUNDED_V2:
-                dimension_set = load_character_dimension_set(
-                    subject_id, accepted.source_candidate_hash
-                )
-                if dimension_set is not None:
-                    runtime_context["dimension_definitions"] = dimension_set
+                effective_dimension_set = dimension_set
+                if effective_dimension_set is None:
+                    effective_dimension_set = load_character_dimension_set(
+                        subject_id, accepted.source_candidate_hash
+                    )
+                if effective_dimension_set is not None:
+                    runtime_context["dimension_definitions"] = effective_dimension_set
                 # Approved, active Consolidated Memory for THIS workspace only
                 # (shares the per-workspace memory DB; Beta v1 never gets this
                 # key). Raw Event Log is untouched.

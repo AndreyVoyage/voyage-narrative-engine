@@ -259,9 +259,19 @@ def test_malformed_pin_maps_to_stable_error(tmp_path):
     assert (exc.value.status, exc.value.code) == (400, "invalid_pin")
 
 
-def test_blocked_execution_maps_to_stable_error(tmp_path):
+def test_pinned_execution_boundary_maps_errors(tmp_path):
     transport, payload = _pinned_transport(tmp_path)
     session = transport.create_pinned_session(payload)
+
+    # S8C1: pinned send_message runs the runtime and is no longer mapped to
+    # the generic pinned_execution_blocked error.
+    sent = transport.send_message({"sessionId": session["sessionId"], "text": "Hi"})
+    assert sent["sessionId"] == session["sessionId"]
+    assert sent["response"]
+
+    # Genuinely still-blocked pinned operations keep their stable 409 error.
     with pytest.raises(CompanionTransportError) as exc:
-        transport.send_message({"sessionId": session["sessionId"], "text": "Hi"})
+        transport.create_image_job(
+            {"sessionId": session["sessionId"], "kind": "context"}
+        )
     assert (exc.value.status, exc.value.code) == (409, "pinned_execution_blocked")

@@ -625,36 +625,52 @@ def test_21_pinned_list_does_not_initialize_memory(tmp_path):
     assert not (data_root / "characters").exists()
 
 
-def test_22_pinned_send_fails_before_runtime_turn(tmp_path, monkeypatch):
-    service, selection, _data_root, _src = _setup_pinned(tmp_path)
-    session = service.create_pinned_session(selection)
-
-    calls = []
-    monkeypatch.setattr(service._runtime, "turn", lambda *a, **k: calls.append(k) or None)
-    with pytest.raises(CompanionError) as exc:
-        service.send_message(session.session_id, "Hello")
-    assert exc.value.code == "pinned_execution_blocked"
-    assert calls == []
-
-
-def test_23_pinned_history_fails_before_memory_backend(tmp_path, monkeypatch):
-    import services.character_companion.service as service_module
+def test_22_pinned_send_reaches_resolved_runtime_seam(tmp_path, monkeypatch):
+    from types import SimpleNamespace
 
     service, selection, _data_root, _src = _setup_pinned(tmp_path)
     session = service.create_pinned_session(selection)
 
     calls = []
-    original = service_module.RuntimeMemoryBackend
+    monkeypatch.setattr(
+        service._runtime,
+        "turn_with_resolved_character",
+        lambda accepted, subject_id, **kwargs: calls.append((subject_id, kwargs))
+        or SimpleNamespace(response="ok"),
+    )
+    turn = service.send_message(session.session_id, "Hello")
+    assert turn.response == "ok"
+    assert len(calls) == 1
+    assert calls[0][0] == selection.character_id
 
-    def _sentinel_backend(*a, **k):
-        calls.append(1)
-        return original(*a, **k)
 
-    monkeypatch.setattr(service_module, "RuntimeMemoryBackend", _sentinel_backend)
-    with pytest.raises(CompanionError) as exc:
-        service.get_messages(session.session_id)
-    assert exc.value.code == "pinned_execution_blocked"
-    assert calls == []
+def test_23_pinned_history_reads_pinned_namespace(tmp_path):
+    from services.character_runtime import RuntimeMemoryBackend
+    from services.character_runtime.memory import RuntimeEvent
+
+    service, selection, data_root, _src = _setup_pinned(tmp_path)
+    session = service.create_pinned_session(selection)
+    pin = selection.to_pin()
+    mem_root = (
+        data_root / "character_namespaces" / "pinned-v1" / pin.storage_namespace_id() / "memory"
+    )
+    backend = RuntimeMemoryBackend(mem_root, pin.character_id)
+    backend.record_event(
+        RuntimeEvent(
+            event_id="evt-1",
+            subject_id=pin.character_id,
+            session_id=session.session_id,
+            event_type="USER_MESSAGE",
+            meaning="hello",
+            created_at="2026-01-01T00:00:00+00:00",
+        )
+    )
+    backend.close()
+
+    # S8C1: pinned history reads from the S8B2 namespace; it is no longer
+    # rejected by the generic pinned guard and needs no package or provider.
+    messages = service.get_messages(session.session_id)
+    assert [m.text for m in messages] == ["hello"]
 
 
 def test_24_pinned_coauthor_fails_before_cross_session_memory(tmp_path, monkeypatch):
@@ -687,13 +703,21 @@ def test_25_pinned_image_execution_fails_before_provider(tmp_path, monkeypatch):
     assert calls == []
 
 
-def test_26_execution_block_has_stable_error(tmp_path):
+def test_26_still_blocked_pinned_paths_have_stable_error(tmp_path):
+    from services.character_companion.image_jobs import KIND_CONTEXT
+
     service, selection, _data_root, _src = _setup_pinned(tmp_path)
     session = service.create_pinned_session(selection)
-    with pytest.raises(CompanionError) as exc:
-        service.send_message(session.session_id, "Hello")
-    assert exc.value.code == "pinned_execution_blocked"
-    assert "PINNED_V1" in exc.value.message
+
+    for op in (
+        lambda: service._coauthor_context(session.session_id),
+        lambda: service.create_image_job(session.session_id, kind=KIND_CONTEXT),
+        lambda: service.set_message_visibility(session.session_id, 1, hidden=True),
+    ):
+        with pytest.raises(CompanionError) as exc:
+            op()
+        assert exc.value.code == "pinned_execution_blocked"
+        assert "PINNED_V1" in exc.value.message
 
 
 def test_27_legacy_path_retains_compatibility(tmp_path):

@@ -47,7 +47,7 @@ from services.character_lab import GroundedV2Policy, RuntimeService
 from services.character_lab.runtime_policy import ContextBudgetExceededError
 from services.character_lab.scene import new_scene, render_scene_block
 from services.character_lab.source_loader import build_repo_source_loader
-from services.character_runtime import RuntimeMemoryBackend
+from services.character_runtime import AcceptedCharacter, RuntimeMemoryBackend
 
 from .catalog import CompanionCatalog, CompanionCharacterEntry, build_default_catalog
 from .session_character import (
@@ -817,14 +817,41 @@ class CompanionService:
     # ------------------------------------------------------------- messages
     def get_messages(self, session_id: str) -> Tuple[CompanionMessage, ...]:
         row = self._session_row(session_id)
-        self._require_executable_session(row)
-        return self._history(row["character_id"], session_id)
+        return self._history_for_row(row)
 
     def _history(self, character_id: str, session_id: str) -> Tuple[CompanionMessage, ...]:
         entry = self._require_character(character_id)
-        backend = RuntimeMemoryBackend(self._char_root(character_id) / "memory", entry.subject_id)
+        return self._read_history(
+            self._char_root(character_id) / "memory", entry.subject_id, session_id
+        )
+
+    def _history_for_row(self, row: dict) -> Tuple[CompanionMessage, ...]:
+        """Read a session's conversation history from the correct namespace.
+
+        PINNED_V1 sessions read from the S8B2 release-scoped namespace;
+        LEGACY_UNPINNED sessions keep the historical character_id-only root.
+        No package lookup, no provider, no RuntimeDefinition load.
+        """
+        pin_status, pin = self._pin_for_row(row)
+        if pin_status is SessionCharacterPinStatus.PINNED_V1:
+            return self._read_history(
+                self._pinned_storage_root(pin) / "memory",
+                pin.character_id,
+                row["session_id"],
+            )
+        entry = self._require_character(row["character_id"])
+        return self._read_history(
+            self._char_root(row["character_id"]) / "memory",
+            entry.subject_id,
+            row["session_id"],
+        )
+
+    def _read_history(
+        self, memory_root: Path, subject_id: str, session_id: str
+    ) -> Tuple[CompanionMessage, ...]:
+        backend = RuntimeMemoryBackend(memory_root, subject_id)
         try:
-            events = backend.load_events_causal(entry.subject_id)
+            events = backend.load_events_causal(subject_id)
         finally:
             backend.close()
         out: List[CompanionMessage] = []
@@ -840,62 +867,41 @@ class CompanionService:
         return tuple(out)
 
     def _scene_for_turn(self, row: dict, entry: CompanionCharacterEntry):
+        return self._scene_for_display_name(row, entry.display_name)
+
+    def _scene_for_display_name(self, row: dict, display_name: str):
         parsed = CompanionScene.from_row(row.get("scene"))
         if parsed is None or parsed.is_empty():
             return None
         return new_scene(
             title=str(row.get("title") or "").strip(),
             location=parsed.place,
-            participants=[entry.display_name],
+            participants=[display_name],
             prior_events=[],
             current_situation=_compose_situation(parsed),
             scene_id=f"companion-{row['session_id']}",
             created_at=row.get("created_at") or _now_iso(),
         )
 
-    def send_message(self, session_id: str, text: str) -> CompanionTurn:
-        if not isinstance(text, str) or not text.strip():
-            raise CompanionError("empty_message", "message text must be a non-empty string")
-        row = self._session_row(session_id)
-        self._require_executable_session(row)
-        entry = self._require_character(row["character_id"])
-        char_root = self._char_root(entry.character_id)
-        scene = self._scene_for_turn(row, entry)
-
-        history = [
-            {"role": _HISTORY_ROLE[m.role], "content": m.text}
-            for m in self._history(entry.character_id, session_id)
-        ]
-        # ONE deterministically-chosen factory. No retry, no second provider.
-        try:
-            factory = self._dialogue_factory()
-        except (CompanionConfigError, SettingsError, ProviderRegistryError) as exc:
-            raise CompanionError(getattr(exc, "code", "provider_config"), exc.message) from exc
-
-        # Companion supplies its normalized DIALOGUE operational context budget
-        # explicitly (V1C). Bare GroundedV2Policy() -- e.g. Character Lab -- stays
-        # unbounded. The budget bounds ONLY the assembled provider request; the
-        # persisted event log is never touched.
-        context_budget = (
-            self._settings_store.load().dialogue_context_budget_est_tokens
-            if self._settings_store is not None
-            else DIALOGUE_CONTEXT_BUDGET_DEFAULT
+    def _selection_from_pin(self, pin: SessionCharacterPinV1) -> ExactCharacterSelectionV1:
+        return ExactCharacterSelectionV1(
+            character_id=pin.character_id,
+            release_id=pin.release_id,
+            package_hash=pin.package_hash,
+            runtime_definition_hash=pin.runtime_definition_hash,
         )
 
+    def _accepted_character_from_definition(self, definition) -> AcceptedCharacter:
+        return AcceptedCharacter(
+            subject_id=definition.character_id,
+            package=definition.candidate,
+            source_candidate_hash=definition.source_acceptance.package_hash,
+            acceptance_id=definition.source_acceptance.acceptance_id,
+        )
+
+    def _run_turn(self, turn_call):
         try:
-            result = self._runtime.turn(
-                entry.subject_id,
-                policy=GroundedV2Policy(context_budget_est_tokens=context_budget),
-                history=history,
-                user_message=text.strip(),
-                provider=factory(None),
-                provider_factory=factory,
-                memory_root=char_root / "memory",
-                state_root=char_root / "state",
-                session_id=session_id,
-                provider_info=self._dialogue_provider_info(),
-                scene=scene,
-            )
+            return turn_call()
         except CompanionError:
             raise
         except ContextBudgetExceededError as exc:
@@ -915,6 +921,83 @@ class CompanionService:
                 "provider_failed", "the character response could not be generated"
             ) from exc
 
+    def send_message(self, session_id: str, text: str) -> CompanionTurn:
+        if not isinstance(text, str) or not text.strip():
+            raise CompanionError("empty_message", "message text must be a non-empty string")
+        row = self._session_row(session_id)
+        pin_status, pin = self._pin_for_row(row)
+
+        # ONE deterministically-chosen factory. No retry, no second provider.
+        try:
+            factory = self._dialogue_factory()
+        except (CompanionConfigError, SettingsError, ProviderRegistryError) as exc:
+            raise CompanionError(getattr(exc, "code", "provider_config"), exc.message) from exc
+
+        # Companion supplies its normalized DIALOGUE operational context budget
+        # explicitly (V1C). Bare GroundedV2Policy() -- e.g. Character Lab -- stays
+        # unbounded. The budget bounds ONLY the assembled provider request; the
+        # persisted event log is never touched.
+        context_budget = (
+            self._settings_store.load().dialogue_context_budget_est_tokens
+            if self._settings_store is not None
+            else DIALOGUE_CONTEXT_BUDGET_DEFAULT
+        )
+        policy = GroundedV2Policy(context_budget_est_tokens=context_budget)
+        provider_info = self._dialogue_provider_info()
+
+        if pin_status is SessionCharacterPinStatus.PINNED_V1:
+            # FAIL-CLOSED ORDER: exact definition validation runs BEFORE any
+            # pinned storage/history read. No memory/state mkdir or SQLite
+            # creation happens until package + both hashes verify.
+            definition = self._resolve_exact_definition(self._selection_from_pin(pin))
+            accepted = self._accepted_character_from_definition(definition)
+            storage_root = self._pinned_storage_root(pin)
+            scene = self._scene_for_display_name(row, definition.display_name)
+            history = [
+                {"role": _HISTORY_ROLE[m.role], "content": m.text}
+                for m in self._history_for_row(row)
+            ]
+            result = self._run_turn(
+                lambda: self._runtime.turn_with_resolved_character(
+                    accepted,
+                    pin.character_id,
+                    policy=policy,
+                    history=history,
+                    user_message=text.strip(),
+                    provider=factory(None),
+                    provider_factory=factory,
+                    memory_root=storage_root / "memory",
+                    state_root=storage_root / "state",
+                    session_id=session_id,
+                    provider_info=provider_info,
+                    scene=scene,
+                    dimension_set=definition.dimension_semantics.dimension_set,
+                )
+            )
+        else:
+            entry = self._require_character(row["character_id"])
+            char_root = self._char_root(entry.character_id)
+            scene = self._scene_for_turn(row, entry)
+            history = [
+                {"role": _HISTORY_ROLE[m.role], "content": m.text}
+                for m in self._history(entry.character_id, session_id)
+            ]
+            result = self._run_turn(
+                lambda: self._runtime.turn(
+                    entry.subject_id,
+                    policy=policy,
+                    history=history,
+                    user_message=text.strip(),
+                    provider=factory(None),
+                    provider_factory=factory,
+                    memory_root=char_root / "memory",
+                    state_root=char_root / "state",
+                    session_id=session_id,
+                    provider_info=provider_info,
+                    scene=scene,
+                )
+            )
+
         registry = self._load_registry()
         for r in registry:
             if r.get("session_id") == session_id:
@@ -924,7 +1007,7 @@ class CompanionService:
         return CompanionTurn(
             session_id=session_id,
             response=result.response,
-            messages=self._history(entry.character_id, session_id),
+            messages=self._history_for_row(row),
             scene_present=scene is not None,
         )
 

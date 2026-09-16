@@ -272,14 +272,18 @@ def test_U_pinned_execution_guards_remain_blocked(tmp_path):
         service._data_root,
         [_row("cmp-pinned", "alice", character_pin_v1=pin.to_json())],
     )
+    # S8C1: valid pinned send is no longer rejected by the generic execution
+    # guard. With an unresolved exact package it fails closed at definition
+    # resolution, not at the pinned-blocked guard.
     with pytest.raises(CompanionError) as exc:
         service.send_message("cmp-pinned", "Hello")
-    assert exc.value.code == "pinned_execution_blocked"
+    assert exc.value.code == "package_missing"
 
-    with pytest.raises(CompanionError) as exc:
-        service.get_messages("cmp-pinned")
-    assert exc.value.code == "pinned_execution_blocked"
+    # S8C1: valid pinned history reads its S8B2 namespace and is no longer
+    # rejected by the generic guard; it needs no package or provider.
+    assert service.get_messages("cmp-pinned") == ()
 
+    # Operations still outside S8C1 remain blocked.
     with pytest.raises(CompanionError) as exc:
         service._coauthor_context("cmp-pinned")
     assert exc.value.code == "pinned_execution_blocked"
