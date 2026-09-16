@@ -353,6 +353,38 @@ class CompanionService:
         (root / "state").mkdir(parents=True, exist_ok=True)
         return root
 
+    def _pinned_storage_root(self, pin: SessionCharacterPinV1) -> Path:
+        """Release-scoped storage root for a PINNED session.
+
+        The root is ``<data_root>/character_namespaces/pinned-v1/<digest>/``
+        where ``<digest>`` is ``pin.storage_namespace_id()`` (a full 64-char
+        SHA-256 hex). Raw identity values never appear as path components, so
+        filesystem safety does not depend on raw-ID path safety.
+        """
+        root = (
+            self._data_root
+            / "character_namespaces"
+            / "pinned-v1"
+            / pin.storage_namespace_id()
+        )
+        (root / "memory").mkdir(parents=True, exist_ok=True)
+        (root / "state").mkdir(parents=True, exist_ok=True)
+        return root
+
+    def _storage_root_for_session(self, row: dict) -> Path:
+        """Route a session row to its storage root, fail-closed.
+
+        LEGACY_UNPINNED keeps the historical ``characters/<character_id>/``
+        layout. A valid PINNED_V1 session uses the release-scoped hashed
+        namespace. Invalid/partial/malformed/mismatched pinned metadata fails
+        closed via the existing S8B pin parser -- never a character_id-only
+        fallback.
+        """
+        pin_status, pin = self._pin_for_row(row)
+        if pin_status is SessionCharacterPinStatus.LEGACY_UNPINNED:
+            return self._char_root(row["character_id"])
+        return self._pinned_storage_root(pin)
+
     # ------------------------------------------------------------- sessions
     def _next_activity_seq(self, registry: List[dict]) -> int:
         return max((int(r.get("activity_seq") or 0) for r in registry), default=0) + 1

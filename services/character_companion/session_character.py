@@ -10,6 +10,8 @@ or package filesystem logic.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 from dataclasses import dataclass
 from enum import Enum
@@ -25,6 +27,9 @@ __all__ = [
 ]
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+
+#: Code-level storage-namespace scheme bound into the pinned namespace preimage.
+_PINNED_STORAGE_SCHEME = "pinned-storage-v1"
 
 
 class SessionCharacterError(ValueError):
@@ -130,6 +135,28 @@ class SessionCharacterPinV1:
             "package_hash": self.package_hash,
             "runtime_definition_hash": self.runtime_definition_hash,
         }
+
+    def storage_namespace_id(self) -> str:
+        """Deterministic immutable storage-namespace identity (SHA-256).
+
+        Binds exactly (character_id, release_id, package_hash) under the
+        ``pinned-storage-v1`` scheme. ``runtime_definition_hash`` deliberately
+        does NOT participate: it encodes adapter interpretation, not the
+        immutable character-package identity whose lived memory/state must be
+        stable. Returns a full 64-character lowercase hex digest -- never raw
+        identity values -- so filesystem safety does not depend on raw-ID path
+        safety.
+        """
+        payload = {
+            "character_id": self.character_id,
+            "package_hash": self.package_hash,
+            "release_id": self.release_id,
+            "scheme": _PINNED_STORAGE_SCHEME,
+        }
+        canonical = json.dumps(
+            payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True
+        ).encode("utf-8")
+        return hashlib.sha256(canonical).hexdigest()
 
     @classmethod
     def from_json(cls, data: object) -> "SessionCharacterPinV1":
