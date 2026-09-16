@@ -50,6 +50,12 @@ from services.character_lab.source_loader import build_repo_source_loader
 from services.character_runtime import RuntimeMemoryBackend
 
 from .catalog import CompanionCatalog, CompanionCharacterEntry, build_default_catalog
+from .session_character import (
+    ExactCharacterSelectionV1,
+    SessionCharacterError,
+    SessionCharacterPinStatus,
+    SessionCharacterPinV1,
+)
 from .image_readiness import ImageGenerationReadiness, evaluate_image_generation_readiness
 from .public_profile import CharacterPublicProfile, CharacterPublicProfileStore
 from .image_jobs import (
@@ -106,6 +112,8 @@ _COAUTHOR_USER_MEMORY_MAX_CHARS = 6000
 
 _REGISTRY_FILENAME = "companion_sessions.json"
 _SCENE_FIELDS = ("place", "time", "situation", "mood", "freeform")
+# Session identity fields that are immutable once a session row is written.
+_IMMUTABLE_SESSION_IDENTITY = ("character_id", "character_pin_v1")
 _CONTEXT_EXCERPT_MAX = 8      # "Кадр по контексту" bounded recent context
 _PREVIEW_MAX_CHARS = 120
 
@@ -170,6 +178,9 @@ class CompanionSession:
     title_override: Optional[str] = None
     hidden: bool = False
     hidden_message_ids: Tuple[int, ...] = ()
+    # ---- S8B immutable character pin (additive; legacy rows stay unpinned) ----
+    character_pin_status: str = "LEGACY_UNPINNED"
+    character_pin: Optional[SessionCharacterPinV1] = None
 
 
 @dataclass(frozen=True)
@@ -312,9 +323,23 @@ class CompanionService:
             return []
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
-            return []
-        return [r for r in data if isinstance(r, dict)] if isinstance(data, list) else []
+        except (json.JSONDecodeError, OSError) as exc:
+            raise CompanionError(
+                "registry_corrupt", f"companion session registry is not valid JSON: {exc}"
+            ) from exc
+        if not isinstance(data, list):
+            raise CompanionError(
+                "registry_corrupt", "companion session registry root must be a JSON array"
+            )
+        rows: List[dict] = []
+        for item in data:
+            if not isinstance(item, dict):
+                raise CompanionError(
+                    "registry_corrupt",
+                    "companion session registry entries must all be JSON objects",
+                )
+            rows.append(item)
+        return rows
 
     def _save_registry(self, rows: Sequence[dict]) -> None:
         path = self._registry_path()
@@ -372,6 +397,128 @@ class CompanionService:
         self._save_registry(registry)
         return self._enrich(row)
 
+    def create_pinned_session(
+        self,
+        selection: ExactCharacterSelectionV1,
+        *,
+        title: Optional[str] = None,
+        scene: Optional[dict] = None,
+    ) -> CompanionSession:
+        """Create a NEW session pinned to an exact immutable Package V1 identity.
+
+        The four-field selection is verified against the installed package and
+        the S8A runtime definition BEFORE any session row is written. There is
+        no catalog / latest / active / fallback resolution, and no memory,
+        history, state, or runtime wiring is opened.
+        """
+        if not isinstance(selection, ExactCharacterSelectionV1):
+            raise CompanionError(
+                "invalid_pin", "selection must be an ExactCharacterSelectionV1"
+            )
+        self._resolve_exact_definition(selection)
+        now = _now_iso()
+        row: dict = {
+            "session_id": "cmp-" + uuid.uuid4().hex,
+            "character_id": selection.character_id,
+            "purpose": PURPOSE_COMPANION,
+            "created_at": now,
+            "updated_at": now,
+            "label": _default_label(now),
+            "character_pin_v1": selection.to_pin().to_json(),
+        }
+        if isinstance(title, str) and title.strip():
+            row["title"] = title.strip()
+        parsed = CompanionScene.from_row(scene)
+        if parsed is not None:
+            row["scene"] = parsed.to_row()
+        registry = self._load_registry()
+        row["activity_seq"] = self._next_activity_seq(registry)
+        registry.append(row)
+        self._save_registry(registry)
+        return self._enrich(row)
+
+    def resolve_pinned_definition(self, session_id: str):
+        """Read-only exact definition resolution for a pinned session.
+
+        Uses the STORED pin only (never a new/current selection), fails closed
+        if the package is missing or either hash differs, and NEVER hands the
+        definition to RuntimeService.turn in S8B.
+        """
+        row = self._session_row(session_id)
+        pin_status, pin = self._pin_for_row(row)
+        if pin_status is not SessionCharacterPinStatus.PINNED_V1 or pin is None:
+            raise CompanionError(
+                "pin_invalid", "session has no immutable character pin"
+            )
+        selection = ExactCharacterSelectionV1(
+            character_id=pin.character_id,
+            release_id=pin.release_id,
+            package_hash=pin.package_hash,
+            runtime_definition_hash=pin.runtime_definition_hash,
+        )
+        return self._resolve_exact_definition(selection)
+
+    def _resolve_exact_definition(self, selection: ExactCharacterSelectionV1):
+        """Exact-lookup the requested package and return its S8A definition.
+
+        Fails closed on missing package, package_hash mismatch, or
+        runtime_definition_hash mismatch. The returned definition is never
+        passed into RuntimeService.turn by any S8B path.
+        """
+        from .character_import.package_importer import CharacterPackageImportService
+        from .character_import.package_management import (
+            CharacterPackageManagementError,
+            CharacterPackageManagementService,
+            InstalledPackageNotFoundError,
+        )
+        from .package_runtime import (
+            ExactPackageRuntimeBinding,
+            PackageRuntimeError,
+            load_runtime_character_definition,
+        )
+
+        management = CharacterPackageManagementService(self._data_root)
+        try:
+            release = management.get_release(selection.character_id, selection.release_id)
+        except InstalledPackageNotFoundError as exc:
+            raise CompanionError(
+                "package_missing",
+                f"package {selection.character_id!r}/{selection.release_id!r} is not installed",
+            ) from exc
+        except CharacterPackageManagementError as exc:
+            raise CompanionError(
+                "package_missing",
+                f"package {selection.character_id!r}/{selection.release_id!r} cannot be resolved: {exc}",
+            ) from exc
+        if release.package_hash != selection.package_hash:
+            raise CompanionError(
+                "package_identity_mismatch",
+                "package_hash does not match the installed package",
+            )
+
+        importer = CharacterPackageImportService(self._data_root)
+        package_root = importer.installed_path(selection.character_id, selection.release_id)
+        binding = ExactPackageRuntimeBinding(
+            package_root=package_root,
+            expected_character_id=selection.character_id,
+            expected_release_id=selection.release_id,
+            expected_package_hash=selection.package_hash,
+        )
+        try:
+            definition = load_runtime_character_definition(binding)
+        except PackageRuntimeError as exc:
+            raise CompanionError(
+                "package_resolution_failed",
+                f"package could not produce a runtime definition: {exc}",
+            ) from exc
+
+        if definition.runtime_definition_hash != selection.runtime_definition_hash:
+            raise CompanionError(
+                "runtime_definition_mismatch",
+                "runtime_definition_hash does not match the resolved definition",
+            )
+        return definition
+
     def get_session(self, session_id: str) -> CompanionSession:
         return self._enrich(self._session_row(session_id))
 
@@ -381,18 +528,56 @@ class CompanionService:
                 return row
         raise CompanionError("unknown_session", f"unknown session {session_id!r}")
 
+    def _pin_for_row(
+        self, row: dict
+    ) -> Tuple[SessionCharacterPinStatus, Optional[SessionCharacterPinV1]]:
+        """Classify a session row's immutable character pin, fail-closed on
+        malformed/partial/contradictory pin data. Absent key => LEGACY_UNPINNED.
+        """
+        if "character_pin_v1" not in row:
+            return SessionCharacterPinStatus.LEGACY_UNPINNED, None
+        data = row["character_pin_v1"]
+        if data is None:
+            raise CompanionError(
+                "pin_invalid", "character_pin_v1 must be a JSON object, not null"
+            )
+        try:
+            pin = SessionCharacterPinV1.from_json(data)
+        except SessionCharacterError as exc:
+            raise CompanionError("pin_invalid", f"invalid character_pin_v1: {exc}") from exc
+        if pin.character_id != row.get("character_id"):
+            raise CompanionError(
+                "pin_invalid",
+                "character_pin_v1.character_id does not match the session character_id",
+            )
+        return SessionCharacterPinStatus.PINNED_V1, pin
+
+    def _require_executable_session(self, row: dict) -> None:
+        """Centralized fail-closed guard: a PINNED_V1 session is metadata-only
+        until S8B2. Must run BEFORE any memory/state/runtime/provider/image work.
+        """
+        pin_status, _pin = self._pin_for_row(row)
+        if pin_status is SessionCharacterPinStatus.PINNED_V1:
+            raise CompanionError(
+                "pinned_execution_blocked",
+                "PINNED_V1 sessions are metadata-only until S8B2; "
+                "dialogue/history/co-author/image execution is blocked",
+            )
+
     def _enrich(self, row: dict) -> CompanionSession:
+        pin_status, pin = self._pin_for_row(row)
         created = row.get("created_at", "")
         updated = row.get("updated_at", created)
         preview = ""
-        try:
-            history = self._history(row["character_id"], row["session_id"])
-            if history:
-                preview = history[-1].text.strip().replace("\n", " ")
-                if len(preview) > _PREVIEW_MAX_CHARS:
-                    preview = preview[: _PREVIEW_MAX_CHARS - 1].rstrip() + "…"
-        except CompanionError:
-            pass
+        if pin_status is SessionCharacterPinStatus.LEGACY_UNPINNED:
+            try:
+                history = self._history(row["character_id"], row["session_id"])
+                if history:
+                    preview = history[-1].text.strip().replace("\n", " ")
+                    if len(preview) > _PREVIEW_MAX_CHARS:
+                        preview = preview[: _PREVIEW_MAX_CHARS - 1].rstrip() + "…"
+            except CompanionError:
+                pass
         pres = row.get("presentation") if isinstance(row.get("presentation"), dict) else {}
         override = pres.get("titleOverride")
         override = override.strip() if isinstance(override, str) and override.strip() else None
@@ -412,6 +597,8 @@ class CompanionService:
             title_override=override,
             hidden=bool(pres.get("hidden")),
             hidden_message_ids=hidden_ids,
+            character_pin_status=pin_status.value,
+            character_pin=pin,
         )
 
     # ---- durable presentation metadata (UI-only; Character Memory untouched) --
@@ -441,6 +628,7 @@ class CompanionService:
             raise CompanionError("invalid_request", "messageId must be an integer event seq")
         row = self._session_row(session_id)
         if hidden:
+            self._require_executable_session(row)
             known = {m.seq for m in self._history(row["character_id"], session_id) if m.seq is not None}
             if message_id not in known:
                 raise CompanionError("unknown_message", f"no message with seq {message_id} in this session")
@@ -511,6 +699,7 @@ class CompanionService:
         private (RELATIONSHIP / PSYCHOLOGY / epistemic / FACT / Accepted
         package) and no KIRA core instruction. Opens no writable path."""
         row = self._session_row(session_id)
+        self._require_executable_session(row)
         entry = self._require_character(row["character_id"])
         pres = row.get("presentation") if isinstance(row.get("presentation"), dict) else {}
         hidden = {
@@ -571,10 +760,16 @@ class CompanionService:
         target = None
         for r in registry:
             if r.get("session_id") == session_id:
-                r.update(changes)
                 target = r
         if target is None:
             raise CompanionError("unknown_session", f"unknown session {session_id!r}")
+        for field in _IMMUTABLE_SESSION_IDENTITY:
+            if field in changes and changes[field] != target.get(field):
+                raise CompanionError(
+                    "session_identity_immutable",
+                    f"session identity field {field!r} cannot be changed after creation",
+                )
+        target.update(changes)
         self._save_registry(registry)
         return target
 
@@ -590,6 +785,7 @@ class CompanionService:
     # ------------------------------------------------------------- messages
     def get_messages(self, session_id: str) -> Tuple[CompanionMessage, ...]:
         row = self._session_row(session_id)
+        self._require_executable_session(row)
         return self._history(row["character_id"], session_id)
 
     def _history(self, character_id: str, session_id: str) -> Tuple[CompanionMessage, ...]:
@@ -629,6 +825,7 @@ class CompanionService:
         if not isinstance(text, str) or not text.strip():
             raise CompanionError("empty_message", "message text must be a non-empty string")
         row = self._session_row(session_id)
+        self._require_executable_session(row)
         entry = self._require_character(row["character_id"])
         char_root = self._char_root(entry.character_id)
         scene = self._scene_for_turn(row, entry)
@@ -709,6 +906,7 @@ class CompanionService:
         request_id: Optional[str] = None,
     ) -> ImageJob:
         row = self._session_row(session_id)
+        self._require_executable_session(row)
         character_id = row["character_id"]
         if kind not in (KIND_CUSTOM, KIND_CONTEXT):
             raise CompanionError("invalid_request", f"unknown image kind {kind!r}")

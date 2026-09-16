@@ -25,6 +25,7 @@ from .service import (
     CompanionService,
     CompanionSession,
 )
+from .session_character import ExactCharacterSelectionV1, SessionCharacterError
 
 __all__ = ["CompanionTransportError", "CompanionTransport"]
 
@@ -58,6 +59,15 @@ _STATUS_BY_CODE = {
     "image_job_active_conflict": 409,
     "secret_in_settings": 500,
     "vault_unavailable": 503,
+    "invalid_pin": 400,
+    "pin_invalid": 500,
+    "package_missing": 404,
+    "package_identity_mismatch": 409,
+    "package_resolution_failed": 502,
+    "runtime_definition_mismatch": 409,
+    "pinned_execution_blocked": 409,
+    "registry_corrupt": 500,
+    "session_identity_immutable": 409,
 }
 
 
@@ -134,7 +144,7 @@ def _scene_to_json(scene) -> Dict[str, str] | None:
 
 
 def _session_to_json(s: CompanionSession) -> dict:
-    return {
+    out = {
         "sessionId": s.session_id,
         "characterId": s.character_id,
         "purpose": s.purpose,
@@ -149,7 +159,20 @@ def _session_to_json(s: CompanionSession) -> dict:
         "titleOverride": s.title_override,
         "hidden": s.hidden,
         "hiddenMessageIds": list(s.hidden_message_ids),
+        # ---- S8B additive: explicit binding classification + exact pin ----
+        "characterPinStatus": s.character_pin_status,
+        "characterPinV1": (
+            {
+                "characterId": s.character_pin.character_id,
+                "releaseId": s.character_pin.release_id,
+                "packageHash": s.character_pin.package_hash,
+                "runtimeDefinitionHash": s.character_pin.runtime_definition_hash,
+            }
+            if s.character_pin is not None
+            else None
+        ),
     }
+    return out
 
 
 def _message_to_json(m: CompanionMessage) -> dict:
@@ -227,6 +250,36 @@ class CompanionTransport:
         return _run(lambda: _session_to_json(
             self._service.create_session(character_id, title=title, scene=scene)
         ))
+
+    def create_pinned_session(self, payload: dict) -> dict:
+        if not isinstance(payload, dict):
+            raise CompanionTransportError(400, "invalid_request", "request body must be a JSON object")
+        character_id = _require_str(payload, "characterId")
+        release_id = _require_str(payload, "releaseId")
+        package_hash = _require_str(payload, "packageHash")
+        runtime_definition_hash = _require_str(payload, "runtimeDefinitionHash")
+        title = payload.get("title")
+        scene = payload.get("scene")
+        if title is not None and not isinstance(title, str):
+            raise CompanionTransportError(400, "invalid_request", "'title' must be a string")
+        if scene is not None and not isinstance(scene, dict):
+            raise CompanionTransportError(400, "invalid_request", "'scene' must be an object")
+
+        def op():
+            try:
+                selection = ExactCharacterSelectionV1(
+                    character_id=character_id,
+                    release_id=release_id,
+                    package_hash=package_hash,
+                    runtime_definition_hash=runtime_definition_hash,
+                )
+            except SessionCharacterError as exc:
+                raise CompanionTransportError(400, "invalid_pin", str(exc)) from exc
+            return _session_to_json(
+                self._service.create_pinned_session(selection, title=title, scene=scene)
+            )
+
+        return _run(op)
 
     def set_scene_cover(self, payload: dict) -> dict:
         if not isinstance(payload, dict):

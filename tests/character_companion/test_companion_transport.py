@@ -182,3 +182,86 @@ def test_loopback_http_survives_server_restart(tmp_path):
         assert len(sent["messages"]) == 4
     finally:
         s2.shutdown()
+
+
+# --------------------------------------------------- S8B pinned-session transport
+def _pinned_transport(tmp_path):
+    """A CompanionTransport backed by one synthetic installed Package V1."""
+    from services.character_companion.character_import import (
+        CharacterPackageManagementService,
+    )
+    from tests.character_companion.test_session_character_pinning import (
+        _resolve_ids,
+        _synthetic_catalog,
+        make_crp_package,
+    )
+
+    data_root = tmp_path / "companion-data"
+    data_root.mkdir(parents=True, exist_ok=True)
+    (tmp_path / "acceptance").mkdir(parents=True, exist_ok=True)
+
+    src = make_crp_package(
+        tmp_path, dirname="pkg", character_id="alice", release_id="v1"
+    )
+    package_hash, runtime_hash = _resolve_ids(src, "alice", "v1")
+    CharacterPackageManagementService(data_root).import_package(src)
+
+    service = CompanionService(
+        acceptance_root=tmp_path / "acceptance",
+        data_root=data_root,
+        provider_factory=make_fake_factory(),
+        provider_info=FAKE_PROVIDER_INFO,
+        catalog=_synthetic_catalog("alice"),
+    )
+    transport = CompanionTransport(service)
+    payload = {
+        "characterId": "alice",
+        "releaseId": "v1",
+        "packageHash": package_hash,
+        "runtimeDefinitionHash": runtime_hash,
+    }
+    return transport, payload
+
+
+def test_pinned_session_serializes_exact_pin(tmp_path):
+    transport, payload = _pinned_transport(tmp_path)
+    created = transport.create_pinned_session(payload)
+    assert created["characterPinStatus"] == "PINNED_V1"
+    assert created["characterPinV1"] == {
+        "characterId": "alice",
+        "releaseId": "v1",
+        "packageHash": payload["packageHash"],
+        "runtimeDefinitionHash": payload["runtimeDefinitionHash"],
+    }
+
+    sessions = transport.list_sessions("alice")
+    assert sessions["sessions"][0]["characterPinStatus"] == "PINNED_V1"
+    assert sessions["sessions"][0]["characterPinV1"]["releaseId"] == "v1"
+
+
+def test_pinned_and_legacy_status_are_explicit(tmp_path):
+    transport, payload = _pinned_transport(tmp_path)
+    pinned = transport.create_pinned_session(payload)
+    assert pinned["characterPinStatus"] == "PINNED_V1"
+
+    legacy = _transport(tmp_path)
+    legacy_session = legacy.create_session({"characterId": "kira"})
+    assert legacy_session["characterPinStatus"] == "LEGACY_UNPINNED"
+    assert legacy_session["characterPinV1"] is None
+
+
+def test_malformed_pin_maps_to_stable_error(tmp_path):
+    transport, payload = _pinned_transport(tmp_path)
+    payload = dict(payload)
+    payload["packageHash"] = "not-a-sha256"
+    with pytest.raises(CompanionTransportError) as exc:
+        transport.create_pinned_session(payload)
+    assert (exc.value.status, exc.value.code) == (400, "invalid_pin")
+
+
+def test_blocked_execution_maps_to_stable_error(tmp_path):
+    transport, payload = _pinned_transport(tmp_path)
+    session = transport.create_pinned_session(payload)
+    with pytest.raises(CompanionTransportError) as exc:
+        transport.send_message({"sessionId": session["sessionId"], "text": "Hi"})
+    assert (exc.value.status, exc.value.code) == (409, "pinned_execution_blocked")
