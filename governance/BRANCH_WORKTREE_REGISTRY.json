@@ -1,0 +1,102 @@
+{
+  "schema_version": "VOYAGE_BRANCH_WORKTREE_REGISTRY_V1",
+  "repository": "voyage-narrative-engine",
+  "generated_by": "tools/voyage_branch_worktree_map.py",
+  "authoritative_target": {
+    "branch": "main",
+    "ref": "refs/remotes/origin/main",
+    "sha": "80dba618ee260979453cdde0e8a489ad1dfff54f",
+    "note": "Local refs/heads/main (checked out in worktree vne-n9-pac-merge) is STALE relative to this authoritative SHA by 2 commits (3ae0caa, 80dba61) -- it was never fetched/merged locally after those commits were pushed directly to origin/main. refs/remotes/origin/main is correct and current because `git push` updates the local remote-tracking ref automatically. Use refs/remotes/origin/main or this explicit sha for lineage checks; do not use refs/heads/main."
+  },
+  "current_position": {
+    "branch": "feature/voyage-branch-worktree-registry-v1",
+    "worktree": "C:/DEV/Narrative/vne-voyage-framework-update-2026-09-v1"
+  },
+  "entries": [
+    {
+      "branch": "feature/voyage-branch-worktree-registry-v1",
+      "worktree": "C:/DEV/Narrative/vne-voyage-framework-update-2026-09-v1",
+      "tip_sha": "80dba618ee260979453cdde0e8a489ad1dfff54f",
+      "base_branch": "main",
+      "base_sha": "80dba618ee260979453cdde0e8a489ad1dfff54f",
+      "return_target": "main",
+      "depends_on": null,
+      "integration_policy": "FF_ONLY",
+      "lifecycle_status": "ACTIVE",
+      "classification_state": "CLASSIFIED",
+      "lineage_state": "CURRENT",
+      "current_position": true,
+      "purpose": "VOYAGE_BRANCH_WORKTREE_REGISTRY_V1 -- implement and populate the first operational branch/worktree registry and generated topology map.",
+      "cleanup_candidate": false,
+      "notes": "Reused worktree; branched from feature/voyage-framework-update-2026-09-v1 at its exact published tip (80dba618) rather than creating a new worktree, per policy \u00a71/\u00a72."
+    },
+    {
+      "branch": "feature/voyage-framework-update-2026-09-v1",
+      "worktree": null,
+      "tip_sha": "80dba618ee260979453cdde0e8a489ad1dfff54f",
+      "base_branch": "main",
+      "base_sha": "3ae0caa32c887f726ac9938987c18baed8d539ad",
+      "return_target": "main",
+      "depends_on": null,
+      "integration_policy": "FF_ONLY",
+      "lifecycle_status": "INTEGRATED",
+      "classification_state": "CLASSIFIED",
+      "lineage_state": "INTEGRATED",
+      "current_position": false,
+      "purpose": "Established OD-GOV-BRANCH-01 (Branch Lineage, Task Batching & Publication Freshness Policy v1) and registered it in governance/DECISION_REGISTER.md.",
+      "cleanup_candidate": true,
+      "notes": "Published to origin/main as commit 80dba618. The worktree that held this branch (vne-voyage-framework-update-2026-09-v1) was reused for the current task and switched to feature/voyage-branch-worktree-registry-v1; this branch now has no worktree checked out but still exists as a local branch. Local branch deletion (git branch -d) is a cleanup candidate ONLY -- not performed in this task."
+    },
+    {
+      "branch": "feature/kira-real-canon-visual-wiring-v1",
+      "worktree": "C:/DEV/Narrative/vne-kira-real-canon-visual-wiring-v1",
+      "tip_sha": "3ae0caa32c887f726ac9938987c18baed8d539ad",
+      "base_branch": "main",
+      "base_sha": "3d96d136f23987bb22e769e91814587a2ec471ff",
+      "return_target": "main",
+      "depends_on": null,
+      "integration_policy": "FF_ONLY",
+      "lifecycle_status": "INTEGRATED",
+      "classification_state": "CLASSIFIED",
+      "lineage_state": "INTEGRATED",
+      "current_position": false,
+      "purpose": "Wired the real, approved external Character Canon bridge (services.character_canon_bridge.read_character_canon) into the current character_visual_conditioning generation path via a new services/scene_image_production application service. Proven against the real KIRA canon.",
+      "cleanup_candidate": true,
+      "notes": "Published to origin/main as commit 3ae0caa (verified ancestor of the current authoritative target 80dba618 -- see lineage_evidence in the generated map). Worktree and branch are both cleanup candidates once the owner confirms nothing further is needed from this exact worktree state."
+    },
+    {
+      "branch": "feature/kira-package-v1-visual-binding-s1",
+      "worktree": "C:/DEV/Narrative/vne-kira-package-v1-visual-binding-s1",
+      "tip_sha": "46464d3a3ef759a7d0b73263129880683087a1c1",
+      "base_branch": "feature/crp-mvp-v1",
+      "base_sha": "e0485ca610aac35d6c5773ded8df7723c981bf27",
+      "return_target": "feature/crp-mvp-v1",
+      "depends_on": null,
+      "integration_policy": null,
+      "lifecycle_status": "SUPERSEDED",
+      "classification_state": "CLASSIFIED",
+      "lineage_state": "DIVERGED",
+      "current_position": false,
+      "purpose": "Implemented a Package V1 visual_identity binding (services/character_companion, services/character_runtime, services/crp_authoring) for KIRA, on top of the feature/crp-mvp-v1 architecture line.",
+      "cleanup_candidate": false,
+      "notes": "Technically correct, tested, and independently reviewed, but its entire target subsystem (character_companion / character_runtime / crp_authoring) was removed and replaced on the authoritative line by character_visual_conditioning / reference_library / character_canon_bridge before this candidate could integrate. Confirmed by governance/BRANCH_LINEAGE_AND_TASK_BATCHING_POLICY_v1.md Case 2. NOT a cleanup candidate: retained intact as design/reference evidence per policy \u00a77. Do not integrate, cherry-pick, or delete."
+    },
+    {
+      "branch": "feature/crp-mvp-v1",
+      "worktree": "C:/DEV/Narrative/vne-crp-mvp-v1",
+      "tip_sha": "e0485ca610aac35d6c5773ded8df7723c981bf27",
+      "base_branch": null,
+      "base_sha": null,
+      "return_target": null,
+      "depends_on": null,
+      "integration_policy": null,
+      "lifecycle_status": "SUPERSEDED",
+      "classification_state": "CLASSIFIED",
+      "lineage_state": "DIVERGED",
+      "current_position": false,
+      "purpose": "The old Character Companion / Package V1 / CRP-authoring architecture line (S8A-S8C2, character_companion.package_runtime, crp_authoring). Superseded by the current character_visual_conditioning / reference_library / character_canon_bridge line on main.",
+      "cleanup_candidate": false,
+      "notes": "PROPOSED SUPERSEDED, not final: this worktree also physically contains docs/workflows/VOYAGE_FRAMEWORK_UPDATE_BATCH_2026_09_BRANCH_AND_FAST_LANE_LESSONS_V1.md, an UNTRACKED historical source-evidence file whose accepted content has since been formalized into governance/BRANCH_LINEAGE_AND_TASK_BATCHING_POLICY_v1.md on the current line (see governance doc \u00a70 and the generated map's preservation note). Its own AGENTS.md, docs/workflows/VOYAGE_REVERSIBLE_FAST_LANE_V1.md, VOYAGE_AI_QA_AND_EVIDENCE_POLICY_V1.md, and VOYAGE_FAST_LANE_JOURNAL_V1.md also exist only on this line and have not been individually reconciled item-by-item against current governance beyond what OD-GOV-BRANCH-01 already covers. This worktree also hosts several OTHER feature branches from the same architecture line (e.g. feature/s8b-character-selection-session-pinning-v1, feature/s8c1-pinned-text-runtime-wiring-v1, feature/kira-package-runtime-definition-v1) not individually classified here. Do not delete this worktree or its untracked source file until an owner-reviewed cleanup task confirms nothing further needs extracting from it."
+    }
+  ]
+}
