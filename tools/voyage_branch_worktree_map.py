@@ -6,8 +6,8 @@ Voyage Branch/Worktree Map generator (VOYAGE_BRANCH_WORKTREE_REGISTRY_V1).
 Regenerates ``governance/BRANCH_WORKTREE_MAP.md`` deterministically from:
 
   A. live Git/worktree facts (``git worktree list --porcelain``,
-     ``git merge-base --is-ancestor``) -- queried fresh every run, never
-     cached or hand-typed;
+     ``git merge-base --is-ancestor``, ``git rev-parse <ref>``) -- queried
+     fresh every run, never cached or hand-typed;
   B. governance metadata in ``governance/BRANCH_WORKTREE_REGISTRY.json``
      (base target, return target, lifecycle status, purpose, ...) -- facts
      Git cannot infer.
@@ -18,6 +18,45 @@ the registry JSON. Its only filesystem write is the generated map file.
 
 It fails closed (raises, writes nothing) when the registry's claims
 materially conflict with observed Git facts -- see ``validate_registry``.
+
+STABLE METADATA vs. LIVE GIT FACTS (VOYAGE_BRANCH_WORKTREE_REGISTRY_V1_DYNAMIC_FACTS_CORRECTION)
+--------------------------------------------------------------------------------------------------
+The registry must never store a mutable Git fact as if it were permanent
+governance metadata -- doing so guarantees staleness the moment that fact
+changes (e.g. a commit that updates the registry immediately invalidates
+its own branch's previously-recorded tip SHA). This module enforces a
+three-way split:
+
+* STABLE GOVERNANCE METADATA (registry-owned, never contradicted by a
+  normal commit): ``branch``, ``worktree``, ``base_branch``, ``base_sha``,
+  ``return_target``, ``depends_on``, ``integration_policy``,
+  ``lifecycle_status``, ``classification_state``, ``lineage_state``,
+  ``current_position``, ``purpose``, ``cleanup_candidate``, ``notes``.
+  ``base_sha`` in particular is an immutable historical statement of where
+  a task began -- never a claim about its current tip.
+
+* HISTORICAL / EVIDENCE SHA (registry-owned, legitimately fixed): a
+  ``tip_sha`` on any entry whose ``lifecycle_status`` is NOT ``"ACTIVE"``
+  (e.g. ``INTEGRATED``, ``SUPERSEDED``) is a frozen evidence anchor -- the
+  exact commit that entry is evidence *about* -- and IS validated against
+  the live branch tip when a worktree for it still exists, because such a
+  branch should not be gaining new commits.
+
+* MUTABLE LIVE GIT FACTS (never stored, always derived at generation/
+  validation time): the current branch tip of any ``ACTIVE`` entry, the
+  current authoritative target SHA (resolved live from
+  ``authoritative_target.ref`` via ``git rev-parse``, never from a stored
+  ``sha``), ancestry relationships, and live worktree existence. A
+  ``tip_sha`` recorded on an ``ACTIVE`` entry (if present at all) is
+  informational only -- an authoring-time snapshot -- and is never
+  compared against the live HEAD; the live HEAD is what gets resolved and
+  rendered instead.
+
+Under normal commit advancement on the current/active branch or on the
+authoritative target, this tool never fails and never requires a registry
+edit -- only genuine contradictions (missing ref, missing branch, wrong
+current_position, a frozen/historical entry whose tip no longer matches a
+live worktree that still exists for it, etc.) fail closed.
 
 Standard library only. No network, no external dependencies.
 """
@@ -146,6 +185,25 @@ def sha_exists_locally(sha: str) -> bool:
     return result.returncode == 0
 
 
+def resolve_ref_sha(ref: str) -> str:
+    """Resolve a ref (e.g. ``refs/remotes/origin/main``) to its live SHA.
+
+    This is the ONLY source of truth for "the current authoritative target
+    SHA" -- never a stored registry value. Raises RegistryValidationError
+    if the ref does not exist locally (fail closed)."""
+    result = subprocess.run(
+        ["git", "rev-parse", "--verify", "--quiet", ref],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise RegistryValidationError(
+            f"authoritative_target.ref does not resolve locally: {ref!r}"
+        )
+    return result.stdout.strip()
+
+
 def load_registry() -> dict[str, Any]:
     if not REGISTRY_PATH.is_file():
         raise RegistryValidationError(f"registry not found: {REGISTRY_PATH}")
@@ -176,11 +234,10 @@ def validate_registry(
         raise RegistryValidationError("unexpected or missing schema_version")
 
     authoritative = registry.get("authoritative_target") or {}
-    authoritative_sha = authoritative.get("sha")
-    if not authoritative_sha or not sha_exists_locally(authoritative_sha):
-        raise RegistryValidationError(
-            f"authoritative_target.sha is missing or unavailable locally: {authoritative_sha!r}"
-        )
+    authoritative_ref = authoritative.get("ref")
+    if not authoritative_ref:
+        raise RegistryValidationError("authoritative_target.ref is missing")
+    resolve_ref_sha(authoritative_ref)  # fail closed if it does not resolve locally
 
     entries = registry.get("entries") or []
 
@@ -235,11 +292,23 @@ def validate_registry(
                 "available locally"
             )
         live_wt = live_by_branch.get(branch)
-        if live_wt is not None and tip_sha and live_wt.head != tip_sha:
+        # ACTIVE entries: tip_sha (if present at all) is an authoring-time
+        # snapshot only, never a live-tip assertion -- a normal new commit
+        # on the active branch must not fail this validation. Every other
+        # lifecycle (INTEGRATED, SUPERSEDED, ...) is a frozen evidence
+        # anchor: if a worktree for it still exists, its tip_sha MUST match
+        # the live HEAD, because such a branch should not be gaining commits.
+        if (
+            lifecycle != "ACTIVE"
+            and live_wt is not None
+            and tip_sha
+            and live_wt.head != tip_sha
+        ):
             raise RegistryValidationError(
-                f"entry {branch!r} declares tip_sha {tip_sha!r} but the live "
-                f"checked-out worktree for that branch has HEAD {live_wt.head!r} "
-                "-- registry is stale relative to the live worktree"
+                f"entry {branch!r} (lifecycle={lifecycle!r}) declares tip_sha "
+                f"{tip_sha!r} but the live checked-out worktree for that branch "
+                f"has HEAD {live_wt.head!r} -- this is a frozen/historical entry "
+                "and must not gain new commits"
             )
 
 
@@ -247,13 +316,29 @@ def _short(sha: str) -> str:
     return sha[:8] if sha else sha
 
 
+def _effective_tip(entry: dict[str, Any], live_by_branch: dict) -> Optional[str]:
+    """The tip to display/reason about for one entry.
+
+    ACTIVE entries: resolved LIVE from the checked-out worktree's HEAD when
+    one exists (the branch is still being worked on; any stored tip_sha is
+    at most an authoring-time snapshot). Every other lifecycle: the stored,
+    frozen ``tip_sha`` (already validated against live Git above when a
+    worktree still exists for it)."""
+    if entry.get("lifecycle_status") == "ACTIVE":
+        live_wt = live_by_branch.get(entry.get("branch"))
+        if live_wt is not None:
+            return live_wt.head
+    return entry.get("tip_sha")
+
+
 def render_map(
     registry: dict[str, Any], live_worktrees: tuple[LiveWorktree, ...]
 ) -> str:
     authoritative = registry["authoritative_target"]
-    authoritative_sha = authoritative["sha"]
+    authoritative_sha = resolve_ref_sha(authoritative["ref"])
     entries = registry.get("entries", [])
     known_branches = {e["branch"] for e in entries}
+    live_by_branch = {w.branch: w for w in live_worktrees if w.branch is not None}
 
     lines: list[str] = []
     lines.append("# NARRATIVE / VNE Development Topology")
@@ -286,7 +371,9 @@ def render_map(
         lines.append(f"### `{entry['branch']}`{marker}")
         lines.append("")
         lines.append(f"- worktree: `{entry.get('worktree') or '(none -- no worktree currently checked out)'}`")
-        lines.append(f"- tip: `{_short(entry.get('tip_sha') or '')}` (`{entry.get('tip_sha')}`)")
+        effective_tip = _effective_tip(entry, live_by_branch)
+        tip_label = "tip (live)" if entry.get("lifecycle_status") == "ACTIVE" else "tip (frozen evidence)"
+        lines.append(f"- {tip_label}: `{_short(effective_tip or '')}` (`{effective_tip}`)")
         lines.append(f"- base: `{entry.get('base_branch')}` @ `{_short(entry.get('base_sha') or '') or 'n/a'}`")
         lines.append(f"- return target: `{entry.get('return_target')}`")
         lines.append(f"- depends on: `{entry.get('depends_on')}`")

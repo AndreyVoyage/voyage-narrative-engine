@@ -4,10 +4,10 @@ GENERATED FROM: live Git/worktree facts (`git worktree list --porcelain`, `git m
 
 This file is NOT an independent source of truth. Regenerate with `py tools/voyage_branch_worktree_map.py` after any registry change; do not hand-edit.
 
-Authoritative `main` @ `80dba618ee260979453cdde0e8a489ad1dfff54f`
+Authoritative `main` @ `465dd96a36ad6ee5004d683ce5a74e01c658b3fc`
 (ref: `refs/remotes/origin/main`)
 
-> Local refs/heads/main (checked out in worktree vne-n9-pac-merge) is STALE relative to this authoritative SHA by 2 commits (3ae0caa, 80dba61) -- it was never fetched/merged locally after those commits were pushed directly to origin/main. refs/remotes/origin/main is correct and current because `git push` updates the local remote-tracking ref automatically. Use refs/remotes/origin/main or this explicit sha for lineage checks; do not use refs/heads/main.
+> The authoritative target is identified by stable ref identity only (refs/remotes/origin/main); its current SHA is ALWAYS resolved live via `git rev-parse` by tools/voyage_branch_worktree_map.py, never stored here -- storing it as versioned metadata previously caused this entry to go stale on every advance of origin/main (see governance/BRANCH_LINEAGE_AND_TASK_BATCHING_POLICY_v1.md §12 and the VOYAGE_BRANCH_WORKTREE_REGISTRY_V1_DYNAMIC_FACTS_CORRECTION task). Separately, local refs/heads/main (checked out in worktree vne-n9-pac-merge) is known to be STALE relative to origin/main -- it was never fetched/merged locally after commits were pushed directly to origin/main. Use refs/remotes/origin/main for lineage checks; never refs/heads/main.
 
 ---
 
@@ -16,7 +16,7 @@ Authoritative `main` @ `80dba618ee260979453cdde0e8a489ad1dfff54f`
 ### `feature/voyage-branch-worktree-registry-v1` <<< YOU ARE HERE
 
 - worktree: `C:/DEV/Narrative/vne-voyage-framework-update-2026-09-v1`
-- tip: `80dba618` (`80dba618ee260979453cdde0e8a489ad1dfff54f`)
+- tip (live): `465dd96a` (`465dd96a36ad6ee5004d683ce5a74e01c658b3fc`)
 - base: `main` @ `80dba618`
 - return target: `main`
 - depends on: `None`
@@ -24,13 +24,13 @@ Authoritative `main` @ `80dba618ee260979453cdde0e8a489ad1dfff54f`
 - lifecycle: **ACTIVE**
 - lineage: **CURRENT**
 - cleanup candidate: **False**
-- purpose: VOYAGE_BRANCH_WORKTREE_REGISTRY_V1 -- implement and populate the first operational branch/worktree registry and generated topology map.
-- notes: Reused worktree; branched from feature/voyage-framework-update-2026-09-v1 at its exact published tip (80dba618) rather than creating a new worktree, per policy §1/§2.
+- purpose: VOYAGE_BRANCH_WORKTREE_REGISTRY_V1 -- implement and populate the first operational branch/worktree registry and generated topology map. Now also covers the Tier-1 worktree cleanup and the dynamic-facts self-reference correction.
+- notes: Reused worktree; branched from feature/voyage-framework-update-2026-09-v1 at its exact published tip (80dba618) rather than creating a new worktree, per policy §1/§2. tip_sha above is an authoring-time snapshot ONLY, not a live-tip assertion: this entry's lifecycle_status is ACTIVE, so tools/voyage_branch_worktree_map.py resolves and renders the LIVE worktree HEAD instead of validating against this stored value -- it will not go stale on the next commit.
 
 ### `feature/voyage-framework-update-2026-09-v1`
 
 - worktree: `(none -- no worktree currently checked out)`
-- tip: `80dba618` (`80dba618ee260979453cdde0e8a489ad1dfff54f`)
+- tip (frozen evidence): `80dba618` (`80dba618ee260979453cdde0e8a489ad1dfff54f`)
 - base: `main` @ `3ae0caa3`
 - return target: `main`
 - depends on: `None`
@@ -44,7 +44,7 @@ Authoritative `main` @ `80dba618ee260979453cdde0e8a489ad1dfff54f`
 ### `feature/kira-real-canon-visual-wiring-v1`
 
 - worktree: `C:/DEV/Narrative/vne-kira-real-canon-visual-wiring-v1`
-- tip: `3ae0caa3` (`3ae0caa32c887f726ac9938987c18baed8d539ad`)
+- tip (frozen evidence): `3ae0caa3` (`3ae0caa32c887f726ac9938987c18baed8d539ad`)
 - base: `main` @ `3d96d136`
 - return target: `main`
 - depends on: `None`
@@ -58,7 +58,7 @@ Authoritative `main` @ `80dba618ee260979453cdde0e8a489ad1dfff54f`
 ### `feature/kira-package-v1-visual-binding-s1`
 
 - worktree: `C:/DEV/Narrative/vne-kira-package-v1-visual-binding-s1`
-- tip: `46464d3a` (`46464d3a3ef759a7d0b73263129880683087a1c1`)
+- tip (frozen evidence): `46464d3a` (`46464d3a3ef759a7d0b73263129880683087a1c1`)
 - base: `feature/crp-mvp-v1` @ `e0485ca6`
 - return target: `feature/crp-mvp-v1`
 - depends on: `None`
@@ -72,7 +72,7 @@ Authoritative `main` @ `80dba618ee260979453cdde0e8a489ad1dfff54f`
 ### `feature/crp-mvp-v1`
 
 - worktree: `C:/DEV/Narrative/vne-crp-mvp-v1`
-- tip: `e0485ca6` (`e0485ca610aac35d6c5773ded8df7723c981bf27`)
+- tip (frozen evidence): `e0485ca6` (`e0485ca610aac35d6c5773ded8df7723c981bf27`)
 - base: `None` @ `n/a`
 - return target: `None`
 - depends on: `None`
@@ -92,11 +92,8 @@ The branches above are the only ones with recorded governance metadata (base/ret
 | worktree | branch | tip | lineage (topology only) |
 |---|---|---|---|
 | `C:/DEV/Narrative/vne-adapter-v41-clean` | `adapter/v4.1-isolated` | `113076b7` | TOPOLOGY_UNCLASSIFIED |
-| `C:/DEV/Narrative/vne-aside-v2-slice1-closeout` | `docs/aside-v2-slice1-closeout` | `2af11fca` | INTEGRATED |
-| `C:/DEV/Narrative/vne-aside-v2-slice2-decisions` | `docs/aside-v2-slice2-owner-decisions` | `69a3cee2` | INTEGRATED |
 | `C:/DEV/Narrative/vne-crp-mvp-spec-v1` | `docs/crp-mvp-spec-v1` | `c2ba68ac` | TOPOLOGY_UNCLASSIFIED |
 | `C:/DEV/Narrative/vne-crp-vnext-ratification` | `docs/crp-vnext-ratification` | `d025642a` | TOPOLOGY_UNCLASSIFIED |
-| `C:/DEV/Narrative/vne-n7-docs-reconciliation` | `docs/n7-canonical-status-reconciliation` | `a75c738c` | INTEGRATED |
 | `C:/DEV/Narrative/vne-od-gov-fast-01-canonicalization` | `docs/od-gov-fast-01-canonicalization` | `6574ef01` | TOPOLOGY_UNCLASSIFIED |
 | `C:/DEV/Narrative/vne-persona-context-routing-decisions` | `docs/persona-context-routing-decisions` | `4cb1fb83` | TOPOLOGY_UNCLASSIFIED |
 | `C:/DEV/Narrative/vne-sva-mr1-manual-scene-reference-input-v0` | `docs/sva-mr1-manual-scene-reference-input-v0-ratification` | `cb437193` | INTEGRATED |
@@ -132,15 +129,11 @@ The branches above are the only ones with recorded governance metadata (base/ret
 | `C:/DEV/Narrative/vne-editor-draft-workspace-v1` | `feature/editor-draft-workspace-v1` | `68fe8669` | INTEGRATED |
 | `C:/DEV/Narrative/vne-editor-m5-real-authoring-proof-v1` | `feature/editor-m5-real-authoring-proof-v1` | `3d96d136` | INTEGRATED |
 | `C:/DEV/Narrative/vne-editor-start-new-revision-v1` | `feature/editor-start-new-revision-v1` | `7cd0efeb` | INTEGRATED |
-| `C:/DEV/Narrative/vne-editor-ui-dependency-v1` | `feature/editor-ui-dependency-v1` | `9342d6d7` | INTEGRATED |
 | `C:/DEV/Narrative/vne-editor-ui-shell-v1` | `feature/editor-ui-shell-v1` | `da3ba77f` | INTEGRATED |
 | `C:/DEV/Narrative/vne-editor-validation-ux-v1` | `feature/editor-validation-ux-v1` | `22993da1` | INTEGRATED |
-| `C:/DEV/Narrative/vne-c4-u-play-v0` | `feature/first-playable-visual-scene-v0` | `381bc68f` | INTEGRATED |
-| `C:/DEV/Narrative/vne-c4-u-scene-consumption-v0` | `feature/first-production-scene-asset-consumption-v0` | `9929926f` | INTEGRATED |
 | `C:/DEV/Narrative/vne-first-real-canonical-runtime-proof-v1` | `feature/first-real-canonical-runtime-proof-v1` | `1d6eef13` | INTEGRATED |
 | `C:/DEV/Narrative/vne-first-real-orderedass-bootstrap-v1` | `feature/first-real-orderedass-bootstrap-v1` | `0441aa5c` | INTEGRATED |
 | `C:/DEV/Narrative/vne-first-real-player-reachability-v1` | `feature/first-real-player-reachability-v1` | `da072d58` | INTEGRATED |
-| `C:/DEV/Narrative/vne-c4-u-emit-v0` | `feature/first-renpy-visual-emission-v0` | `fe6abfa8` | INTEGRATED |
 | `C:/DEV/Narrative/vne-generated-image-review-approval-v0` | `feature/generated-image-review-approval-v0` | `15037ed7` | INTEGRATED |
 | `C:/DEV/Narrative/vne-gym-location-canon-v0` | `feature/gym-location-canon-v0` | `dab283d1` | INTEGRATED |
 | `C:/DEV/Narrative/vne-image-provider-boundary-v0` | `feature/image-provider-boundary-v0` | `1b2d6e8e` | INTEGRATED |
@@ -158,7 +151,6 @@ The branches above are the only ones with recorded governance metadata (base/ret
 | `C:/DEV/Narrative/vne-prompt-composer-v0` | `feature/prompt-composer-v0` | `2bec791f` | INTEGRATED |
 | `C:/DEV/Narrative/vne-reference-bundle-prompt-alias-v0` | `feature/reference-bundle-prompt-alias-v0` | `4624790c` | INTEGRATED |
 | `C:/DEV/Narrative/vne-reference-library-to-reference-bundle-adapter-v0` | `feature/reference-library-to-reference-bundle-adapter-v0` | `93bdadfe` | INTEGRATED |
-| `C:/DEV/Narrative/vne-c4-u-name-v0` | `feature/renpy-8-5-auto-image-name-compat` | `2a2f7a2b` | INTEGRATED |
 | `C:/DEV/Narrative/vne-rn-deepseek` | `feature/rn-aside-cloud-deepseek` | `6fadc23f` | TOPOLOGY_UNCLASSIFIED |
 | `C:/DEV/Narrative/vne-rn-aside-runtime-context` | `feature/rn-aside-runtime-context-correction-v1` | `9b00ede0` | TOPOLOGY_UNCLASSIFIED |
 | `C:/DEV/Narrative/vne-rn-aside-scene-context` | `feature/rn-aside-scene-context` | `161b41b4` | TOPOLOGY_UNCLASSIFIED |
@@ -186,27 +178,17 @@ The branches above are the only ones with recorded governance metadata (base/ret
 | `C:/DEV/Narrative/vne-aside-v2-slice2-controlled-merge` | `integration/aside-v2-slice2-controlled-merge` | `afa64d3a` | INTEGRATED |
 | `C:/DEV/Narrative/vne-aside-v2-slice2-integration-trial` | `integration/aside-v2-slice2-trial` | `95426167` | INTEGRATED |
 | `C:/DEV/Narrative/vne-aside-v2-slice2-integration-trial-02` | `integration/aside-v2-slice2-trial-02` | `39472967` | INTEGRATED |
-| `C:/DEV/Narrative/vne-crp-mvp-spec-main-integration` | `integration/crp-mvp-spec-v1-main` | `3988fb16` | INTEGRATED |
-| `C:/DEV/Narrative/vne-crp-vnext-main-integration` | `integration/crp-vnext-ratification-main` | `cedbf0a6` | INTEGRATED |
-| `C:/DEV/Narrative/vne-pac-level-none-merge-execution` | `integration/pac-level-none-projection-merge` | `39472967` | INTEGRATED |
-| `C:/DEV/Narrative/vne-pac-merge-execution` | `integration/pac-real-user-trial-merge` | `95426167` | INTEGRATED |
 | `C:/DEV/Narrative/vne-rn-aside-integration` | `integration/rn-aside-deepseek` | `0733f79d` | INTEGRATED |
 | `C:/DEV/Narrative/vne-n9-pac-merge` | `main` | `3d96d136` | INTEGRATED |
 | `C:/DEV/Narrative/vne-overnight-rn-workflow` | `overnight/rn-workflow-phase2` | `3f615c9d` | INTEGRATED |
 | `C:/DEV/Narrative/vne-overnight-rn17-source` | `overnight/rn17-source` | `8c752c82` | INTEGRATED |
 | `C:/DEV/Narrative/vne-auto-rn18-night` | `overnight/rn18-auto` | `03bb37e7` | INTEGRATED |
 | `C:/DEV/Narrative/vne-auto-rn19-night` | `overnight/rn19-auto` | `12057ecf` | INTEGRATED |
-| `C:/DEV/Narrative/vne-pac-level-none-merge-candidate` | `preflight/pac-level-none-fix-merge` | `95426167` | INTEGRATED |
-| `C:/DEV/Narrative/vne-pac-merge-preflight` | `preflight/pac-real-user-trial-merge` | `69a3cee2` | INTEGRATED |
 | `C:/DEV/Narrative/vne-aside-v2-s2-live-memory-api` | `qa/aside-v2-s2-live-memory-api` | `7f994f1b` | INTEGRATED |
 | `C:/DEV/Narrative/vne-aside-v2-s2-real-kira-memory` | `qa/aside-v2-s2-real-kira-memory` | `54cae9a5` | INTEGRATED |
 | `C:/DEV/Narrative/vne-aside-v2-s2-sqlite-fresh-checkout` | `qa/aside-v2-s2-sqlite-fresh-checkout` | `7f994f1b` | INTEGRATED |
 | `C:/DEV/Narrative/vne-aside-v2-s2-tls-ca-independent-qa` | `qa/aside-v2-s2-tls-ca-independent` | `7f994f1b` | INTEGRATED |
 | `C:/DEV/Narrative/vne-aside-v2-slice2-live-qa` | `qa/aside-v2-slice2-live-renpy` | `afa64d3a` | INTEGRATED |
-| `C:/DEV/Narrative/vne-aside-v2-slice2-renpy-native-abi-probe` | `qa/aside-v2-slice2-renpy-native-abi-probe` | `afa64d3a` | INTEGRATED |
-| `C:/DEV/Narrative/vne-aside-v2-slice2-renpy-sqlite-audit` | `qa/aside-v2-slice2-renpy-sqlite-audit` | `afa64d3a` | INTEGRATED |
-| `C:/DEV/Narrative/vne-aside-v2-slice2-renpy-sqlite-packaging-preflight` | `qa/aside-v2-slice2-renpy-sqlite-packaging-preflight` | `afa64d3a` | INTEGRATED |
-| `C:/DEV/Narrative/vne-aside-v2-slice2-renpy-sqlite-source-research` | `qa/aside-v2-slice2-renpy-sqlite-source-research` | `afa64d3a` | INTEGRATED |
 | `C:/DEV/Narrative/vne-aside-v2-slice2-sqlite-correction-qa` | `qa/aside-v2-slice2-sqlite-correction-independent` | `afa64d3a` | INTEGRATED |
 | `C:/DEV/Narrative/vne-aside-v2-slice2-sqlite-final-qa` | `qa/aside-v2-slice2-sqlite-final` | `661c3b66` | INTEGRATED |
 | `C:/DEV/Narrative/vne-aside-v2-slice2-sqlite-live-qa-r2` | `qa/aside-v2-slice2-sqlite-live-renpy-r2` | `661c3b66` | INTEGRATED |
@@ -221,7 +203,7 @@ The branches above are the only ones with recorded governance metadata (base/ret
 | `C:/DEV/Narrative/vne-persona-context-routing-audit` | *(detached)* | `afa64d3a` | n/a (detached) |
 | `C:/DEV/Narrative/vne-rkr-role-audit` | *(detached)* | `afa64d3a` | n/a (detached) |
 
-Total other worktrees: 129 (101 INTEGRATED, 22 TOPOLOGY_UNCLASSIFIED, 6 detached). All require owner review before any lifecycle/cleanup classification is assigned.
+Total other worktrees: 111 (83 INTEGRATED, 22 TOPOLOGY_UNCLASSIFIED, 6 detached). All require owner review before any lifecycle/cleanup classification is assigned.
 
 ---
 

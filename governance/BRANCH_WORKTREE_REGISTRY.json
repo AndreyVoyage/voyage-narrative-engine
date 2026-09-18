@@ -5,8 +5,7 @@
   "authoritative_target": {
     "branch": "main",
     "ref": "refs/remotes/origin/main",
-    "sha": "80dba618ee260979453cdde0e8a489ad1dfff54f",
-    "note": "Local refs/heads/main (checked out in worktree vne-n9-pac-merge) is STALE relative to this authoritative SHA by 2 commits (3ae0caa, 80dba61) -- it was never fetched/merged locally after those commits were pushed directly to origin/main. refs/remotes/origin/main is correct and current because `git push` updates the local remote-tracking ref automatically. Use refs/remotes/origin/main or this explicit sha for lineage checks; do not use refs/heads/main."
+    "note": "The authoritative target is identified by stable ref identity only (refs/remotes/origin/main); its current SHA is ALWAYS resolved live via `git rev-parse` by tools/voyage_branch_worktree_map.py, never stored here -- storing it as versioned metadata previously caused this entry to go stale on every advance of origin/main (see governance/BRANCH_LINEAGE_AND_TASK_BATCHING_POLICY_v1.md §12 and the VOYAGE_BRANCH_WORKTREE_REGISTRY_V1_DYNAMIC_FACTS_CORRECTION task). Separately, local refs/heads/main (checked out in worktree vne-n9-pac-merge) is known to be STALE relative to origin/main -- it was never fetched/merged locally after commits were pushed directly to origin/main. Use refs/remotes/origin/main for lineage checks; never refs/heads/main."
   },
   "current_position": {
     "branch": "feature/voyage-branch-worktree-registry-v1",
@@ -16,7 +15,7 @@
     {
       "branch": "feature/voyage-branch-worktree-registry-v1",
       "worktree": "C:/DEV/Narrative/vne-voyage-framework-update-2026-09-v1",
-      "tip_sha": "80dba618ee260979453cdde0e8a489ad1dfff54f",
+      "tip_sha": "465dd96a36ad6ee5004d683ce5a74e01c658b3fc",
       "base_branch": "main",
       "base_sha": "80dba618ee260979453cdde0e8a489ad1dfff54f",
       "return_target": "main",
@@ -26,9 +25,9 @@
       "classification_state": "CLASSIFIED",
       "lineage_state": "CURRENT",
       "current_position": true,
-      "purpose": "VOYAGE_BRANCH_WORKTREE_REGISTRY_V1 -- implement and populate the first operational branch/worktree registry and generated topology map.",
+      "purpose": "VOYAGE_BRANCH_WORKTREE_REGISTRY_V1 -- implement and populate the first operational branch/worktree registry and generated topology map. Now also covers the Tier-1 worktree cleanup and the dynamic-facts self-reference correction.",
       "cleanup_candidate": false,
-      "notes": "Reused worktree; branched from feature/voyage-framework-update-2026-09-v1 at its exact published tip (80dba618) rather than creating a new worktree, per policy \u00a71/\u00a72."
+      "notes": "Reused worktree; branched from feature/voyage-framework-update-2026-09-v1 at its exact published tip (80dba618) rather than creating a new worktree, per policy \u00a71/\u00a72. tip_sha above is an authoring-time snapshot ONLY, not a live-tip assertion: this entry's lifecycle_status is ACTIVE, so tools/voyage_branch_worktree_map.py resolves and renders the LIVE worktree HEAD instead of validating against this stored value -- it will not go stale on the next commit."
     },
     {
       "branch": "feature/voyage-framework-update-2026-09-v1",
