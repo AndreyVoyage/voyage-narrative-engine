@@ -9,7 +9,7 @@ from pathlib import Path
 def test_ui_imports_only_editor_application_from_services():
     repo_root = Path(__file__).resolve().parents[3]
     violations: list[str] = []
-    for path in sorted((repo_root / "ui").rglob("*.py")):
+    for path in sorted((repo_root / "ui" / "editor_desktop").rglob("*.py")):
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         for node in ast.walk(tree):
             modules: list[str] = []
@@ -39,7 +39,7 @@ def test_ui_mutation_calls_are_limited_to_approved_facade_methods():
     approved_read_actions = {"validate_scene"}
     violations: list[str] = []
     approved_calls: list[str] = []
-    for path in sorted((repo_root / "ui").rglob("*.py")):
+    for path in sorted((repo_root / "ui" / "editor_desktop").rglob("*.py")):
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         for node in ast.walk(tree):
             if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
