@@ -127,7 +127,7 @@ label vne_scene_onrv623jojqv643fojtwk6k7nvsxg43bm5sv6ylhmfuw4xzqgayq_entry_gfrv6
 label vne_scene_onrv623jojqv643fojtwk6k7nvsxg43bm5sv6ylhmfuw4xzqgayq_end:
     return
 
-# accepted_ass: mfzxgx3tmnpww2lsmfpxs33hmfpwqylmnrpxoylsnv2xaxzqgayv65rr version=1 content_hash=c27491900abf097a3113e6200b1d6335ea39b3b08818c5bc1533bc4784bd40e5 scene_label=vne_scene_onrv623jojqv66lpm5qv62dbnrwf653bojwxk4c7gaydc_start
+# accepted_ass: mfzxgx3tmnpww2lsmfpxs33hmfpwqylmnrpxoylsnv2xaxzqgayv65rs version=2 content_hash=70fcb6edc7b217178acfad13f7210f8f833c413840f7e91103688d98971136fa scene_label=vne_scene_onrv623jojqv66lpm5qv62dbnrwf653bojwxk4c7gaydc_start
 
 # OrderedASS scene sc_kira_yoga_hall_warmup_001
 # reading_mode: classic_vn
@@ -136,7 +136,7 @@ label vne_scene_onrv623jojqv66lpm5qv62dbnrwf653bojwxk4c7gaydc_start:
     jump vne_scene_onrv623jojqv66lpm5qv62dbnrwf653bojwxk4c7gaydc_entry_nzqxe4tboruxmzk7gaydc
 
 label vne_scene_onrv623jojqv66lpm5qv62dbnrwf653bojwxk4c7gaydc_entry_nzqxe4tboruxmzk7gaydc:
-    narrator "Кира разминается на беговой дорожке в зале для йоги."
+    narrator "Кира разминается на беговой дорожке в йога-зале."
 
 label vne_scene_onrv623jojqv66lpm5qv62dbnrwf653bojwxk4c7gaydc_end:
     return
