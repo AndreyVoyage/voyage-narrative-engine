@@ -14,6 +14,7 @@ from __future__ import annotations
 from .config import CharacterLabApplicationConfig
 from .errors import (
     CANON_UNAVAILABLE,
+    CRP_VALIDATION_FAILED,
     INTERNAL_ERROR,
     INVALID_INPUT,
     NOT_FOUND,
@@ -29,6 +30,16 @@ from .results import (
 )
 from .service import CharacterLabApplicationService
 
+# Re-exported CRP application-facing result types -- the same objects
+# services.crp_authoring.application_adapter already returns. Not duplicated
+# DTOs; this is the one seam through which a future UI layer can reference
+# them without importing services.crp_authoring directly.
+from services.crp_authoring.application_adapter import (
+    AcceptedReconstructionResult,
+    R3RelevanceResult,
+    ReconstructionPlan,
+)
+
 __all__ = [
     "CharacterLabApplicationService",
     "CharacterLabApplicationConfig",
@@ -39,10 +50,15 @@ __all__ = [
     "CharacterInspectorDetail",
     "Message",
     "LabSession",
+    # CRP application-facing result types (re-exported, not duplicated)
+    "R3RelevanceResult",
+    "ReconstructionPlan",
+    "AcceptedReconstructionResult",
     # Error categories
     "OK",
     "NOT_FOUND",
     "INVALID_INPUT",
     "CANON_UNAVAILABLE",
     "INTERNAL_ERROR",
+    "CRP_VALIDATION_FAILED",
 ]

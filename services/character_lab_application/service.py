@@ -6,19 +6,29 @@ Character Lab Application Service v1 -- thin UI-agnostic facade.
 Hides from UI code:
 
 - Character Canon storage layout and raw domain exception types;
-- session identity/storage details.
+- session identity/storage details;
+- CRP reconstruction-engine internals (role prompts, registry storage,
+  provider transport).
 
 This is an application layer, NOT a new domain model. It never reimplements
 Character Canon read semantics, never mutates Character Canon, and never
 chooses a UI/desktop technology. Sessions are a local, offline, in-memory
 application concept only -- there is no provider/network call anywhere in
 this module.
+
+CRP delegation methods (see bottom of ``CharacterLabApplicationService``) are
+pure pass-through wrappers over ``services.crp_authoring.application_adapter``
+-- the sole authorized CRP import surface for this package (dependency
+direction: this module -> ``crp_authoring.application_adapter`` -> CRP
+internals; never the reverse, never a deeper CRP submodule directly). No CRP
+domain/reconstruction logic is reimplemented here, and no provider is ever
+constructed by this module.
 """
 
 from __future__ import annotations
 
 import uuid
-from typing import Optional
+from typing import Any, Iterable, Mapping, Optional, Tuple
 
 from services.character_canon_bridge import (
     CharacterCanonBridgeError,
@@ -26,9 +36,33 @@ from services.character_canon_bridge import (
     read_character_canon,
 )
 from services.character_canon_bridge.status import is_production_approved
+from services.crp_authoring.application_adapter import (
+    AcceptedReconstructionResult,
+    CandidateCharacterPackage,
+    CrpValidationError,
+    KnowledgeProfile,
+    R3RelevanceResult,
+    ReconstructionAudit,
+    ReconstructionPlan,
+    RoleRegistry,
+    RoleResult,
+    RoleTask,
+    SourceEvidence,
+    ValidationReport,
+)
+from services.crp_authoring.application_adapter import evaluate_specialist_relevance as _crp_evaluate_specialist_relevance
+from services.crp_authoring.application_adapter import get_reconstruction_result as _crp_get_reconstruction_result
+from services.crp_authoring.application_adapter import prepare_reconstruction as _crp_prepare_reconstruction
+from services.crp_authoring.application_adapter import start_reconstruction as _crp_start_reconstruction
 
 from .config import CharacterLabApplicationConfig
-from .errors import CANON_UNAVAILABLE, INVALID_INPUT, NOT_FOUND, CharacterLabApplicationError
+from .errors import (
+    CANON_UNAVAILABLE,
+    CRP_VALIDATION_FAILED,
+    INVALID_INPUT,
+    NOT_FOUND,
+    CharacterLabApplicationError,
+)
 from .results import CharacterInspectorDetail, CharacterSummary, CharacterVersionSummary, LabSession, Message
 
 _CHARACTER_USAGE_CONTEXT = "authoring"
@@ -157,3 +191,83 @@ class CharacterLabApplicationService:
         )
         self._sessions[session_id] = updated
         return updated
+
+    # -- CRP reconstruction delegation ------------------------------------
+    #
+    # Pure pass-through wrappers over services.crp_authoring.application_adapter.
+    # No CRP domain/reconstruction logic is reimplemented here. No provider is
+    # ever constructed by this class; provider_callable is always supplied by
+    # the caller, exactly as the CRP adapter itself requires. Evaluating R3
+    # relevance NEVER authorizes execution and NEVER fabricates an
+    # activation_authorization_ref -- that remains a separate, explicit,
+    # caller-supplied value on the RoleTask itself (CRP's existing hard gate,
+    # unchanged and unweakened by this class).
+
+    def evaluate_specialist_relevance(self, evidence: Iterable[SourceEvidence]) -> R3RelevanceResult:
+        """Delegate to CRP's R3 relevance boundary. Relevance is data only."""
+        try:
+            return _crp_evaluate_specialist_relevance(evidence)
+        except CrpValidationError as exc:
+            raise CharacterLabApplicationError(CRP_VALIDATION_FAILED, str(exc)) from exc
+
+    def prepare_reconstruction(
+        self,
+        *,
+        subject_id: str,
+        run_id: str,
+        evidence_snapshot_id: str,
+        evidence: Tuple[SourceEvidence, ...],
+        registry: RoleRegistry,
+        profiles: Mapping[str, KnowledgeProfile],
+        role_tasks: Tuple[RoleTask, ...],
+        compile_context: Any,
+        audit_policy: Any,
+        evidence_payloads: Mapping[str, Mapping[str, Any]],
+    ) -> ReconstructionPlan:
+        """Delegate to CRP's ``prepare_reconstruction``. No provider call.
+
+        Identity-consistency validation (subject/run/evidence-snapshot across
+        every role task) and the R3 authorization gate are both enforced by
+        the CRP layer itself, unchanged; this method neither re-implements
+        nor relaxes either.
+        """
+        try:
+            return _crp_prepare_reconstruction(
+                subject_id=subject_id,
+                run_id=run_id,
+                evidence_snapshot_id=evidence_snapshot_id,
+                evidence=evidence,
+                registry=registry,
+                profiles=profiles,
+                role_tasks=role_tasks,
+                compile_context=compile_context,
+                audit_policy=audit_policy,
+                evidence_payloads=evidence_payloads,
+            )
+        except CrpValidationError as exc:
+            raise CharacterLabApplicationError(CRP_VALIDATION_FAILED, str(exc)) from exc
+
+    def start_reconstruction(
+        self,
+        plan: ReconstructionPlan,
+        provider_callable: Any,
+    ) -> Tuple[CandidateCharacterPackage, ReconstructionAudit, ValidationReport, Tuple[RoleResult, ...]]:
+        """Delegate to CRP's existing synchronous orchestrator entrypoint.
+
+        ``provider_callable`` is always caller-supplied; this method never
+        constructs a provider and never performs network I/O itself.
+        """
+        try:
+            return _crp_start_reconstruction(plan, provider_callable)
+        except CrpValidationError as exc:
+            raise CharacterLabApplicationError(CRP_VALIDATION_FAILED, str(exc)) from exc
+
+    def get_reconstruction_result(self, root: Any, subject_id: str) -> AcceptedReconstructionResult:
+        """Delegate to CRP's read-only loader for a previously ACCEPTED package.
+
+        Never writes, never mutates Character Canon, never promotes anything.
+        """
+        try:
+            return _crp_get_reconstruction_result(root, subject_id)
+        except CrpValidationError as exc:
+            raise CharacterLabApplicationError(CRP_VALIDATION_FAILED, str(exc)) from exc
