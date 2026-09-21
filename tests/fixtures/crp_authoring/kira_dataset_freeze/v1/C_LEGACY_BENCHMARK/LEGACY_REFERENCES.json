@@ -1,0 +1,23 @@
+{
+  "partition": "C",
+  "reconstruction_truth": false,
+  "authoring_visible": false,
+  "benchmark_only": true,
+  "pinned_repo_commit": "d59437124a7d18bef3bf0b1096b8790a790befdd",
+  "references": [
+    {
+      "path": "personas/kira/**",
+      "git_tree_sha1": "b6dc83782df11fd9dba54df98bee591e8d431432",
+      "sha256": "078f5d1d64ea61dfeb12599bfd38bfd16b4cd3614fb3f1434b75471049fb7944",
+      "kind": "tree",
+      "file_count": 64
+    },
+    {
+      "path": "personas/KIRA_MODULE_v15.json",
+      "git_blob_sha1": "247081c31713ccb7989c87ce15bbe6da7b94c6c8",
+      "sha256": "71ac6ec2277169565e5f9769e014a0034077fb721ba9d80739415d9bf499d714",
+      "size": 44176,
+      "kind": "blob"
+    }
+  ]
+}

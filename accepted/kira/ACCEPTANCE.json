@@ -1,0 +1,17 @@
+{
+  "acceptance_record": {
+    "acceptance_id": "kira-accepted-package-001",
+    "audit_id": null,
+    "decided_at": "2026-08-29T10:07:55+00:00",
+    "decided_by": "owner",
+    "decision": "HUMAN_APPROVED",
+    "package_hash": "e26f83dafa26e61af82f29b654b592300c8f3f7bd295d07bd4d2b6527ae3eebd",
+    "package_id": "kira-r4-canonical-run-1-package",
+    "package_version": 0,
+    "reason": "Owner Human ACCEPT: RUN_015 Candidate accepted as Accepted Character Package KIRA.",
+    "subject_id": "kira",
+    "supersedes": null
+  },
+  "artifact_type": "CRP_ACCEPTANCE_RECORD",
+  "schema_version": "1"
+}

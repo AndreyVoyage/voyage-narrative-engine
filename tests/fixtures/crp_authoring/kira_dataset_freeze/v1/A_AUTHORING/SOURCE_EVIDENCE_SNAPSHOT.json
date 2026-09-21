@@ -1,0 +1,312 @@
+{
+  "partition": "A",
+  "evidence_snapshot_id": "sha256:88f9c822a9d56f7154472c0192511fdc6402c1379a4cc040df287a99f81d5386",
+  "a_snapshot_sha256": "88f9c822a9d56f7154472c0192511fdc6402c1379a4cc040df287a99f81d5386",
+  "subject_id": "kira",
+  "provenance": "KIRA_OWNER_INTERVIEW_2026-08-22",
+  "intake_timestamp": "2026-08-22T00:00:00+00:00",
+  "source_type": "OWNER_DIRECT",
+  "records": [
+    {
+      "source_id": "kira-a-0001",
+      "section_id": "identity_age",
+      "title": "Identity / Age",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#identity_age",
+      "content_hash": "c2d631901d8aa731bec988f92a05253295a4eddcf9b4f32ac8d2b31820f3c967"
+    },
+    {
+      "source_id": "kira-a-0002",
+      "section_id": "sport_career_timeline",
+      "title": "Sport / Career Timeline",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#sport_career_timeline",
+      "content_hash": "99a45754d232796375d6b5555dece12b7fb034c6b22c57a1b3ee95e8746dc8eb"
+    },
+    {
+      "source_id": "kira-a-0003",
+      "section_id": "sport_disciplines",
+      "title": "Athletics Disciplines",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#sport_disciplines",
+      "content_hash": "dc035ae5a5d25cc1b7a44094998239e1098663030a8136fc6a2d448b8d7827bc"
+    },
+    {
+      "source_id": "kira-a-0004",
+      "section_id": "injury_unknown",
+      "title": "Injury (Known Unknown)",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#injury_unknown",
+      "content_hash": "5774baa724635d6e61e26fef0ee6c49701b5fce0d674538d5525e842d39a3177"
+    },
+    {
+      "source_id": "kira-a-0005",
+      "section_id": "competition",
+      "title": "Competition Win (Owner Defined)",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#competition",
+      "content_hash": "ca9f6a4ce90aa887b553c89c408c5cde2367599ec4fecc2887ae2a5af0abbfd2"
+    },
+    {
+      "source_id": "kira-a-0006",
+      "section_id": "post_injury_transition",
+      "title": "Post-Injury Transition",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#post_injury_transition",
+      "content_hash": "08e75300bd10ed5962f63d42979db87981db134865b2b6738fc5350b20be8c1a"
+    },
+    {
+      "source_id": "kira-a-0007",
+      "section_id": "past_controlling_relationship",
+      "title": "Past Controlling Relationship",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#past_controlling_relationship",
+      "content_hash": "d4ed8991918c155fc47c59d477ce7956f9a106dd10e6547b4a54e63d10af9885"
+    },
+    {
+      "source_id": "kira-a-0008",
+      "section_id": "early_modesty_social_evolution",
+      "title": "Early Modesty / Social Evolution",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#early_modesty_social_evolution",
+      "content_hash": "8b8f8af0a919123e03eca37f129bd408301714098ba40e616c755dea1e91a2f8"
+    },
+    {
+      "source_id": "kira-a-0009",
+      "section_id": "social_circle",
+      "title": "Social Circle",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#social_circle",
+      "content_hash": "4a20886c3a4f4d933936c6a1c7ab8af19276c364d84223bce2e0c054a63a2066"
+    },
+    {
+      "source_id": "kira-a-0010",
+      "section_id": "sport_nostalgia_vs_control",
+      "title": "Sport Nostalgia vs Control",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#sport_nostalgia_vs_control",
+      "content_hash": "cd208e7c83b45f059c2d97cdda0e4da16f3895e7c8f2a0bab3f5e05d7dec49cd"
+    },
+    {
+      "source_id": "kira-a-0011",
+      "section_id": "psychology_study",
+      "title": "Education / Psychology",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#psychology_study",
+      "content_hash": "9cca950add3335c5d9cdf44878a505fcb38af4f895c28c6c365985c7c11e0540"
+    },
+    {
+      "source_id": "kira-a-0012",
+      "section_id": "psychology_daily_life",
+      "title": "Psychology in Daily Life",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#psychology_daily_life",
+      "content_hash": "8f36f94062ad13229eaf96d77426c0b85075aa1a3d085a85049a6aa1ac517b61"
+    },
+    {
+      "source_id": "kira-a-0013",
+      "section_id": "career_direction",
+      "title": "Professional Direction",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#career_direction",
+      "content_hash": "81951239286e83a3c136b10683df93062b1065a6bcb2102adbfb0312b914a7fb"
+    },
+    {
+      "source_id": "kira-a-0014",
+      "section_id": "core_personality",
+      "title": "Core Personality",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#core_personality",
+      "content_hash": "2d95dfbbfe4cde95289fb5ae4ac92681666b02032ae5bf267224b3a3bf41260e"
+    },
+    {
+      "source_id": "kira-a-0015",
+      "section_id": "emotional_vulnerability",
+      "title": "Emotional Vulnerability",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#emotional_vulnerability",
+      "content_hash": "fe9965d677419faf183e0ea7fe60eaa71a04ca35d05686784462095b4935d39f"
+    },
+    {
+      "source_id": "kira-a-0016",
+      "section_id": "family",
+      "title": "Family",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#family",
+      "content_hash": "27ba0418ed841a354e7b782f1c83c155a8c89064060b4a5a4084cae7fc817b65"
+    },
+    {
+      "source_id": "kira-a-0017",
+      "section_id": "mother_control",
+      "title": "Mother / Control",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#mother_control",
+      "content_hash": "a07c460986a43ecf03f5dcaa16e7e89f118c53b7410abd15d5a2877d9b16034f"
+    },
+    {
+      "source_id": "kira-a-0018",
+      "section_id": "marina_relationship",
+      "title": "Marina Relationship",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#marina_relationship",
+      "content_hash": "eb66f5145843018c48a3bb0e88ed73611b37aeb25b2b7691899b9f51c2a5991e"
+    },
+    {
+      "source_id": "kira-a-0019",
+      "section_id": "daily_life_interests",
+      "title": "Daily Life / Interests",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#daily_life_interests",
+      "content_hash": "19c9247aaec336113180ac1de06fb2f41858423022354c58536c5349a8ffa714"
+    },
+    {
+      "source_id": "kira-a-0020",
+      "section_id": "parties_demonstrativeness",
+      "title": "Parties / Demonstrativeness",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#parties_demonstrativeness",
+      "content_hash": "b2448a298ff9222f14679ba482659e3fb3fdad855b0f7945a3dfb37c71b503c2"
+    },
+    {
+      "source_id": "kira-a-0021",
+      "section_id": "attraction_orientation",
+      "title": "Attraction / Orientation",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#attraction_orientation",
+      "content_hash": "a8b451eaad302a61948e7beeb481359939f6392b77875b9de63a101e288d3188"
+    },
+    {
+      "source_id": "kira-a-0022",
+      "section_id": "attractiveness_insight",
+      "title": "Attractiveness Insight (Developmental)",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#attractiveness_insight",
+      "content_hash": "acf29ba9cac8bc9482e088de1d341e1aa245a3305a973c76c4f5f6a5af4850d0"
+    },
+    {
+      "source_id": "kira-a-0023",
+      "section_id": "development_model",
+      "title": "Development (Non-Linear)",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#development_model",
+      "content_hash": "a72679ee12da4d4d1f5ddeaa4e51e6d8ab61bc9d625cb2acb4e61467a6994c03"
+    },
+    {
+      "source_id": "kira-a-0024",
+      "section_id": "relationship_seed_andrey",
+      "title": "Relationship Seed (Canonical Optional Preset: Andrey = husband)",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#relationship_seed_andrey",
+      "content_hash": "a0698b1939de317e223e1388f25bc2882e24eaeb0e4a4dc3a93ecf7f3390722d"
+    },
+    {
+      "source_id": "kira-a-0025",
+      "section_id": "threat_of_losing_andrey",
+      "title": "Threat of Losing Andrey",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#threat_of_losing_andrey",
+      "content_hash": "865aecf554e0413c277fcdfe8d3b1dfa7bf95056a2640d13d5cec91f794ad282"
+    },
+    {
+      "source_id": "kira-a-0026",
+      "section_id": "approval_initiative",
+      "title": "Approval / Initiative Dynamic",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#approval_initiative",
+      "content_hash": "2c597f5c343bbe2dfe3df65f003ca8300cb731c7211716d1cb9cd84487b9f62e"
+    },
+    {
+      "source_id": "kira-a-0027",
+      "section_id": "jealousy_openness",
+      "title": "Jealousy / Openness",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#jealousy_openness",
+      "content_hash": "e7a7521d028f679943f0fbd9cf6fec84521c7a8c95cf6ea514f854ce89b843a4"
+    },
+    {
+      "source_id": "kira-a-0028",
+      "section_id": "love_multiple",
+      "title": "Love / Multiple Attachments",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#love_multiple",
+      "content_hash": "6dce1133b04c395e179467494075a700839eed8133f11c4c03749cb838472211"
+    },
+    {
+      "source_id": "kira-a-0029",
+      "section_id": "own_betrayal_lying",
+      "title": "Own Betrayal / Lying",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#own_betrayal_lying",
+      "content_hash": "8604b7fafa464816cdebdfeb6d5b3666403b3e263768126829a94d70fadb8a7d"
+    },
+    {
+      "source_id": "kira-a-0030",
+      "section_id": "forgiveness",
+      "title": "Forgiveness",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#forgiveness",
+      "content_hash": "4cebc1b98354f267e57e492ad9ac6f38f774c824634da187c080fccea653ad2e"
+    },
+    {
+      "source_id": "kira-a-0031",
+      "section_id": "control_surrender",
+      "title": "Control / Voluntary Surrender",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#control_surrender",
+      "content_hash": "c46b83a94b689c1ec0e65d7359219f704f2932c9e73624d51d9539e4e449f108"
+    },
+    {
+      "source_id": "kira-a-0032",
+      "section_id": "stop_pause_rollback",
+      "title": "STOP / Pause / Rollback",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#stop_pause_rollback",
+      "content_hash": "a7025d94c9a69e5acb6840b62d5f7dcaa580190f30f575c7904ef8665883109d"
+    },
+    {
+      "source_id": "kira-a-0033",
+      "section_id": "rehabilitation_internal_struggle",
+      "title": "Rehabilitation / Internal Struggle",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#rehabilitation_internal_struggle",
+      "content_hash": "75e66b5ae6613d8b0b47114d95a4d802cb2cc69a96d6e396a6cdf1d7f6590429"
+    },
+    {
+      "source_id": "kira-a-0034",
+      "section_id": "alcohol_memory",
+      "title": "Alcohol / Memory",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#alcohol_memory",
+      "content_hash": "23bf661e44e30b752382c920e3b88e39628204b977c4e642dd03317c8e05751b"
+    },
+    {
+      "source_id": "kira-a-0035",
+      "section_id": "error_guilt_repair",
+      "title": "Error / Guilt / Repair",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#error_guilt_repair",
+      "content_hash": "d17dd37df8b39e72778b063c8ca3cacb582087594bfaed2989467f6b77351e5c"
+    },
+    {
+      "source_id": "kira-a-0036",
+      "section_id": "confidentiality",
+      "title": "Confidentiality",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#confidentiality",
+      "content_hash": "c370650161a795419409e8d03782275bf7d313c9de3f042b9c3b2da1c0c3d739"
+    },
+    {
+      "source_id": "kira-a-0037",
+      "section_id": "professional_ethics",
+      "title": "Professional Ethics",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#professional_ethics",
+      "content_hash": "88d3455aa248101e5610c0d1543320551b14e9c2a613e31f4fc42c22f315de26"
+    },
+    {
+      "source_id": "kira-a-0038",
+      "section_id": "leadership_power",
+      "title": "Leadership / Power",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#leadership_power",
+      "content_hash": "ea482a7c6f33e72e25a6f447c232a0e33c1a34fa666da2945f9db89848eced11"
+    },
+    {
+      "source_id": "kira-a-0039",
+      "section_id": "power_seduction_manipulation",
+      "title": "Power / Seduction / Manipulation",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#power_seduction_manipulation",
+      "content_hash": "5283ded0d918cee3c8429f90d32915277bc5f46a223309501462670511023787"
+    },
+    {
+      "source_id": "kira-a-0040",
+      "section_id": "motherhood",
+      "title": "Motherhood",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#motherhood",
+      "content_hash": "1c25bf7877f2b56996ba5562664aac3202dff8616434391fc81fdb5c0081fcb6"
+    },
+    {
+      "source_id": "kira-a-0041",
+      "section_id": "public_shame",
+      "title": "Public Shame / Self-Acceptance",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#public_shame",
+      "content_hash": "482d7dc4e600b0a0a7d23a1ed90dd6570448c84c3c3f53910c8deff7edb1d027"
+    },
+    {
+      "source_id": "kira-a-0042",
+      "section_id": "past_self_tolerance",
+      "title": "Past Self / Tolerance",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#past_self_tolerance",
+      "content_hash": "9e915560bbbb0077b170a1d441795f0f9d9ae5483b907dad25450e604963c026"
+    },
+    {
+      "source_id": "kira-a-0043",
+      "section_id": "known_unknowns",
+      "title": "Known Unknowns (do not invent)",
+      "content_ref": "A_AUTHORING/OWNER_AUTHORED_KIRA.normalized.json#known_unknowns",
+      "content_hash": "0b4b6c9066234015441eed21c3b1fe5b469228ec4c39e7261ed5821967d29e28"
+    }
+  ]
+}
