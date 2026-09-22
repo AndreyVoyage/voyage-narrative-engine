@@ -55,6 +55,12 @@ from services.crp_authoring.application_adapter import get_reconstruction_result
 from services.crp_authoring.application_adapter import prepare_reconstruction as _crp_prepare_reconstruction
 from services.crp_authoring.application_adapter import start_reconstruction as _crp_start_reconstruction
 
+from .authoring import (
+    CanonReader,
+    CanonSemanticMapper,
+    _CharacterAuthoringUseCases,
+    _default_canon_semantic_mapper,
+)
 from .config import CharacterLabApplicationConfig
 from .errors import (
     CANON_UNAVAILABLE,
@@ -63,7 +69,14 @@ from .errors import (
     NOT_FOUND,
     CharacterLabApplicationError,
 )
-from .results import CharacterInspectorDetail, CharacterSummary, CharacterVersionSummary, LabSession, Message
+from .results import (
+    CharacterAuthoringResult,
+    CharacterInspectorDetail,
+    CharacterSummary,
+    CharacterVersionSummary,
+    LabSession,
+    Message,
+)
 
 _CHARACTER_USAGE_CONTEXT = "authoring"
 
@@ -71,10 +84,100 @@ _CHARACTER_USAGE_CONTEXT = "authoring"
 class CharacterLabApplicationService:
     """Character Lab facade: character read-side + local session model."""
 
-    def __init__(self, config: CharacterLabApplicationConfig) -> None:
+    def __init__(
+        self,
+        config: CharacterLabApplicationConfig,
+        *,
+        canon_import_reader: Optional[CanonReader] = None,
+        canon_semantic_mapper: Optional[CanonSemanticMapper] = None,
+    ) -> None:
         self._config = config
         self._sessions: dict[str, LabSession] = {}
         self._session_order: list[str] = []
+        self._authoring = _CharacterAuthoringUseCases(
+            config.character_authoring_root,
+            config.character_canon_root,
+            canon_reader=canon_import_reader or read_character_canon,
+            canon_semantic_mapper=(
+                canon_semantic_mapper or _default_canon_semantic_mapper
+            ),
+        )
+
+    # -- Local Character Authoring S2 use-cases ---------------------------
+
+    def create_character(
+        self,
+        *,
+        character_id: str,
+        version_id: str,
+        revision_id: str,
+        version_label: str,
+        semantic: Mapping[str, Any],
+    ) -> CharacterAuthoringResult:
+        """Create one local DRAFT character/version/initial revision."""
+
+        return self._authoring.create_character(
+            character_id=character_id,
+            version_id=version_id,
+            revision_id=revision_id,
+            version_label=version_label,
+            semantic=semantic,
+        )
+
+    def save_character(
+        self,
+        *,
+        character_id: str,
+        version_id: str,
+        revision_id: str,
+        semantic: Mapping[str, Any],
+    ) -> CharacterAuthoringResult:
+        """Save a full snapshot as a new revision in the same version."""
+
+        return self._authoring.save_character(
+            character_id=character_id,
+            version_id=version_id,
+            revision_id=revision_id,
+            semantic=semantic,
+        )
+
+    def create_new_version(
+        self,
+        *,
+        character_id: str,
+        version_id: str,
+        revision_id: str,
+        version_label: str,
+        semantic: Mapping[str, Any],
+    ) -> CharacterAuthoringResult:
+        """Explicitly create a new DRAFT logical version and initial revision."""
+
+        return self._authoring.create_new_version(
+            character_id=character_id,
+            version_id=version_id,
+            revision_id=revision_id,
+            version_label=version_label,
+            semantic=semantic,
+        )
+
+    def import_character(
+        self,
+        *,
+        source_character_id: str,
+        character_id: str,
+        version_id: str,
+        revision_id: str,
+        version_label: str,
+    ) -> CharacterAuthoringResult:
+        """Import a directly mappable Canon source into a new local DRAFT."""
+
+        return self._authoring.import_character(
+            source_character_id=source_character_id,
+            character_id=character_id,
+            version_id=version_id,
+            revision_id=revision_id,
+            version_label=version_label,
+        )
 
     # -- Character read-side (READ-ONLY over Character Canon) -----------
 

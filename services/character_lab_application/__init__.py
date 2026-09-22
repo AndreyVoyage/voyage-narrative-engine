@@ -13,8 +13,17 @@ from __future__ import annotations
 
 from .config import CharacterLabApplicationConfig
 from .errors import (
+    AUTHORING_ALREADY_EXISTS,
+    AUTHORING_NOT_EDITABLE,
+    AUTHORING_NOT_FOUND,
+    AUTHORING_PERSISTENCE_FAILED,
+    AUTHORING_UNAVAILABLE,
+    AUTHORING_VALIDATION_FAILED,
     CANON_UNAVAILABLE,
     CRP_VALIDATION_FAILED,
+    IMMUTABLE_PERSISTENCE_FAILED,
+    IMPORT_REQUIRES_AUTHORING_COMPLETION,
+    IMPORT_SOURCE_UNAVAILABLE,
     INTERNAL_ERROR,
     INVALID_INPUT,
     NOT_FOUND,
@@ -22,6 +31,7 @@ from .errors import (
     CharacterLabApplicationError,
 )
 from .results import (
+    CharacterAuthoringResult,
     CharacterInspectorDetail,
     CharacterSummary,
     CharacterVersionSummary,
@@ -50,6 +60,7 @@ __all__ = [
     "CharacterInspectorDetail",
     "Message",
     "LabSession",
+    "CharacterAuthoringResult",
     # CRP application-facing result types (re-exported, not duplicated)
     "R3RelevanceResult",
     "ReconstructionPlan",
@@ -61,4 +72,13 @@ __all__ = [
     "CANON_UNAVAILABLE",
     "INTERNAL_ERROR",
     "CRP_VALIDATION_FAILED",
+    "AUTHORING_UNAVAILABLE",
+    "AUTHORING_ALREADY_EXISTS",
+    "AUTHORING_NOT_FOUND",
+    "AUTHORING_NOT_EDITABLE",
+    "AUTHORING_VALIDATION_FAILED",
+    "AUTHORING_PERSISTENCE_FAILED",
+    "IMMUTABLE_PERSISTENCE_FAILED",
+    "IMPORT_SOURCE_UNAVAILABLE",
+    "IMPORT_REQUIRES_AUTHORING_COMPLETION",
 ]

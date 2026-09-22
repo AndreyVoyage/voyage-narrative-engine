@@ -74,3 +74,24 @@ class LabSession:
     character_id: str
     version_id: Optional[str]
     transcript: Tuple[Message, ...] = ()
+
+
+@dataclass(frozen=True)
+class CharacterAuthoringResult:
+    """Successful local Character Authoring mutation result.
+
+    The four stable content identities are returned for callers, but this DTO
+    is not a runtime/test-session pin and carries no publication or activation
+    authority.
+    """
+
+    operation: str
+    character_id: str
+    version_id: str
+    revision_id: str
+    snapshot_hash: str
+    lifecycle_state: str
+    source_character_id: Optional[str] = None
+    source_revision_id: Optional[str] = None
+    source_snapshot_hash: Optional[str] = None
+    source_ref: Optional[str] = None
