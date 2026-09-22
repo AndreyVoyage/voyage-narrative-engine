@@ -36,6 +36,17 @@ from services.character_canon_bridge import (
     read_character_canon,
 )
 from services.character_canon_bridge.status import is_production_approved
+from services.character_authoring import CharacterAuthoringNotFoundError
+from services.character_publication import (
+    CharacterPublicationService,
+    PublicationNotApprovedError,
+    PublicationPackageCollisionError,
+    PublicationSourceCorruptError,
+    PublicationStaleRevisionError,
+    PublicationStaleSnapshotError,
+    PublicationStorageError,
+    PublicationValidationError,
+)
 from services.crp_authoring.application_adapter import (
     AcceptedReconstructionResult,
     CandidateCharacterPackage,
@@ -63,14 +74,24 @@ from .authoring import (
 )
 from .config import CharacterLabApplicationConfig
 from .errors import (
+    AUTHORING_NOT_FOUND,
+    AUTHORING_UNAVAILABLE,
     CANON_UNAVAILABLE,
     CRP_VALIDATION_FAILED,
     INVALID_INPUT,
     NOT_FOUND,
+    PUBLICATION_NOT_APPROVED,
+    PUBLICATION_PACKAGE_COLLISION,
+    PUBLICATION_SOURCE_CORRUPT,
+    PUBLICATION_STALE_REVISION,
+    PUBLICATION_STALE_SNAPSHOT,
+    PUBLICATION_STORAGE_FAILED,
+    PUBLICATION_VALIDATION_FAILED,
     CharacterLabApplicationError,
 )
 from .results import (
     CharacterAuthoringResult,
+    CharacterPublicationResult,
     CharacterSessionPin,
     CharacterInspectorDetail,
     CharacterSummary,
@@ -246,6 +267,75 @@ class CharacterLabApplicationService:
             character_id=character_id,
             version_id=version_id,
             revision_id=revision_id,
+        )
+
+    def publish_character_version(
+        self,
+        *,
+        character_id: str,
+        version_id: str,
+        revision_id: str,
+        snapshot_hash: str,
+    ) -> CharacterPublicationResult:
+        """Publish one exact approved revision as an immutable local package."""
+
+        authoring_root = self._config.character_authoring_root
+        if authoring_root is None:
+            raise CharacterLabApplicationError(
+                AUTHORING_UNAVAILABLE,
+                "Character Authoring store root is not configured",
+            )
+        publication_root = authoring_root.parent / "character_authoring_publication"
+        try:
+            published = CharacterPublicationService(
+                authoring_root, publication_root
+            ).publish_character_version(
+                character_id=character_id,
+                version_id=version_id,
+                revision_id=revision_id,
+                snapshot_hash=snapshot_hash,
+            )
+        except CharacterAuthoringNotFoundError as exc:
+            raise CharacterLabApplicationError(
+                AUTHORING_NOT_FOUND, str(exc)
+            ) from exc
+        except PublicationNotApprovedError as exc:
+            raise CharacterLabApplicationError(
+                PUBLICATION_NOT_APPROVED, str(exc)
+            ) from exc
+        except PublicationStaleRevisionError as exc:
+            raise CharacterLabApplicationError(
+                PUBLICATION_STALE_REVISION, str(exc)
+            ) from exc
+        except PublicationStaleSnapshotError as exc:
+            raise CharacterLabApplicationError(
+                PUBLICATION_STALE_SNAPSHOT, str(exc)
+            ) from exc
+        except PublicationSourceCorruptError as exc:
+            raise CharacterLabApplicationError(
+                PUBLICATION_SOURCE_CORRUPT, str(exc)
+            ) from exc
+        except PublicationValidationError as exc:
+            raise CharacterLabApplicationError(
+                PUBLICATION_VALIDATION_FAILED, str(exc)
+            ) from exc
+        except PublicationPackageCollisionError as exc:
+            raise CharacterLabApplicationError(
+                PUBLICATION_PACKAGE_COLLISION, str(exc)
+            ) from exc
+        except PublicationStorageError as exc:
+            raise CharacterLabApplicationError(
+                PUBLICATION_STORAGE_FAILED, str(exc)
+            ) from exc
+        return CharacterPublicationResult(
+            runtime_package_schema_version=(
+                published.runtime_package_schema_version
+            ),
+            character_id=published.character_id,
+            package_hash=published.package_hash,
+            source_version_id=published.source_version_id,
+            source_revision_id=published.source_revision_id,
+            source_snapshot_hash=published.source_snapshot_hash,
         )
 
     def create_new_version(

@@ -109,3 +109,15 @@ class CharacterSessionPin:
     version_id: str
     revision_id: str
     snapshot_hash: str
+
+
+@dataclass(frozen=True)
+class CharacterPublicationResult:
+    """Path-free identity of one immutable published runtime package."""
+
+    runtime_package_schema_version: str
+    character_id: str
+    package_hash: str
+    source_version_id: str
+    source_revision_id: str
+    source_snapshot_hash: str

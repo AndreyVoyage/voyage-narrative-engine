@@ -32,10 +32,18 @@ from .errors import (
     INVALID_INPUT,
     NOT_FOUND,
     OK,
+    PUBLICATION_NOT_APPROVED,
+    PUBLICATION_PACKAGE_COLLISION,
+    PUBLICATION_SOURCE_CORRUPT,
+    PUBLICATION_STALE_REVISION,
+    PUBLICATION_STALE_SNAPSHOT,
+    PUBLICATION_STORAGE_FAILED,
+    PUBLICATION_VALIDATION_FAILED,
     CharacterLabApplicationError,
 )
 from .results import (
     CharacterAuthoringResult,
+    CharacterPublicationResult,
     CharacterSessionPin,
     CharacterInspectorDetail,
     CharacterSummary,
@@ -66,6 +74,7 @@ __all__ = [
     "Message",
     "LabSession",
     "CharacterAuthoringResult",
+    "CharacterPublicationResult",
     "CharacterSessionPin",
     # CRP application-facing result types (re-exported, not duplicated)
     "R3RelevanceResult",
@@ -91,4 +100,11 @@ __all__ = [
     "IMPORT_SOURCE_UNAVAILABLE",
     "IMPORT_REQUIRES_AUTHORING_COMPLETION",
     "DERIVATION_SOURCE_NOT_APPROVED",
+    "PUBLICATION_NOT_APPROVED",
+    "PUBLICATION_STALE_REVISION",
+    "PUBLICATION_STALE_SNAPSHOT",
+    "PUBLICATION_SOURCE_CORRUPT",
+    "PUBLICATION_VALIDATION_FAILED",
+    "PUBLICATION_PACKAGE_COLLISION",
+    "PUBLICATION_STORAGE_FAILED",
 ]
