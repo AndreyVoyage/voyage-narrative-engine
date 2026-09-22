@@ -14,13 +14,17 @@ from __future__ import annotations
 from .config import CharacterLabApplicationConfig
 from .errors import (
     AUTHORING_ALREADY_EXISTS,
+    AUTHORING_INVALID_LIFECYCLE_TRANSITION,
     AUTHORING_NOT_EDITABLE,
     AUTHORING_NOT_FOUND,
     AUTHORING_PERSISTENCE_FAILED,
+    AUTHORING_STALE_REVISION,
+    AUTHORING_STALE_SNAPSHOT,
     AUTHORING_UNAVAILABLE,
     AUTHORING_VALIDATION_FAILED,
     CANON_UNAVAILABLE,
     CRP_VALIDATION_FAILED,
+    DERIVATION_SOURCE_NOT_APPROVED,
     IMMUTABLE_PERSISTENCE_FAILED,
     IMPORT_REQUIRES_AUTHORING_COMPLETION,
     IMPORT_SOURCE_UNAVAILABLE,
@@ -32,6 +36,7 @@ from .errors import (
 )
 from .results import (
     CharacterAuthoringResult,
+    CharacterSessionPin,
     CharacterInspectorDetail,
     CharacterSummary,
     CharacterVersionSummary,
@@ -61,6 +66,7 @@ __all__ = [
     "Message",
     "LabSession",
     "CharacterAuthoringResult",
+    "CharacterSessionPin",
     # CRP application-facing result types (re-exported, not duplicated)
     "R3RelevanceResult",
     "ReconstructionPlan",
@@ -74,11 +80,15 @@ __all__ = [
     "CRP_VALIDATION_FAILED",
     "AUTHORING_UNAVAILABLE",
     "AUTHORING_ALREADY_EXISTS",
+    "AUTHORING_INVALID_LIFECYCLE_TRANSITION",
     "AUTHORING_NOT_FOUND",
     "AUTHORING_NOT_EDITABLE",
+    "AUTHORING_STALE_REVISION",
+    "AUTHORING_STALE_SNAPSHOT",
     "AUTHORING_VALIDATION_FAILED",
     "AUTHORING_PERSISTENCE_FAILED",
     "IMMUTABLE_PERSISTENCE_FAILED",
     "IMPORT_SOURCE_UNAVAILABLE",
     "IMPORT_REQUIRES_AUTHORING_COMPLETION",
+    "DERIVATION_SOURCE_NOT_APPROVED",
 ]

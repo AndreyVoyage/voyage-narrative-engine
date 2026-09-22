@@ -71,6 +71,7 @@ from .errors import (
 )
 from .results import (
     CharacterAuthoringResult,
+    CharacterSessionPin,
     CharacterInspectorDetail,
     CharacterSummary,
     CharacterVersionSummary,
@@ -139,6 +140,112 @@ class CharacterLabApplicationService:
             version_id=version_id,
             revision_id=revision_id,
             semantic=semantic,
+        )
+
+    def submit_for_approval(
+        self,
+        *,
+        character_id: str,
+        version_id: str,
+        revision_id: str,
+        snapshot_hash: str,
+    ) -> CharacterAuthoringResult:
+        """Freeze the exact selected revision for human approval review."""
+
+        return self._authoring.submit_for_approval(
+            character_id=character_id,
+            version_id=version_id,
+            revision_id=revision_id,
+            snapshot_hash=snapshot_hash,
+        )
+
+    def request_changes(
+        self,
+        *,
+        character_id: str,
+        version_id: str,
+        revision_id: str,
+        snapshot_hash: str,
+    ) -> CharacterAuthoringResult:
+        """Return the exact pending revision to editable workflow state."""
+
+        return self._authoring.request_changes(
+            character_id=character_id,
+            version_id=version_id,
+            revision_id=revision_id,
+            snapshot_hash=snapshot_hash,
+        )
+
+    def approve_as_canon(
+        self,
+        *,
+        character_id: str,
+        version_id: str,
+        revision_id: str,
+        snapshot_hash: str,
+    ) -> CharacterAuthoringResult:
+        """Record explicit human approval of one immutable local artifact."""
+
+        return self._authoring.approve_as_canon(
+            character_id=character_id,
+            version_id=version_id,
+            revision_id=revision_id,
+            snapshot_hash=snapshot_hash,
+        )
+
+    def withdraw_submission(
+        self,
+        *,
+        character_id: str,
+        version_id: str,
+        revision_id: str,
+        snapshot_hash: str,
+    ) -> CharacterAuthoringResult:
+        """Withdraw the exact pending submission into terminal local state."""
+
+        return self._authoring.withdraw_submission(
+            character_id=character_id,
+            version_id=version_id,
+            revision_id=revision_id,
+            snapshot_hash=snapshot_hash,
+        )
+
+    def derive_version_from_approved(
+        self,
+        *,
+        character_id: str,
+        source_version_id: str,
+        source_revision_id: str,
+        source_snapshot_hash: str,
+        new_version_id: str,
+        new_revision_id: str,
+        new_version_label: str,
+    ) -> CharacterAuthoringResult:
+        """Copy an exact approved snapshot into a new editable DRAFT version."""
+
+        return self._authoring.derive_version_from_approved(
+            character_id=character_id,
+            source_version_id=source_version_id,
+            source_revision_id=source_revision_id,
+            source_snapshot_hash=source_snapshot_hash,
+            new_version_id=new_version_id,
+            new_revision_id=new_revision_id,
+            new_version_label=new_version_label,
+        )
+
+    def create_session_pin(
+        self,
+        *,
+        character_id: str,
+        version_id: str,
+        revision_id: str,
+    ) -> CharacterSessionPin:
+        """Return an exact immutable revision identity without changing state."""
+
+        return self._authoring.create_session_pin(
+            character_id=character_id,
+            version_id=version_id,
+            revision_id=revision_id,
         )
 
     def create_new_version(

@@ -95,3 +95,17 @@ class CharacterAuthoringResult:
     source_revision_id: Optional[str] = None
     source_snapshot_hash: Optional[str] = None
     source_ref: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class CharacterSessionPin:
+    """Exact immutable identity of one persisted authoring revision.
+
+    A pin is detached from mutable character/version pointers and carries no
+    publication, activation, or runtime-memory authority.
+    """
+
+    character_id: str
+    version_id: str
+    revision_id: str
+    snapshot_hash: str
