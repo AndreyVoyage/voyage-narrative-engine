@@ -36,7 +36,7 @@ from services.character_canon_bridge import (
     read_character_canon,
 )
 from services.character_canon_bridge.status import is_production_approved
-from services.character_authoring import CharacterAuthoringNotFoundError
+from services.character_authoring import ApprovalClock, CharacterAuthoringNotFoundError
 from services.character_publication import (
     CharacterPublicationService,
     PublicationNotApprovedError,
@@ -112,6 +112,7 @@ class CharacterLabApplicationService:
         *,
         canon_import_reader: Optional[CanonReader] = None,
         canon_semantic_mapper: Optional[CanonSemanticMapper] = None,
+        approval_clock: Optional[ApprovalClock] = None,
     ) -> None:
         self._config = config
         self._sessions: dict[str, LabSession] = {}
@@ -123,6 +124,7 @@ class CharacterLabApplicationService:
             canon_semantic_mapper=(
                 canon_semantic_mapper or _default_canon_semantic_mapper
             ),
+            approval_clock=approval_clock,
         )
 
     # -- Local Character Authoring S2 use-cases ---------------------------
@@ -204,14 +206,22 @@ class CharacterLabApplicationService:
         version_id: str,
         revision_id: str,
         snapshot_hash: str,
+        decided_by: str,
     ) -> CharacterAuthoringResult:
-        """Record explicit human approval of one immutable local artifact."""
+        """Record explicit human approval of one immutable local artifact.
+
+        ``decided_by`` is the human approver, supplied explicitly by the
+        caller. The approval time is captured by Character Lab itself, and
+        both are persisted as write-once approval evidence before the version
+        transitions to ``APPROVED_AS_CANON``.
+        """
 
         return self._authoring.approve_as_canon(
             character_id=character_id,
             version_id=version_id,
             revision_id=revision_id,
             snapshot_hash=snapshot_hash,
+            decided_by=decided_by,
         )
 
     def withdraw_submission(

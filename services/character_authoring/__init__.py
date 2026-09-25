@@ -2,7 +2,18 @@
 
 from __future__ import annotations
 
+from .approval import (
+    APPROVAL_DECISION_HUMAN_APPROVED,
+    APPROVAL_EVIDENCE_SCHEMA_VERSION,
+    ApprovalClock,
+    ApprovalEvidence,
+    format_decided_at,
+    system_utc_clock,
+    validate_decided_at,
+    validate_decided_by,
+)
 from .errors import (
+    ApprovalEvidenceConflictError,
     CharacterAuthoringAlreadyExistsError,
     CharacterAuthoringCorruptionError,
     CharacterAuthoringError,
@@ -36,6 +47,15 @@ from .store import CharacterAuthoringStore, default_store_root
 from .validation import validate_identifier
 
 __all__ = [
+    "APPROVAL_DECISION_HUMAN_APPROVED",
+    "APPROVAL_EVIDENCE_SCHEMA_VERSION",
+    "ApprovalClock",
+    "ApprovalEvidence",
+    "ApprovalEvidenceConflictError",
+    "format_decided_at",
+    "system_utc_clock",
+    "validate_decided_at",
+    "validate_decided_by",
     "SEMANTIC_SCHEMA_VERSION",
     "REVISION_SCHEMA_VERSION",
     "CHARACTER_POINTER_SCHEMA_VERSION",

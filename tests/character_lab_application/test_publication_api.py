@@ -69,6 +69,7 @@ def approve(service, created):
         version_id=created.version_id,
         revision_id=created.revision_id,
         snapshot_hash=created.snapshot_hash,
+        decided_by="Test Approver",
     )
 
 

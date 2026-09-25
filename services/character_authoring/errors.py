@@ -39,6 +39,10 @@ class ImmutableRevisionError(CharacterAuthoringStorageError):
     """An operation attempted to overwrite an immutable revision."""
 
 
+class ApprovalEvidenceConflictError(CharacterAuthoringStorageError):
+    """Write-once approval evidence already exists and differs."""
+
+
 class CharacterAuthoringCorruptionError(CharacterAuthoringStorageError):
     """Persisted JSON is malformed or violates its structural contract."""
 

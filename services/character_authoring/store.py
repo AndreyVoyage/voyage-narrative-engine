@@ -9,10 +9,13 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any, Optional
 
+from .approval import ApprovalEvidence
 from .errors import (
+    ApprovalEvidenceConflictError,
     CharacterAuthoringAlreadyExistsError,
     CharacterAuthoringCorruptionError,
     CharacterAuthoringNotFoundError,
+    CharacterAuthoringInvariantError,
     CharacterAuthoringStorageError,
     CharacterAuthoringValidationError,
     ImmutableRevisionError,
@@ -205,6 +208,80 @@ class CharacterAuthoringStore:
             )
         return record
 
+    def persist_approval_evidence(self, evidence: ApprovalEvidence) -> ApprovalEvidence:
+        """Write approval evidence once; identical evidence is idempotent.
+
+        The evidence must bind an existing revision and its exact snapshot
+        hash. Existing evidence is never overwritten: a differing file fails
+        closed.
+        """
+
+        if not isinstance(evidence, ApprovalEvidence):
+            raise CharacterAuthoringValidationError(
+                "evidence: expected ApprovalEvidence"
+            )
+        record = self.load_revision(
+            evidence.character_id, evidence.version_id, evidence.revision_id
+        )
+        if record.snapshot_hash != evidence.snapshot_hash:
+            raise CharacterAuthoringInvariantError(
+                "approval evidence snapshot_hash does not match its exact revision"
+            )
+        target = self._approval_path(
+            evidence.character_id, evidence.version_id, evidence.revision_id
+        )
+        if target.exists() or not _write_write_once_json(target, evidence.to_dict()):
+            return self._reconcile_existing_approval(target, evidence)
+        return evidence
+
+    def load_approval_evidence(
+        self, character_id: str, version_id: str, revision_id: str
+    ) -> ApprovalEvidence:
+        character_id = validate_identifier(character_id, field="character_id")
+        version_id = validate_identifier(version_id, field="version_id")
+        revision_id = validate_identifier(revision_id, field="revision_id")
+        validate_distinct_identities(character_id, version_id, revision_id)
+        path = self._approval_path(character_id, version_id, revision_id)
+        evidence = self._parse_approval_file(path)
+        if (
+            evidence.character_id != character_id
+            or evidence.version_id != version_id
+            or evidence.revision_id != revision_id
+        ):
+            raise CharacterAuthoringCorruptionError(
+                "approval evidence identity does not match its storage path"
+            )
+        try:
+            record = self.load_revision(character_id, version_id, revision_id)
+        except CharacterAuthoringNotFoundError as exc:
+            raise CharacterAuthoringCorruptionError(
+                "approval evidence has no matching revision"
+            ) from exc
+        if record.snapshot_hash != evidence.snapshot_hash:
+            raise CharacterAuthoringCorruptionError(
+                "approval evidence snapshot_hash does not match its revision"
+            )
+        return evidence
+
+    def _parse_approval_file(self, path: Path) -> ApprovalEvidence:
+        data = _read_json_object(path, label="approval evidence")
+        try:
+            return ApprovalEvidence.from_dict(data)
+        except CharacterAuthoringValidationError as exc:
+            raise CharacterAuthoringCorruptionError(
+                "approval evidence violates its schema"
+            ) from exc
+
+    def _reconcile_existing_approval(
+        self, path: Path, evidence: ApprovalEvidence
+    ) -> ApprovalEvidence:
+        existing = self._parse_approval_file(path)
+        if existing != evidence:
+            raise ApprovalEvidenceConflictError(
+                "approval evidence already exists and differs; it is write-once"
+            )
+        return existing
+
     def list_character_ids(self) -> list[str]:
         result: list[str] = []
         for entry in self._root.iterdir():
@@ -360,6 +437,14 @@ class CharacterAuthoringStore:
             character_id, "versions", version_id, "revisions", f"{revision_id}.json"
         )
 
+    def _approval_path(
+        self, character_id: str, version_id: str, revision_id: str
+    ) -> Path:
+        validate_identifier(revision_id, field="revision_id")
+        return self._safe_path(
+            character_id, "versions", version_id, "approvals", f"{revision_id}.json"
+        )
+
 
 def _serialize_json(data: Mapping[str, Any]) -> str:
     try:
@@ -423,6 +508,27 @@ def _write_immutable_json(target: Path, data: Mapping[str, Any]) -> None:
             raise CharacterAuthoringStorageError(
                 "immutable revision publication failed"
             ) from exc
+    finally:
+        try:
+            os.unlink(temp_path)
+        except OSError:
+            pass
+
+
+def _write_write_once_json(target: Path, data: Mapping[str, Any]) -> bool:
+    """Exclusively create ``target``; return False if it already exists."""
+
+    temp_path = _write_temp_json(target.parent, data)
+    try:
+        try:
+            os.link(temp_path, target)
+        except FileExistsError:
+            return False
+        except OSError as exc:
+            raise CharacterAuthoringStorageError(
+                "write-once approval evidence publication failed"
+            ) from exc
+        return True
     finally:
         try:
             os.unlink(temp_path)

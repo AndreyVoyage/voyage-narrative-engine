@@ -12,6 +12,9 @@ from pathlib import Path
 from typing import Any, NoReturn, Optional
 
 from services.character_authoring import (
+    ApprovalClock,
+    ApprovalEvidence,
+    ApprovalEvidenceConflictError,
     CharacterAuthoringAlreadyExistsError,
     CharacterAuthoringError,
     CharacterAuthoringNotFoundError,
@@ -25,6 +28,9 @@ from services.character_authoring import (
     RevisionRecord,
     VersionPointer,
     compute_snapshot_hash,
+    format_decided_at,
+    system_utc_clock,
+    validate_decided_by,
 )
 from services.character_canon_bridge import (
     CharacterCanonBridgeError,
@@ -33,6 +39,7 @@ from services.character_canon_bridge import (
 )
 
 from .errors import (
+    APPROVAL_EVIDENCE_CONFLICT,
     AUTHORING_ALREADY_EXISTS,
     AUTHORING_INVALID_LIFECYCLE_TRANSITION,
     AUTHORING_NOT_EDITABLE,
@@ -145,10 +152,12 @@ class _CharacterAuthoringUseCases:
         *,
         canon_reader: CanonReader = read_character_canon,
         canon_semantic_mapper: CanonSemanticMapper = _default_canon_semantic_mapper,
+        approval_clock: Optional[ApprovalClock] = None,
     ) -> None:
         self._canon_root = canon_root
         self._canon_reader = canon_reader
         self._canon_semantic_mapper = canon_semantic_mapper
+        self._approval_clock: ApprovalClock = approval_clock or system_utc_clock
         if authoring_root is None:
             self._store: Optional[CharacterAuthoringStore] = None
             return
@@ -171,7 +180,9 @@ class _CharacterAuthoringUseCases:
         *,
         details: Optional[dict[str, object]] = None,
     ) -> NoReturn:
-        if isinstance(exc, ImmutableRevisionError):
+        if isinstance(exc, ApprovalEvidenceConflictError):
+            code = APPROVAL_EVIDENCE_CONFLICT
+        elif isinstance(exc, ImmutableRevisionError):
             code = IMMUTABLE_PERSISTENCE_FAILED
         elif isinstance(exc, CharacterAuthoringAlreadyExistsError):
             code = AUTHORING_ALREADY_EXISTS
@@ -310,6 +321,9 @@ class _CharacterAuthoringUseCases:
         snapshot_hash: str,
         allowed_sources: frozenset[LifecycleState],
         target_state: LifecycleState,
+        before_transition: Optional[
+            Callable[[VersionPointer, RevisionRecord], Optional[Mapping[str, object]]]
+        ] = None,
     ) -> CharacterAuthoringResult:
         store = self._require_store()
         pointer, record = self._load_exact_selected_revision(
@@ -330,6 +344,10 @@ class _CharacterAuthoringUseCases:
                 },
             )
 
+        extra_details: dict[str, object] = {}
+        if before_transition is not None:
+            extra_details = dict(before_transition(pointer, record) or {})
+
         try:
             store.update_version_pointer(
                 replace(pointer, lifecycle_state=target_state)
@@ -342,9 +360,59 @@ class _CharacterAuthoringUseCases:
                     "target_lifecycle_state": target_state.value,
                     "revision_id": record.revision_id,
                     "snapshot_hash": record.snapshot_hash,
+                    **extra_details,
                 },
             )
         return self._workflow_result(operation, record, target_state)
+
+    def _record_approval_evidence(
+        self,
+        store: CharacterAuthoringStore,
+        record: RevisionRecord,
+        decided_by: str,
+    ) -> dict[str, object]:
+        """Persist (or reuse) write-once approval evidence for ``record``.
+
+        Existing evidence for the exact revision is reused so that a retry
+        after a failed pointer transition completes the original approval
+        event; evidence by a different approver is never replaced.
+        """
+
+        try:
+            try:
+                existing: Optional[ApprovalEvidence] = store.load_approval_evidence(
+                    record.character_id, record.version_id, record.revision_id
+                )
+            except CharacterAuthoringNotFoundError:
+                existing = None
+
+            if existing is not None:
+                if existing.decided_by != decided_by:
+                    raise CharacterLabApplicationError(
+                        APPROVAL_EVIDENCE_CONFLICT,
+                        "approval evidence for this revision already exists "
+                        "for a different approver",
+                        details={
+                            "revision_id": record.revision_id,
+                            "snapshot_hash": record.snapshot_hash,
+                        },
+                    )
+            else:
+                store.persist_approval_evidence(
+                    ApprovalEvidence(
+                        character_id=record.character_id,
+                        version_id=record.version_id,
+                        revision_id=record.revision_id,
+                        snapshot_hash=record.snapshot_hash,
+                        decided_by=decided_by,
+                        decided_at=format_decided_at(self._approval_clock()),
+                    )
+                )
+        except CharacterLabApplicationError:
+            raise
+        except (CharacterAuthoringError, OSError) as exc:
+            self._raise_authoring(exc)
+        return {"approval_evidence_persisted": True}
 
     def _create_new_character(
         self,
@@ -549,7 +617,14 @@ class _CharacterAuthoringUseCases:
         version_id: str,
         revision_id: str,
         snapshot_hash: str,
+        decided_by: str,
     ) -> CharacterAuthoringResult:
+        store = self._require_store()
+        try:
+            decided_by = validate_decided_by(decided_by)
+        except CharacterAuthoringError as exc:
+            self._raise_authoring(exc)
+
         return self._transition_version(
             operation=APPROVE,
             character_id=character_id,
@@ -558,6 +633,9 @@ class _CharacterAuthoringUseCases:
             snapshot_hash=snapshot_hash,
             allowed_sources=frozenset({LifecycleState.PENDING_APPROVAL}),
             target_state=LifecycleState.APPROVED_AS_CANON,
+            before_transition=lambda _pointer, record: self._record_approval_evidence(
+                store, record, decided_by
+            ),
         )
 
     def withdraw_submission(

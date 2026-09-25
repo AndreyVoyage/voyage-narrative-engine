@@ -95,6 +95,7 @@ def approve(service, result):
         version_id=result.version_id,
         revision_id=result.revision_id,
         snapshot_hash=result.snapshot_hash,
+        decided_by="Test Approver",
     )
 
 
@@ -273,6 +274,7 @@ def test_approve_pending_records_local_approval_without_external_write(tmp_path)
         version_id="version-v1",
         revision_id=created.revision_id,
         snapshot_hash=created.snapshot_hash,
+        decided_by="Test Approver",
     )
 
     pointer = store.read_version_pointer("atlas", "version-v1")
@@ -305,6 +307,7 @@ def test_approve_rejects_non_pending_state(tmp_path, state):
             version_id="version-v1",
             revision_id=created.revision_id,
             snapshot_hash=created.snapshot_hash,
+            decided_by="Test Approver",
         )
 
     assert excinfo.value.code == AUTHORING_INVALID_LIFECYCLE_TRANSITION
@@ -330,6 +333,7 @@ def test_approve_rejects_stale_revision_or_hash(
             version_id="version-v1",
             revision_id=revision_id or created.revision_id,
             snapshot_hash=snapshot_hash or created.snapshot_hash,
+            decided_by="Test Approver",
         )
 
     assert excinfo.value.code == error_code
@@ -349,6 +353,7 @@ def test_double_approval_is_rejected(tmp_path):
             version_id="version-v1",
             revision_id=created.revision_id,
             snapshot_hash=created.snapshot_hash,
+            decided_by="Test Approver",
         )
 
     assert excinfo.value.code == AUTHORING_INVALID_LIFECYCLE_TRANSITION
