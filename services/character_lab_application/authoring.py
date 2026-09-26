@@ -174,6 +174,50 @@ class _CharacterAuthoringUseCases:
             )
         return self._store
 
+    # -- Read-side (thin delegation over the S1 store) -------------------
+
+    def list_character_ids(self) -> tuple[str, ...]:
+        try:
+            return tuple(self._require_store().list_character_ids())
+        except CharacterAuthoringError as exc:
+            self._raise_authoring(exc)
+
+    def list_versions(self, character_id: str) -> tuple[str, ...]:
+        try:
+            return tuple(self._require_store().list_versions(character_id))
+        except CharacterAuthoringError as exc:
+            self._raise_authoring(exc)
+
+    def list_revisions(self, character_id: str, version_id: str) -> tuple[str, ...]:
+        try:
+            return tuple(
+                self._require_store().list_revisions(character_id, version_id)
+            )
+        except CharacterAuthoringError as exc:
+            self._raise_authoring(exc)
+
+    def read_character_pointer(self, character_id: str) -> CharacterPointer:
+        try:
+            return self._require_store().read_character_pointer(character_id)
+        except CharacterAuthoringError as exc:
+            self._raise_authoring(exc)
+
+    def read_version_pointer(self, character_id: str, version_id: str) -> VersionPointer:
+        try:
+            return self._require_store().read_version_pointer(character_id, version_id)
+        except CharacterAuthoringError as exc:
+            self._raise_authoring(exc)
+
+    def load_revision(
+        self, character_id: str, version_id: str, revision_id: str
+    ) -> RevisionRecord:
+        try:
+            return self._require_store().load_revision(
+                character_id, version_id, revision_id
+            )
+        except CharacterAuthoringError as exc:
+            self._raise_authoring(exc)
+
     @staticmethod
     def _raise_authoring(
         exc: BaseException,

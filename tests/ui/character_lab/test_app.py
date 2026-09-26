@@ -36,3 +36,31 @@ def test_explicit_argument_wins_over_env_var(tmp_path, monkeypatch):
 def test_same_process_service_construction(monkeypatch):
     monkeypatch.delenv("NARRATIVE_CHARACTER_CANON_ROOT", raising=False)
     assert isinstance(create_character_lab_service(), CharacterLabApplicationService)
+
+
+def test_default_config_resolves_authoring_and_release_roots():
+    config = create_character_lab_config()
+    assert config.character_authoring_root is not None
+    assert config.character_release_store_root is not None
+    assert (
+        config.character_release_store_root
+        == config.character_authoring_root.parent / "character_releases"
+    )
+
+
+def test_explicit_authoring_root_is_supported(tmp_path):
+    authoring = tmp_path / "authoring"
+    config = create_character_lab_config(character_authoring_root=authoring)
+    assert config.character_authoring_root == authoring
+    assert config.character_release_store_root == authoring.parent / "character_releases"
+
+
+def test_explicit_release_root_is_supported(tmp_path):
+    authoring = tmp_path / "authoring"
+    release = tmp_path / "releases"
+    config = create_character_lab_config(
+        character_authoring_root=authoring,
+        character_release_store_root=release,
+    )
+    assert config.character_authoring_root == authoring
+    assert config.character_release_store_root == release

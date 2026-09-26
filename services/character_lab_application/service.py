@@ -27,7 +27,10 @@ constructed by this module.
 
 from __future__ import annotations
 
+import shutil
+import tempfile
 import uuid
+from pathlib import Path
 from typing import Any, Iterable, Mapping, Optional, Tuple
 
 from services.character_canon_bridge import (
@@ -87,9 +90,15 @@ from .errors import (
     PUBLICATION_STALE_SNAPSHOT,
     PUBLICATION_STORAGE_FAILED,
     PUBLICATION_VALIDATION_FAILED,
+    RELEASE_STORE_UNAVAILABLE,
+    VCP_UNAVAILABLE,
     CharacterLabApplicationError,
 )
 from .results import (
+    AuthoringCharacterSummary,
+    AuthoringRevisionSummary,
+    AuthoringVersionSummary,
+    CanonicalCurrentSummary,
     CharacterAuthoringResult,
     CharacterPublicationResult,
     CharacterSessionPin,
@@ -98,6 +107,8 @@ from .results import (
     CharacterVersionSummary,
     LabSession,
     Message,
+    PublishedReleaseSummary,
+    RevisionSemanticData,
 )
 
 _CHARACTER_USAGE_CONTEXT = "authoring"
@@ -384,6 +395,255 @@ class CharacterLabApplicationService:
             version_id=version_id,
             revision_id=revision_id,
             version_label=version_label,
+        )
+
+    # -- Local Character Authoring read-side (thin, over the S1 store) ---
+
+    def list_authoring_characters(self) -> tuple[AuthoringCharacterSummary, ...]:
+        """List local Character Authoring characters (not Character Canon)."""
+
+        if self._config.character_authoring_root is None:
+            return ()
+        result: list[AuthoringCharacterSummary] = []
+        for character_id in self._authoring.list_character_ids():
+            try:
+                pointer = self._authoring.read_character_pointer(character_id)
+                selected_version_id = pointer.selected_version_id
+            except CharacterLabApplicationError:
+                selected_version_id = None
+            result.append(
+                AuthoringCharacterSummary(
+                    character_id=character_id,
+                    selected_version_id=selected_version_id,
+                )
+            )
+        return tuple(result)
+
+    def list_authoring_versions(
+        self, character_id: str
+    ) -> tuple[AuthoringVersionSummary, ...]:
+        """List local Authoring versions for one character."""
+
+        if self._config.character_authoring_root is None:
+            return ()
+        result: list[AuthoringVersionSummary] = []
+        for version_id in self._authoring.list_versions(character_id):
+            pointer = self._authoring.read_version_pointer(character_id, version_id)
+            result.append(
+                AuthoringVersionSummary(
+                    version_id=pointer.version_id,
+                    version_label=pointer.version_label,
+                    lifecycle_state=pointer.lifecycle_state.value,
+                    selected_revision_id=pointer.selected_revision_id,
+                )
+            )
+        return tuple(result)
+
+    def list_authoring_revisions(
+        self, character_id: str, version_id: str
+    ) -> tuple[AuthoringRevisionSummary, ...]:
+        """List immutable local Authoring revisions for one version."""
+
+        if self._config.character_authoring_root is None:
+            return ()
+        result: list[AuthoringRevisionSummary] = []
+        for revision_id in self._authoring.list_revisions(character_id, version_id):
+            record = self._authoring.load_revision(character_id, version_id, revision_id)
+            result.append(
+                AuthoringRevisionSummary(
+                    revision_id=revision_id,
+                    snapshot_hash=record.snapshot_hash,
+                    lifecycle_state=record.lifecycle_state.value,
+                    created_at=record.created_at,
+                )
+            )
+        return tuple(result)
+
+    def load_revision_semantic(
+        self, character_id: str, version_id: str, revision_id: str
+    ) -> RevisionSemanticData:
+        """Load one exact revision's identity plus its editable semantic data."""
+
+        record = self._authoring.load_revision(character_id, version_id, revision_id)
+        return RevisionSemanticData(
+            character_id=record.character_id,
+            version_id=record.version_id,
+            revision_id=record.revision_id,
+            snapshot_hash=record.snapshot_hash,
+            lifecycle_state=record.lifecycle_state.value,
+            semantic=record.semantic.to_dict(),
+        )
+
+    def read_version_lifecycle(
+        self, character_id: str, version_id: str
+    ) -> AuthoringVersionSummary:
+        """Read the current version/lifecycle pointer for one version."""
+
+        pointer = self._authoring.read_version_pointer(character_id, version_id)
+        return AuthoringVersionSummary(
+            version_id=pointer.version_id,
+            version_label=pointer.version_label,
+            lifecycle_state=pointer.lifecycle_state.value,
+            selected_revision_id=pointer.selected_revision_id,
+        )
+
+    # -- LAB-L5 release read-side + publication boundary (lazy VCP) ------
+
+    def _release_store(self) -> Any:
+        """Construct the LAB-L4 release store, lazily importing VCP."""
+
+        root = self._config.character_release_store_root
+        if root is None:
+            raise CharacterLabApplicationError(
+                RELEASE_STORE_UNAVAILABLE,
+                "Character Release store root is not configured",
+            )
+        try:
+            from services.character_publication.release_store import (
+                CharacterReleaseStore,
+            )
+        except ImportError as exc:
+            raise CharacterLabApplicationError(
+                VCP_UNAVAILABLE,
+                "Character Release store requires the Voyage Character Platform (VCP)",
+            ) from exc
+        return CharacterReleaseStore(root)
+
+    def list_published_releases(
+        self, character_id: str
+    ) -> tuple[PublishedReleaseSummary, ...]:
+        """List durable LAB-L5 releases for one character (path-free)."""
+
+        if self._config.character_release_store_root is None:
+            return ()
+        store = self._release_store()
+        result: list[PublishedReleaseSummary] = []
+        for release_id in store.list_release_ids(character_id):
+            record = store.load_release_record(character_id, release_id)
+            result.append(
+                PublishedReleaseSummary(
+                    release_id=record.release_id,
+                    package_hash=record.package_hash,
+                    artifact_sha256=record.artifact_sha256,
+                    byte_length=record.byte_length,
+                    published_at=record.published_at,
+                    source_version_id=record.source.source_version_id,
+                    source_revision_id=record.source.source_revision_id,
+                    source_snapshot_hash=record.source.source_snapshot_hash,
+                )
+            )
+        return tuple(result)
+
+    def read_canonical_current(
+        self, character_id: str
+    ) -> Optional[CanonicalCurrentSummary]:
+        """Read the mutable canonical-current pointer, if present."""
+
+        if self._config.character_release_store_root is None:
+            return None
+        store = self._release_store()
+        current = store.get_canonical_current(character_id)
+        if current is None:
+            return None
+        return CanonicalCurrentSummary(
+            character_id=current.character_id,
+            release_id=current.release_id,
+            package_hash=current.package_hash,
+            generation=current.generation,
+        )
+
+    def publish_character_release(
+        self,
+        *,
+        character_id: str,
+        version_id: str,
+        revision_id: str,
+        snapshot_hash: str,
+        release_id: str,
+        display_name: str,
+        set_current: bool = False,
+        build_workspace_root: Optional[Path] = None,
+        export_destination: Optional[Path] = None,
+    ) -> Any:
+        """Publish one exact approved revision through the closed LAB-L5 facade.
+
+        PUBLISH != SET CURRENT: publication never designates current unless
+        ``set_current`` is True. VCP is imported lazily so normal startup does
+        not require it. Partial-success semantics are preserved: a late-stage
+        failure raises the LAB-L5 ``CharacterReleasePublicationError`` subtype
+        whose ``result``/``published`` expose the already-durable release.
+        """
+
+        authoring_store = self._authoring._require_store()
+        release_store = self._release_store()
+
+        from services.character_lab_application.release_publication import (
+            publish_character_release as _publish_character_release,
+        )
+
+        workspace = build_workspace_root
+        owned_workspace: Optional[Path] = None
+        if workspace is None:
+            owned_workspace = Path(tempfile.mkdtemp(prefix="lab-release-build-"))
+            workspace = owned_workspace
+        try:
+            return _publish_character_release(
+                authoring_store=authoring_store,
+                release_store=release_store,
+                character_id=character_id,
+                version_id=version_id,
+                revision_id=revision_id,
+                snapshot_hash=snapshot_hash,
+                release_id=release_id,
+                display_name=display_name,
+                build_workspace_root=workspace,
+                set_current=set_current,
+                export_destination=export_destination,
+            )
+        finally:
+            if owned_workspace is not None:
+                shutil.rmtree(owned_workspace, ignore_errors=True)
+
+    def designate_canonical_current(
+        self,
+        *,
+        character_id: str,
+        release_id: str,
+    ) -> Any:
+        """Explicitly designate an already-published release current (no build)."""
+
+        release_store = self._release_store()
+
+        from services.character_lab_application.release_publication import (
+            designate_canonical_current as _designate_canonical_current,
+        )
+
+        return _designate_canonical_current(
+            release_store=release_store,
+            character_id=character_id,
+            release_id=release_id,
+        )
+
+    def export_character_release(
+        self,
+        *,
+        character_id: str,
+        release_id: str,
+        destination: Path | str,
+    ) -> Any:
+        """Export the exact STORED ``.vchar`` of a durable release (no rebuild)."""
+
+        release_store = self._release_store()
+
+        from services.character_lab_application.release_publication import (
+            export_character_release as _export_character_release,
+        )
+
+        return _export_character_release(
+            release_store=release_store,
+            character_id=character_id,
+            release_id=release_id,
+            destination=destination,
         )
 
     # -- Character read-side (READ-ONLY over Character Canon) -----------

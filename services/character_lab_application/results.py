@@ -11,7 +11,7 @@ this boundary.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Any, Mapping, Optional, Tuple
 
 
 @dataclass(frozen=True)
@@ -121,3 +121,67 @@ class CharacterPublicationResult:
     source_version_id: str
     source_revision_id: str
     source_snapshot_hash: str
+
+
+@dataclass(frozen=True)
+class AuthoringCharacterSummary:
+    """One local Character Authoring character (not Character Canon)."""
+
+    character_id: str
+    selected_version_id: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class AuthoringVersionSummary:
+    """One local Authoring version and its mutable lifecycle pointer."""
+
+    version_id: str
+    version_label: str
+    lifecycle_state: str
+    selected_revision_id: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class AuthoringRevisionSummary:
+    """One immutable local Authoring revision identity."""
+
+    revision_id: str
+    snapshot_hash: str
+    lifecycle_state: str
+    created_at: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class RevisionSemanticData:
+    """One loaded revision's exact identity plus its editable semantic data."""
+
+    character_id: str
+    version_id: str
+    revision_id: str
+    snapshot_hash: str
+    lifecycle_state: str
+    semantic: Mapping[str, Any]
+
+
+@dataclass(frozen=True)
+class PublishedReleaseSummary:
+    """One durable LAB-L5 release identity (path-free)."""
+
+    release_id: str
+    package_hash: str
+    artifact_sha256: str
+    byte_length: int
+    published_at: str
+    source_version_id: str
+    source_revision_id: str
+    source_snapshot_hash: str
+
+
+@dataclass(frozen=True)
+class CanonicalCurrentSummary:
+    """The mutable canonical-current pointer for one character, if present."""
+
+    character_id: str
+    release_id: str
+    package_hash: str
+    generation: int

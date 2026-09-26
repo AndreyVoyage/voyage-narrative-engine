@@ -11,7 +11,7 @@ call anywhere in this package.
 
 from __future__ import annotations
 
-from .config import CharacterLabApplicationConfig
+from .config import CharacterLabApplicationConfig, resolve_character_lab_roots
 from .errors import (
     APPROVAL_EVIDENCE_CONFLICT,
     AUTHORING_ALREADY_EXISTS,
@@ -46,9 +46,15 @@ from .errors import (
     PUBLICATION_FAILED,
     CURRENT_DESIGNATION_FAILED,
     EXPORT_FAILED,
+    RELEASE_STORE_UNAVAILABLE,
+    VCP_UNAVAILABLE,
     CharacterLabApplicationError,
 )
 from .results import (
+    AuthoringCharacterSummary,
+    AuthoringRevisionSummary,
+    AuthoringVersionSummary,
+    CanonicalCurrentSummary,
     CharacterAuthoringResult,
     CharacterPublicationResult,
     CharacterSessionPin,
@@ -57,6 +63,8 @@ from .results import (
     CharacterVersionSummary,
     LabSession,
     Message,
+    PublishedReleaseSummary,
+    RevisionSemanticData,
 )
 from .service import CharacterLabApplicationService
 
@@ -73,6 +81,7 @@ from services.crp_authoring.application_adapter import (
 __all__ = [
     "CharacterLabApplicationService",
     "CharacterLabApplicationConfig",
+    "resolve_character_lab_roots",
     "CharacterLabApplicationError",
     # Results / DTOs
     "CharacterSummary",
@@ -83,6 +92,12 @@ __all__ = [
     "CharacterAuthoringResult",
     "CharacterPublicationResult",
     "CharacterSessionPin",
+    "AuthoringCharacterSummary",
+    "AuthoringVersionSummary",
+    "AuthoringRevisionSummary",
+    "RevisionSemanticData",
+    "PublishedReleaseSummary",
+    "CanonicalCurrentSummary",
     # CRP application-facing result types (re-exported, not duplicated)
     "R3RelevanceResult",
     "ReconstructionPlan",
@@ -121,4 +136,6 @@ __all__ = [
     "PUBLICATION_FAILED",
     "CURRENT_DESIGNATION_FAILED",
     "EXPORT_FAILED",
+    "RELEASE_STORE_UNAVAILABLE",
+    "VCP_UNAVAILABLE",
 ]
