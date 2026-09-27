@@ -1,0 +1,38 @@
+{
+  "schema_version": "vcp_shared_core_provenance/1.0",
+  "dependency_name": "voyage-character-platform",
+  "dependency_version": "0.1.0",
+  "source_repository": "voyage-character-platform",
+  "source_commit": "ccade9e0ef943f63fec703b7ed5b436d7520324a",
+  "wheel_filename": "voyage_character_platform-0.1.0-py3-none-any.whl",
+  "wheel_sha256": "58c05ae065e0c0a400a53e73241e5fed2aee6b3a30c149071d17e06aa9126cee",
+  "python_version": "3.14.6",
+  "build_backend": "setuptools.build_meta",
+  "build_backend_version": "84.0.0",
+  "wheel_builder_version": "0.48.0",
+  "backend_artifacts": {
+    "setuptools": {
+      "filename": "setuptools-84.0.0-py3-none-any.whl",
+      "sha256": "51A52592B3B99E102B609654876BD65F19F999935166D1352678931132B0C670"
+    },
+    "wheel": {
+      "filename": "wheel-0.48.0-py3-none-any.whl",
+      "sha256": "3217DCC807155E45DB462D7EF2431F5DDDA0D7273B700D05A67B271CEB1287AB"
+    }
+  },
+  "build_recipe": {
+    "schema": "vcp-shared-core-build-recipe/1.0",
+    "source_repository": "voyage-character-platform",
+    "source_commit": "ccade9e0ef943f63fec703b7ed5b436d7520324a",
+    "source_materialization": "git-archive-tar-autocrlf-false-eol-lf",
+    "python_major_minor": "3.14",
+    "backend": "setuptools.build_meta",
+    "setuptools_version": "84.0.0",
+    "setuptools_sha256": "51a52592b3b99e102b609654876bd65f19f999935166d1352678931132b0c670",
+    "wheel_version": "0.48.0",
+    "wheel_sha256": "3217dcc807155e45db462d7ef2431f5ddda0d7273b700d05a67b271ceb1287ab",
+    "build_mode": "pip-wheel-no-build-isolation-no-deps-no-index",
+    "source_date_epoch": "commit-committer-time"
+  },
+  "build_command_digest": "f3efca45c5c0804e53d4fa3b296bcdb8e0ede56b79b1d333ca0fd95611fa7aa3"
+}

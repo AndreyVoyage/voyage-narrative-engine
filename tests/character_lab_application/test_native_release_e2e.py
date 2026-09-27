@@ -13,9 +13,9 @@ from pathlib import Path
 
 import pytest
 
-# VCP operational dependency wiring is deferred (OD-LAB-VCP-DEPENDENCY-WIRING-01);
-# without the distribution the module is skipped instead of failing collection.
-pytest.importorskip("voyage_character_platform")
+from tests._vcp_dependency_gate import require_pinned_vcp
+
+require_pinned_vcp()  # hard VCP dependency gate (replaces silent importorskip)
 
 from services.character_authoring import LifecycleState
 from services.character_lab_application.release_publication import (
@@ -49,6 +49,24 @@ from tests.character_lab_application.native_release_support import (
 @pytest.fixture
 def lab(tmp_path):
     return make_native_lab(tmp_path)
+
+
+def test_pinned_vcp_dependency_identity_is_enforced():
+    """The publication chain ran against the exact pinned VCP distribution.
+
+    This is the missing dependency-slice assertion: it proves the imported
+    ``voyage_character_platform`` is the pinned commit's wheel (via tracked
+    provenance), not a live source checkout, ambient install or stale wheel.
+    """
+    from tests._vcp_dependency_gate import pinned_vcp_identity
+
+    identity = pinned_vcp_identity()
+    assert identity["source_commit"] == "ccade9e0ef943f63fec703b7ed5b436d7520324a"
+    assert identity["dist_name"] == "voyage-character-platform"
+    assert identity["dist_version"] == "0.1.0"
+    assert identity["wheel_filename"] == "voyage_character_platform-0.1.0-py3-none-any.whl"
+    assert "site-packages" in identity["module_file"].parts
+    assert "build" in identity["module_file"].parts and "output" in identity["module_file"].parts
 
 
 def test_first_native_control_character_end_to_end(lab):

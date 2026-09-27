@@ -14,7 +14,9 @@ from pathlib import Path
 
 import pytest
 
-pytest.importorskip("voyage_character_platform")
+from tests._vcp_dependency_gate import require_pinned_vcp
+
+require_pinned_vcp()  # hard VCP dependency gate (replaces silent importorskip)
 
 from services.character_lab_application import release_publication as rp
 from services.character_lab_application.errors import ERROR_CODES

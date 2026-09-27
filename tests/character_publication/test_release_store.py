@@ -18,9 +18,9 @@ from pathlib import Path
 
 import pytest
 
-# VCP operational dependency wiring is deferred; without the distribution the
-# module is skipped instead of failing collection.
-pytest.importorskip("voyage_character_platform")
+from tests._vcp_dependency_gate import require_pinned_vcp
+
+require_pinned_vcp()  # hard VCP dependency gate (replaces silent importorskip)
 
 from services.character_authoring import (
     ApprovalEvidence,
