@@ -76,6 +76,11 @@ PROVENANCE_PATH = "provenance/provenance.json"
 CONTRADICTIONS_PATH = "provenance/contradictions.json"
 UNKNOWNS_PATH = "unknowns/unknowns.json"
 
+# OD-VCP-OPTIONAL-ACCEPTED-DOMAINS-01: for Lab V1 the only accepted optional
+# publication domain is intimacy. Unknown/future optional domains stay rejected.
+ACCEPTED_OPTIONAL_DOMAIN_IDS = frozenset({"intimacy"})
+ACCEPTED_DOMAIN_IDS = REQUIRED_DOMAIN_IDS | ACCEPTED_OPTIONAL_DOMAIN_IDS
+
 
 class AuthoringVcpReleaseCompilationError(AuthoringVcpDomainCompilationError):
     """The release cannot be compiled from the supplied exact inputs."""
@@ -229,12 +234,15 @@ def build_authoring_release_compilation(
     display_name = _validated_text(display_name, "display_name")
 
     domains = tuple(domain_compilation.domains)
-    if (
-        len(domains) != len(REQUIRED_DOMAIN_IDS)
-        or {domain.domain_id for domain in domains} != REQUIRED_DOMAIN_IDS
-    ):
+    domain_ids = {domain.domain_id for domain in domains}
+    if len(domain_ids) != len(domains):
         raise AuthoringVcpReleaseCompilationError(
-            "domain compilation must contain exactly the six required domains"
+            "domain compilation contains duplicate domain IDs"
+        )
+    if domain_ids != REQUIRED_DOMAIN_IDS and domain_ids != ACCEPTED_DOMAIN_IDS:
+        raise AuthoringVcpReleaseCompilationError(
+            "domain compilation must contain exactly the six required domains, "
+            "optionally plus the accepted optional 'intimacy' domain"
         )
 
     try:

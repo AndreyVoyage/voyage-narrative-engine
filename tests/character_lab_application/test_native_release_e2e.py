@@ -40,6 +40,7 @@ from tests.character_lab_application.native_release_support import (
     durable_state,
     make_native_lab,
     native_semantic,
+    native_semantic_with_sexology,
     sha,
     tree,
 )
@@ -246,3 +247,105 @@ def test_native_designation_rollback_a_b_a(lab):
         assert (record.package_hash, record.artifact_sha256, record.published_at) == (
             release.package_hash, release.artifact_sha256, release.published_at
         )
+
+
+SEXOLOGY_CHARACTER_ID = "native-sexology-e2e"
+SEXOLOGY_RELEASE_ID = "native-sexology-r1"
+
+
+def test_native_release_with_sexology_end_to_end(lab):
+    # Draft -> immutable revision with populated sexology + descriptions.
+    created = lab.service.create_character(
+        character_id=SEXOLOGY_CHARACTER_ID,
+        version_id="sexology-v1",
+        revision_id="sexology-v1-r1",
+        version_label="Sexology v1",
+        semantic=native_semantic_with_sexology(),
+    )
+    assert created.lifecycle_state == "DRAFT"
+
+    # Human approval evidence.
+    lab.service.submit_for_approval(
+        character_id=SEXOLOGY_CHARACTER_ID,
+        version_id="sexology-v1",
+        revision_id="sexology-v1-r1",
+        snapshot_hash=created.snapshot_hash,
+    )
+    approved = lab.service.approve_as_canon(
+        character_id=SEXOLOGY_CHARACTER_ID,
+        version_id="sexology-v1",
+        revision_id="sexology-v1-r1",
+        snapshot_hash=created.snapshot_hash,
+        decided_by=DECIDED_BY,
+    )
+    assert approved.lifecycle_state == "APPROVED_AS_CANON"
+
+    # LAB-L2 compile: six required + optional intimacy.
+    compilation = compile_authoring_release(
+        lab.authoring,
+        character_id=SEXOLOGY_CHARACTER_ID,
+        version_id="sexology-v1",
+        revision_id="sexology-v1-r1",
+        snapshot_hash=created.snapshot_hash,
+        release_id=SEXOLOGY_RELEASE_ID,
+        display_name="Sexology E2E",
+    )
+    assert tuple(d.domain_id for d in compilation.domains) == (
+        "core_identity",
+        "psychology",
+        "speech",
+        "relationships",
+        "visual_identity",
+        "interaction_boundaries",
+        "intimacy",
+    )
+    assert "intimacy" in compilation.domain_hashes_at_accept
+
+    # Publish through LAB-L2/L3/L4 (authoritative VCP verification inside).
+    result = publish_character_release(
+        authoring_store=lab.authoring,
+        release_store=lab.releases,
+        character_id=SEXOLOGY_CHARACTER_ID,
+        version_id="sexology-v1",
+        revision_id="sexology-v1-r1",
+        snapshot_hash=created.snapshot_hash,
+        release_id=SEXOLOGY_RELEASE_ID,
+        display_name="Sexology E2E",
+        build_workspace_root=lab.builds,
+    )
+    assert result.published is True and result.newly_published is True
+    assert result.aggregate_hash == compilation.aggregate_hash
+    assert list(lab.builds.iterdir()) == []
+
+    # Durable stored verification.
+    verified = lab.releases.verify_release(SEXOLOGY_CHARACTER_ID, SEXOLOGY_RELEASE_ID)
+    record = verified.record
+    assert record.package_hash == result.package_hash
+    assert record.aggregate_hash == result.aggregate_hash
+
+    # Authoritative extraction of the durable artifact: intimacy is present.
+    durable_pkg = extract_vchar_v1(
+        verified.artifact_path,
+        lab.tmp / "durable_extract",
+        expected_package_hash=result.package_hash,
+    )
+    assert durable_pkg.metadata.character_id == SEXOLOGY_CHARACTER_ID
+    assert (durable_pkg.root / "domains" / "intimacy.json").exists()
+
+    # Exact export of the stored .vchar, verified authoritatively.
+    exports = lab.tmp / "exports"
+    exports.mkdir()
+    exported = export_character_release(
+        release_store=lab.releases,
+        character_id=SEXOLOGY_CHARACTER_ID,
+        release_id=SEXOLOGY_RELEASE_ID,
+        destination=exports / "sexology.vchar",
+    )
+    assert exported.package_hash == result.package_hash
+    assert exported.artifact_sha256 == result.artifact_sha256
+    exported_pkg = extract_vchar_v1(
+        exported.destination,
+        lab.tmp / "export_extract",
+        expected_package_hash=result.package_hash,
+    )
+    assert (exported_pkg.root / "domains" / "intimacy.json").exists()

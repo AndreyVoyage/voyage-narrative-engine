@@ -206,56 +206,136 @@ class CharacterLabMainWindow(QMainWindow):
         outer = QVBoxLayout(content)
         outer.setContentsMargins(4, 4, 4, 4)
 
-        create_box = QGroupBox("Создать персонажа")
-        create_layout = QVBoxLayout(create_box)
-        form_container = QWidget()
-        form = QFormLayout(form_container)
-        form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
-
-        self.authoring_character_id_edit = QLineEdit()
-        self.authoring_version_id_edit = QLineEdit()
-        self.authoring_revision_id_edit = QLineEdit()
-        self.authoring_version_label_edit = QLineEdit()
+        # --- 1. Обзор (human-readable; no machine IDs) ---------------------
+        overview_box = QGroupBox("Обзор")
+        overview = QFormLayout(overview_box)
+        overview.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
         self.authoring_display_name_edit = QLineEdit()
-        form.addRow("ID персонажа", self.authoring_character_id_edit)
-        form.addRow("ID версии", self.authoring_version_id_edit)
-        form.addRow("ID ревизии", self.authoring_revision_id_edit)
-        form.addRow("Метка версии", self.authoring_version_label_edit)
-        form.addRow("Отображаемое имя", self.authoring_display_name_edit)
+        self.authoring_display_name_edit.setPlaceholderText("Отображаемое имя персонажа")
+        self.authoring_short_description_edit = QPlainTextEdit()
+        self.authoring_short_description_edit.setPlaceholderText("Краткое описание (карточка)")
+        self.authoring_short_description_edit.setMaximumHeight(64)
+        self.authoring_detailed_description_edit = QPlainTextEdit()
+        self.authoring_detailed_description_edit.setPlaceholderText("Подробное описание персонажа")
+        self.authoring_detailed_description_edit.setMinimumHeight(96)
+        overview.addRow("Отображаемое имя", self.authoring_display_name_edit)
+        overview.addRow("Краткое описание", self.authoring_short_description_edit)
+        overview.addRow("Подробное описание", self.authoring_detailed_description_edit)
+        outer.addWidget(overview_box)
 
+        # --- 2. Биография --------------------------------------------------
+        biography_box = QGroupBox("Биография")
+        biography_layout = QVBoxLayout(biography_box)
         self.authoring_biography_edit = QPlainTextEdit()
         self.authoring_biography_edit.setPlaceholderText("Биография персонажа")
-        form.addRow("Биография", self.authoring_biography_edit)
+        biography_layout.addWidget(self.authoring_biography_edit)
+        outer.addWidget(biography_box)
 
+        # --- 3. Психология -------------------------------------------------
+        psychology_box = QGroupBox("Психология")
+        psychology = QFormLayout(psychology_box)
+        psychology.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
         self.authoring_personality_edit = QLineEdit()
         self.authoring_behavioral_edit = QLineEdit()
         self.authoring_emotional_edit = QLineEdit()
         self.authoring_goals_edit = QLineEdit()
-        form.addRow("Личность", self.authoring_personality_edit)
-        form.addRow("Поведение", self.authoring_behavioral_edit)
-        form.addRow("Эмоции", self.authoring_emotional_edit)
-        form.addRow("Цели/мотивация", self.authoring_goals_edit)
+        psychology.addRow("Личность", self.authoring_personality_edit)
+        psychology.addRow("Поведение", self.authoring_behavioral_edit)
+        psychology.addRow("Эмоции", self.authoring_emotional_edit)
+        psychology.addRow("Цели/мотивация", self.authoring_goals_edit)
+        outer.addWidget(psychology_box)
 
+        # --- 4. Речь -------------------------------------------------------
+        speech_box = QGroupBox("Речь")
+        speech = QFormLayout(speech_box)
+        speech.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
         self.authoring_speech_style_edit = QLineEdit()
         self.authoring_register_edit = QLineEdit()
-        form.addRow("Стиль речи", self.authoring_speech_style_edit)
-        form.addRow("Регистр", self.authoring_register_edit)
+        speech.addRow("Стиль речи", self.authoring_speech_style_edit)
+        speech.addRow("Регистр", self.authoring_register_edit)
+        outer.addWidget(speech_box)
 
+        # --- 5. Отношения --------------------------------------------------
+        relations_box = QGroupBox("Отношения")
+        relations = QFormLayout(relations_box)
+        relations.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
         self.authoring_relational_edit = QLineEdit()
         self.authoring_attachment_edit = QLineEdit()
-        form.addRow("Отношения", self.authoring_relational_edit)
-        form.addRow("Привязанность", self.authoring_attachment_edit)
+        relations.addRow("Отношения", self.authoring_relational_edit)
+        relations.addRow("Привязанность", self.authoring_attachment_edit)
+        outer.addWidget(relations_box)
 
-        self.authoring_appearance_edit = QLineEdit()
+        # --- 6. Сексология -------------------------------------------------
+        sexology_box = QGroupBox("Сексология")
+        sexology = QFormLayout(sexology_box)
+        sexology.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
+        self.authoring_intimacy_attitudes_edit = QLineEdit()
+        self.authoring_preferences_edit = QLineEdit()
+        self.authoring_emotional_dynamics_edit = QLineEdit()
+        self.authoring_communication_edit = QLineEdit()
+        self.authoring_vulnerabilities_edit = QLineEdit()
+        self.authoring_intimacy_boundaries_edit = QLineEdit()
+        sexology.addRow("Отношение к близости", self.authoring_intimacy_attitudes_edit)
+        sexology.addRow("Предпочтения", self.authoring_preferences_edit)
+        sexology.addRow("Эмоциональная динамика", self.authoring_emotional_dynamics_edit)
+        sexology.addRow("Общение о близости", self.authoring_communication_edit)
+        sexology.addRow("Уязвимости", self.authoring_vulnerabilities_edit)
+        sexology.addRow("Границы близости", self.authoring_intimacy_boundaries_edit)
+        outer.addWidget(sexology_box)
+
+        # --- 7. Границы ----------------------------------------------------
+        boundaries_box = QGroupBox("Границы")
+        boundaries_layout = QVBoxLayout(boundaries_box)
         self.authoring_boundaries_edit = QLineEdit()
-        form.addRow("Внешность", self.authoring_appearance_edit)
-        form.addRow("Границы", self.authoring_boundaries_edit)
+        self.authoring_boundaries_edit.setPlaceholderText("Принципы взаимодействия (через запятую)")
+        boundaries_layout.addWidget(self.authoring_boundaries_edit)
+        outer.addWidget(boundaries_box)
 
-        create_layout.addWidget(form_container)
-        self.create_character_button = QPushButton("Создать персонажа")
-        self.create_character_button.clicked.connect(self._on_create_character_clicked)
-        create_layout.addWidget(self.create_character_button)
-        outer.addWidget(create_box)
+        # --- 8. Внешность --------------------------------------------------
+        appearance_box = QGroupBox("Внешность")
+        appearance_layout = QVBoxLayout(appearance_box)
+        self.authoring_appearance_edit = QLineEdit()
+        self.authoring_appearance_edit.setPlaceholderText("Описание внешности (через запятую)")
+        appearance_layout.addWidget(self.authoring_appearance_edit)
+        outer.addWidget(appearance_box)
+
+        # --- 9. Медиа (placeholder; asset store is a later slice) ----------
+        media_box = QGroupBox("Медиа")
+        media_layout = QVBoxLayout(media_box)
+        media_placeholder = QLabel(
+            "Фото и видео будут доступны после подключения Media Library."
+        )
+        media_placeholder.setWordWrap(True)
+        media_layout.addWidget(media_placeholder)
+        outer.addWidget(media_box)
+
+        # --- Технические данные (Advanced / Developer, collapsed) ----------
+        technical_box = QGroupBox("Технические данные")
+        technical_box.setCheckable(True)
+        technical_box.setChecked(False)
+        technical = QFormLayout(technical_box)
+        technical.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
+        self.authoring_character_id_edit = QLineEdit()
+        self.authoring_version_id_edit = QLineEdit()
+        self.authoring_revision_id_edit = QLineEdit()
+        self.authoring_version_label_edit = QLineEdit()
+        self.authoring_decided_by_edit = QLineEdit()
+        self.authoring_decided_by_edit.setPlaceholderText("Кто утверждает (decided_by)")
+        self.authoring_release_id_edit = QLineEdit()
+        self.authoring_release_id_edit.setPlaceholderText("release_id")
+        self.authoring_display_name_publish_edit = QLineEdit()
+        self.authoring_display_name_publish_edit.setPlaceholderText("display_name релиза")
+        self.authoring_export_path_edit = QLineEdit()
+        self.authoring_export_path_edit.setPlaceholderText("Путь экспорта .vchar")
+        technical.addRow("ID персонажа", self.authoring_character_id_edit)
+        technical.addRow("ID версии", self.authoring_version_id_edit)
+        technical.addRow("ID ревизии", self.authoring_revision_id_edit)
+        technical.addRow("Метка версии", self.authoring_version_label_edit)
+        technical.addRow("Кто утверждает", self.authoring_decided_by_edit)
+        technical.addRow("release_id", self.authoring_release_id_edit)
+        technical.addRow("display_name релиза", self.authoring_display_name_publish_edit)
+        technical.addRow("Путь экспорта", self.authoring_export_path_edit)
+        outer.addWidget(technical_box)
 
         tree_box = QGroupBox("Персонажи (авторинг)")
         tree_layout = QVBoxLayout(tree_box)
@@ -283,21 +363,9 @@ class CharacterLabMainWindow(QMainWindow):
         actions_box = QGroupBox("Действия")
         actions_layout = QVBoxLayout(actions_box)
 
-        self.authoring_decided_by_edit = QLineEdit()
-        self.authoring_decided_by_edit.setPlaceholderText("Кто утверждает (decided_by)")
-        actions_layout.addWidget(self.authoring_decided_by_edit)
-
-        self.authoring_release_id_edit = QLineEdit()
-        self.authoring_release_id_edit.setPlaceholderText("release_id")
-        actions_layout.addWidget(self.authoring_release_id_edit)
-
-        self.authoring_display_name_publish_edit = QLineEdit()
-        self.authoring_display_name_publish_edit.setPlaceholderText("display_name релиза")
-        actions_layout.addWidget(self.authoring_display_name_publish_edit)
-
-        self.authoring_export_path_edit = QLineEdit()
-        self.authoring_export_path_edit.setPlaceholderText("Путь экспорта .vchar")
-        actions_layout.addWidget(self.authoring_export_path_edit)
+        self.create_character_button = QPushButton("Создать персонажа")
+        self.create_character_button.clicked.connect(self._on_create_character_clicked)
+        actions_layout.addWidget(self.create_character_button)
 
         self.save_revision_button = QPushButton("Сохранить revision")
         self.save_revision_button.clicked.connect(self._on_save_revision_clicked)
@@ -566,7 +634,11 @@ class CharacterLabMainWindow(QMainWindow):
         )
         register = self.authoring_register_edit.text().strip() or None
         return {
-            "identity": {"display_name": display_name},
+            "identity": {
+                "display_name": display_name,
+                "short_description": self.authoring_short_description_edit.toPlainText(),
+                "detailed_description": self.authoring_detailed_description_edit.toPlainText(),
+            },
             "biography": self.authoring_biography_edit.toPlainText(),
             "psychology": {
                 "personality": _parse_comma_list(self.authoring_personality_edit.text()),
@@ -588,6 +660,22 @@ class CharacterLabMainWindow(QMainWindow):
             "boundaries": {
                 "principles": _parse_comma_list(self.authoring_boundaries_edit.text())
             },
+            "sexology": {
+                "intimacy_attitudes": _parse_comma_list(
+                    self.authoring_intimacy_attitudes_edit.text()
+                ),
+                "preferences": _parse_comma_list(self.authoring_preferences_edit.text()),
+                "emotional_dynamics": _parse_comma_list(
+                    self.authoring_emotional_dynamics_edit.text()
+                ),
+                "communication": _parse_comma_list(self.authoring_communication_edit.text()),
+                "vulnerabilities": _parse_comma_list(
+                    self.authoring_vulnerabilities_edit.text()
+                ),
+                "intimacy_boundaries": _parse_comma_list(
+                    self.authoring_intimacy_boundaries_edit.text()
+                ),
+            },
             "visual_identity": {},
         }
 
@@ -596,6 +684,12 @@ class CharacterLabMainWindow(QMainWindow):
 
         identity = semantic.get("identity") or {}
         self.authoring_display_name_edit.setText(str(identity.get("display_name", "")))
+        self.authoring_short_description_edit.setPlainText(
+            str(identity.get("short_description", ""))
+        )
+        self.authoring_detailed_description_edit.setPlainText(
+            str(identity.get("detailed_description", ""))
+        )
         self.authoring_biography_edit.setPlainText(str(semantic.get("biography", "")))
 
         psychology = semantic.get("psychology") or {}
@@ -617,6 +711,22 @@ class CharacterLabMainWindow(QMainWindow):
         self.authoring_appearance_edit.setText(_join_list(appearance.get("descriptors")))
         boundaries = semantic.get("boundaries") or {}
         self.authoring_boundaries_edit.setText(_join_list(boundaries.get("principles")))
+
+        sexology = semantic.get("sexology") or {}
+        self.authoring_intimacy_attitudes_edit.setText(
+            _join_list(sexology.get("intimacy_attitudes"))
+        )
+        self.authoring_preferences_edit.setText(_join_list(sexology.get("preferences")))
+        self.authoring_emotional_dynamics_edit.setText(
+            _join_list(sexology.get("emotional_dynamics"))
+        )
+        self.authoring_communication_edit.setText(_join_list(sexology.get("communication")))
+        self.authoring_vulnerabilities_edit.setText(
+            _join_list(sexology.get("vulnerabilities"))
+        )
+        self.authoring_intimacy_boundaries_edit.setText(
+            _join_list(sexology.get("intimacy_boundaries"))
+        )
 
     def _require_authoring_selection(self) -> bool:
         if not (

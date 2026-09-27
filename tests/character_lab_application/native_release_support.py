@@ -55,6 +55,25 @@ def native_semantic(biography: str = "Synthetic control biography.") -> dict:
     }
 
 
+def native_semantic_with_sexology(
+    biography: str = "Synthetic control biography.",
+) -> dict:
+    """Native semantic plus populated descriptions and sexology (Slice 1)."""
+
+    semantic = native_semantic(biography)
+    semantic["identity"]["short_description"] = "Synthetic card description."
+    semantic["identity"]["detailed_description"] = "Synthetic detailed description."
+    semantic["sexology"] = {
+        "intimacy_attitudes": ["tender"],
+        "preferences": ["slow"],
+        "emotional_dynamics": ["trust"],
+        "communication": ["verbal"],
+        "vulnerabilities": ["rejection"],
+        "intimacy_boundaries": ["no coercion"],
+    }
+    return semantic
+
+
 class TickingClock:
     """Deterministic UTC clock: each call advances one minute."""
 

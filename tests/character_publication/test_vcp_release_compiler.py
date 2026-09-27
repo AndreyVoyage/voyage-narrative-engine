@@ -39,7 +39,9 @@ from services.character_publication.vcp_release import (
     AuthoringVcpReleaseCompilationError,
     build_authoring_release_compilation,
     compile_authoring_release,
+    compute_aggregate_hash,
 )
+from voyage_character_platform.contracts import ContentState, DomainEnvelope
 from voyage_character_platform.package_v1 import (
     PackageV1Error,
     materialize_package_v1,
@@ -906,3 +908,116 @@ def test_oracle_rejects_a_release_whose_domain_no_longer_matches_acceptance(tmp_
     with pytest.raises(PackageV1Error):
         materialize_package_v1(tmp_path / "tampered", files=files)
     assert not (tmp_path / "tampered").exists()
+
+
+# -- sexology -> optional intimacy (OD-VCP-OPTIONAL-ACCEPTED-DOMAINS-01) ----
+
+
+def sexology_semantic() -> dict:
+    body = semantic()
+    body["sexology"] = {
+        "intimacy_attitudes": ["tender"],
+        "preferences": ["slow"],
+        "emotional_dynamics": ["trust"],
+        "communication": ["verbal"],
+        "vulnerabilities": ["rejection"],
+        "intimacy_boundaries": ["no coercion"],
+    }
+    return body
+
+
+def test_populated_sexology_compiles_six_plus_intimacy(tmp_path):
+    store, created = approved(tmp_path, body=sexology_semantic())
+
+    result = compile_release(store, created)
+
+    assert tuple(d.domain_id for d in result.domains) == SIX + ("intimacy",)
+    assert "domains/intimacy.json" in result.files
+    assert set(result.domain_hashes_at_accept) == set(SIX) | {"intimacy"}
+
+
+def test_empty_sexology_compiles_six_domains_only(tmp_path):
+    body = semantic()
+    body["sexology"] = {
+        "intimacy_attitudes": [],
+        "preferences": [],
+        "emotional_dynamics": [],
+        "communication": [],
+        "vulnerabilities": [],
+        "intimacy_boundaries": [],
+    }
+    store, created = approved(tmp_path, body=body)
+
+    result = compile_release(store, created)
+
+    assert tuple(d.domain_id for d in result.domains) == SIX
+    assert "domains/intimacy.json" not in result.files
+
+
+def test_intimacy_hash_equals_canonical_envelope_bytes(tmp_path):
+    store, created = approved(tmp_path, body=sexology_semantic())
+
+    result = compile_release(store, created)
+
+    intimacy_bytes = result.files["domains/intimacy.json"].content
+    assert result.domain_hashes_at_accept["intimacy"] == sha(intimacy_bytes)
+
+
+def test_aggregate_hash_changes_when_intimacy_included(tmp_path):
+    store, created = approved(tmp_path, body=sexology_semantic())
+
+    result = compile_release(store, created)
+
+    six_only = {
+        k: v for k, v in result.domain_hashes_at_accept.items() if k != "intimacy"
+    }
+    with_intimacy = dict(result.domain_hashes_at_accept)
+    assert compute_aggregate_hash(
+        "atlas", result.aggregate_candidate_id, six_only
+    ) != compute_aggregate_hash("atlas", result.aggregate_candidate_id, with_intimacy)
+    assert compute_aggregate_hash(
+        "atlas", result.aggregate_candidate_id, with_intimacy
+    ) == result.aggregate_hash
+
+
+def test_seven_domain_release_materializes_and_verifies_vcp(tmp_path):
+    store, created = approved(tmp_path, body=sexology_semantic())
+
+    result = compile_release(store, created)
+
+    materialized = materialize_package_v1(tmp_path / "pkg", files=dict(result.files))
+    verified = verify_package_v1(
+        materialized.root, expected_package_hash=materialized.package_hash
+    )
+    assert verified.metadata.character_id == "atlas"
+    assert verified.metadata.authority_class.value == "ACCEPTED_RELEASE"
+    assert (materialized.root / "domains" / "intimacy.json").exists()
+
+
+def test_unknown_seventh_domain_is_rejected(tmp_path):
+    store, created = approved(tmp_path)
+
+    domain_compilation = compile_authoring_revision_to_vcp_domains(
+        store,
+        character_id="atlas",
+        version_id="version-v1",
+        revision_id="revision-r1",
+        snapshot_hash=created.snapshot_hash,
+    )
+    extra = DomainEnvelope(
+        domain_id="voice_identity",
+        domain_schema_version="1.0",
+        content_state=ContentState.EXPLICITLY_EMPTY,
+        provenance_refs=(),
+        structured={},
+    )
+    forged = AuthoringVcpDomainCompilation(
+        source=domain_compilation.source,
+        domains=tuple(domain_compilation.domains) + (extra,),
+    )
+    evidence = store.load_approval_evidence("atlas", "version-v1", "revision-r1")
+
+    with pytest.raises(AuthoringVcpReleaseCompilationError):
+        build_authoring_release_compilation(
+            forged, evidence, release_id="release-one", display_name="Атлас"
+        )

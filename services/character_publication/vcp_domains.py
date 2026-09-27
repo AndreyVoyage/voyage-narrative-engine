@@ -50,7 +50,11 @@ class AuthoringVcpVisualMappingError(AuthoringVcpDomainCompilationError):
 
 @dataclass(frozen=True, slots=True)
 class AuthoringVcpDomainCompilation:
-    """Exact Authoring source coordinate and its six VCP domain envelopes."""
+    """Exact Authoring source coordinate and its VCP domain envelopes.
+
+    Always contains the six required domains; additionally contains the optional
+    ``intimacy`` domain when the authoring ``sexology`` carries content.
+    """
 
     source: SourceProvenance
     domains: tuple[DomainEnvelope, ...]
@@ -125,11 +129,15 @@ def compile_authoring_revision_to_vcp_domains(
     revision_id: str,
     snapshot_hash: str,
 ) -> AuthoringVcpDomainCompilation:
-    """Compile one exact immutable Authoring revision into six VCP domains.
+    """Compile one exact immutable Authoring revision into VCP domains.
 
     The operation reads only through ``store.load_revision`` and independently
     re-verifies the snapshot hash; it does not inspect or follow character or
     version pointers and performs no publication or package materialization.
+
+    Output is the six required domains plus, when ``semantic.sexology`` carries
+    meaningful content, the optional ``intimacy`` domain (OD-LAB-VCP-INTIMACY-
+    MAPPING-01).
     """
 
     try:
@@ -180,7 +188,16 @@ def compile_authoring_revision_to_vcp_domains(
         "interaction_boundaries": semantic["boundaries"],
     }
 
-    domains = tuple(
+    # OD-LAB-VCP-INTIMACY-MAPPING-01: sexology is OPTIONAL. It compiles to the
+    # VCP optional ``intimacy`` domain ONLY when it carries meaningful content;
+    # an absent or fully-empty sexology omits the domain entirely. Intimacy is
+    # appended AFTER the six required domains and never enters REQUIRED_DOMAIN_IDS.
+    sexology = semantic.get("sexology")
+    intimacy_populated = isinstance(sexology, Mapping) and _has_semantic_content(
+        sexology
+    )
+
+    domain_list = [
         _domain(
             domain_id,
             structured_by_domain[domain_id],
@@ -191,7 +208,10 @@ def compile_authoring_revision_to_vcp_domains(
             ),
         )
         for domain_id in _DOMAIN_ORDER
-    )
+    ]
+    if intimacy_populated:
+        domain_list.append(_domain("intimacy", sexology, populated=True))
+    domains = tuple(domain_list)
 
     validation = validate_required_domains(domains)
     if not validation.ok:

@@ -43,6 +43,20 @@ _PSYCHOLOGY_FIELDS = {
 }
 _SPEECH_FIELDS = {"speech_style", "register"}
 _RELATION_FIELDS = {"relational_tendencies", "attachment_traits"}
+# OD-LAB-PRODUCT-SEXOLOGY-01: Sexology is an OPTIONAL authoring domain. When a
+# sexology object is present it must carry exactly these six keys; each value is
+# a list[str] (possibly empty). Absence is a valid, backward-compatible shape.
+_SEXOLOGY_FIELDS = {
+    "intimacy_attitudes",
+    "preferences",
+    "emotional_dynamics",
+    "communication",
+    "vulnerabilities",
+    "intimacy_boundaries",
+}
+# Optional semantic domains allowed alongside the eight required domains. Old
+# revisions predating a domain simply omit it and remain loadable.
+_OPTIONAL_SEMANTIC_DOMAINS = {"sexology"}
 
 
 class LifecycleState(str, Enum):
@@ -78,12 +92,29 @@ def _require_string_list(value: object, *, field: str) -> None:
 
 
 def _validate_semantic(data: dict[str, Any]) -> None:
-    _require_exact_keys(data, _SEMANTIC_DOMAINS, field="semantic")
+    actual = set(data)
+    missing = sorted(_SEMANTIC_DOMAINS - actual)
+    extra = sorted(actual - _SEMANTIC_DOMAINS - _OPTIONAL_SEMANTIC_DOMAINS)
+    if missing or extra:
+        raise CharacterAuthoringValidationError(
+            f"semantic: schema keys differ; missing={missing}, extra={extra}"
+        )
     for domain in ("identity", "appearance", "boundaries", "visual_identity"):
         if not isinstance(data[domain], dict):
             raise CharacterAuthoringValidationError(f"semantic.{domain}: expected object")
     if not isinstance(data["biography"], str):
         raise CharacterAuthoringValidationError("semantic.biography: expected string")
+
+    # OD-LAB-PRODUCT-DESCRIPTION-01: optional identity description fields. They
+    # may be absent in historical revisions; when present they must be strings.
+    identity = data["identity"]
+    for description_key in ("short_description", "detailed_description"):
+        if description_key in identity and not isinstance(
+            identity[description_key], str
+        ):
+            raise CharacterAuthoringValidationError(
+                f"semantic.identity.{description_key}: expected string"
+            )
 
     psychology = data["psychology"]
     if not isinstance(psychology, dict):
@@ -115,6 +146,14 @@ def _validate_semantic(data: dict[str, Any]) -> None:
         _require_string_list(
             relations[name], field=f"semantic.character_relations.{name}"
         )
+
+    if "sexology" in data:
+        sexology = data["sexology"]
+        if not isinstance(sexology, dict):
+            raise CharacterAuthoringValidationError("semantic.sexology: expected object")
+        _require_exact_keys(sexology, _SEXOLOGY_FIELDS, field="semantic.sexology")
+        for name in sorted(_SEXOLOGY_FIELDS):
+            _require_string_list(sexology[name], field=f"semantic.sexology.{name}")
 
 
 def _freeze(value: Any) -> Any:
