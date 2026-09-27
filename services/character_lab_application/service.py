@@ -40,6 +40,15 @@ from services.character_canon_bridge import (
 )
 from services.character_canon_bridge.status import is_production_approved
 from services.character_authoring import ApprovalClock, CharacterAuthoringNotFoundError
+from services.character_draft import (
+    AnalysisResult,
+    CharacterDraftError,
+    CharacterDraftService,
+    CharacterIdFactory,
+    DraftProviderConfig,
+    ProviderCallable,
+    make_llm_provider,
+)
 from services.character_publication import (
     CharacterPublicationService,
     PublicationNotApprovedError,
@@ -81,6 +90,7 @@ from .errors import (
     AUTHORING_UNAVAILABLE,
     CANON_UNAVAILABLE,
     CRP_VALIDATION_FAILED,
+    DRAFT_AI_ERROR,
     INVALID_INPUT,
     NOT_FOUND,
     PUBLICATION_NOT_APPROVED,
@@ -124,10 +134,13 @@ class CharacterLabApplicationService:
         canon_import_reader: Optional[CanonReader] = None,
         canon_semantic_mapper: Optional[CanonSemanticMapper] = None,
         approval_clock: Optional[ApprovalClock] = None,
+        draft_provider: Optional[ProviderCallable] = None,
     ) -> None:
         self._config = config
         self._sessions: dict[str, LabSession] = {}
         self._session_order: list[str] = []
+        self._draft_provider = draft_provider
+        self._draft_service: Optional[CharacterDraftService] = None
         self._authoring = _CharacterAuthoringUseCases(
             config.character_authoring_root,
             config.character_canon_root,
@@ -175,6 +188,66 @@ class CharacterLabApplicationService:
             revision_id=revision_id,
             semantic=semantic,
         )
+
+    # -- AI-first creation flow (Draft only) --------------------------------
+
+    def start_ai_creation(
+        self,
+        *,
+        display_name: str,
+        description: str,
+        provider: Optional[ProviderCallable] = None,
+        character_id_factory: Optional[CharacterIdFactory] = None,
+    ) -> AnalysisResult:
+        """Begin an AI-first creation flow; return the initial analysis."""
+        if provider is None:
+            provider = self._draft_provider
+        if provider is None:
+            provider = make_llm_provider(DraftProviderConfig.from_env())
+        try:
+            service = CharacterDraftService(
+                provider, character_id_factory=character_id_factory
+            )
+            result = service.analyze(display_name, description)
+        except CharacterDraftError as exc:
+            raise CharacterLabApplicationError(DRAFT_AI_ERROR, str(exc)) from exc
+        self._draft_service = service
+        return result
+
+    def continue_ai_creation(self, *, answer_text: str) -> AnalysisResult:
+        """Incorporate one prose answer; return the updated analysis."""
+        service = self._require_draft_service()
+        try:
+            return service.answer(answer_text)
+        except CharacterDraftError as exc:
+            raise CharacterLabApplicationError(DRAFT_AI_ERROR, str(exc)) from exc
+
+    def build_ai_draft(self, *, force: bool = False) -> CharacterAuthoringResult:
+        """Build the AI Draft and persist it as an immutable DRAFT revision."""
+        service = self._require_draft_service()
+        try:
+            semantic = service.build_draft(force=force)
+        except CharacterDraftError as exc:
+            raise CharacterLabApplicationError(DRAFT_AI_ERROR, str(exc)) from exc
+        character_id = service.create_character_id()
+        return self.create_character(
+            character_id=character_id,
+            version_id="v1",
+            revision_id="r1",
+            version_label="AI draft",
+            semantic=semantic.to_dict(),
+        )
+
+    def current_ai_analysis(self) -> Optional[AnalysisResult]:
+        service = self._draft_service
+        return service.analysis if service is not None else None
+
+    def _require_draft_service(self) -> CharacterDraftService:
+        if self._draft_service is None:
+            raise CharacterLabApplicationError(
+                DRAFT_AI_ERROR, "no AI creation flow is active"
+            )
+        return self._draft_service
 
     def submit_for_approval(
         self,

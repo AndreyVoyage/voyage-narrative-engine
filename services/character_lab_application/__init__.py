@@ -48,6 +48,7 @@ from .errors import (
     EXPORT_FAILED,
     RELEASE_STORE_UNAVAILABLE,
     VCP_UNAVAILABLE,
+    DRAFT_AI_ERROR,
     CharacterLabApplicationError,
 )
 from .results import (
@@ -67,6 +68,12 @@ from .results import (
     RevisionSemanticData,
 )
 from .service import CharacterLabApplicationService
+from services.character_draft import (
+    AnalysisResult,
+    DraftContradiction,
+    DraftQuestion,
+    Readiness,
+)
 
 # Re-exported CRP application-facing result types -- the same objects
 # services.crp_authoring.application_adapter already returns. Not duplicated
@@ -98,6 +105,11 @@ __all__ = [
     "RevisionSemanticData",
     "PublishedReleaseSummary",
     "CanonicalCurrentSummary",
+    # AI-first creation flow result types (re-exported, not duplicated)
+    "AnalysisResult",
+    "DraftQuestion",
+    "DraftContradiction",
+    "Readiness",
     # CRP application-facing result types (re-exported, not duplicated)
     "R3RelevanceResult",
     "ReconstructionPlan",
@@ -138,4 +150,5 @@ __all__ = [
     "EXPORT_FAILED",
     "RELEASE_STORE_UNAVAILABLE",
     "VCP_UNAVAILABLE",
+    "DRAFT_AI_ERROR",
 ]

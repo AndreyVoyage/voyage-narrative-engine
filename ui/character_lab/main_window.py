@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
     QScrollArea,
     QSizePolicy,
     QSplitter,
+    QStackedWidget,
     QStatusBar,
     QTabWidget,
     QTreeView,
@@ -41,6 +42,7 @@ from services.character_lab_application import (
     CharacterLabApplicationError,
     CharacterLabApplicationService,
     LabSession,
+    Readiness,
 )
 
 _ID_ROLE = int(Qt.ItemDataRole.UserRole)
@@ -164,9 +166,170 @@ class CharacterLabMainWindow(QMainWindow):
 
     def _build_center_panel(self) -> QWidget:
         tabs = QTabWidget()
+        tabs.addTab(self._build_create_panel(), "Создание")
         tabs.addTab(self._build_dialogue_panel(), "Диалог")
         tabs.addTab(self._build_authoring_panel(), "Авторинг")
+        self.center_tabs = tabs
         return tabs
+
+    # -- AI-first creation flow: Создать персонажа -------------------------
+
+    def _build_create_panel(self) -> QWidget:
+        self._ai_created: tuple[str, str, str] | None = None
+        stack = QStackedWidget()
+
+        step1 = QWidget()
+        step1_layout = QVBoxLayout(step1)
+        step1_layout.addWidget(self._section_heading("Создать персонажа"))
+        step1_layout.addWidget(QLabel("Имя"))
+        self.ai_name_edit = QLineEdit()
+        self.ai_name_edit.setPlaceholderText("Имя персонажа")
+        step1_layout.addWidget(self.ai_name_edit)
+        step1_layout.addWidget(QLabel("Расскажите о персонаже"))
+        self.ai_description_edit = QPlainTextEdit()
+        self.ai_description_edit.setPlaceholderText(
+            "Свободный текст: одна строка, несколько абзацев или подробный профиль..."
+        )
+        step1_layout.addWidget(self.ai_description_edit, 1)
+        self.analyze_button = QPushButton("Анализировать")
+        self.analyze_button.clicked.connect(self._on_analyze_clicked)
+        step1_layout.addWidget(self.analyze_button)
+        stack.addWidget(step1)
+
+        step2 = QWidget()
+        step2_layout = QVBoxLayout(step2)
+        step2_layout.addWidget(self._section_heading("Анализ"))
+        self.ai_summary_label = QLabel()
+        self.ai_summary_label.setWordWrap(True)
+        step2_layout.addWidget(self.ai_summary_label)
+        self.ai_contradictions_label = QLabel()
+        self.ai_contradictions_label.setWordWrap(True)
+        step2_layout.addWidget(self.ai_contradictions_label)
+        self.ai_questions_label = QLabel()
+        self.ai_questions_label.setWordWrap(True)
+        step2_layout.addWidget(self.ai_questions_label)
+        self.ai_answer_edit = QPlainTextEdit()
+        self.ai_answer_edit.setPlaceholderText("Ответьте своими словами...")
+        step2_layout.addWidget(self.ai_answer_edit, 1)
+        row = QHBoxLayout()
+        self.continue_button = QPushButton("Продолжить")
+        self.continue_button.clicked.connect(self._on_continue_clicked)
+        self.build_now_button = QPushButton("Сформировать черновик сейчас")
+        self.build_now_button.clicked.connect(self._on_build_now_clicked)
+        row.addWidget(self.continue_button)
+        row.addWidget(self.build_now_button)
+        step2_layout.addLayout(row)
+        stack.addWidget(step2)
+
+        step3 = QWidget()
+        step3_layout = QVBoxLayout(step3)
+        step3_layout.addWidget(self._section_heading("Черновик создан"))
+        done = QLabel("Персонаж создан как черновик. Теперь его можно открыть в редакторе.")
+        done.setWordWrap(True)
+        step3_layout.addWidget(done)
+        self.open_editor_button = QPushButton("Открыть редактор")
+        self.open_editor_button.clicked.connect(self._on_open_editor_clicked)
+        step3_layout.addWidget(self.open_editor_button)
+        step3_layout.addStretch(1)
+        stack.addWidget(step3)
+
+        self.create_stack = stack
+        return stack
+
+    def _on_analyze_clicked(self) -> None:
+        name = self.ai_name_edit.text().strip()
+        description = self.ai_description_edit.toPlainText().strip()
+        if not name or not description:
+            self.statusBar().showMessage("Укажите имя и описание персонажа.")
+            return
+        try:
+            analysis = self._service.start_ai_creation(
+                display_name=name, description=description
+            )
+        except CharacterLabApplicationError as exc:
+            self.statusBar().showMessage(f"{exc.code}: {exc.message}")
+            return
+        self._render_analysis(analysis)
+        self.create_stack.setCurrentIndex(1)
+
+    def _on_continue_clicked(self) -> None:
+        answer = self.ai_answer_edit.toPlainText().strip()
+        if not answer:
+            self.statusBar().showMessage("Введите ответ.")
+            return
+        try:
+            analysis = self._service.continue_ai_creation(answer_text=answer)
+        except CharacterLabApplicationError as exc:
+            self.statusBar().showMessage(f"{exc.code}: {exc.message}")
+            return
+        self.ai_answer_edit.clear()
+        self._render_analysis(analysis)
+
+    def _on_build_now_clicked(self) -> None:
+        self._build_draft_now()
+
+    def _build_draft_now(self) -> None:
+        try:
+            result = self._service.build_ai_draft(force=True)
+        except CharacterLabApplicationError as exc:
+            self.statusBar().showMessage(f"{exc.code}: {exc.message}")
+            return
+        self._ai_created = (result.character_id, result.version_id, result.revision_id)
+        self._reload_authoring_tree()
+        self.create_stack.setCurrentIndex(2)
+        display_name = self.ai_name_edit.text().strip()
+        if display_name:
+            message = f"Персонаж «{display_name}» создан как черновик"
+        else:
+            message = "Черновик персонажа создан"
+        self.statusBar().showMessage(message)
+
+    def _on_open_editor_clicked(self) -> None:
+        self.center_tabs.setCurrentIndex(2)
+        if self._ai_created:
+            character_id, version_id, revision_id = self._ai_created
+            self._select_authoring_revision(character_id, version_id, revision_id)
+        self._refresh_authoring_display()
+
+    def _render_analysis(self, analysis) -> None:
+        self.ai_summary_label.setText(
+            f"Итог: {analysis.analysis_summary or '(нет сводки)'}"
+        )
+        contradictions = analysis.contradictions
+        if contradictions:
+            lines = "\n".join(f"• {c.description}" for c in contradictions)
+            self.ai_contradictions_label.setText(f"Противоречия:\n{lines}")
+        else:
+            self.ai_contradictions_label.setText("")
+        questions = analysis.questions
+        if questions:
+            lines = "\n".join(f"• {q.text}" for q in questions)
+            self.ai_questions_label.setText(f"Вопросы:\n{lines}")
+        else:
+            self.ai_questions_label.setText("Вопросов больше нет.")
+
+    def _select_authoring_revision(
+        self, character_id: str, version_id: str, revision_id: str
+    ) -> None:
+        for i in range(self.authoring_tree.topLevelItemCount()):
+            char_item = self.authoring_tree.topLevelItem(i)
+            char_data = char_item.data(0, _AUTH_DATA_ROLE)
+            if not (
+                isinstance(char_data, dict)
+                and char_data.get("character_id") == character_id
+            ):
+                continue
+            for j in range(char_item.childCount()):
+                ver_item = char_item.child(j)
+                for k in range(ver_item.childCount()):
+                    rev_item = ver_item.child(k)
+                    rev_data = rev_item.data(0, _AUTH_DATA_ROLE)
+                    if (
+                        isinstance(rev_data, dict)
+                        and rev_data.get("revision_id") == revision_id
+                    ):
+                        self.authoring_tree.setCurrentItem(rev_item)
+                        return
 
     def _build_dialogue_panel(self) -> QWidget:
         panel = QFrame()

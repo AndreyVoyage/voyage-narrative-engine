@@ -48,6 +48,8 @@ EXPORT_FAILED = "EXPORT_FAILED"
 # LAB-L4/L5 release-store availability (root not configured / VCP absent).
 RELEASE_STORE_UNAVAILABLE = "RELEASE_STORE_UNAVAILABLE"
 VCP_UNAVAILABLE = "VCP_UNAVAILABLE"
+# AI-first creation flow (missing credential / provider failure / malformed AI).
+DRAFT_AI_ERROR = "DRAFT_AI_ERROR"
 
 ERROR_CODES = (
     OK,
@@ -85,6 +87,7 @@ ERROR_CODES = (
     EXPORT_FAILED,
     RELEASE_STORE_UNAVAILABLE,
     VCP_UNAVAILABLE,
+    DRAFT_AI_ERROR,
 )
 
 
