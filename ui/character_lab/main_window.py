@@ -41,8 +41,10 @@ from PySide6.QtWidgets import (
 from services.character_lab_application import (
     CharacterLabApplicationError,
     CharacterLabApplicationService,
+    IMMUTABLE_PERSISTENCE_FAILED,
     LabSession,
     Readiness,
+    next_sequential_revision_id,
 )
 
 from .worker import BackgroundTask
@@ -98,6 +100,7 @@ class CharacterLabMainWindow(QMainWindow):
         self._authoring_version_id: Optional[str] = None
         self._authoring_revision_id: Optional[str] = None
         self._authoring_snapshot_hash: Optional[str] = None
+        self._authoring_display_name: Optional[str] = None
         self._authoring_release_id: Optional[str] = None
 
         left = self._build_left_panel()
@@ -144,7 +147,8 @@ class CharacterLabMainWindow(QMainWindow):
         layout.addWidget(self.character_view, 2)
 
         self.character_empty_label = self._empty_label(
-            "Character Canon не настроен или персонажи недоступны."
+            "Канонические персонажи пока недоступны.\n"
+            "Персонажи Авторинга доступны во вкладках «Авторинг» и «Тестирование»."
         )
         layout.addWidget(self.character_empty_label)
 
@@ -426,11 +430,19 @@ class CharacterLabMainWindow(QMainWindow):
                 continue
             for j in range(char_item.childCount()):
                 ver_item = char_item.child(j)
+                ver_data = ver_item.data(0, _AUTH_DATA_ROLE)
+                if not (
+                    isinstance(ver_data, dict)
+                    and ver_data.get("version_id") == version_id
+                ):
+                    continue
                 for k in range(ver_item.childCount()):
                     rev_item = ver_item.child(k)
                     rev_data = rev_item.data(0, _AUTH_DATA_ROLE)
                     if (
                         isinstance(rev_data, dict)
+                        and rev_data.get("character_id") == character_id
+                        and rev_data.get("version_id") == version_id
                         and rev_data.get("revision_id") == revision_id
                     ):
                         self.authoring_tree.setCurrentItem(rev_item)
@@ -483,6 +495,10 @@ class CharacterLabMainWindow(QMainWindow):
         self.testing_header_label.setFont(font)
         self.testing_header_label.setWordWrap(True)
         layout.addWidget(self.testing_header_label)
+
+        self.testing_binding_label = QLabel()
+        self.testing_binding_label.setWordWrap(True)
+        layout.addWidget(self.testing_binding_label)
 
         self.testing_hint_label = QLabel()
         self.testing_hint_label.setWordWrap(True)
@@ -681,7 +697,7 @@ class CharacterLabMainWindow(QMainWindow):
         self.create_character_button.clicked.connect(self._on_create_character_clicked)
         actions_layout.addWidget(self.create_character_button)
 
-        self.save_revision_button = QPushButton("Сохранить revision")
+        self.save_revision_button = QPushButton("Сохранить как новую ревизию")
         self.save_revision_button.clicked.connect(self._on_save_revision_clicked)
         actions_layout.addWidget(self.save_revision_button)
 
@@ -1010,6 +1026,7 @@ class CharacterLabMainWindow(QMainWindow):
             self.testing_hint_label.setText(
                 "Выберите версию/ревизию персонажа в разделе «Авторинг»."
             )
+        self._refresh_testing_binding()
 
     def _render_testing(self) -> None:
         if self._testing_session_id is None:
@@ -1033,6 +1050,7 @@ class CharacterLabMainWindow(QMainWindow):
         self.testing_composer_edit.setEnabled(True)
         self.testing_send_button.setEnabled(True)
         self.testing_reset_button.setEnabled(True)
+        self._refresh_testing_binding()
 
     # -- Authoring handlers / helpers ------------------------------------
 
@@ -1160,6 +1178,24 @@ class CharacterLabMainWindow(QMainWindow):
             and self._authoring_snapshot_hash
         )
 
+    def _refresh_testing_binding(self) -> None:
+        """Show the pending NEXT-session binding following current Authoring selection.
+
+        This label is deliberately independent of the ACTIVE Test Dialogue
+        session (shown in ``testing_header_label``): the active session stays
+        pinned to its own frozen revision and is never rebound here, while this
+        label always reflects the revision a NEW session would use.
+        """
+        if self._testing_has_selection():
+            display = self._authoring_display_name or self._authoring_character_id
+            self.testing_binding_label.setText(
+                "Новая тестовая сессия будет создана для:\n"
+                f"{display} · версия {self._authoring_version_id} · "
+                f"ревизия {self._authoring_revision_id}"
+            )
+        else:
+            self.testing_binding_label.setText("")
+
     def _on_create_character_clicked(self) -> None:
         character_id = self.authoring_character_id_edit.text().strip()
         version_id = self.authoring_version_id_edit.text().strip()
@@ -1183,8 +1219,17 @@ class CharacterLabMainWindow(QMainWindow):
         self._authoring_version_id = result.version_id
         self._authoring_revision_id = result.revision_id
         self._authoring_snapshot_hash = result.snapshot_hash
+        self._authoring_display_name = (
+            self.authoring_display_name_edit.text().strip() or result.character_id
+        )
         self._reload_authoring_tree()
+        self._select_authoring_revision(
+            self._authoring_character_id,
+            self._authoring_version_id,
+            result.revision_id,
+        )
         self._refresh_authoring_display()
+        self._refresh_testing_binding()
         self.statusBar().showMessage(
             f"Создан персонаж {result.character_id} (ревизия {result.revision_id})"
         )
@@ -1193,10 +1238,25 @@ class CharacterLabMainWindow(QMainWindow):
         if not (self._authoring_character_id and self._authoring_version_id):
             self.statusBar().showMessage("Сначала создайте или выберите персонажа.")
             return
-        revision_id = self.authoring_revision_id_edit.text().strip()
-        if not revision_id:
-            self.statusBar().showMessage("Укажите новый ID ревизии.")
+        typed_id = self.authoring_revision_id_edit.text().strip()
+        try:
+            existing_ids = {
+                revision.revision_id
+                for revision in self._service.list_authoring_revisions(
+                    self._authoring_character_id, self._authoring_version_id
+                )
+            }
+        except CharacterLabApplicationError as exc:
+            self.statusBar().showMessage(f"{exc.code}: {exc.message}")
             return
+
+        if typed_id and typed_id not in existing_ids:
+            # Explicit unused id (brand-new/custom): honor it as-is.
+            revision_id = typed_id
+        else:
+            # Existing (or empty) id: allocate the next free sequential r<N>.
+            revision_id = next_sequential_revision_id(existing_ids)
+
         try:
             result = self._service.save_character(
                 character_id=self._authoring_character_id,
@@ -1205,13 +1265,43 @@ class CharacterLabMainWindow(QMainWindow):
                 semantic=self._collect_semantic(),
             )
         except CharacterLabApplicationError as exc:
-            self.statusBar().showMessage(f"{exc.code}: {exc.message}")
+            self._show_save_revision_failure(exc, revision_id)
             return
         self._authoring_revision_id = result.revision_id
         self._authoring_snapshot_hash = result.snapshot_hash
+        self._authoring_display_name = (
+            self.authoring_display_name_edit.text().strip()
+            or self._authoring_character_id
+        )
+        self.authoring_revision_id_edit.setText(result.revision_id)
         self._reload_authoring_tree()
+        self._select_authoring_revision(
+            self._authoring_character_id,
+            self._authoring_version_id,
+            result.revision_id,
+        )
         self._refresh_authoring_display()
-        self.statusBar().showMessage(f"Сохранена ревизия {result.revision_id}")
+        self._refresh_testing_binding()
+        self.statusBar().showMessage(f"Сохранена новая ревизия {result.revision_id}")
+
+    def _show_save_revision_failure(
+        self, exc: CharacterLabApplicationError, revision_id: str
+    ) -> None:
+        """Map the known immutable-existing-revision case to a human-readable message."""
+        if exc.code == IMMUTABLE_PERSISTENCE_FAILED:
+            self.statusBar().showMessage(
+                f"Ревизия «{revision_id}» уже существует и не может быть изменена. "
+                "Создайте новую ревизию."
+            )
+            try:
+                nxt = self._service.next_available_revision_id(
+                    self._authoring_character_id, self._authoring_version_id
+                )
+                self.authoring_revision_id_edit.setText(nxt)
+            except CharacterLabApplicationError:
+                pass
+        else:
+            self.statusBar().showMessage(f"{exc.code}: {exc.message}")
 
     def _on_submit_clicked(self) -> None:
         if not self._require_authoring_selection():
@@ -1403,11 +1493,14 @@ class CharacterLabMainWindow(QMainWindow):
         self._authoring_version_id = loaded.version_id
         self._authoring_revision_id = loaded.revision_id
         self._authoring_snapshot_hash = loaded.snapshot_hash
+        identity = loaded.semantic.get("identity") or {}
+        self._authoring_display_name = identity.get("display_name") or loaded.character_id
         self.authoring_character_id_edit.setText(loaded.character_id)
         self.authoring_version_id_edit.setText(loaded.version_id)
         self.authoring_revision_id_edit.setText(loaded.revision_id)
         self._load_semantic_to_form(loaded.semantic)
         self._refresh_authoring_display()
+        self._refresh_testing_binding()
 
     def _refresh_authoring_display(self) -> None:
         character = self._authoring_character_id

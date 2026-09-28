@@ -67,7 +67,7 @@ from .results import (
     PublishedReleaseSummary,
     RevisionSemanticData,
 )
-from .service import CharacterLabApplicationService
+from .service import CharacterLabApplicationService, next_sequential_revision_id
 from services.character_draft import (
     AnalysisResult,
     DraftContradiction,
@@ -87,6 +87,7 @@ from services.crp_authoring.application_adapter import (
 
 __all__ = [
     "CharacterLabApplicationService",
+    "next_sequential_revision_id",
     "CharacterLabApplicationConfig",
     "resolve_character_lab_roots",
     "CharacterLabApplicationError",

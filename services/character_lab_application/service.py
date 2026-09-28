@@ -27,6 +27,7 @@ constructed by this module.
 
 from __future__ import annotations
 
+import re
 import shutil
 import tempfile
 import uuid
@@ -134,6 +135,25 @@ from .results import (
 
 _CHARACTER_USAGE_CONTEXT = "authoring"
 
+_REVISION_ID_RE = re.compile(r"^r([1-9][0-9]*)$")
+
+
+def next_sequential_revision_id(existing_ids: Iterable[str]) -> str:
+    """Return the next free ``r<N>`` id for the normal sequential convention.
+
+    Only ids matching ``r<positive-integer>`` participate; custom ids are
+    ignored and never renamed or reinterpreted. The result is the smallest
+    strictly-larger ``r<N>`` id, so it can never collide with an existing
+    ``r<N>`` id or with a custom id (custom ids do not match the ``r<N>``
+    shape). Returns ``r1`` when no valid ``r<N>`` id exists.
+    """
+    max_n = 0
+    for revision_id in existing_ids:
+        match = _REVISION_ID_RE.match(revision_id)
+        if match:
+            max_n = max(max_n, int(match.group(1)))
+    return f"r{max_n + 1}"
+
 
 class CharacterLabApplicationService:
     """Character Lab facade: character read-side + local session model."""
@@ -202,6 +222,14 @@ class CharacterLabApplicationService:
             revision_id=revision_id,
             semantic=semantic,
         )
+
+    def next_available_revision_id(
+        self, character_id: str, version_id: str
+    ) -> str:
+        """Return the next free sequential ``r<N>`` revision id for a version."""
+
+        existing = self._authoring.list_revisions(character_id, version_id)
+        return next_sequential_revision_id(existing)
 
     # -- AI-first creation flow (Draft only) --------------------------------
 
