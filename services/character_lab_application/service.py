@@ -49,6 +49,13 @@ from services.character_draft import (
     ProviderCallable,
     make_llm_provider,
 )
+from services.character_dialogue import (
+    TestDialogueError,
+    TestDialoguePin,
+    TestDialogueProviderError,
+    TestDialogueService,
+    TestDialogueSession,
+)
 from services.character_publication import (
     CharacterPublicationService,
     PublicationNotApprovedError,
@@ -102,6 +109,8 @@ from .errors import (
     PUBLICATION_VALIDATION_FAILED,
     RELEASE_STORE_UNAVAILABLE,
     VCP_UNAVAILABLE,
+    TEST_DIALOGUE_PROVIDER_ERROR,
+    TEST_DIALOGUE_INVALID_STATE,
     CharacterLabApplicationError,
 )
 from .results import (
@@ -135,12 +144,15 @@ class CharacterLabApplicationService:
         canon_semantic_mapper: Optional[CanonSemanticMapper] = None,
         approval_clock: Optional[ApprovalClock] = None,
         draft_provider: Optional[ProviderCallable] = None,
+        dialogue_provider: Optional[ProviderCallable] = None,
     ) -> None:
         self._config = config
         self._sessions: dict[str, LabSession] = {}
         self._session_order: list[str] = []
         self._draft_provider = draft_provider
         self._draft_service: Optional[CharacterDraftService] = None
+        self._dialogue_provider = dialogue_provider
+        self._dialogue_service: Optional[TestDialogueService] = None
         self._authoring = _CharacterAuthoringUseCases(
             config.character_authoring_root,
             config.character_canon_root,
@@ -362,6 +374,97 @@ class CharacterLabApplicationService:
             version_id=version_id,
             revision_id=revision_id,
         )
+
+    # -- Test Dialogue V1 (role-play QA sandbox) ---------------------------
+
+    def start_test_dialogue(
+        self,
+        *,
+        character_id: str,
+        version_id: str,
+        revision_id: str,
+        provider: Optional[ProviderCallable] = None,
+    ) -> TestDialogueSession:
+        """Open a test session bound to the exact immutable revision.
+
+        Both the pin creation and the semantic load reload the immutable
+        revision and re-verify ``snapshot_hash`` (fail-closed on a missing,
+        corrupt or stale revision). The session then freezes that revision for
+        its whole lifetime and never re-resolves "latest".
+        """
+
+        pin = self._authoring.create_session_pin(
+            character_id=character_id,
+            version_id=version_id,
+            revision_id=revision_id,
+        )
+        semantic_data = self.load_revision_semantic(character_id, version_id, revision_id)
+        try:
+            return self._dialogue(provider).start(
+                TestDialoguePin(
+                    character_id=pin.character_id,
+                    version_id=pin.version_id,
+                    revision_id=pin.revision_id,
+                    snapshot_hash=pin.snapshot_hash,
+                ),
+                semantic_data.semantic,
+            )
+        except TestDialogueProviderError as exc:
+            raise CharacterLabApplicationError(
+                TEST_DIALOGUE_PROVIDER_ERROR, str(exc)
+            ) from exc
+        except TestDialogueError as exc:
+            raise CharacterLabApplicationError(
+                TEST_DIALOGUE_INVALID_STATE, str(exc)
+            ) from exc
+
+    def send_test_dialogue_message(
+        self, session_id: str, text: str
+    ) -> TestDialogueSession:
+        """Send one user message; return the updated session with the reply."""
+
+        try:
+            return self._dialogue().send(session_id, text)
+        except TestDialogueProviderError as exc:
+            raise CharacterLabApplicationError(
+                TEST_DIALOGUE_PROVIDER_ERROR, str(exc)
+            ) from exc
+        except TestDialogueError as exc:
+            raise CharacterLabApplicationError(
+                TEST_DIALOGUE_INVALID_STATE, str(exc)
+            ) from exc
+
+    def reset_test_dialogue(self, session_id: str) -> TestDialogueSession:
+        """Clear the test transcript, keeping the frozen revision pin."""
+
+        try:
+            return self._dialogue().reset(session_id)
+        except TestDialogueError as exc:
+            raise CharacterLabApplicationError(
+                TEST_DIALOGUE_INVALID_STATE, str(exc)
+            ) from exc
+
+    def get_test_dialogue_session(self, session_id: str) -> TestDialogueSession:
+        """Return the current in-memory test session."""
+
+        try:
+            return self._dialogue().get_session(session_id)
+        except TestDialogueError as exc:
+            raise CharacterLabApplicationError(
+                TEST_DIALOGUE_INVALID_STATE, str(exc)
+            ) from exc
+
+    def _dialogue(
+        self, provider: Optional[ProviderCallable] = None
+    ) -> TestDialogueService:
+        """Lazily construct (once) the Test Dialogue service and its provider."""
+
+        if self._dialogue_service is None:
+            resolved = provider if provider is not None else self._dialogue_provider
+            if resolved is None:
+                resolved = make_llm_provider(DraftProviderConfig.from_env())
+            self._dialogue_service = TestDialogueService(resolved)
+        return self._dialogue_service
 
     def publish_character_version(
         self,

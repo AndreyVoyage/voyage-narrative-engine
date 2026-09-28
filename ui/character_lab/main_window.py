@@ -87,6 +87,7 @@ class CharacterLabMainWindow(QMainWindow):
         self._selected_character_id: Optional[str] = None
         self._selected_version_id: Optional[str] = None
         self._current_session_id: Optional[str] = None
+        self._testing_session_id: Optional[str] = None
 
         self._authoring_character_id: Optional[str] = None
         self._authoring_version_id: Optional[str] = None
@@ -116,6 +117,7 @@ class CharacterLabMainWindow(QMainWindow):
 
         self.reload_characters()
         self._render_no_session()
+        self._render_testing_no_session()
         self._reload_authoring_tree()
         self._refresh_authoring_display()
 
@@ -169,6 +171,7 @@ class CharacterLabMainWindow(QMainWindow):
         tabs.addTab(self._build_create_panel(), "Создание")
         tabs.addTab(self._build_dialogue_panel(), "Диалог")
         tabs.addTab(self._build_authoring_panel(), "Авторинг")
+        tabs.addTab(self._build_testing_panel(), "Тестирование")
         self.center_tabs = tabs
         return tabs
 
@@ -358,6 +361,52 @@ class CharacterLabMainWindow(QMainWindow):
         self.send_button.clicked.connect(self._on_send_clicked)
         composer_row.addWidget(self.composer_edit, 1)
         composer_row.addWidget(self.send_button)
+        layout.addLayout(composer_row)
+
+        return panel
+
+    # -- Testing panel: in-character Authoring-revision QA -----------------
+
+    def _build_testing_panel(self) -> QWidget:
+        panel = QFrame()
+        panel.setFrameShape(QFrame.Shape.StyledPanel)
+        panel.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        layout = QVBoxLayout(panel)
+        layout.setContentsMargins(20, 18, 20, 18)
+
+        self.testing_header_label = QLabel()
+        font = QFont(self.testing_header_label.font())
+        font.setBold(True)
+        font.setPointSize(font.pointSize() + 2)
+        self.testing_header_label.setFont(font)
+        self.testing_header_label.setWordWrap(True)
+        layout.addWidget(self.testing_header_label)
+
+        self.testing_hint_label = QLabel()
+        self.testing_hint_label.setWordWrap(True)
+        layout.addWidget(self.testing_hint_label)
+
+        self.testing_transcript_view = QListWidget()
+        self.testing_transcript_view.setAccessibleName("Транскрипт тестирования")
+        layout.addWidget(self.testing_transcript_view, 1)
+
+        controls_row = QHBoxLayout()
+        self.testing_new_session_button = QPushButton("Новая тестовая сессия")
+        self.testing_new_session_button.clicked.connect(self._on_testing_new_session_clicked)
+        self.testing_reset_button = QPushButton("Очистить")
+        self.testing_reset_button.clicked.connect(self._on_testing_reset_clicked)
+        controls_row.addWidget(self.testing_new_session_button)
+        controls_row.addWidget(self.testing_reset_button)
+        layout.addLayout(controls_row)
+
+        composer_row = QHBoxLayout()
+        self.testing_composer_edit = QLineEdit()
+        self.testing_composer_edit.setPlaceholderText("Введите сообщение...")
+        self.testing_composer_edit.returnPressed.connect(self._on_testing_send_clicked)
+        self.testing_send_button = QPushButton("Отправить")
+        self.testing_send_button.clicked.connect(self._on_testing_send_clicked)
+        composer_row.addWidget(self.testing_composer_edit, 1)
+        composer_row.addWidget(self.testing_send_button)
         layout.addLayout(composer_row)
 
         return panel
@@ -786,6 +835,92 @@ class CharacterLabMainWindow(QMainWindow):
         self.composer_edit.clear()
         self._render_session()
 
+    # -- Testing session handlers -----------------------------------------
+
+    def _on_testing_new_session_clicked(self) -> None:
+        if not self._require_authoring_selection():
+            self.testing_hint_label.setText(
+                "Выберите версию/ревизию персонажа в разделе «Авторинг»."
+            )
+            self._render_testing_no_session()
+            return
+        try:
+            session = self._service.start_test_dialogue(
+                character_id=self._authoring_character_id,
+                version_id=self._authoring_version_id,
+                revision_id=self._authoring_revision_id,
+            )
+        except CharacterLabApplicationError as exc:
+            self.statusBar().showMessage(f"{exc.code}: {exc.message}")
+            return
+        self._testing_session_id = session.session_id
+        self.testing_hint_label.setText("")
+        self._render_testing()
+        self.statusBar().showMessage(f"Начата тестовая сессия: {session.session_id[:8]}")
+
+    def _on_testing_send_clicked(self) -> None:
+        if self._testing_session_id is None:
+            return
+        text = self.testing_composer_edit.text().strip()
+        if not text:
+            return
+        try:
+            self._service.send_test_dialogue_message(self._testing_session_id, text)
+        except CharacterLabApplicationError as exc:
+            self.statusBar().showMessage(f"{exc.code}: {exc.message}")
+            return
+        self.testing_composer_edit.clear()
+        self._render_testing()
+
+    def _on_testing_reset_clicked(self) -> None:
+        if self._testing_session_id is None:
+            return
+        try:
+            self._service.reset_test_dialogue(self._testing_session_id)
+        except CharacterLabApplicationError as exc:
+            self.statusBar().showMessage(f"{exc.code}: {exc.message}")
+            return
+        self._render_testing()
+
+    def _render_testing_no_session(self) -> None:
+        self.testing_header_label.setText("Тестовая сессия не начата")
+        self.testing_transcript_view.clear()
+        self.testing_composer_edit.setEnabled(False)
+        self.testing_send_button.setEnabled(False)
+        self.testing_reset_button.setEnabled(False)
+        if self._testing_has_selection():
+            self.testing_hint_label.setText(
+                "Нажмите «Новая тестовая сессия», чтобы начать разговор с "
+                "выбранной ревизией."
+            )
+        else:
+            self.testing_hint_label.setText(
+                "Выберите версию/ревизию персонажа в разделе «Авторинг»."
+            )
+
+    def _render_testing(self) -> None:
+        if self._testing_session_id is None:
+            self._render_testing_no_session()
+            return
+        try:
+            session = self._service.get_test_dialogue_session(self._testing_session_id)
+        except CharacterLabApplicationError:
+            self._testing_session_id = None
+            self._render_testing_no_session()
+            return
+        self.testing_header_label.setText(
+            f"{session.display_name} · версия {session.pin.version_id} · "
+            f"ревизия {session.pin.revision_id} · сессия {session.session_id[:8]}"
+        )
+        self.testing_hint_label.setText("")
+        self.testing_transcript_view.clear()
+        for message in session.messages:
+            who = session.display_name if message.role == "character" else "Вы"
+            self.testing_transcript_view.addItem(QListWidgetItem(f"{who}: {message.content}"))
+        self.testing_composer_edit.setEnabled(True)
+        self.testing_send_button.setEnabled(True)
+        self.testing_reset_button.setEnabled(True)
+
     # -- Authoring handlers / helpers ------------------------------------
 
     def _collect_semantic(self) -> dict[str, Any]:
@@ -901,6 +1036,16 @@ class CharacterLabMainWindow(QMainWindow):
             self.statusBar().showMessage("Сначала создайте или выберите ревизию.")
             return False
         return True
+
+    def _testing_has_selection(self) -> bool:
+        """Pure predicate (no status-bar side effect) for the Testing tab."""
+
+        return bool(
+            self._authoring_character_id
+            and self._authoring_version_id
+            and self._authoring_revision_id
+            and self._authoring_snapshot_hash
+        )
 
     def _on_create_character_clicked(self) -> None:
         character_id = self.authoring_character_id_edit.text().strip()
