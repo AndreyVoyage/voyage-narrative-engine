@@ -364,13 +364,14 @@ class TestImportFirewall:
 
 class TestNoUIFunctionalityAdded:
     def test_ui_character_lab_files_unchanged_set(self):
-        # This task is application-layer only; confirm the known UI file set
-        # is exactly what Foundation published (no new UI files introduced).
+        # Application/UI shell file set. ``worker.py`` was added by the Test App
+        # V1 productization slice for non-blocking provider execution.
         expected = {
             "ui/character_lab/__init__.py",
             "ui/character_lab/__main__.py",
             "ui/character_lab/app.py",
             "ui/character_lab/main_window.py",
+            "ui/character_lab/worker.py",
         }
         actual = {str(p).replace("\\", "/") for p in Path("ui/character_lab").rglob("*.py")}
         assert actual == expected

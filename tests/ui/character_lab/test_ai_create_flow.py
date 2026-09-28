@@ -26,7 +26,7 @@ def test_create_tab_asks_name_and_description_not_ids(qapp, tmp_path):
     assert not hasattr(window, "ai_character_id_edit")
 
 
-def test_analysis_renders_summary_questions_contradictions(qapp, tmp_path):
+def test_analysis_renders_summary_questions_contradictions(qapp, tmp_path, wait_until):
     window = _window(
         tmp_path,
         scripted_provider(
@@ -37,13 +37,13 @@ def test_analysis_renders_summary_questions_contradictions(qapp, tmp_path):
     window.ai_description_edit.setPlainText("shy")
     window._on_analyze_clicked()
 
-    assert window.create_stack.currentIndex() == 1
+    assert wait_until(lambda: window.create_stack.currentIndex() == 1)
     assert "shy" in window.ai_summary_label.text()
     assert "age 24 vs age 28" in window.ai_contradictions_label.text()
     assert "What drives her?" in window.ai_questions_label.text()
 
 
-def test_provider_error_is_user_readable(qapp, tmp_path):
+def test_provider_error_is_user_readable(qapp, tmp_path, wait_until):
     def failing(messages, system):
         raise CharacterDraftError(
             "API key is not configured. Set DEEPSEEK_API_KEY and retry."
@@ -53,10 +53,11 @@ def test_provider_error_is_user_readable(qapp, tmp_path):
     window.ai_name_edit.setText("Катя")
     window.ai_description_edit.setPlainText("shy")
     window._on_analyze_clicked()
+    assert wait_until(lambda: window.analyze_button.isEnabled())
     assert window.create_stack.currentIndex() == 0  # stays on step 1
 
 
-def test_successful_creation_targets_editor(qapp, tmp_path):
+def test_successful_creation_targets_editor(qapp, tmp_path, wait_until):
     window = _window(
         tmp_path,
         scripted_provider([analysis_json(readiness="READY_FOR_DRAFT"), draft_json()]),
@@ -64,10 +65,13 @@ def test_successful_creation_targets_editor(qapp, tmp_path):
     window.ai_name_edit.setText("Катя")
     window.ai_description_edit.setPlainText("shy")
     window._on_analyze_clicked()
-    assert window.create_stack.currentIndex() == 1
+    assert wait_until(lambda: window.create_stack.currentIndex() == 1)
+    # The Analyze task's QThread must fully finish before the next operation can
+    # begin (ownership is released only at BackgroundTask.finished).
+    assert wait_until(lambda: window._active_task is None)
 
     window._on_build_now_clicked()
-    assert window.create_stack.currentIndex() == 2
+    assert wait_until(lambda: window.create_stack.currentIndex() == 2)
 
     window._on_open_editor_clicked()
     assert window.center_tabs.currentIndex() == 2
@@ -75,7 +79,7 @@ def test_successful_creation_targets_editor(qapp, tmp_path):
     assert window.authoring_display_name_edit.text() == "Катя"
 
 
-def test_creation_status_is_human_readable_without_technical_id(qapp, tmp_path):
+def test_creation_status_is_human_readable_without_technical_id(qapp, tmp_path, wait_until):
     window = _window(
         tmp_path,
         scripted_provider([analysis_json(readiness="READY_FOR_DRAFT"), draft_json()]),
@@ -83,9 +87,12 @@ def test_creation_status_is_human_readable_without_technical_id(qapp, tmp_path):
     window.ai_name_edit.setText("Катя")
     window.ai_description_edit.setPlainText("shy")
     window._on_analyze_clicked()
+    assert wait_until(lambda: window.create_stack.currentIndex() == 1)
+    # Wait for the Analyze task's QThread to fully finish before the next op.
+    assert wait_until(lambda: window._active_task is None)
 
     window._on_build_now_clicked()
-    assert window.create_stack.currentIndex() == 2
+    assert wait_until(lambda: window.create_stack.currentIndex() == 2)
 
     status = window.statusBar().currentMessage()
     # Human-readable, no technical identifier in the normal-user message.
@@ -104,3 +111,29 @@ def test_creation_status_is_human_readable_without_technical_id(qapp, tmp_path):
 
     # ...and technical IDs remain only in the collapsed Технические данные area.
     assert window.authoring_character_id_edit.text().startswith("char_")
+
+
+def test_provider_error_body_not_surfaced_in_ui(qapp, tmp_path, wait_until):
+    def leaking(messages, system):
+        raise CharacterDraftError(
+            "provider error: HTTP 401 "
+            '{"private":"response-body-secret"} '
+            "Authorization: Bearer fake-secret"
+        )
+
+    window = _window(tmp_path, leaking)
+    window.ai_name_edit.setText("Катя")
+    window.ai_description_edit.setPlainText("shy")
+    window._on_analyze_clicked()
+
+    assert wait_until(lambda: window.analyze_button.isEnabled())
+    status = window.statusBar().currentMessage()
+    assert "Не удалось получить ответ от AI-провайдера." in status
+    for fragment in (
+        "response-body-secret",
+        "Authorization",
+        "Bearer",
+        "fake-secret",
+        "HTTP 401",
+    ):
+        assert fragment not in status

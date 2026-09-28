@@ -45,9 +45,7 @@ from services.character_draft import (
     CharacterDraftError,
     CharacterDraftService,
     CharacterIdFactory,
-    DraftProviderConfig,
     ProviderCallable,
-    make_llm_provider,
 )
 from services.character_dialogue import (
     TestDialogueError,
@@ -92,6 +90,10 @@ from .authoring import (
     _default_canon_semantic_mapper,
 )
 from .config import CharacterLabApplicationConfig
+from .provider import (
+    DEEPSEEK_NOT_CONFIGURED_MESSAGE,
+    safe_ai_create_provider_message,
+)
 from .errors import (
     AUTHORING_NOT_FOUND,
     AUTHORING_UNAVAILABLE,
@@ -215,14 +217,16 @@ class CharacterLabApplicationService:
         if provider is None:
             provider = self._draft_provider
         if provider is None:
-            provider = make_llm_provider(DraftProviderConfig.from_env())
+            raise CharacterLabApplicationError(DRAFT_AI_ERROR, DEEPSEEK_NOT_CONFIGURED_MESSAGE)
         try:
             service = CharacterDraftService(
                 provider, character_id_factory=character_id_factory
             )
             result = service.analyze(display_name, description)
         except CharacterDraftError as exc:
-            raise CharacterLabApplicationError(DRAFT_AI_ERROR, str(exc)) from exc
+            raise CharacterLabApplicationError(
+                DRAFT_AI_ERROR, safe_ai_create_provider_message(exc)
+            ) from exc
         self._draft_service = service
         return result
 
@@ -232,7 +236,9 @@ class CharacterLabApplicationService:
         try:
             return service.answer(answer_text)
         except CharacterDraftError as exc:
-            raise CharacterLabApplicationError(DRAFT_AI_ERROR, str(exc)) from exc
+            raise CharacterLabApplicationError(
+                DRAFT_AI_ERROR, safe_ai_create_provider_message(exc)
+            ) from exc
 
     def build_ai_draft(self, *, force: bool = False) -> CharacterAuthoringResult:
         """Build the AI Draft and persist it as an immutable DRAFT revision."""
@@ -240,7 +246,9 @@ class CharacterLabApplicationService:
         try:
             semantic = service.build_draft(force=force)
         except CharacterDraftError as exc:
-            raise CharacterLabApplicationError(DRAFT_AI_ERROR, str(exc)) from exc
+            raise CharacterLabApplicationError(
+                DRAFT_AI_ERROR, safe_ai_create_provider_message(exc)
+            ) from exc
         character_id = service.create_character_id()
         return self.create_character(
             character_id=character_id,
@@ -462,7 +470,9 @@ class CharacterLabApplicationService:
         if self._dialogue_service is None:
             resolved = provider if provider is not None else self._dialogue_provider
             if resolved is None:
-                resolved = make_llm_provider(DraftProviderConfig.from_env())
+                raise CharacterLabApplicationError(
+                    TEST_DIALOGUE_PROVIDER_ERROR, DEEPSEEK_NOT_CONFIGURED_MESSAGE
+                )
             self._dialogue_service = TestDialogueService(resolved)
         return self._dialogue_service
 

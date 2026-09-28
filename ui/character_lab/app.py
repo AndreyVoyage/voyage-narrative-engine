@@ -14,6 +14,11 @@ from services.character_lab_application import (
     CharacterLabApplicationService,
     resolve_character_lab_roots,
 )
+from services.character_lab_application.provider import build_character_lab_provider
+from services.character_lab_application.runtime_environment import (
+    PinnedVcpDependencyError,
+    verify_pinned_vcp_runtime,
+)
 
 from .main_window import CharacterLabMainWindow
 
@@ -66,19 +71,36 @@ def create_character_lab_service(
 ) -> CharacterLabApplicationService:
     """Construct the same-process application facade used by the desktop UI."""
 
+    # Resolve and validate the Character Lab DeepSeek configuration ONCE, build
+    # ONE shared provider transport, and inject it into both the AI-first
+    # creation flow and Test Dialogue. Prompts/state remain separate; only the
+    # transport/config is shared. A malformed non-secret configuration yields a
+    # fail-closed provider (never an OpenAI fallback, never a network call).
+    provider = build_character_lab_provider()
     return CharacterLabApplicationService(
         create_character_lab_config(
             character_canon_root=character_canon_root,
             character_authoring_root=character_authoring_root,
             character_release_store_root=character_release_store_root,
-        )
+        ),
+        draft_provider=provider,
+        dialogue_provider=provider,
     )
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Launch the offline Character Lab shell."""
+    """Launch the Character Lab shell (pinned VCP runtime, DeepSeek transport)."""
 
     arguments = list(sys.argv if argv is None else argv)
+
+    # Fail closed on an unpinned/miswired VCP runtime before opening the window.
+    try:
+        verify_pinned_vcp_runtime()
+    except PinnedVcpDependencyError as exc:
+        print(f"Character Lab runtime error: {exc}", file=sys.stderr)
+        print("Run: py build/scripts/bootstrap_lab_vcp_env.py", file=sys.stderr)
+        return 1
+
     app = QApplication(arguments)
     window = CharacterLabMainWindow(create_character_lab_service())
     window.show()

@@ -90,7 +90,7 @@ def test_selected_revision_opens_test_dialogue(qapp, tmp_path):
     assert "char_marina" not in header  # raw character_id not prominent
 
 
-def test_send_shows_user_and_character_messages(qapp, tmp_path):
+def test_send_shows_user_and_character_messages(qapp, tmp_path, wait_until):
     service = _make_service(tmp_path, capturing_provider("Привет, я Марина.")[0])
     _create(service)
     window = CharacterLabMainWindow(service)
@@ -100,13 +100,14 @@ def test_send_shows_user_and_character_messages(qapp, tmp_path):
     window.testing_composer_edit.setText("Здравствуйте")
     window.testing_send_button.click()
 
+    assert wait_until(lambda: window.testing_send_button.isEnabled())
     items = [window.testing_transcript_view.item(i).text() for i in range(window.testing_transcript_view.count())]
     assert len(items) == 2
     assert "Вы: Здравствуйте" in items[0]
     assert "Марина: Привет, я Марина." in items[1]
 
 
-def test_reset_clears_transcript(qapp, tmp_path):
+def test_reset_clears_transcript(qapp, tmp_path, wait_until):
     service = _make_service(tmp_path, capturing_provider("Привет.")[0])
     _create(service)
     window = CharacterLabMainWindow(service)
@@ -114,13 +115,14 @@ def test_reset_clears_transcript(qapp, tmp_path):
     window.testing_new_session_button.click()
     window.testing_composer_edit.setText("один")
     window.testing_send_button.click()
+    assert wait_until(lambda: window.testing_send_button.isEnabled())
 
     window.testing_reset_button.click()
 
     assert window.testing_transcript_view.count() == 0
 
 
-def test_provider_failure_shown_safely(qapp, tmp_path):
+def test_provider_failure_shown_safely(qapp, tmp_path, wait_until):
     def boom(messages, system):
         raise RuntimeError("connection failed")
 
@@ -133,10 +135,12 @@ def test_provider_failure_shown_safely(qapp, tmp_path):
     window.testing_composer_edit.setText("привет")
     window.testing_send_button.click()
 
-    assert "TEST_DIALOGUE_PROVIDER_ERROR" in window.statusBar().currentMessage()
+    assert wait_until(
+        lambda: "TEST_DIALOGUE_PROVIDER_ERROR" in window.statusBar().currentMessage()
+    )
 
 
-def test_provider_failure_sensitive_content_not_in_ui(qapp, tmp_path):
+def test_provider_failure_sensitive_content_not_in_ui(qapp, tmp_path, wait_until):
     def leak(messages, system):
         raise RuntimeError(
             "API key is not configured. Authorization: Bearer fake-secret-123 "
@@ -155,6 +159,9 @@ def test_provider_failure_sensitive_content_not_in_ui(qapp, tmp_path):
     window.testing_composer_edit.setText("привет")
     window.testing_send_button.click()
 
+    assert wait_until(
+        lambda: "TEST_DIALOGUE_PROVIDER_ERROR" in window.statusBar().currentMessage()
+    )
     message = window.statusBar().currentMessage()
     assert "TEST_DIALOGUE_PROVIDER_ERROR" in message
     assert "Не удалось получить ответ персонажа от AI-провайдера." in message

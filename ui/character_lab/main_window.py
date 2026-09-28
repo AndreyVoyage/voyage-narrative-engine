@@ -45,6 +45,8 @@ from services.character_lab_application import (
     Readiness,
 )
 
+from .worker import BackgroundTask
+
 _ID_ROLE = int(Qt.ItemDataRole.UserRole)
 _KIND_ROLE = _ID_ROLE + 1
 _VERSION_ROLE = _ID_ROLE + 2
@@ -88,6 +90,9 @@ class CharacterLabMainWindow(QMainWindow):
         self._selected_version_id: Optional[str] = None
         self._current_session_id: Optional[str] = None
         self._testing_session_id: Optional[str] = None
+        self._active_task: Optional[BackgroundTask] = None
+        self._ai_creation_generation: int = 0
+        self._close_pending: bool = False
 
         self._authoring_character_id: Optional[str] = None
         self._authoring_version_id: Optional[str] = None
@@ -245,38 +250,58 @@ class CharacterLabMainWindow(QMainWindow):
         if not name or not description:
             self.statusBar().showMessage("Укажите имя и описание персонажа.")
             return
-        try:
-            analysis = self._service.start_ai_creation(
+        generation = self._ai_creation_generation + 1
+        self._ai_creation_generation = generation
+        self._run_background(
+            lambda: self._service.start_ai_creation(
                 display_name=name, description=description
-            )
-        except CharacterLabApplicationError as exc:
-            self.statusBar().showMessage(f"{exc.code}: {exc.message}")
-            return
+            ),
+            busy_message="Анализ персонажа...",
+            set_busy=lambda: self._set_ai_create_busy(True),
+            clear_busy=lambda: self._set_ai_create_busy(False),
+            on_success=lambda analysis: self._apply_analysis(analysis, generation),
+            on_failure=self._show_application_error,
+        )
+
+    def _apply_analysis(self, analysis, generation: int) -> None:
+        if generation != self._ai_creation_generation:
+            return  # stale result; a newer creation workflow replaced this one
         self._render_analysis(analysis)
         self.create_stack.setCurrentIndex(1)
+        self.statusBar().clearMessage()
 
     def _on_continue_clicked(self) -> None:
         answer = self.ai_answer_edit.toPlainText().strip()
         if not answer:
             self.statusBar().showMessage("Введите ответ.")
             return
-        try:
-            analysis = self._service.continue_ai_creation(answer_text=answer)
-        except CharacterLabApplicationError as exc:
-            self.statusBar().showMessage(f"{exc.code}: {exc.message}")
-            return
-        self.ai_answer_edit.clear()
-        self._render_analysis(analysis)
+        generation = self._ai_creation_generation
+        self._run_background(
+            lambda: self._service.continue_ai_creation(answer_text=answer),
+            busy_message="Обработка ответа...",
+            set_busy=lambda: self._set_ai_create_busy(True),
+            clear_busy=lambda: self._set_ai_create_busy(False),
+            on_success=lambda analysis: self._apply_analysis(analysis, generation),
+            on_failure=self._show_application_error,
+        )
 
     def _on_build_now_clicked(self) -> None:
         self._build_draft_now()
 
     def _build_draft_now(self) -> None:
-        try:
-            result = self._service.build_ai_draft(force=True)
-        except CharacterLabApplicationError as exc:
-            self.statusBar().showMessage(f"{exc.code}: {exc.message}")
-            return
+        generation = self._ai_creation_generation
+        self._run_background(
+            lambda: self._service.build_ai_draft(force=True),
+            busy_message="Создание черновика...",
+            set_busy=lambda: self._set_ai_create_busy(True),
+            clear_busy=lambda: self._set_ai_create_busy(False),
+            on_success=lambda result: self._apply_draft(result, generation),
+            on_failure=self._show_application_error,
+        )
+
+    def _apply_draft(self, result, generation: int) -> None:
+        if generation != self._ai_creation_generation:
+            return  # stale result; a newer creation workflow replaced this one
         self._ai_created = (result.character_id, result.version_id, result.revision_id)
         self._reload_authoring_tree()
         self.create_stack.setCurrentIndex(2)
@@ -293,6 +318,83 @@ class CharacterLabMainWindow(QMainWindow):
             character_id, version_id, revision_id = self._ai_created
             self._select_authoring_revision(character_id, version_id, revision_id)
         self._refresh_authoring_display()
+
+    # -- Background provider execution (non-blocking) ----------------------
+
+    def _run_background(
+        self,
+        task,
+        *,
+        on_success,
+        on_failure,
+        busy_message: str,
+        set_busy,
+        clear_busy,
+    ) -> bool:
+        """Run ``task`` off the UI thread. Returns False if already busy or closing."""
+        if self._active_task is not None or self._close_pending:
+            return False
+        set_busy()
+        self.statusBar().showMessage(busy_message)
+        background = BackgroundTask(task, parent=self)
+
+        def _success(result) -> None:
+            clear_busy()
+            on_success(result)
+
+        def _failure(code, message) -> None:
+            clear_busy()
+            on_failure(code, message)
+
+        def _finished() -> None:
+            # Release ownership ONLY after the underlying QThread has actually
+            # emitted QThread.finished (relayed here by BackgroundTask.finished).
+            # Never at result delivery -- the thread may still be running then.
+            if self._active_task is background:
+                self._active_task = None
+            if self._close_pending:
+                self._close_when_idle()
+
+        background.succeeded.connect(_success)
+        background.failed.connect(_failure)
+        background.finished.connect(_finished)
+        self._active_task = background
+        background.start()
+        return True
+
+    def _set_ai_create_busy(self, busy: bool) -> None:
+        self.analyze_button.setEnabled(not busy)
+        self.continue_button.setEnabled(not busy)
+        self.build_now_button.setEnabled(not busy)
+
+    def _set_testing_busy(self, busy: bool) -> None:
+        self.testing_send_button.setEnabled(not busy)
+        self.testing_new_session_button.setEnabled(not busy)
+        self.testing_reset_button.setEnabled(not busy)
+        self.testing_composer_edit.setEnabled(not busy)
+
+    def _show_application_error(self, code: str, message: str) -> None:
+        self.statusBar().showMessage(f"{code}: {message}")
+
+    def closeEvent(self, event) -> None:  # noqa: N802 -- Qt override
+        task = self._active_task
+        if task is not None:
+            # Defer close until the in-flight task's QThread has fully finished.
+            # Ownership is released in _run_background's finished handler, which
+            # also performs the final close when _close_pending is set.
+            event.ignore()
+            if not self._close_pending:
+                self._close_pending = True
+                self.statusBar().showMessage("Завершение работы...")
+            return
+        super().closeEvent(event)
+
+    def _close_when_idle(self) -> None:
+        """Close the window once the active worker/thread has fully finished."""
+        if not self._close_pending:
+            return
+        self._close_pending = False
+        self.close()
 
     def _render_analysis(self, analysis) -> None:
         self.ai_summary_label.setText(
@@ -864,13 +966,24 @@ class CharacterLabMainWindow(QMainWindow):
         text = self.testing_composer_edit.text().strip()
         if not text:
             return
-        try:
-            self._service.send_test_dialogue_message(self._testing_session_id, text)
-        except CharacterLabApplicationError as exc:
-            self.statusBar().showMessage(f"{exc.code}: {exc.message}")
+        session_id = self._testing_session_id
+        self._run_background(
+            lambda: self._service.send_test_dialogue_message(session_id, text),
+            busy_message="Ожидание ответа персонажа...",
+            set_busy=lambda: self._set_testing_busy(True),
+            clear_busy=lambda: self._set_testing_busy(False),
+            on_success=lambda _session: self._apply_testing_reply(session_id),
+            on_failure=self._show_application_error,
+        )
+
+    def _apply_testing_reply(self, session_id: str) -> None:
+        # Only render the reply if the displayed session is still the one that
+        # initiated the request (defense-in-depth against session switching).
+        if self._testing_session_id != session_id:
             return
         self.testing_composer_edit.clear()
         self._render_testing()
+        self.statusBar().clearMessage()
 
     def _on_testing_reset_clicked(self) -> None:
         if self._testing_session_id is None:
