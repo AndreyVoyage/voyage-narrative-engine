@@ -8,6 +8,11 @@
 > **Дата:** 2026-06-30
 > **Narrative baseline:** `5571bd2505715b8f19b092ad1762b8d32449c360`
 > **Базовое решение (N0):** JSON-first — `SCENARIO_*.json` источник правды; RenPy — primary MVP runtime, но не source of truth.
+>
+> **Reconciliation (2026-09-29):** этот документ сохраняет исторический JSON-first каркас (§0–§8)
+> как HISTORICAL/foundational контекст и дополнен реализованной accepted-scene архитектурой (§9).
+> Современный accepted-scene контракт — **ASS / OrderedASS**, а не raw JSON; raw Scenario V2 JSON
+> остаётся *source/authoring*-входом. См. `NARRATIVE_DECISIONS_v1.md` §15.
 
 ---
 
@@ -229,6 +234,55 @@ exporter.py                    ──▶  reports/renpy/*.rpy (skeletal preview,
 - Формула: **Voyage контролирует разработку Narrative, но не заменяет Narrative runtime.**
 
 **Current state.** Граница частично описана (`FRAMEWORK_VNE_INTEGRATION.md`, `.voyage/`, `vne_adapter.py`). Закреплена решением в `NARRATIVE_DECISIONS_v1.md` §8.
+
+---
+
+## 9. Implemented Scenario architecture (accepted-scene / ASS)
+
+> Сверено с кодом и тестами (2026-09-29). Это **текущий реализованный** поток, а не план.
+> Исторический JSON-first поток (§0–§8) остаётся для контекста; здесь он помечен как historical.
+
+```text
+Authoring / source inputs
+        ↓
+SceneBody / Draft            (services/scene_body/ — scene_body/1.0;
+                              services/scene_draft/ — SceneVersion DRAFT)
+        ↓
+Validation                    (services/scene_body/validation.py — validate_acceptance_complete)
+        ↓
+ACCEPT                        (services/scene_draft/compiler.py — accept_draft)
+        ↓
+ASS / OrderedASS              (services/ass/ — ass/0.1 legacy, ass/0.2 canonical; immutable)
+        ↓
+Scene Interpretation          (services/scene_interpretation/ — anchors + production_eligible)
+        ↓
+MediaPlan / Prompt Composition (services/mediaplan/; services/prompt_composer/)
+        ↓
+Deterministic publication / materialization
+        ↓  (tools/vne_to_renpy/ordered_ass_*.py → novel/game/ordered_ass_generated.rpy)
+Ren'Py runtime
+```
+
+**Side inputs / boundaries (verified):**
+
+- **Location Canon** (`services/location_canon/`) → read/resolve локации в Scenario (read-only,
+  неизменяемая каноническая идентичность локации).
+- **Character Canon bridge** (`services/character_canon_bridge/`) → read-only информация о персонаже
+  (identity/status/reference-presets); production gate = `APPROVED_AS_CANON`.
+- **Future Character Lab portable contract** → `NOT_IMPLEMENTED` (portable identity/media handoff — будущее).
+- **Character-owned media** → future read-only portable input; Scenario пока **не** потребляет
+  Character Media (см. `NARRATIVE_DECISIONS_v1.md` §15.6).
+- **Scene-specific media planning** → Scenario-owned (`services/mediaplan/`).
+
+**Editor/Application layer** (`services/editor_application/` + `ui/editor_desktop/`):
+вызывает стабильные domain/application-сервисы (SceneDraft, ASS, Location Canon, Character Canon
+bridge, workspace_project). Application layer не дублирует domain-семантику.
+
+**Ren'Py runtime** (`novel/game/ordered_ass_generated.rpy`): детерминированный derived-материал.
+Не становится зависимым от Character Lab, LLM-провайдеров или authoring-внутренностей.
+
+**Не изобретать** общий NARRATIVE shell. **Studio**-интеграция — `FUTURE / NOT_IMPLEMENTED`
+(репозиторного evidence реализованной Studio-интеграции нет).
 
 ---
 

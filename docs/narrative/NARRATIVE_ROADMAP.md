@@ -28,7 +28,7 @@
 ## 2. Current baseline / что есть сейчас
 
 ```text
-HEAD == origin/main == 10eaed300cf8f932086ce3013b4a399228d0d418
+HEAD == origin/main == 10eaed300cf8f932086ce3013b4a399228d0d418  (HISTORICAL snapshot на момент написания; текущий reconciliation-снимок — см. §13)
 SC_003–SC_018: playable через ручной novel/game/script.rpy (113 labels)
 SC_019–SC_027: source-only JSON (в игре не отображаются)
 Live JSON-runtime: НЕТ (RenPy не грузит JSON как сцены)
@@ -491,3 +491,77 @@ Character Aside / Voice Layer — N6 / future tracks (см. NARRATIVE_FUTURE_TRA
 - Generate
 
 The preflight must **not** assume the Character Canon Bridge is the sole reference source.
+
+---
+
+## 13. Roadmap reconciliation — implemented Scenario foundation (2026-09-29)
+
+> **Это документационная reconciliation, не новый roadmap и не redesign.**
+> **Baseline для этой reconciliation:** `5f3aa0dd63a4653d7a45eb617b346235fa9f36f9` — снимок для
+> синхронизации документации, **не** постоянный архитектурный идентификатор (не превращать moving
+> main SHA в timeless product-архитектуру).
+> Статусы сверены с кодом и тестами. Исторический roadmap (N0–N6, §2–§9) сохранён; фазы N5A–N5J
+> описывают более ранний JSON→Ren'Py путь, который ниже помечен как historical/partially superseded.
+
+### 13.1 Как читать эту reconciliation
+
+Различаем четыре уровня, **не смешивая** их:
+
+- **HISTORICAL ROADMAP** — фазы N0–N6 (§2–§9) и N5A–N5J: как путь планировался/фиксировался.
+- **CURRENT IMPLEMENTED FOUNDATION** — что реально есть в коде/тестах (таблица 13.2).
+- **CURRENT ACTIVE WORK** — что реализовано и является текущим путём (accepted-scene lifecycle,
+  desktop editor, OrderedASS exporter).
+- **FUTURE PLATFORM INTEGRATION** — что остаётся будущим и НЕ реализовано (§13.4).
+
+### 13.2 Current implemented Scenario foundation (IMPLEMENTED, по коду и тестам)
+
+| Область | Где | Статус |
+|---|---|---|
+| ASS v0 (`ass/0.1`) | `services/ass/` (`model.py`, `importer.py`, `hashing.py`) | `IMPLEMENTED` (historical accepted-scene snapshot; импорт из Scenario V2 JSON) |
+| OrderedASS (`ass/0.2`) | `services/ass/ordered.py` | `IMPLEMENTED` (текущий канонический accepted-scene контракт) |
+| Canonical ASS store | `services/ass/store.py` | `IMPLEMENTED` (immutable; атомарная hard-link публикация; SHA-256; no symlink) |
+| SceneBody (authoring payload) | `services/scene_body/` | `IMPLEMENTED` (scene_body/1.0; model validity vs acceptance-completeness) |
+| Draft → Validate → Accept lifecycle | `services/scene_draft/` (`compiler.py`, `store.py`) | `IMPLEMENTED` (DRAFT → validate → ACCEPT → OrderedASS; one-time; immutable accepted version) |
+| Location Canon | `services/location_canon/` | `IMPLEMENTED` (read-only, неизменяемая идентичность локации) |
+| Character Canon read bridge | `services/character_canon_bridge/` | `IMPLEMENTED` (read-only snapshot + status; production gate = `APPROVED_AS_CANON`) |
+| Scene Interpretation | `services/scene_interpretation/` | `IMPLEMENTED` (immutable artifact; якоря ASS/Location/Character; production_eligible) |
+| Prompt Composer | `services/prompt_composer/` | `IMPLEMENTED` (детерминированный provider-neutral PromptPackage) |
+| MediaPlan | `services/mediaplan/` | `IMPLEMENTED` (Scenario-owned; scene-specific media planning) |
+| Editor Application Service | `services/editor_application/` | `IMPLEMENTED` (тонкий UI-агностичный фасад) |
+| desktop editor | `ui/editor_desktop/` | `IMPLEMENTED` (Qt/PySide6 editor; реальное авторирование сцен) |
+| real scene authoring | `authoring/scene_drafts/`, `authoring/accepted_ordered_ass/`, `authoring/project/` | `IMPLEMENTED` (реальные принятые сцены; напр. `sc_kira_hidden_problem_001`) |
+| canonical Ren'Py publication | `tools/vne_to_renpy/ordered_ass_canonical_publisher.py` | `IMPLEMENTED` (публикация в `novel/game/ordered_ass_generated.rpy`) |
+| generated-file firewall | ownership-marker `# VNE-GENERATED: ORDERED_ASS_RENPY_V1`; fixed path; symlink/SHA-256 guard | `IMPLEMENTED` |
+| workspace_project | `services/workspace_project/` (`ProjectManifest`, `AcceptedOrderedASSBatch`, `WorkspaceIndex`) | `IMPLEMENTED` (Scenario-local; shared cross-product membership — `NOT YET RATIFIED`) |
+
+### 13.3 SUPERSEDED_BY / PARTIAL (исторический JSON-first путь)
+
+| Старый механизм | Статус | Современный механизм |
+|---|---|---|
+| JSON → Ren'Py renderer (`tools/renpy_v2_playable_exporter.py`, `tools/vne_to_renpy/exporter.py`, `scenes_v2_generated.rpy`) | `SUPERSEDED_BY` (для accepted-scene пути) | OrderedASS exporter (`tools/vne_to_renpy/ordered_ass_exporter.py` → `ordered_ass_generated.rpy`) |
+| Scenario V2 JSON как accepted-scene объект | `HISTORICAL` / `REFINED_BY` | SceneBody → OrderedASS lifecycle; JSON остаётся source-входом legacy ASS-импорта |
+| In-place Dev editor (N5-Dev: live-JSON write-back внутри RenPy) | `SUPERSEDED_BY` / `DEFERRED` | desktop editor (SceneBody draft lifecycle, `ui/editor_desktop/`) |
+| Live JSON runtime (N2/N5G/N5H: live чтение JSON в RenPy) | `HISTORICAL` / `PARTIAL` (docs/контракт есть, runtime НЕ реализован) | deterministic generate-ahead `.rpy` (OrderedASS exporter) — канонический release-путь |
+
+### 13.4 FUTURE PLATFORM INTEGRATION (FUTURE / NOT_IMPLEMENTED — планирование без реализации)
+
+1. **Portable character identity alignment.** Scenario уже использует/сохраняет стабильный
+   `character_id`. Будущая интеграция должна выровняться с Character Lab portable character
+   identity. — `FUTURE`.
+
+2. **VCP / `.vchar`.** Character Lab использует portable package boundary (VCP Package V1 / `.vchar`).
+   Scenario consumer integration — `NOT_IMPLEMENTED`. Здесь **не** проектируется.
+
+3. **Character Media (OWNER-RATIFIED boundary).** Character Lab = character-owned media; Scenario =
+   scene-specific MediaPlan. Первый managed Primary Portrait slice — Lab-local. Scenario consumer —
+   `WAIT FOR PORTABLE MEDIA HANDOFF` (`NOT_IMPLEMENTED`). Scenario **не** читает Primary Portrait из
+   `.vchar`; asset-role schema для Scenario не финализирована; Gallery/shared Reference Library в
+   Scenario отсутствуют; Character Media asset IDs Scenario неизвестны.
+
+4. **Workspace.** `services/workspace_project/` существует. Shared cross-product membership —
+   `NOT YET RATIFIED`.
+
+5. **Studio.** Scenario ↔ Studio shared runtime contract — `FUTURE / NOT_IMPLEMENTED`
+   (репозиторного evidence реализованной Studio-интеграции нет).
+
+6. **Common shell.** Не утверждать, что существует. `FUTURE` only.

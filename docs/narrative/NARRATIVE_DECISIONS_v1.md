@@ -62,6 +62,14 @@
 
 **Status:** ЗАФИКСИРОВАНО (v1.1, 2026-07-08).
 
+> **REFINED_BY (reconciliation 2026-09-29):** §2 фиксирует **историческое/foundational** решение
+> «JSON-first» для source/authoring-архитектуры. Оно **не отменено**, но уточнено современной
+> accepted-scene архитектурой: raw Scenario V2 JSON больше **не является единственным
+> авторитетным accepted-scene объектом**. Авторитетный accepted-scene контракт — **ASS / OrderedASS**
+> (`services/ass/`), см. §15. Scenario V2 JSON остаётся допустимым *source-входом* legacy
+> ASS-импорта (`services/ass/importer.py` → ass/0.1), но современный accepted-путь —
+> `SceneBody → validation → ACCEPT → OrderedASS` (ass/0.2). См. §15.
+
 ---
 
 ## 3. Runtime target и платформа
@@ -562,6 +570,111 @@ Not implemented in this slice: scene-level references, `SceneReferenceGroup`, `p
 gate, `SceneVariant`, cast override, authoring facade, and Ren'Py UI.
 
 **Status:** `IMPLEMENTED (v0)`.
+
+---
+
+## 15. Accepted Scene Authority (ASS / OrderedASS) — reconciliation addendum
+
+> **Дата записи:** 2026-09-29 (документационная reconciliation, **не** новая версия v2).
+> **Baseline для этой reconciliation:** `5f3aa0dd63a4653d7a45eb617b346235fa9f36f9` — снимок для
+> синхронизации документации, **не** постоянный архитектурный идентификатор.
+> Нижеследующее фиксирует **фактически реализованную** accepted-scene архитектуру. Статусы сверены
+> с кодом и тестами (`services/ass/`, `services/scene_body/`, `services/scene_draft/`,
+> `services/scene_interpretation/`, `services/mediaplan/`, `services/prompt_composer/`,
+> `services/editor_application/`, `services/workspace_project/`, `ui/editor_desktop/`,
+> `tools/vne_to_renpy/ordered_ass_*.py`).
+
+### 15.1 ACCEPTED SCENE AUTHORITY
+
+**Decision.** Авторинг/source-входы **не равны** accepted-scene authority. Принятый канонический
+контракт сцены — **ASS / OrderedASS** (`services/ass/`).
+
+```text
+authoring / source input
+→ SceneBody / Draft   (services/scene_body/, services/scene_draft/)
+→ validation           (validate_acceptance_complete)
+→ ACCEPT               (services/scene_draft/compiler.accept_draft)
+→ ASS / OrderedASS     (services/ass/: ass/0.1 legacy; ass/0.2 current)
+→ downstream deterministic consumers (scene_interpretation, mediaplan, prompt_composer, exporter)
+```
+
+**Facts (verified):**
+- **OrderedASS (`ass/0.2`)** — текущий канонический accepted-scene контракт; строится
+  детерминированно из полного `SceneBody` через `build_ordered_ass`, fail-closed, если тело не
+  acceptance-complete.
+- **Legacy ASS (`ass/0.1`)** — исторический accepted-scene snapshot; входом служит Scenario V2 JSON
+  (`services/ass/importer.py`). Современный accepted-путь (`accept_draft`) **не** вызывает legacy
+  `import_scene`.
+- Accepted ASS/OrderedASS **immutable** для данной accepted revision/version: канонический store
+  (`OrderedASSStore`) публикует envelope атомарно и без замены существующего, с SHA-256-проверкой,
+  без symlink/подмены; переход `SceneVersion` DRAFT → ACCEPTED — one-time, accepted version immutable.
+
+**Status:** `IMPLEMENTED` (по коду и тестам).
+
+### 15.2 JSON-FIRST HISTORY
+
+**Decision (историческое, сохранено).** §2 «JSON-first» описывает **раннюю source/authoring**
+архитектуру. Оно **не удалено**; уточнено accepted-scene lifecycle (§15.1). Raw JSON больше не
+претендует на роль единственного авторитетного accepted-scene объекта.
+
+**Status:** `HISTORICAL` / `REFINED_BY` accepted-scene lifecycle.
+
+### 15.3 LLM BOUNDARY
+
+**Decision (сохранено из §4).** LLM может предлагать / интерпретировать / генерировать. Выход LLM
+**не становится** accepted product-truth лишь потому, что его сгенерировала модель. Accepted
+состояние проходит через product-контракты / валидацию / acceptance (§15.1).
+
+**Status:** ЗАФИКСИРОВАНО (без изменений).
+
+### 15.4 REN'PY BOUNDARY
+
+**Decision.** Ren'Py `.rpy` — **детерминированный derived/runtime** материал. Он **не** является
+accepted-scene authoring authority. Публикация: OrderedASS → deterministic exporter
+(`tools/vne_to_renpy/ordered_ass_exporter.py` + `ordered_ass_project_exporter.py`) → canonical
+publisher (`ordered_ass_canonical_publisher.py`) → `novel/game/ordered_ass_generated.rpy`
+(generated-file firewall). Ren'Py runtime **не зависит** от Character Lab, LLM-провайдеров и
+authoring-внутренностей.
+
+**Status:** `IMPLEMENTED` (detached derivation; сгенерированный файл помечен ownership-marker
+`# VNE-GENERATED: ORDERED_ASS_RENPY_V1`).
+
+### 15.5 CHARACTER OWNERSHIP
+
+**Decision.** Character Lab владеет **КТО ТАКОЙ ПЕРСОНАЖ** (character identity / semantic canon).
+Scenario **ссылается** на character identity (`character_id`) и **не владеет/не переписывает**
+внешний character semantic canon. Scenario читает персонажа **read-only** через
+`services/character_canon_bridge/` (Character Canon Read Bridge) — identity/status/reference-presets.
+
+**Status:** read bridge — `IMPLEMENTED`. Будущая portable-identity работа — `FUTURE`.
+
+### 15.6 MEDIA OWNERSHIP (ratified cross-product split)
+
+**Decision.**
+- **Character Lab** = **CHARACTER-OWNED MEDIA** (Primary Portrait, approved character visual identity,
+  face/body/identity references, approved character-owned reference media).
+- **Scenario** = **SCENE-SPECIFIC MEDIA PLANNING** (`services/mediaplan/` — MediaPlan).
+
+Scenario MediaPlan **не становится** авторитетным источником Primary Portrait / character visual
+canon. Scenario **не** создаёт параллельную авторитетную Character Media Library.
+
+**Status.** Character-owned media — Character Lab authority. Scenario **MediaPlan** — Scenario-owned
+(`IMPLEMENTED` как планирование медиа конкретной сцены). **Character Media portable consumption** —
+`FUTURE` / `NOT_IMPLEMENTED` / `WAITING_FOR_PORTABLE_MEDIA_HANDOFF`.
+
+> Scenario пока **не читает** Primary Portrait из `.vchar`; asset-role schema для Scenario **не**
+> финализирована; workspace `MEDIA_ASSET` membership — это VNE-owned reference на Visual Asset
+> Registry, **не** shared Character Lab media library; Gallery и shared Reference Library в Scenario
+> **отсутствуют**; Character Media asset IDs Scenario **неизвестны**.
+
+### 15.7 WORKSPACE
+
+**Decision.** Не утверждать, что shared platform membership завершено. `services/workspace_project/`
+существует и Scenario-пригоден (`ProjectManifest`, `AcceptedOrderedASSBatch`, `WorkspaceIndex`), но
+shared Character Lab/Scenario workspace-семантика **не ратифицирована**.
+
+**Status:** workspace_project — `IMPLEMENTED` (Scenario-local). Shared cross-product membership —
+`NOT YET RATIFIED`.
 
 ---
 

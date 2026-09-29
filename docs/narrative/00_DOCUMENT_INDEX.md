@@ -40,8 +40,8 @@
 
 | Документ | Статус | Зачем |
 |---|---|---|
-| [`SCENARIO_SCHEMA_V2_SPEC.md`](SCENARIO_SCHEMA_V2_SPEC.md) | CANONICAL | Схема V2: *что хранится* в сцене (beats, speaker/speech/action/thought, choices, flags). |
-| [`STORY_RUNTIME_CONTRACT.md`](STORY_RUNTIME_CONTRACT.md) | CANONICAL | *Как исполняется* сцена (beats, flags, branches, player_state, hot-reload). |
+| [`SCENARIO_SCHEMA_V2_SPEC.md`](SCENARIO_SCHEMA_V2_SPEC.md) | HISTORICAL / FOUNDATIONAL (source schema) | Схема V2: *что хранится* в сцене (beats, speaker/speech/action/thought, choices, flags). Source/authoring-схема; accepted-scene контракт — ASS/OrderedASS (см. §7b). |
+| [`STORY_RUNTIME_CONTRACT.md`](STORY_RUNTIME_CONTRACT.md) | HISTORICAL / PARTIAL (live-JSON direction) | *Как исполняется* сцена (beats, flags, branches, player_state, hot-reload). Live-JSON runtime не реализован; release-путь — deterministic generate-ahead + OrderedASS exporter (см. §7b). |
 | [`PLAYER_EXPERIENCE_SPEC.md`](PLAYER_EXPERIENCE_SPEC.md) | ACTIVE | *Как отображается* игроку (режимы чтения, thought visibility). |
 | [`N5F_HYBRID_JSON_PATH_DECISION.md`](N5F_HYBRID_JSON_PATH_DECISION.md) | ACTIVE | Решение: JSON → generate-ahead `.rpy` (гибридный путь). |
 | [`N5G_LIVE_DEV_JSON_CONTRACT.md`](N5G_LIVE_DEV_JSON_CONTRACT.md) | ACTIVE | Контракт будущего live/dev JSON-рантайма (dev-only). |
@@ -120,9 +120,59 @@
 
 ---
 
+## 7b. Implemented Scenario architecture (accepted-scene / ASS) — код-области
+
+> **IMPLEMENTED CODE AREA** (не CANONICAL DOCUMENT). Формальных Markdown-спек для ASS/OrderedASS
+> пока нет — источник правды по этим механизмам находится в коде и тестах. Не путать с
+> CANONICAL DOCUMENT (Markdown-спеки) и HISTORICAL / LEGACY CONTRACT (`SCENARIO_SCHEMA_V2_SPEC`,
+> `STORY_RUNTIME_CONTRACT` — §3).
+
+### 7b.1 Accepted-scene authority (ASS / OrderedASS)
+
+| Область | Путь | Что делает |
+|---|---|---|
+| ASS v0 (`ass/0.1`) | `services/ass/` (`model.py`, `importer.py`, `hashing.py`) | Неизменяемый accepted-scene snapshot; импорт из Scenario V2 JSON. |
+| OrderedASS (`ass/0.2`) | `services/ass/ordered.py` | Текущий канонический accepted-scene контракт; проекция из `SceneBody`. |
+| Canonical store | `services/ass/store.py` | Immutable-файлы канонических OrderedASS; атомарная hard-link публикация; SHA-256. |
+
+### 7b.2 Authoring / draft lifecycle
+
+| Область | Путь | Что делает |
+|---|---|---|
+| SceneBody | `services/scene_body/` | Единый редактируемый authoring-пейлоад (`scene_body/1.0`). |
+| Scene Draft lifecycle | `services/scene_draft/` | DRAFT → validate → ACCEPT; `AcceptanceLink`; immutable accepted version. |
+| Editor Application Service | `services/editor_application/` | Тонкий UI-агностичный фасад над domain-сервисами. |
+| Desktop editor | `ui/editor_desktop/` | Qt (PySide6) editor поверх фасада; реальное авторирование сцен. |
+
+### 7b.3 Canon / interpretation / media / prompt
+
+| Область | Путь | Что делает |
+|---|---|---|
+| Location Canon | `services/location_canon/` | Неизменяемая каноническая идентичность локации (read-only). |
+| Character Canon bridge | `services/character_canon_bridge/` | Read-only мост к Character Canon; snapshot + статус (production gate `APPROVED_AS_CANON`). |
+| Scene Interpretation | `services/scene_interpretation/` | Immutable interpretation artifact; якоря ASS/Location/Character. |
+| MediaPlan | `services/mediaplan/` | Immutable упорядоченный медиа-план сцены (Scenario-owned). |
+| Prompt Composer | `services/prompt_composer/` | Детерминированный provider-neutral `PromptPackage`. |
+
+### 7b.4 Workspace / publication
+
+| Область | Путь | Что делает |
+|---|---|---|
+| workspace_project | `services/workspace_project/` | `ProjectManifest`, `AcceptedOrderedASSBatch`, `WorkspaceIndex` (membership boundary). |
+| OrderedASS → Ren'Py | `tools/vne_to_renpy/ordered_ass_exporter.py`, `ordered_ass_project_exporter.py`, `ordered_asset_resolver.py` | Детерминированный экспорт OrderedASS → `.rpy`. |
+| Canonical publisher | `tools/vne_to_renpy/ordered_ass_canonical_publisher.py` | Публикация в `novel/game/ordered_ass_generated.rpy` + generated-file firewall. |
+
+> **FUTURE CONTRACT (не реализовано):** Character Media portable consumption (`WAITING_FOR_PORTABLE_MEDIA_HANDOFF`),
+> VCP/`.vchar` Scenario consumer, shared Character Lab/Scenario workspace membership, Studio-интеграция,
+> общий NARRATIVE shell. См. `NARRATIVE_DECISIONS_v1.md` §15 и `NARRATIVE_ROADMAP.md` §13.
+
+---
+
 ## 8. Порядок чтения для нового участника
 
-1. `AGENTS.md` → 2. этот индекс → 3. `NARRATIVE_DECISIONS_v1.md` → 4. `NARRATIVE_ROADMAP.md` →
-5. нужный контракт (`SCENARIO_SCHEMA_V2_SPEC` / `STORY_RUNTIME_CONTRACT`) →
-6. нужный трек (`N6…` / `N7_CANONICAL_STATUS_CLOSEOUT` / `N9…`) →
-7. `NARRATIVE_HANDOFF_KIMI_WORK.md` перед делегированием.
+1. `AGENTS.md` → 2. этот индекс → 3. `NARRATIVE_DECISIONS_v1.md` (вкл. §15 accepted-scene authority) →
+4. `NARRATIVE_ROADMAP.md` (вкл. §13 reconciliation) →
+5. §7b этого индекса (реализованные accepted-scene код-области) →
+6. нужный контракт (`SCENARIO_SCHEMA_V2_SPEC` / `STORY_RUNTIME_CONTRACT` — historical source/live-JSON) →
+7. нужный трек (`N6…` / `N7_CANONICAL_STATUS_CLOSEOUT` / `N9…`) →
+8. `NARRATIVE_HANDOFF_KIMI_WORK.md` перед делегированием.
