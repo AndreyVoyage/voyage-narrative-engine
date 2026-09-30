@@ -14,6 +14,7 @@ from PySide6.QtCore import QModelIndex, Qt
 from PySide6.QtGui import QFont, QPixmap, QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import (
     QCheckBox,
+    QComboBox,
     QFileDialog,
     QFormLayout,
     QFrame,
@@ -48,6 +49,7 @@ from services.character_lab_application import (
     Readiness,
     next_sequential_revision_id,
 )
+from services.character_media import ReferenceBinding
 
 from .worker import BackgroundTask
 
@@ -78,6 +80,16 @@ def _join_list(values: object) -> str:
     return ""
 
 
+# Russian UI labels for the five ratified technical reference roles (OD-MEDIA-REF-02).
+_REFERENCE_ROLE_CHOICES = (
+    ("face", "Лицо / FACE"),
+    ("body", "Тело / BODY"),
+    ("expression", "Выражение / EXPRESSION"),
+    ("identity", "Идентичность / IDENTITY"),
+    ("motion", "Движение / MOTION"),
+)
+
+
 class CharacterLabMainWindow(QMainWindow):
     """Character Lab application shell: characters/sessions, dialogue, inspector."""
 
@@ -105,6 +117,7 @@ class CharacterLabMainWindow(QMainWindow):
         self._authoring_display_name: Optional[str] = None
         self._authoring_release_id: Optional[str] = None
         self._pending_portrait: Optional[dict[str, Any]] = None
+        self._pending_references: list[dict[str, Any]] = []
 
         left = self._build_left_panel()
         center = self._build_center_panel()
@@ -661,6 +674,57 @@ class CharacterLabMainWindow(QMainWindow):
         )
         portrait_layout.addWidget(self.authoring_portrait_publishable_checkbox)
         media_layout.addWidget(portrait_box)
+
+        # --- Референсы (вложены в «Медиа», не новый верхний раздел) ------
+        references_box = QGroupBox("Референсы")
+        references_layout = QVBoxLayout(references_box)
+
+        role_row = QHBoxLayout()
+        role_row.addWidget(QLabel("Роль"))
+        self.authoring_reference_role_combo = QComboBox()
+        for role_key, role_label in _REFERENCE_ROLE_CHOICES:
+            self.authoring_reference_role_combo.addItem(role_label, role_key)
+        role_row.addWidget(self.authoring_reference_role_combo, 1)
+        references_layout.addLayout(role_row)
+
+        self.authoring_reference_preview = QLabel("Референс не выбран")
+        self.authoring_reference_preview.setMinimumHeight(72)
+        self.authoring_reference_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.authoring_reference_preview.setWordWrap(True)
+        references_layout.addWidget(self.authoring_reference_preview)
+
+        self.authoring_reference_list = QListWidget()
+        self.authoring_reference_list.setMaximumHeight(96)
+        self.authoring_reference_list.currentRowChanged.connect(
+            self._render_reference_preview
+        )
+        references_layout.addWidget(self.authoring_reference_list)
+
+        reference_buttons = QHBoxLayout()
+        self.authoring_reference_add_button = QPushButton("Добавить референс…")
+        self.authoring_reference_add_button.clicked.connect(
+            self._on_add_reference_clicked
+        )
+        self.authoring_reference_remove_button = QPushButton(
+            "Удалить выбранный референс"
+        )
+        self.authoring_reference_remove_button.clicked.connect(
+            self._on_remove_reference_clicked
+        )
+        reference_buttons.addWidget(self.authoring_reference_add_button)
+        reference_buttons.addWidget(self.authoring_reference_remove_button)
+        references_layout.addLayout(reference_buttons)
+
+        self.authoring_reference_publishable_checkbox = QCheckBox(
+            "Опубликуемый референс (PUBLISHABLE)"
+        )
+        self.authoring_reference_publishable_checkbox.setToolTip(
+            "PUBLISHABLE попадает в опубликованный .vchar; "
+            "AUTHORING_ONLY остаётся только в Character Lab."
+        )
+        references_layout.addWidget(self.authoring_reference_publishable_checkbox)
+
+        media_layout.addWidget(references_box)
         outer.addWidget(media_box)
 
         # --- Технические данные (Advanced / Developer, collapsed) ----------
@@ -1133,7 +1197,7 @@ class CharacterLabMainWindow(QMainWindow):
         }
 
     def _collect_visual_identity(self) -> dict[str, Any]:
-        """Build the visual_identity semantic, carrying the pending portrait."""
+        """Build the visual_identity semantic, carrying portrait + references."""
         visual_identity: dict[str, Any] = {"references": []}
         if self._pending_portrait is not None:
             binding = dict(self._pending_portrait)
@@ -1143,6 +1207,9 @@ class CharacterLabMainWindow(QMainWindow):
                 else "AUTHORING_ONLY"
             )
             visual_identity["primary_portrait"] = binding
+        visual_identity["references"] = [
+            dict(reference) for reference in self._pending_references
+        ]
         return visual_identity
 
     def _load_semantic_to_form(self, semantic: Mapping[str, Any]) -> None:
@@ -1205,6 +1272,22 @@ class CharacterLabMainWindow(QMainWindow):
             self._pending_portrait = None
             self.authoring_portrait_publishable_checkbox.setChecked(False)
         self._render_portrait_preview()
+
+        references = visual_identity.get("references")
+        self._pending_references = []
+        if isinstance(references, list):
+            for entry in references:
+                # Managed ReferenceBinding: parse to the exact six fields.
+                # Legacy/unresolved {key, path} entries (no ``role`` key) are
+                # left untouched and never silently converted to managed
+                # bindings (OD-MEDIA-REF-06 compatibility boundary).
+                if isinstance(entry, Mapping) and "role" in entry:
+                    self._pending_references.append(
+                        ReferenceBinding.from_dict(entry).to_dict()
+                    )
+        self._render_reference_list()
+        self.authoring_reference_preview.setPixmap(QPixmap())
+        self.authoring_reference_preview.setText("Референс не выбран")
 
     def _require_authoring_selection(self) -> bool:
         if not (
@@ -1325,6 +1408,122 @@ class CharacterLabMainWindow(QMainWindow):
         else:
             self.authoring_portrait_preview.setPixmap(QPixmap())
             self.authoring_portrait_preview.setText("Предпросмотр недоступен")
+
+    def _on_add_reference_clicked(self) -> None:
+        if not self._authoring_character_id:
+            self.statusBar().showMessage("Сначала создайте или выберите персонажа.")
+            return
+        path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Выбрать референс",
+            "",
+            "Изображения (*.png *.jpg *.jpeg *.webp)",
+        )
+        if not path:
+            return
+        role = self.authoring_reference_role_combo.currentData()
+        publishability = (
+            "PUBLISHABLE"
+            if self.authoring_reference_publishable_checkbox.isChecked()
+            else "AUTHORING_ONLY"
+        )
+        try:
+            result = self._service.import_reference(
+                character_id=self._authoring_character_id,
+                source_path=path,
+                role=role,
+                publishability=publishability,
+            )
+        except CharacterLabApplicationError as exc:
+            self.statusBar().showMessage(f"{exc.code}: {exc.message}")
+            return
+        duplicate = any(
+            reference.get("role") == result.role
+            and reference.get("asset_sha256") == result.asset_sha256
+            for reference in self._pending_references
+        )
+        if duplicate:
+            self.statusBar().showMessage(
+                f"Референс уже добавлен ({result.role}, "
+                f"{result.asset_sha256[:8]}…)"
+            )
+            return
+        self._pending_references.append(
+            {
+                "role": result.role,
+                "asset_sha256": result.asset_sha256,
+                "format": result.format,
+                "mime_type": result.mime_type,
+                "byte_length": result.byte_length,
+                "publishability": publishability,
+            }
+        )
+        self._render_reference_list()
+        self.statusBar().showMessage(
+            f"Референс добавлен ({result.role}, {result.format}, {result.byte_length} байт)"
+        )
+
+    def _on_remove_reference_clicked(self) -> None:
+        row = self.authoring_reference_list.currentRow()
+        if 0 <= row < len(self._pending_references):
+            removed = self._pending_references.pop(row)
+            self.statusBar().showMessage(
+                f"Референс {removed['role']!r} будет удалён "
+                "при следующем сохранении ревизии"
+            )
+        else:
+            self.statusBar().showMessage("Выберите референс для удаления.")
+        self._render_reference_list()
+        self.authoring_reference_preview.setPixmap(QPixmap())
+        self.authoring_reference_preview.setText("Референс не выбран")
+
+    def _render_reference_list(self) -> None:
+        self.authoring_reference_list.clear()
+        for reference in self._pending_references:
+            publish = (
+                "PUBLISHABLE"
+                if reference.get("publishability") == "PUBLISHABLE"
+                else "AUTHORING_ONLY"
+            )
+            self.authoring_reference_list.addItem(
+                QListWidgetItem(
+                    f"{reference['role']} · {reference['format']} · {publish} · "
+                    f"{reference['asset_sha256'][:8]}…"
+                )
+            )
+
+    def _render_reference_preview(self, row: int) -> None:
+        if row is None or row < 0 or row >= len(self._pending_references):
+            self.authoring_reference_preview.setPixmap(QPixmap())
+            self.authoring_reference_preview.setText("Референс не выбран")
+            return
+        reference = self._pending_references[row]
+        if not self._authoring_character_id:
+            self.authoring_reference_preview.setPixmap(QPixmap())
+            self.authoring_reference_preview.setText("Сначала выберите персонажа")
+            return
+        try:
+            payload = self._service.read_reference_payload(
+                character_id=self._authoring_character_id,
+                asset_sha256=reference["asset_sha256"],
+                format=reference["format"],
+            )
+        except CharacterLabApplicationError as exc:
+            self.authoring_reference_preview.setPixmap(QPixmap())
+            self.authoring_reference_preview.setText(
+                f"Не удалось загрузить референс: {exc.code}"
+            )
+            return
+        pixmap = QPixmap()
+        if pixmap.loadFromData(payload):
+            pixmap = pixmap.scaledToHeight(
+                120, Qt.TransformationMode.SmoothTransformation
+            )
+            self.authoring_reference_preview.setPixmap(pixmap)
+            self.authoring_reference_preview.setText("")
+        else:
+            self.authoring_reference_preview.setPixmap(QPixmap())
+            self.authoring_reference_preview.setText("Предпросмотр недоступен")
 
     def _on_create_character_clicked(self) -> None:
         character_id = self.authoring_character_id_edit.text().strip()

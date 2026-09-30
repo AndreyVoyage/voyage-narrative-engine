@@ -12,7 +12,11 @@ from services.character_authoring.validation import (
     validate_identifier,
     validate_snapshot_hash,
 )
-from services.character_media import CharacterMediaValidationError, PortraitBinding
+from services.character_media import (
+    CharacterMediaValidationError,
+    PortraitBinding,
+    ReferenceBinding,
+)
 
 from .errors import PublicationValidationError
 
@@ -52,11 +56,12 @@ def _require_exact_keys(
 
 
 def validate_slice1_visual_identity(semantic: CharacterSemantic) -> None:
-    """Allow only ratified Slice 1 visual_identity shapes.
+    """Allow only ratified visual_identity shapes for Character Media publication.
 
-    Empty shapes are the two explicit empty forms. A populated Primary Portrait
-    binding (either publishability state) is accepted; unresolved external
-    references remain forbidden.
+    Empty shapes are the explicit empty forms. A populated Primary Portrait
+    binding (either publishability state) and populated managed technical
+    reference bindings are accepted. Unresolved external/path-based (legacy
+    Canon ``{key, path}``) references remain forbidden and fail closed.
     """
 
     visual_identity = semantic.to_dict()["visual_identity"]
@@ -66,14 +71,30 @@ def validate_slice1_visual_identity(semantic: CharacterSemantic) -> None:
     extra = sorted(set(visual_identity) - {"references", "primary_portrait"})
     if extra:
         raise PublicationValidationError(
-            f"Slice 1 visual_identity contains unknown keys: {extra!r}"
+            f"visual_identity contains unknown keys: {extra!r}"
         )
 
-    if visual_identity.get("references", []) != []:
-        raise PublicationValidationError(
-            "Slice 1 cannot publish unresolved visual_identity references without "
-            "a local deterministic asset resolver"
-        )
+    references = visual_identity.get("references", [])
+    if not isinstance(references, list):
+        raise PublicationValidationError("visual_identity.references must be a list")
+
+    for entry in references:
+        if isinstance(entry, Mapping) and "role" in entry:
+            # Managed reference binding: strictly validated, fail closed.
+            try:
+                ReferenceBinding.from_dict(entry)
+            except CharacterMediaValidationError as exc:
+                raise PublicationValidationError(
+                    f"reference binding is invalid: {exc}"
+                ) from exc
+        else:
+            # Legacy/unresolved Canon reference (e.g. {key, path}): publication
+            # must fail closed -- external/path-based references are never
+            # silently converted into package assets (OD-MEDIA-REF-06).
+            raise PublicationValidationError(
+                "cannot publish unresolved external/path-based visual_identity "
+                "references"
+            )
 
     portrait = visual_identity.get("primary_portrait")
     if portrait is not None:

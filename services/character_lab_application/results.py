@@ -196,3 +196,15 @@ class PortraitImportResult:
     format: str
     mime_type: str
     byte_length: int
+
+
+@dataclass(frozen=True)
+class ReferenceImportResult:
+    """Path-free identity of one imported managed technical reference asset."""
+
+    character_id: str
+    role: str
+    asset_sha256: str
+    format: str
+    mime_type: str
+    byte_length: int

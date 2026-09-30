@@ -320,6 +320,18 @@ def build_authoring_release_compilation(
                 required=True,
             )
 
+        # OD-MEDIA-REF-01: each PUBLISHABLE reference travels as one RAW Package
+        # V1 file under assets/references/ (deduplicated per physical asset by
+        # the domain compiler; a reference reusing the PUBLISHABLE Primary
+        # Portrait SHA maps to the portrait path and produces no second file).
+        for reference_file in domain_compilation.reference_files:
+            files[reference_file.relative_path] = PackageV1File(
+                content=reference_file.content,
+                semantic_role=reference_file.semantic_role,
+                normalization=RAW_NORMALIZATION,
+                required=True,
+            )
+
         ordered_files = dict(sorted(files.items()))
 
         # Pure self-check through the authoritative Package V1 contract: path

@@ -24,9 +24,11 @@ from services.character_media import (
     CharacterMediaValidationError,
     MediaPublishability,
     PortraitBinding,
+    ReferenceBinding,
     format_extension,
     inspect_image,
     media_root_next_to,
+    reference_role_package_token,
 )
 
 from .errors import PublicationValidationError
@@ -89,6 +91,7 @@ class AuthoringVcpDomainCompilation:
     source: SourceProvenance
     domains: tuple[DomainEnvelope, ...]
     primary_portrait_file: Optional[PortraitPackageFile] = None
+    reference_files: tuple[PortraitPackageFile, ...] = ()
 
 
 def _has_semantic_content(value: object) -> bool:
@@ -250,6 +253,126 @@ def _resolve_primary_portrait(
     return [asset_ref], portrait_file, True
 
 
+_REFERENCE_SEMANTIC_ROLE = "REFERENCE"
+
+
+def _resolve_references(
+    character_id: str,
+    visual_identity: Mapping[str, Any],
+    store: CharacterAuthoringStore,
+    media_root: Optional[Path],
+    portrait_sha256: Optional[str],
+) -> tuple[list[dict[str, Any]], tuple[PortraitPackageFile, ...], bool]:
+    """Resolve PUBLISHABLE managed references into assetRefs + RAW package files.
+
+    AUTHORING_ONLY references are Lab-local only and produce no assetRef or RAW
+    file. Each PUBLISHABLE reference is resolved from the managed media store
+    (exact bytes, SHA/byte-length/format/MIME re-verified) into one role-qualified
+    ``assetId`` (``<role>:<sha256>``) and one assetRef. Physical files are
+    deduplicated: one ``assets/references/<sha256>.<ext>`` entry per distinct
+    physical asset, and a reference whose SHA equals the PUBLISHABLE Primary
+    Portrait reuses the portrait's ``assets/portrait/...`` path (no second copy).
+    Fails closed on malformed bindings, unavailable/tampered bytes, or any
+    format/MIME mismatch.
+    """
+    references = visual_identity.get("references", [])
+    if not isinstance(references, list):
+        raise AuthoringVcpVisualMappingError(
+            "visual_identity.references must be a list"
+        )
+
+    asset_refs: list[dict[str, Any]] = []
+    reference_files: dict[str, PortraitPackageFile] = {}
+    references_populated = False
+
+    for entry in references:
+        if not (isinstance(entry, Mapping) and "role" in entry):
+            raise AuthoringVcpVisualMappingError(
+                "cannot publish unresolved external/path-based reference"
+            )
+        try:
+            binding = ReferenceBinding.from_dict(entry)
+        except CharacterMediaValidationError as exc:
+            raise AuthoringVcpVisualMappingError(
+                f"reference binding is invalid: {exc}"
+            ) from exc
+
+        if binding.publishability is not MediaPublishability.PUBLISHABLE:
+            continue
+
+        references_populated = True
+
+        root = media_root if media_root is not None else media_root_next_to(store.root)
+        media = CharacterMediaStore(root)
+        try:
+            content = media.read_portrait_bytes(
+                character_id, binding.asset_sha256, binding.format
+            )
+        except CharacterMediaError as exc:
+            raise AuthoringVcpVisualMappingError(
+                f"PUBLISHABLE reference managed bytes unavailable: {exc}"
+            ) from exc
+
+        if len(content) != binding.byte_length:
+            raise AuthoringVcpVisualMappingError(
+                "PUBLISHABLE reference byte_length does not match managed bytes"
+            )
+
+        try:
+            info = inspect_image(content)
+        except CharacterMediaValidationError as exc:
+            raise AuthoringVcpVisualMappingError(
+                f"PUBLISHABLE reference managed bytes are invalid: {exc}"
+            ) from exc
+        if info.sha256 != binding.asset_sha256:
+            raise AuthoringVcpVisualMappingError("PUBLISHABLE reference SHA mismatch")
+        if info.byte_length != binding.byte_length:
+            raise AuthoringVcpVisualMappingError(
+                "PUBLISHABLE reference byte_length mismatch"
+            )
+        if info.format != binding.format:
+            raise AuthoringVcpVisualMappingError(
+                "PUBLISHABLE reference format mismatch: "
+                f"actual {info.format!r} != binding {binding.format!r}"
+            )
+        if info.mime_type != binding.mime_type:
+            raise AuthoringVcpVisualMappingError(
+                "PUBLISHABLE reference MIME mismatch: "
+                f"actual {info.mime_type!r} != binding {binding.mime_type!r}"
+            )
+
+        ext = format_extension(info.format)
+        role_token = reference_role_package_token(binding.role)
+
+        if binding.asset_sha256 == portrait_sha256:
+            # Reuse the PUBLISHABLE Primary Portrait's physical package path.
+            relative_path = f"assets/portrait/{binding.asset_sha256}.{ext}"
+        else:
+            relative_path = f"assets/references/{binding.asset_sha256}.{ext}"
+            if relative_path not in reference_files:
+                reference_files[relative_path] = PortraitPackageFile(
+                    relative_path=relative_path,
+                    content=content,
+                    sha256=binding.asset_sha256,
+                    byte_length=binding.byte_length,
+                    media_type=binding.mime_type,
+                    semantic_role=_REFERENCE_SEMANTIC_ROLE,
+                )
+
+        asset_refs.append(
+            {
+                "assetId": f"{binding.role}:{binding.asset_sha256}",
+                "relativePath": relative_path,
+                "sha256": binding.asset_sha256,
+                "byteLength": binding.byte_length,
+                "mediaType": binding.mime_type,
+                "semanticRole": role_token,
+            }
+        )
+
+    return asset_refs, tuple(reference_files.values()), references_populated
+
+
 def compile_authoring_revision_to_vcp_domains(
     store: CharacterAuthoringStore,
     *,
@@ -303,12 +426,29 @@ def compile_authoring_revision_to_vcp_domains(
         media_root,
     )
 
+    portrait_sha256 = (
+        primary_portrait_file.sha256 if primary_portrait_file is not None else None
+    )
+    (
+        reference_asset_refs,
+        reference_files,
+        references_populated,
+    ) = _resolve_references(
+        source.source_character_id,
+        semantic["visual_identity"],
+        store,
+        media_root,
+        portrait_sha256,
+    )
+
     visual_identity_content: dict[str, Any] = {}
     if appearance_is_populated:
         visual_identity_content["identityDescription"] = appearance
-    visual_identity_content["assetRefs"] = asset_refs
+    visual_identity_content["assetRefs"] = asset_refs + reference_asset_refs
     visual_identity_content["promptRefs"] = []
-    visual_identity_populated = appearance_is_populated or portrait_populated
+    visual_identity_populated = (
+        appearance_is_populated or portrait_populated or references_populated
+    )
 
     # OD-VCHAR-REC-01: biography joins core_identity; appearance becomes
     # visual_identity.identityDescription. A PUBLISHABLE Primary Portrait
@@ -364,6 +504,7 @@ def compile_authoring_revision_to_vcp_domains(
         source=source,
         domains=domains,
         primary_portrait_file=primary_portrait_file,
+        reference_files=reference_files,
     )
 
 

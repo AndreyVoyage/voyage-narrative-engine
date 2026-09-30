@@ -132,13 +132,16 @@ from .results import (
     Message,
     PortraitImportResult,
     PublishedReleaseSummary,
+    ReferenceImportResult,
     RevisionSemanticData,
 )
 
 from services.character_media import (
     CharacterMediaError,
     CharacterMediaStore,
+    MediaPublishability,
     validate_visual_identity_portrait,
+    validate_visual_identity_references,
 )
 
 _CHARACTER_USAGE_CONTEXT = "authoring"
@@ -689,6 +692,7 @@ class CharacterLabApplicationService:
         record = self._authoring.load_revision(character_id, version_id, revision_id)
         semantic = record.semantic.to_dict()
         self._validate_primary_portrait_binding(semantic.get("visual_identity"))
+        self._validate_references_binding(semantic.get("visual_identity"))
         return RevisionSemanticData(
             character_id=record.character_id,
             version_id=record.version_id,
@@ -770,6 +774,70 @@ class CharacterLabApplicationService:
             raise CharacterLabApplicationError(
                 INVALID_INPUT,
                 f"semantic.visual_identity.primary_portrait is invalid: {exc}",
+            ) from exc
+
+    # -- Managed technical references (Character Media) ----------------------
+
+    def import_reference(
+        self,
+        *,
+        character_id: str,
+        source_path: str | Path,
+        role: str,
+        publishability: str = "AUTHORING_ONLY",
+    ) -> ReferenceImportResult:
+        """Validate and import a local image as a managed technical reference.
+
+        Reuses the exact Primary Portrait managed storage: content-addressed
+        bytes, SHA-256 identity, deduplication, immutable reads. The logical
+        ``role`` (face/body/expression/identity/motion) and ``publishability``
+        are separate from physical identity. The original source path is never
+        authority after import.
+        """
+        try:
+            media_publishability = MediaPublishability(publishability)
+        except ValueError as exc:
+            raise CharacterLabApplicationError(
+                INVALID_INPUT, f"publishability: unknown value {publishability!r}"
+            ) from exc
+        try:
+            record = self._media_store().import_portrait(source_path, character_id)
+            binding = record.reference_binding(role, media_publishability)
+        except CharacterMediaError as exc:
+            raise CharacterLabApplicationError(INVALID_INPUT, str(exc)) from exc
+        return ReferenceImportResult(
+            character_id=record.character_id,
+            role=binding.role,
+            asset_sha256=binding.asset_sha256,
+            format=binding.format,
+            mime_type=binding.mime_type,
+            byte_length=binding.byte_length,
+        )
+
+    def read_reference_payload(
+        self, *, character_id: str, asset_sha256: str, format: str
+    ) -> bytes:
+        """Return the exact managed reference bytes (verified SHA-256)."""
+        try:
+            return self._media_store().read_portrait_bytes(
+                character_id, asset_sha256, format
+            )
+        except CharacterMediaError as exc:
+            raise CharacterLabApplicationError(INTERNAL_ERROR, str(exc)) from exc
+
+    def _validate_references_binding(self, visual_identity: Any) -> None:
+        """Validate the reserved visual_identity.references list before UI use.
+
+        Fails closed (controlled Character Lab error) when a persisted managed
+        reference binding is malformed; legacy/unresolved Canon reference
+        entries are left untouched and never silently reinterpreted.
+        """
+        try:
+            validate_visual_identity_references(visual_identity)
+        except CharacterMediaError as exc:
+            raise CharacterLabApplicationError(
+                INVALID_INPUT,
+                f"semantic.visual_identity.references is invalid: {exc}",
             ) from exc
 
     # -- LAB-L5 release read-side + publication boundary (lazy VCP) ------

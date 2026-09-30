@@ -45,7 +45,8 @@ class MalformedImageError(CharacterMediaValidationError):
 
 
 class InvalidBindingError(CharacterMediaValidationError):
-    """A ``primary_portrait`` binding is structurally unsound or has unknown values."""
+    """A reserved visual_identity binding (portrait or reference) is structurally
+    unsound or carries unknown values."""
 
 
 class Sha256MismatchError(CharacterMediaError):

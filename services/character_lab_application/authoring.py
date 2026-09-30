@@ -40,6 +40,7 @@ from services.character_canon_bridge import (
 from services.character_media import (
     CharacterMediaError,
     validate_visual_identity_portrait,
+    validate_visual_identity_references,
 )
 
 from .errors import (
@@ -164,6 +165,25 @@ def _validate_primary_portrait(semantic_model: CharacterSemantic) -> None:
         ) from exc
 
 
+def _validate_references(semantic_model: CharacterSemantic) -> None:
+    """Validate the reserved ``visual_identity.references`` list before persistence.
+
+    The generic ``visual_identity`` domain stays open; only managed reference
+    bindings (entries carrying the reserved ``role`` key) are strictly checked.
+    A malformed managed binding raises a controlled Character Lab validation
+    error BEFORE any immutable revision is written. Legacy/unresolved Canon
+    reference entries stay open at authoring and fail closed at publication.
+    """
+    visual_identity = semantic_model.to_dict().get("visual_identity")
+    try:
+        validate_visual_identity_references(visual_identity)
+    except CharacterMediaError as exc:
+        raise CharacterLabApplicationError(
+            AUTHORING_VALIDATION_FAILED,
+            f"semantic.visual_identity.references is invalid: {exc}",
+        ) from exc
+
+
 class _CharacterAuthoringUseCases:
     """Internal application orchestrator behind the Character Lab facade."""
 
@@ -278,6 +298,7 @@ class _CharacterAuthoringUseCases:
             else CharacterSemantic.from_dict(semantic)
         )
         _validate_primary_portrait(semantic_model)
+        _validate_references(semantic_model)
         snapshot_hash = compute_snapshot_hash(semantic_model)
         CharacterPointer(character_id, selected_version_id=version_id)
         VersionPointer(
@@ -591,6 +612,7 @@ class _CharacterAuthoringUseCases:
                 else CharacterSemantic.from_dict(semantic)
             )
             _validate_primary_portrait(semantic_model)
+            _validate_references(semantic_model)
             snapshot_hash = compute_snapshot_hash(semantic_model)
             version_pointer = store.read_version_pointer(character_id, version_id)
             RevisionRecord(
