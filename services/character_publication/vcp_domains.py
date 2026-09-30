@@ -10,12 +10,23 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any
+from pathlib import Path
+from typing import Any, Optional
 
 from services.character_authoring import (
     CharacterAuthoringStore,
     RevisionRecord,
     compute_snapshot_hash,
+)
+from services.character_media import (
+    CharacterMediaError,
+    CharacterMediaStore,
+    CharacterMediaValidationError,
+    MediaPublishability,
+    PortraitBinding,
+    format_extension,
+    inspect_image,
+    media_root_next_to,
 )
 
 from .errors import PublicationValidationError
@@ -49,15 +60,35 @@ class AuthoringVcpVisualMappingError(AuthoringVcpDomainCompilationError):
 
 
 @dataclass(frozen=True, slots=True)
+class PortraitPackageFile:
+    """One PUBLISHABLE Primary Portrait resolved into an exact RAW package file.
+
+    ``relative_path`` is the Package-V1-relative path; ``content`` is the exact
+    managed bytes (never an external source path). ``semantic_role`` is the
+    manifest-level role token.
+    """
+
+    relative_path: str
+    content: bytes
+    sha256: str
+    byte_length: int
+    media_type: str
+    semantic_role: str
+
+
+@dataclass(frozen=True, slots=True)
 class AuthoringVcpDomainCompilation:
     """Exact Authoring source coordinate and its VCP domain envelopes.
 
     Always contains the six required domains; additionally contains the optional
-    ``intimacy`` domain when the authoring ``sexology`` carries content.
+    ``intimacy`` domain when the authoring ``sexology`` carries content. When
+    the revision carries a PUBLISHABLE Primary Portrait,
+    ``primary_portrait_file`` holds the resolved RAW package file.
     """
 
     source: SourceProvenance
     domains: tuple[DomainEnvelope, ...]
+    primary_portrait_file: Optional[PortraitPackageFile] = None
 
 
 def _has_semantic_content(value: object) -> bool:
@@ -121,6 +152,104 @@ def _load_exact_revision(
     return record
 
 
+_PRIMARY_PORTRAIT_SEMANTIC_ROLE = "PRIMARY_PORTRAIT"
+
+
+def _resolve_primary_portrait(
+    character_id: str,
+    visual_identity: Mapping[str, Any],
+    store: CharacterAuthoringStore,
+    media_root: Optional[Path],
+) -> tuple[list[dict[str, Any]], Optional[PortraitPackageFile], bool]:
+    """Resolve a PUBLISHABLE Primary Portrait into assetRefs + a RAW package file.
+
+    AUTHORING_ONLY portraits are Lab-local only and produce an empty assetRef
+    list. A PUBLISHABLE portrait is resolved from the managed media store and
+    yields one ``assets/portrait/<sha256>.<ext>`` RAW package entry. Fails
+    closed when the binding is malformed or the managed bytes are unavailable.
+
+    The store root is accessed only when a PUBLISHABLE portrait actually needs
+    resolution, so media-free and AUTHORING_ONLY compilations read only the
+    exact revision (preserving the compiler's bounded read contract).
+    """
+    portrait_raw = visual_identity.get("primary_portrait")
+    if portrait_raw is None:
+        return [], None, False
+
+    try:
+        binding = PortraitBinding.from_dict(portrait_raw)
+    except CharacterMediaValidationError as exc:
+        raise AuthoringVcpVisualMappingError(
+            f"primary_portrait binding is invalid: {exc}"
+        ) from exc
+
+    if binding.publishability is not MediaPublishability.PUBLISHABLE:
+        return [], None, False
+
+    root = media_root if media_root is not None else media_root_next_to(store.root)
+    media = CharacterMediaStore(root)
+    try:
+        content = media.read_portrait_bytes(
+            character_id, binding.asset_sha256, binding.format
+        )
+    except CharacterMediaError as exc:
+        raise AuthoringVcpVisualMappingError(
+            f"PUBLISHABLE primary_portrait managed bytes unavailable: {exc}"
+        ) from exc
+
+    if len(content) != binding.byte_length:
+        raise AuthoringVcpVisualMappingError(
+            "PUBLISHABLE primary_portrait byte_length does not match managed bytes"
+        )
+
+    # Re-validate ACTUAL managed bytes against the immutable binding. Never
+    # trust revision-declared format/MIME: re-sniff and require exact equality.
+    try:
+        info = inspect_image(content)
+    except CharacterMediaValidationError as exc:
+        raise AuthoringVcpVisualMappingError(
+            f"PUBLISHABLE primary_portrait managed bytes are invalid: {exc}"
+        ) from exc
+    if info.sha256 != binding.asset_sha256:
+        raise AuthoringVcpVisualMappingError(
+            "PUBLISHABLE primary_portrait SHA mismatch"
+        )
+    if info.byte_length != binding.byte_length:
+        raise AuthoringVcpVisualMappingError(
+            "PUBLISHABLE primary_portrait byte_length mismatch"
+        )
+    if info.format != binding.format:
+        raise AuthoringVcpVisualMappingError(
+            "PUBLISHABLE primary_portrait format mismatch: "
+            f"actual {info.format!r} != binding {binding.format!r}"
+        )
+    if info.mime_type != binding.mime_type:
+        raise AuthoringVcpVisualMappingError(
+            "PUBLISHABLE primary_portrait MIME mismatch: "
+            f"actual {info.mime_type!r} != binding {binding.mime_type!r}"
+        )
+
+    ext = format_extension(info.format)
+    relative_path = f"assets/portrait/{binding.asset_sha256}.{ext}"
+    asset_ref = {
+        "assetId": binding.asset_sha256,
+        "relativePath": relative_path,
+        "sha256": binding.asset_sha256,
+        "byteLength": binding.byte_length,
+        "mediaType": binding.mime_type,
+        "semanticRole": _PRIMARY_PORTRAIT_SEMANTIC_ROLE,
+    }
+    portrait_file = PortraitPackageFile(
+        relative_path=relative_path,
+        content=content,
+        sha256=binding.asset_sha256,
+        byte_length=binding.byte_length,
+        media_type=binding.mime_type,
+        semantic_role=_PRIMARY_PORTRAIT_SEMANTIC_ROLE,
+    )
+    return [asset_ref], portrait_file, True
+
+
 def compile_authoring_revision_to_vcp_domains(
     store: CharacterAuthoringStore,
     *,
@@ -128,6 +257,7 @@ def compile_authoring_revision_to_vcp_domains(
     version_id: str,
     revision_id: str,
     snapshot_hash: str,
+    media_root: Path | str | None = None,
 ) -> AuthoringVcpDomainCompilation:
     """Compile one exact immutable Authoring revision into VCP domains.
 
@@ -166,8 +296,23 @@ def compile_authoring_revision_to_vcp_domains(
     appearance = semantic["appearance"]
     appearance_is_populated = _has_semantic_content(appearance)
 
+    asset_refs, primary_portrait_file, portrait_populated = _resolve_primary_portrait(
+        source.source_character_id,
+        semantic["visual_identity"],
+        store,
+        media_root,
+    )
+
+    visual_identity_content: dict[str, Any] = {}
+    if appearance_is_populated:
+        visual_identity_content["identityDescription"] = appearance
+    visual_identity_content["assetRefs"] = asset_refs
+    visual_identity_content["promptRefs"] = []
+    visual_identity_populated = appearance_is_populated or portrait_populated
+
     # OD-VCHAR-REC-01: biography joins core_identity; appearance becomes
-    # visual_identity.identityDescription with zero package asset/prompt refs.
+    # visual_identity.identityDescription. A PUBLISHABLE Primary Portrait
+    # additionally populates visual_identity.assetRefs.
     structured_by_domain: dict[str, Mapping[str, Any]] = {
         "core_identity": {
             "identity": semantic["identity"],
@@ -177,13 +322,7 @@ def compile_authoring_revision_to_vcp_domains(
         "speech": semantic["speech"],
         "relationships": semantic["character_relations"],
         "visual_identity": (
-            {
-                "identityDescription": appearance,
-                "assetRefs": [],
-                "promptRefs": [],
-            }
-            if appearance_is_populated
-            else {}
+            visual_identity_content if visual_identity_populated else {}
         ),
         "interaction_boundaries": semantic["boundaries"],
     }
@@ -202,7 +341,7 @@ def compile_authoring_revision_to_vcp_domains(
             domain_id,
             structured_by_domain[domain_id],
             populated=(
-                appearance_is_populated
+                visual_identity_populated
                 if domain_id == "visual_identity"
                 else _has_semantic_content(structured_by_domain[domain_id])
             ),
@@ -221,7 +360,11 @@ def compile_authoring_revision_to_vcp_domains(
             f"{issue.location}: {issue.message}"
         )
 
-    return AuthoringVcpDomainCompilation(source=source, domains=domains)
+    return AuthoringVcpDomainCompilation(
+        source=source,
+        domains=domains,
+        primary_portrait_file=primary_portrait_file,
+    )
 
 
 __all__ = [

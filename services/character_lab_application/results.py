@@ -185,3 +185,14 @@ class CanonicalCurrentSummary:
     release_id: str
     package_hash: str
     generation: int
+
+
+@dataclass(frozen=True)
+class PortraitImportResult:
+    """Path-free identity of one imported managed Primary Portrait asset."""
+
+    character_id: str
+    asset_sha256: str
+    format: str
+    mime_type: str
+    byte_length: int

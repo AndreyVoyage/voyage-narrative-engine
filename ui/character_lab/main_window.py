@@ -11,8 +11,10 @@ from __future__ import annotations
 from typing import Any, Mapping, Optional
 
 from PySide6.QtCore import QModelIndex, Qt
-from PySide6.QtGui import QFont, QStandardItem, QStandardItemModel
+from PySide6.QtGui import QFont, QPixmap, QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import (
+    QCheckBox,
+    QFileDialog,
     QFormLayout,
     QFrame,
     QGroupBox,
@@ -102,6 +104,7 @@ class CharacterLabMainWindow(QMainWindow):
         self._authoring_snapshot_hash: Optional[str] = None
         self._authoring_display_name: Optional[str] = None
         self._authoring_release_id: Optional[str] = None
+        self._pending_portrait: Optional[dict[str, Any]] = None
 
         left = self._build_left_panel()
         center = self._build_center_panel()
@@ -629,14 +632,35 @@ class CharacterLabMainWindow(QMainWindow):
         appearance_layout.addWidget(self.authoring_appearance_edit)
         outer.addWidget(appearance_box)
 
-        # --- 9. Медиа (placeholder; asset store is a later slice) ----------
+        # --- 9. Медиа -----------------------------------------------------
         media_box = QGroupBox("Медиа")
         media_layout = QVBoxLayout(media_box)
-        media_placeholder = QLabel(
-            "Фото и видео будут доступны после подключения Media Library."
+        portrait_box = QGroupBox("Первичный портрет")
+        portrait_layout = QVBoxLayout(portrait_box)
+        self.authoring_portrait_preview = QLabel("Портрет не выбран")
+        self.authoring_portrait_preview.setMinimumHeight(96)
+        self.authoring_portrait_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.authoring_portrait_preview.setWordWrap(True)
+        portrait_layout.addWidget(self.authoring_portrait_preview)
+        portrait_buttons = QHBoxLayout()
+        self.authoring_portrait_button = QPushButton("Выбрать портрет…")
+        self.authoring_portrait_button.clicked.connect(self._on_choose_portrait_clicked)
+        self.authoring_portrait_remove_button = QPushButton("Удалить портрет")
+        self.authoring_portrait_remove_button.clicked.connect(
+            self._on_remove_portrait_clicked
         )
-        media_placeholder.setWordWrap(True)
-        media_layout.addWidget(media_placeholder)
+        portrait_buttons.addWidget(self.authoring_portrait_button)
+        portrait_buttons.addWidget(self.authoring_portrait_remove_button)
+        portrait_layout.addLayout(portrait_buttons)
+        self.authoring_portrait_publishable_checkbox = QCheckBox(
+            "Опубликуемый портрет (PUBLISHABLE)"
+        )
+        self.authoring_portrait_publishable_checkbox.setToolTip(
+            "PUBLISHABLE попадает в опубликованный .vchar; "
+            "AUTHORING_ONLY остаётся только в Character Lab."
+        )
+        portrait_layout.addWidget(self.authoring_portrait_publishable_checkbox)
+        media_layout.addWidget(portrait_box)
         outer.addWidget(media_box)
 
         # --- Технические данные (Advanced / Developer, collapsed) ----------
@@ -1105,8 +1129,21 @@ class CharacterLabMainWindow(QMainWindow):
                     self.authoring_intimacy_boundaries_edit.text()
                 ),
             },
-            "visual_identity": {},
+            "visual_identity": self._collect_visual_identity(),
         }
+
+    def _collect_visual_identity(self) -> dict[str, Any]:
+        """Build the visual_identity semantic, carrying the pending portrait."""
+        visual_identity: dict[str, Any] = {"references": []}
+        if self._pending_portrait is not None:
+            binding = dict(self._pending_portrait)
+            binding["publishability"] = (
+                "PUBLISHABLE"
+                if self.authoring_portrait_publishable_checkbox.isChecked()
+                else "AUTHORING_ONLY"
+            )
+            visual_identity["primary_portrait"] = binding
+        return visual_identity
 
     def _load_semantic_to_form(self, semantic: Mapping[str, Any]) -> None:
         """Populate the authoring form from a loaded semantic snapshot."""
@@ -1157,6 +1194,18 @@ class CharacterLabMainWindow(QMainWindow):
             _join_list(sexology.get("intimacy_boundaries"))
         )
 
+        visual_identity = semantic.get("visual_identity") or {}
+        portrait = visual_identity.get("primary_portrait")
+        if isinstance(portrait, dict):
+            self._pending_portrait = dict(portrait)
+            self.authoring_portrait_publishable_checkbox.setChecked(
+                portrait.get("publishability") == "PUBLISHABLE"
+            )
+        else:
+            self._pending_portrait = None
+            self.authoring_portrait_publishable_checkbox.setChecked(False)
+        self._render_portrait_preview()
+
     def _require_authoring_selection(self) -> bool:
         if not (
             self._authoring_character_id
@@ -1195,6 +1244,87 @@ class CharacterLabMainWindow(QMainWindow):
             )
         else:
             self.testing_binding_label.setText("")
+
+    def _on_choose_portrait_clicked(self) -> None:
+        if not self._authoring_character_id:
+            self.statusBar().showMessage("Сначала создайте или выберите персонажа.")
+            return
+        path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Выбрать портрет",
+            "",
+            "Изображения (*.png *.jpg *.jpeg *.webp)",
+        )
+        if not path:
+            return
+        try:
+            result = self._service.import_primary_portrait(
+                character_id=self._authoring_character_id, source_path=path
+            )
+        except CharacterLabApplicationError as exc:
+            self.statusBar().showMessage(f"{exc.code}: {exc.message}")
+            return
+        publishable = self.authoring_portrait_publishable_checkbox.isChecked()
+        self._pending_portrait = {
+            "role": "primary_portrait",
+            "asset_sha256": result.asset_sha256,
+            "format": result.format,
+            "mime_type": result.mime_type,
+            "byte_length": result.byte_length,
+            "publishability": "PUBLISHABLE" if publishable else "AUTHORING_ONLY",
+        }
+        self._render_portrait_preview()
+        self.statusBar().showMessage(
+            f"Портрет импортирован ({result.format}, {result.byte_length} байт)"
+        )
+
+    def _on_remove_portrait_clicked(self) -> None:
+        self._pending_portrait = None
+        self.authoring_portrait_publishable_checkbox.setChecked(False)
+        self.authoring_portrait_preview.setPixmap(QPixmap())
+        self.authoring_portrait_preview.setText("Портрет не выбран")
+        self.statusBar().showMessage(
+            "Портрет будет удалён при следующем сохранении ревизии"
+        )
+
+    def _render_portrait_preview(self) -> None:
+        if not self._pending_portrait or not self._authoring_character_id:
+            self.authoring_portrait_preview.setPixmap(QPixmap())
+            self.authoring_portrait_preview.setText("Портрет не выбран")
+            return
+        asset_sha256 = self._pending_portrait.get("asset_sha256")
+        fmt = self._pending_portrait.get("format")
+        if (
+            not isinstance(asset_sha256, str)
+            or not asset_sha256
+            or not isinstance(fmt, str)
+            or not fmt
+        ):
+            self.authoring_portrait_preview.setPixmap(QPixmap())
+            self.authoring_portrait_preview.setText("Некорректные данные портрета")
+            return
+        try:
+            payload = self._service.read_primary_portrait_payload(
+                character_id=self._authoring_character_id,
+                asset_sha256=asset_sha256,
+                format=fmt,
+            )
+        except CharacterLabApplicationError as exc:
+            self.authoring_portrait_preview.setPixmap(QPixmap())
+            self.authoring_portrait_preview.setText(
+                f"Не удалось загрузить портрет: {exc.code}"
+            )
+            return
+        pixmap = QPixmap()
+        if pixmap.loadFromData(payload):
+            pixmap = pixmap.scaledToHeight(
+                180, Qt.TransformationMode.SmoothTransformation
+            )
+            self.authoring_portrait_preview.setPixmap(pixmap)
+            self.authoring_portrait_preview.setText("")
+        else:
+            self.authoring_portrait_preview.setPixmap(QPixmap())
+            self.authoring_portrait_preview.setText("Предпросмотр недоступен")
 
     def _on_create_character_clicked(self) -> None:
         character_id = self.authoring_character_id_edit.text().strip()

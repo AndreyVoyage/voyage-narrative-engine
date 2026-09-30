@@ -56,6 +56,7 @@ from voyage_character_platform.hashing import sha256_bytes
 from voyage_character_platform.package_v1 import (
     CANONICAL_JSON_NORMALIZATION,
     PACKAGE_SCHEMA_VERSION,
+    RAW_NORMALIZATION,
     PackageV1Error,
     PackageV1File,
     create_manifest,
@@ -306,6 +307,19 @@ def build_authoring_release_compilation(
         }
         for domain_id, content in domain_files.items():
             files[f"domains/{domain_id}.json"] = _canonical_file(content, "DOMAIN")
+
+        # OD-MEDIA-PRIMARY-PORTRAIT-01: a PUBLISHABLE Primary Portrait travels
+        # as one RAW Package V1 file under assets/portrait/ and participates in
+        # packageHash through the manifest.
+        portrait_file = domain_compilation.primary_portrait_file
+        if portrait_file is not None:
+            files[portrait_file.relative_path] = PackageV1File(
+                content=portrait_file.content,
+                semantic_role=portrait_file.semantic_role,
+                normalization=RAW_NORMALIZATION,
+                required=True,
+            )
+
         ordered_files = dict(sorted(files.items()))
 
         # Pure self-check through the authoritative Package V1 contract: path

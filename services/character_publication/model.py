@@ -12,6 +12,7 @@ from services.character_authoring.validation import (
     validate_identifier,
     validate_snapshot_hash,
 )
+from services.character_media import CharacterMediaValidationError, PortraitBinding
 
 from .errors import PublicationValidationError
 
@@ -51,14 +52,37 @@ def _require_exact_keys(
 
 
 def validate_slice1_visual_identity(semantic: CharacterSemantic) -> None:
-    """Allow only the two explicit empty shapes ratified for Slice 1."""
+    """Allow only ratified Slice 1 visual_identity shapes.
+
+    Empty shapes are the two explicit empty forms. A populated Primary Portrait
+    binding (either publishability state) is accepted; unresolved external
+    references remain forbidden.
+    """
 
     visual_identity = semantic.to_dict()["visual_identity"]
-    if visual_identity not in ({}, {"references": []}):
+    if not isinstance(visual_identity, dict):
+        raise PublicationValidationError("visual_identity must be an object")
+
+    extra = sorted(set(visual_identity) - {"references", "primary_portrait"})
+    if extra:
         raise PublicationValidationError(
-            "Slice 1 cannot publish a non-empty visual_identity without a "
-            "local deterministic asset resolver"
+            f"Slice 1 visual_identity contains unknown keys: {extra!r}"
         )
+
+    if visual_identity.get("references", []) != []:
+        raise PublicationValidationError(
+            "Slice 1 cannot publish unresolved visual_identity references without "
+            "a local deterministic asset resolver"
+        )
+
+    portrait = visual_identity.get("primary_portrait")
+    if portrait is not None:
+        try:
+            PortraitBinding.from_dict(portrait)
+        except CharacterMediaValidationError as exc:
+            raise PublicationValidationError(
+                f"primary_portrait binding is invalid: {exc}"
+            ) from exc
 
 
 @dataclass(frozen=True, slots=True)

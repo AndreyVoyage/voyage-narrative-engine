@@ -65,6 +65,7 @@ from .results import (
     LabSession,
     Message,
     PublishedReleaseSummary,
+    PortraitImportResult,
     RevisionSemanticData,
 )
 from .service import CharacterLabApplicationService, next_sequential_revision_id
@@ -105,6 +106,7 @@ __all__ = [
     "AuthoringRevisionSummary",
     "RevisionSemanticData",
     "PublishedReleaseSummary",
+    "PortraitImportResult",
     "CanonicalCurrentSummary",
     # AI-first creation flow result types (re-exported, not duplicated)
     "AnalysisResult",

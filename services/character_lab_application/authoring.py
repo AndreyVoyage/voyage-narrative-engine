@@ -37,6 +37,10 @@ from services.character_canon_bridge import (
     CharacterCanonSnapshot,
     read_character_canon,
 )
+from services.character_media import (
+    CharacterMediaError,
+    validate_visual_identity_portrait,
+)
 
 from .errors import (
     APPROVAL_EVIDENCE_CONFLICT,
@@ -140,6 +144,24 @@ def _missing_required_fields(value: object) -> tuple[str, ...]:
             if field not in section:
                 missing.append(f"{domain}.{field}")
     return tuple(missing)
+
+
+def _validate_primary_portrait(semantic_model: CharacterSemantic) -> None:
+    """Validate the reserved ``primary_portrait`` binding before persistence.
+
+    The generic ``visual_identity`` domain stays open; only the reserved
+    optional ``primary_portrait`` key is checked. A malformed binding raises a
+    controlled Character Lab validation error BEFORE any immutable revision is
+    written.
+    """
+    visual_identity = semantic_model.to_dict().get("visual_identity")
+    try:
+        validate_visual_identity_portrait(visual_identity)
+    except CharacterMediaError as exc:
+        raise CharacterLabApplicationError(
+            AUTHORING_VALIDATION_FAILED,
+            f"semantic.visual_identity.primary_portrait is invalid: {exc}",
+        ) from exc
 
 
 class _CharacterAuthoringUseCases:
@@ -255,6 +277,7 @@ class _CharacterAuthoringUseCases:
             if isinstance(semantic, CharacterSemantic)
             else CharacterSemantic.from_dict(semantic)
         )
+        _validate_primary_portrait(semantic_model)
         snapshot_hash = compute_snapshot_hash(semantic_model)
         CharacterPointer(character_id, selected_version_id=version_id)
         VersionPointer(
@@ -567,6 +590,7 @@ class _CharacterAuthoringUseCases:
                 if isinstance(semantic, CharacterSemantic)
                 else CharacterSemantic.from_dict(semantic)
             )
+            _validate_primary_portrait(semantic_model)
             snapshot_hash = compute_snapshot_hash(semantic_model)
             version_pointer = store.read_version_pointer(character_id, version_id)
             RevisionRecord(
@@ -727,6 +751,10 @@ class _CharacterAuthoringUseCases:
                     "source_lifecycle_state": source_pointer.lifecycle_state.value
                 },
             )
+
+        # Defense in depth: re-validate the source's reserved portrait binding
+        # before copying its semantic into a new immutable revision.
+        _validate_primary_portrait(source_record.semantic)
 
         try:
             character_pointer = store.read_character_pointer(character_id)

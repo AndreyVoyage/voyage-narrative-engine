@@ -102,6 +102,7 @@ from .errors import (
     CRP_VALIDATION_FAILED,
     DRAFT_AI_ERROR,
     INVALID_INPUT,
+    INTERNAL_ERROR,
     NOT_FOUND,
     PUBLICATION_NOT_APPROVED,
     PUBLICATION_PACKAGE_COLLISION,
@@ -129,8 +130,15 @@ from .results import (
     CharacterVersionSummary,
     LabSession,
     Message,
+    PortraitImportResult,
     PublishedReleaseSummary,
     RevisionSemanticData,
+)
+
+from services.character_media import (
+    CharacterMediaError,
+    CharacterMediaStore,
+    validate_visual_identity_portrait,
 )
 
 _CHARACTER_USAGE_CONTEXT = "authoring"
@@ -679,13 +687,15 @@ class CharacterLabApplicationService:
         """Load one exact revision's identity plus its editable semantic data."""
 
         record = self._authoring.load_revision(character_id, version_id, revision_id)
+        semantic = record.semantic.to_dict()
+        self._validate_primary_portrait_binding(semantic.get("visual_identity"))
         return RevisionSemanticData(
             character_id=record.character_id,
             version_id=record.version_id,
             revision_id=record.revision_id,
             snapshot_hash=record.snapshot_hash,
             lifecycle_state=record.lifecycle_state.value,
-            semantic=record.semantic.to_dict(),
+            semantic=semantic,
         )
 
     def read_version_lifecycle(
@@ -700,6 +710,67 @@ class CharacterLabApplicationService:
             lifecycle_state=pointer.lifecycle_state.value,
             selected_revision_id=pointer.selected_revision_id,
         )
+
+    # -- Managed Primary Portrait (Character Media) --------------------------
+
+    def _media_root(self) -> Path:
+        """Derive the managed-media root (sibling of the authoring store)."""
+        if self._config.character_authoring_root is None:
+            raise CharacterLabApplicationError(
+                AUTHORING_UNAVAILABLE,
+                "Character Authoring root is not configured for managed media",
+            )
+        return self._config.character_authoring_root.parent / "character_media"
+
+    def _media_store(self) -> CharacterMediaStore:
+        return CharacterMediaStore(self._media_root())
+
+    def import_primary_portrait(
+        self, *, character_id: str, source_path: str | Path
+    ) -> PortraitImportResult:
+        """Validate and import a local image into managed primary-portrait storage.
+
+        The original source path is never authority after import. The returned
+        DTO is path-free; the caller binds it onto a revision via the authoring
+        semantic ``visual_identity.primary_portrait``.
+        """
+        try:
+            record = self._media_store().import_portrait(source_path, character_id)
+        except CharacterMediaError as exc:
+            raise CharacterLabApplicationError(INVALID_INPUT, str(exc)) from exc
+        return PortraitImportResult(
+            character_id=record.character_id,
+            asset_sha256=record.asset_sha256,
+            format=record.format,
+            mime_type=record.mime_type,
+            byte_length=record.byte_length,
+        )
+
+    def read_primary_portrait_payload(
+        self, *, character_id: str, asset_sha256: str, format: str
+    ) -> bytes:
+        """Return the exact managed portrait bytes (verified SHA-256)."""
+        try:
+            return self._media_store().read_portrait_bytes(
+                character_id, asset_sha256, format
+            )
+        except CharacterMediaError as exc:
+            raise CharacterLabApplicationError(INTERNAL_ERROR, str(exc)) from exc
+
+    def _validate_primary_portrait_binding(self, visual_identity: Any) -> None:
+        """Validate the reserved primary_portrait binding before UI use.
+
+        Fails closed (controlled Character Lab error) when persisted data is
+        malformed; never crashes on unchecked key access, never silently
+        repairs/deletes/guesses.
+        """
+        try:
+            validate_visual_identity_portrait(visual_identity)
+        except CharacterMediaError as exc:
+            raise CharacterLabApplicationError(
+                INVALID_INPUT,
+                f"semantic.visual_identity.primary_portrait is invalid: {exc}",
+            ) from exc
 
     # -- LAB-L5 release read-side + publication boundary (lazy VCP) ------
 
