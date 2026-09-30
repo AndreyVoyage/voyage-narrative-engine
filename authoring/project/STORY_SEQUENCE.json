@@ -1,0 +1,9 @@
+{
+  "schema_version": "vne_story_sequence/0.1",
+  "ordered_scene_ids": [
+    "sc_kira_yoga_hall_warmup_001",
+    "sc_kira_hidden_problem_001",
+    "sc_kira_sergey_message_again_001"
+  ],
+  "start_scene_id": "sc_kira_yoga_hall_warmup_001"
+}

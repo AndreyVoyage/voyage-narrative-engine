@@ -30,10 +30,11 @@ import hashlib
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Mapping
+from typing import Mapping, Optional
 
 from services.ass import OrderedASS
 from services.scene_body import VISUAL_OP_SET, VisualChangeEvent
+from services.story_sequence import StorySequence, validate_against_batch
 
 from .ordered_ass_exporter import (
     READING_MODES,
@@ -49,11 +50,18 @@ __all__ = [
     "build_ordered_project_candidate",
     "OrderedProjectCandidate",
     "ORDERED_ASS_CANDIDATE_FILENAME",
+    "STORY_ENTRY_LABEL",
     "OrderedProjectExportError",
 ]
 
 # Reserved TEMP candidate identity. Not a permanent canonical filename decision.
 ORDERED_ASS_CANDIDATE_FILENAME = "vne_ordered_ass_candidate.rpy"
+
+# The Scenario-owned generated story entry label (OD-SS-03). It is NOT the
+# global Ren'Py ``label start``; it deterministically jumps to the designated
+# start scene's canonical start label. Generated only when a StorySequence is
+# supplied (never for the legacy ascending-order path).
+STORY_ENTRY_LABEL = "vne_story_start"
 
 _CONTENT_HASH_RE = re.compile(r"[0-9a-f]{64}\Z")
 
@@ -113,8 +121,35 @@ def _canonical_order(scenes: tuple[OrderedASS, ...]) -> tuple[OrderedASS, ...]:
     return tuple(sorted(scenes, key=lambda s: s.scene_id))
 
 
-def _validate_label_uniqueness(scenes: tuple[OrderedASS, ...]) -> None:
+def _order_by_story_sequence(
+    scenes: tuple[OrderedASS, ...], story_sequence: StorySequence
+) -> tuple[OrderedASS, ...]:
+    """Order scenes by the authored StorySequence (fail closed on any violation).
+
+    Requires exact batch coverage: every ordered scene must resolve, every
+    accepted scene must be present, and the start scene must resolve. No silent
+    append/drop/reorder, no alphabetical fallback.
+    """
+    if not isinstance(story_sequence, StorySequence):
+        raise OrderedProjectExportError("story_sequence must be a StorySequence")
+    batch_scene_ids = frozenset(scene.scene_id for scene in scenes)
+    errors = validate_against_batch(story_sequence, batch_scene_ids)
+    if errors:
+        raise OrderedProjectExportError(
+            "story_sequence does not validate against the batch: " + "; ".join(errors)
+        )
+    by_id = {scene.scene_id: scene for scene in scenes}
+    return tuple(by_id[scene_id] for scene_id in story_sequence.ordered_scene_ids)
+
+
+def _validate_label_uniqueness(
+    scenes: tuple[OrderedASS, ...], *, story_entry_label: Optional[str] = None
+) -> None:
     seen: set[str] = set()
+    if story_entry_label is not None:
+        # Fail closed if the Scenario-owned entry label ever collides with a
+        # generated scene/entry label (OD-SS-03).
+        seen.add(story_entry_label)
     for scene in scenes:
         for label in (scene_start_label(scene.scene_id), scene_end_label(scene.scene_id)):
             if label in seen:
@@ -144,6 +179,7 @@ def _build_source(
     character_symbols: Mapping[str, str],
     known_scene_ids: frozenset[str],
     resolved_assets: Mapping[str, object],
+    story_entry_scene_id: Optional[str] = None,
 ) -> str:
     lines: list[str] = [
         "# AUTO-GENERATED OrderedASS Ren'Py project candidate.",
@@ -151,6 +187,11 @@ def _build_source(
         "# reading_mode: {}".format(reading_mode),
         "# scene_count: {}".format(len(sorted_scenes)),
     ]
+    if story_entry_scene_id is not None:
+        lines.append("# story_start_scene: {}".format(story_entry_scene_id))
+        lines.append("")
+        lines.append("label {}:".format(STORY_ENTRY_LABEL))
+        lines.append("    jump {}".format(scene_start_label(story_entry_scene_id)))
     for scene in sorted_scenes:
         lines.append("")
         lines.append(
@@ -180,10 +221,14 @@ def build_ordered_project_candidate(
     character_symbols: Mapping[str, str],
     registry_path: Path,
     repo_root: Path,
+    story_sequence: Optional[StorySequence] = None,
 ) -> OrderedProjectCandidate:
     """Build an immutable deterministic multi-scene OrderedASS project candidate.
 
-    Canonical scene order is ascending raw ``scene_id``; the batch-wide
+    Without a ``story_sequence`` (legacy path), canonical scene order is ascending
+    raw ``scene_id``. With a validated ``story_sequence`` (Story Sequence V0), the
+    authored ``ordered_scene_ids`` order drives the project scene order and the
+    generated ``vne_story_start`` entry label is emitted. The batch-wide
     ``known_scene_ids`` is exactly the supplied scene IDs; the SET asset union is
     resolved exactly once over the sorted unique asset IDs; every scene is
     rendered through the closed per-scene renderer. Pure: no filesystem write,
@@ -195,8 +240,17 @@ def build_ordered_project_candidate(
             "unsupported reading_mode {!r}; expected one of {}".format(reading_mode, READING_MODES)
         )
 
-    sorted_scenes = _canonical_order(scenes)
-    _validate_label_uniqueness(sorted_scenes)
+    if story_sequence is None:
+        sorted_scenes = _canonical_order(scenes)
+        story_entry_scene_id: Optional[str] = None
+    else:
+        sorted_scenes = _order_by_story_sequence(scenes, story_sequence)
+        story_entry_scene_id = story_sequence.start_scene_id
+
+    _validate_label_uniqueness(
+        sorted_scenes,
+        story_entry_label=STORY_ENTRY_LABEL if story_entry_scene_id is not None else None,
+    )
 
     known_scene_ids = frozenset(scene.scene_id for scene in sorted_scenes)
 
@@ -213,6 +267,7 @@ def build_ordered_project_candidate(
         character_symbols=character_symbols,
         known_scene_ids=known_scene_ids,
         resolved_assets=resolved_assets,
+        story_entry_scene_id=story_entry_scene_id,
     )
     source_sha256 = hashlib.sha256(source.encode("utf-8")).hexdigest()
 

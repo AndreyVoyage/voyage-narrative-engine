@@ -33,6 +33,9 @@ class EditorApplicationConfig:
         Absolute path of the ``ProjectManifest`` JSON file.
     batch_path:
         Absolute path of the ``AcceptedOrderedASSBatch`` JSON file.
+    story_sequence_path:
+        Optional absolute path of the ``StorySequence`` JSON file. When ``None``,
+        Story Sequence read/save/readiness is unavailable.
     repo_root:
         Repository root, used only to resolve Location Canon
         (``scenarios/locations/*.json``).
@@ -51,6 +54,7 @@ class EditorApplicationConfig:
     manifest_path: Path
     batch_path: Path
     repo_root: Path
+    story_sequence_path: Optional[Path] = None
     character_canon_root: Optional[Path] = None
     scene_drafts_source_ref: str = "authoring/scene_drafts"
 
@@ -61,6 +65,8 @@ class EditorApplicationConfig:
         object.__setattr__(self, "manifest_path", Path(self.manifest_path))
         object.__setattr__(self, "batch_path", Path(self.batch_path))
         object.__setattr__(self, "repo_root", Path(self.repo_root))
+        if self.story_sequence_path is not None:
+            object.__setattr__(self, "story_sequence_path", Path(self.story_sequence_path))
         if self.character_canon_root is not None:
             object.__setattr__(self, "character_canon_root", Path(self.character_canon_root))
         source_ref = self.scene_drafts_source_ref

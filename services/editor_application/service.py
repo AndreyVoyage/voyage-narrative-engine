@@ -67,6 +67,15 @@ from services.workspace_project import (
     save_accepted_batch,
     save_manifest,
 )
+from services.story_sequence import (
+    STORY_SEQUENCE_SCHEMA_VERSION,
+    StorySequence,
+    StorySequenceError,
+    StorySequenceNotFoundError,
+    load_story_sequence,
+    save_story_sequence,
+    validate_against_batch,
+)
 
 from .config import EditorApplicationConfig
 from .errors import (
@@ -628,6 +637,50 @@ class EditorApplicationService:
             batch_resolvable=batch_resolvable,
         )
 
+    # ----------------------------------------------------------- story sequence
+
+    def get_story_sequence(self) -> StorySequence:
+        """Return the current Scenario-owned StorySequence (read-only).
+
+        Raises ``EditorApplicationError`` with ``NOT_FOUND`` when no story
+        sequence path is configured or the file is absent, and ``IO_FAILURE``
+        for a malformed manifest. The returned value is the immutable domain
+        ``StorySequence``; no storage internals are exposed.
+        """
+        if self._config.story_sequence_path is None:
+            raise EditorApplicationError(NOT_FOUND, "story sequence path is not configured")
+        try:
+            return load_story_sequence(self._config.story_sequence_path)
+        except StorySequenceNotFoundError as exc:
+            raise EditorApplicationError(NOT_FOUND, str(exc)) from exc
+        except StorySequenceError as exc:
+            raise EditorApplicationError(IO_FAILURE, f"cannot load story sequence: {exc}") from exc
+
+    def save_story_sequence(
+        self, ordered_scene_ids, start_scene_id
+    ) -> EditorOperationResult:
+        """Save a StorySequence authoring state (delegates to domain validation).
+
+        The StorySequence domain rejects empty sequences, duplicate scene_ids,
+        invalid scene identities, and a ``start_scene_id`` absent from the
+        sequence; those surface as ``INVALID_INPUT`` here.
+        """
+        if self._config.story_sequence_path is None:
+            return _fail(NOT_FOUND, "story sequence path is not configured")
+        try:
+            story_sequence = StorySequence(
+                schema_version=STORY_SEQUENCE_SCHEMA_VERSION,
+                ordered_scene_ids=tuple(ordered_scene_ids),
+                start_scene_id=start_scene_id,
+            )
+        except (StorySequenceError, TypeError) as exc:
+            return _fail(INVALID_INPUT, str(exc))
+        try:
+            save_story_sequence(self._config.story_sequence_path, story_sequence)
+        except StorySequenceError as exc:
+            return _fail(IO_FAILURE, f"cannot save story sequence: {exc}")
+        return _ok("story sequence saved")
+
     # ---------------------------------------------------------------- publication
 
     def get_publication_readiness(self) -> EditorOperationResult:
@@ -670,5 +723,22 @@ class EditorApplicationService:
                     ),
                 ),
             )
+
+        if self._config.story_sequence_path is not None:
+            try:
+                story_sequence = load_story_sequence(self._config.story_sequence_path)
+            except StorySequenceNotFoundError as exc:
+                return _fail(NOT_FOUND, str(exc))
+            except StorySequenceError as exc:
+                return _fail(IO_FAILURE, f"cannot load story sequence: {exc}")
+            errors = validate_against_batch(
+                story_sequence, (a.scene_id for a in resolved)
+            )
+            if errors:
+                return _fail(
+                    VALIDATION_FAILED,
+                    "story sequence is not publication-ready",
+                    diagnostics=self._diagnostics_from_errors(errors),
+                )
 
         return _ok(f"{len(resolved)} accepted scene(s) resolvable for publication")
