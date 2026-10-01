@@ -258,10 +258,28 @@ Scene Interpretation          (services/scene_interpretation/ — anchors + prod
         ↓
 MediaPlan / Prompt Composition (services/mediaplan/; services/prompt_composer/)
         ↓
+StorySequence                 (services/story_sequence/ — vne_story_sequence/0.1;
+                               ordered_scene_ids + start_scene_id; exact-coverage validated
+                               against the resolved AcceptedOrderedASSBatch)
+        ↓
 Deterministic publication / materialization
-        ↓  (tools/vne_to_renpy/ordered_ass_*.py → novel/game/ordered_ass_generated.rpy)
+        ↓  (tools/vne_to_renpy/ordered_ass_*.py → novel/game/ordered_ass_generated.rpy;
+           authored StorySequence order drives scene order; vne_story_start → start_scene_id)
 Ren'Py runtime
 ```
+
+**Story-level order / start (Story Sequence V0):**
+
+- **StorySequence** (`services/story_sequence/`, schema `vne_story_sequence/0.1`) — Scenario-owned
+  story-level слой над immutable accepted scenes: `ordered_scene_ids` (канонический порядок сцен) +
+  `start_scene_id` (стартовая сцена). Это story-order/start, **не** story-graph.
+- **Batch relation:** порядок валидируется против разрешённого `AcceptedOrderedASSBatch` по контракту
+  **exact coverage** (`validate_against_batch`): `ordered_scene_ids` = перестановка полного набора
+  scene-id batch'а. Subset-семантики нет; alphabetical fallback нет.
+- **Export:** authored порядок детерминированно задаёт порядок сцен проекта; генерируется story entry
+  label `vne_story_start`, который прыгает на канонический start label `start_scene_id`.
+- **Не владеет (V0):** story graph, conditions, flags, variables, player_state, media, characters,
+  locations, workspace membership, runtime state, scene-to-scene runtime control flow.
 
 **Side inputs / boundaries (verified):**
 

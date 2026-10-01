@@ -533,6 +533,7 @@ The preflight must **not** assume the Character Canon Bridge is the sole referen
 | canonical Ren'Py publication | `tools/vne_to_renpy/ordered_ass_canonical_publisher.py` | `IMPLEMENTED` (публикация в `novel/game/ordered_ass_generated.rpy`) |
 | generated-file firewall | ownership-marker `# VNE-GENERATED: ORDERED_ASS_RENPY_V1`; fixed path; symlink/SHA-256 guard | `IMPLEMENTED` |
 | workspace_project | `services/workspace_project/` (`ProjectManifest`, `AcceptedOrderedASSBatch`, `WorkspaceIndex`) | `IMPLEMENTED` (Scenario-local; shared cross-product membership — `NOT YET RATIFIED`) |
+| Story Sequence V0 | `services/story_sequence/` | `IMPLEMENTED` (Scenario-owned story-level order + entry; `vne_story_sequence/0.1`: `ordered_scene_ids`, `start_scene_id`; exact-coverage validated against `AcceptedOrderedASSBatch`; drives deterministic export + `vne_story_start`; интегрировано/опубликовано @ `991f85f`) |
 
 ### 13.3 SUPERSEDED_BY / PARTIAL (исторический JSON-first путь)
 

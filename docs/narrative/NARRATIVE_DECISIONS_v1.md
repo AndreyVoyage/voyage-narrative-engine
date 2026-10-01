@@ -581,7 +581,7 @@ gate, `SceneVariant`, cast override, authoring facade, and Ren'Py UI.
 > Нижеследующее фиксирует **фактически реализованную** accepted-scene архитектуру. Статусы сверены
 > с кодом и тестами (`services/ass/`, `services/scene_body/`, `services/scene_draft/`,
 > `services/scene_interpretation/`, `services/mediaplan/`, `services/prompt_composer/`,
-> `services/editor_application/`, `services/workspace_project/`, `ui/editor_desktop/`,
+> `services/editor_application/`, `services/workspace_project/`, `services/story_sequence/`, `ui/editor_desktop/`,
 > `tools/vne_to_renpy/ordered_ass_*.py`).
 
 ### 15.1 ACCEPTED SCENE AUTHORITY
@@ -675,6 +675,34 @@ shared Character Lab/Scenario workspace-семантика **не ратифиц
 
 **Status:** workspace_project — `IMPLEMENTED` (Scenario-local). Shared cross-product membership —
 `NOT YET RATIFIED`.
+
+### 15.8 STORY-LEVEL AUTHORITY (Story Sequence V0)
+
+> **Дата записи:** 2026-10-01 (документационная синхронизация Story Sequence V0; **не** новая версия v2).
+> **Baseline:** `991f85fcb3abd6026398f929ff191255172c7c2f` — снимок для синхронизации документации, **не** постоянный архитектурный идентификатор.
+
+**Decision.** `StorySequence` (`services/story_sequence/`) — Scenario-owned **story-level** authority
+над immutable accepted scenes. Он задаёт только канонический порядок сцен проекта и стартовую сцену;
+это story-order/start-слой, **не** story-graph и **не** runtime-управление переходами сцена-к-сцене.
+
+- **Schema:** `vne_story_sequence/0.1`.
+- **Semantic payload:** `ordered_scene_ids` (канонический порядок сцен), `start_scene_id` (стартовая сцена).
+- **Validation (domain):** последовательность непустая; без дубликатов scene_id; идентификаторы без
+  leading/trailing whitespace (без silent normalization); `start_scene_id` обязан входить в
+  `ordered_scene_ids`.
+- **AcceptedOrderedASSBatch relationship:** порядок валидируется против разрешённого accepted
+  publication batch по контракту **exact coverage** — `ordered_scene_ids` обязан быть перестановкой
+  полного набора scene-id разрешённого batch'а (`validate_against_batch`). Subset-семантики нет;
+  alphabetical fallback нет.
+- **Export:** authored порядок детерминированно задаёт порядок сцен проекта; story entry label
+  `vne_story_start` прыгает на канонический start label `start_scene_id`.
+
+**Не владеет (V0):** story graph, conditions, flags, variables, player_state, media, characters,
+locations, workspace membership, runtime state, scene-to-scene runtime control flow (остаётся за
+SceneBody / OrderedASS — ENTRY / SCENE / END targets и per-scene `next_target`).
+
+**Status:** `IMPLEMENTED`, `MAIN_ACCEPTED`, `REMOTE_PUBLISHED` (интегрированный/опубликованный коммит
+`991f85fcb3abd6026398f929ff191255172c7c2f`).
 
 ---
 

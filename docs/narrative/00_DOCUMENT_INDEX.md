@@ -159,6 +159,7 @@
 | Область | Путь | Что делает |
 |---|---|---|
 | workspace_project | `services/workspace_project/` | `ProjectManifest`, `AcceptedOrderedASSBatch`, `WorkspaceIndex` (membership boundary). |
+| Story Sequence V0 | `services/story_sequence/` | Scenario-owned story-level scene order + entry (`vne_story_sequence/0.1`: `ordered_scene_ids`, `start_scene_id`); exact-coverage validated against `AcceptedOrderedASSBatch`; drives deterministic export order + `vne_story_start` entry label. |
 | OrderedASS → Ren'Py | `tools/vne_to_renpy/ordered_ass_exporter.py`, `ordered_ass_project_exporter.py`, `ordered_asset_resolver.py` | Детерминированный экспорт OrderedASS → `.rpy`. |
 | Canonical publisher | `tools/vne_to_renpy/ordered_ass_canonical_publisher.py` | Публикация в `novel/game/ordered_ass_generated.rpy` + generated-file firewall. |
 
