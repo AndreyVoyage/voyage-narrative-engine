@@ -566,3 +566,380 @@ The preflight must **not** assume the Character Canon Bridge is the sole referen
    (репозиторного evidence реализованной Studio-интеграции нет).
 
 6. **Common shell.** Не утверждать, что существует. `FUTURE` only.
+
+## 14. VOYAGE SCENARIO EDITOR — ROADMAP TO STANDALONE RELEASE 1.0
+
+> **STATUS: `OWNER_RATIFIED`.** This section records the Owner-ratified development direction
+> (ratification **`OD-SE-ROADMAP-01`**, 2026-10-01) for the standalone **Voyage Scenario Editor 1.0**
+> desktop product. It introduces **no** implementation, **no** architecture change, and **no** new
+> cross-product contract. It updates the existing canonical roadmap (§1–§13 preserved unchanged) with
+> the ratified path from the current implemented Scenario foundation to a standalone release.
+>
+> **Product branch:** `Voyage-Scenario-Editor` — a permanent product-development branch inside this
+> repository. **HEAD baseline for this draft:** `1b024c4f5081c32145e2347a4513b4af5e9ded79`
+> (Story Sequence V0 documentation sync). **Story Sequence source commit:** `991f85fcb3abd6026398f929ff191255172c7c2f`.
+>
+> **Language note:** this section is written in English to match the Owner direction of the current
+> planning cycle; canonical Russian terms are quoted verbatim where they carry ratified meaning.
+>
+> **Owner ratification record — `OD-SE-ROADMAP-01` (2026-10-01).**
+> - **STATUS:** `OWNER_RATIFIED`.
+> - **SCOPE:** roadmap and development direction only.
+> - **OWNER APPROVED:** the A–I roadmap (§14.5.A–§14.5.I) leading to Voyage Scenario Editor 1.0.
+> - **NEXT MILESTONE:** Stage B (Story Runtime Semantics V1). Its technical contract remains subject to
+>   `OD-SE-RUNTIME-01` before implementation.
+> - **INITIAL RELEASE TARGET:** Windows (approved). Other operating systems are outside the current
+>   release commitment and require separate approval.
+> - This ratification does **not** mark future stages (B–I) as `IMPLEMENTED`, and it is **not** approval
+>   to begin every future implementation stage.
+
+---
+
+### 14.1 How to read this section
+
+Five levels are kept strictly separate (extends §13.1 with the release path):
+
+| Level | Meaning | Status labels used |
+|---|---|---|
+| **IMPLEMENTED FOUNDATION** | Factually present in code/tests; verified against the product branch | `IMPLEMENTED`, `MAIN_ACCEPTED`, `PRODUCT_BRANCH_ACCEPTED` |
+| **RATIFIED DECISIONS** | Previously ratified architectural/product decisions | quoted from `NARRATIVE_DECISIONS_v1.md` §15 |
+| **OWNER DIRECTION** | Decisions stated by the Owner in the current planning cycle | recorded as direction, not re-ratified here |
+| **NEWLY PROPOSED WORK** | Proposed next milestones; require Owner ratification before implementation | `NEXT_PROPOSED`, `PLANNED_DRAFT`, `OWNER_DECISION_REQUIRED` |
+| **FUTURE PLATFORM INTEGRATION** | Cross-product integration via portable contracts; not part of Scenario Editor 1.0 | `FUTURE`, `NOT_IMPLEMENTED` |
+
+No speculative milestone is presented as already approved. No completion date or percentage is
+invented. Proposed sequence labels (B–I) are **new to this planning cycle**; they did not exist in
+the historical roadmap (N0–N6 / N7 / SVA, §1–§12) and are not presented as historical.
+
+### 14.2 Owner-defined product boundary (current planning cycle)
+
+**SCENARIO EDITOR FINISH.** A standalone desktop editor allowing the author to:
+
+- create and open narrative projects;
+- create and edit scenes;
+- validate and accept immutable scene versions;
+- manage story order and entry;
+- author the required story logic and transitions;
+- work with Scenario-owned scene-media planning;
+- bind the media required for publication;
+- generate deterministic Ren'Py output;
+- use an integrated publication and preview/play workflow;
+- save and reopen user projects;
+- install and run the application independently of the source repository and development environment.
+
+**OUTSIDE SCENARIO EDITOR OWNERSHIP** (not owned, not duplicated, not depended upon):
+
+- Character Lab internal authoring;
+- Character-owned Media Library;
+- Studio sessions and runtime ownership;
+- common cross-product workspace authority;
+- unified NARRATIVE shell.
+
+Future integration with those products uses **approved portable contracts**. Those contracts are
+**not invented here** (see §14.6).
+
+**Finish definitions (kept separate, not merged).** Three distinct finish boundaries are established:
+
+- **SCENARIO EDITOR FINISH** — the capability and acceptance boundary defined above in this §14.2.
+- **SCENARIO PRODUCT 1.0 FINISH** — Voyage Scenario Editor 1.0 as a standalone, installable,
+  independently usable desktop application (§14.5.I).
+- **PLATFORM INTEGRATION FINISH** — a separate `FUTURE` track involving approved portable character
+  contracts, Character Media handoff, shared workspace decisions, Studio, and the unified NARRATIVE
+  experience (§14.6).
+
+These finish definitions are **not merged**. The standalone Scenario Editor release must **not** require
+a running Character Lab or Studio installation.
+
+### 14.3 Product development policy (product-branch policy)
+
+Proposed policy for the `Voyage-Scenario-Editor` permanent product integration line:
+
+- `Voyage-Scenario-Editor` is a **permanent product integration line**, not a throwaway feature branch.
+- Individual implementation slices are authored on **dedicated feature branches + worktrees**.
+- Integration into the product branch requires **independent review + explicit Owner authorization**.
+- The common repository **main** is **not** an automatic destination for every Scenario change.
+- **Platform integration** (Character Lab / Studio / shared workspace / shell) is gated separately by
+  evidence, never as a silent prerequisite of Scenario Editor 1.0.
+- **Standalone releases** follow a versioned release process, independently verified (see §14.5.H).
+
+This draft does **not** modify Git governance infrastructure.
+
+### 14.4 Completed foundation — capability table
+
+Reconstructed from the product branch (`services/`, `ui/`, `tools/vne_to_renpy/`) and cross-checked
+against `NARRATIVE_DECISIONS_v1.md` §15 and `NARRATIVE_ROADMAP.md` §13.2. Backend, Desktop UI, and
+End-to-end readiness are reported separately so a backend-only capability is not presented as
+complete.
+
+| Capability | Where | Backend | Desktop UI | End-to-end |
+|---|---|---|---|---|
+| ASS v0 (`ass/0.1`) | `services/ass/` (model, importer, hashing) | IMPLEMENTED | — | — |
+| OrderedASS (`ass/0.2`) | `services/ass/ordered.py` | IMPLEMENTED | — | — |
+| Canonical ASS store | `services/ass/store.py` | IMPLEMENTED (atomic hard-link, SHA-256) | — | — |
+| SceneBody (authoring payload) | `services/scene_body/` | IMPLEMENTED (`scene_body/1.0`) | partial (draft text edit) | — |
+| Draft → Validate → Accept | `services/scene_draft/` (compiler, store) | IMPLEMENTED (one-time, immutable) | IMPLEMENTED | IMPLEMENTED (real accepted scenes) |
+| Scene revision / acceptance | `services/scene_draft/` (SceneVersion DRAFT→ACCEPTED) | IMPLEMENTED | IMPLEMENTED | IMPLEMENTED |
+| Location Canon | `services/location_canon/` | IMPLEMENTED (read-only) | read-only list | — |
+| Character Canon read bridge | `services/character_canon_bridge/` | IMPLEMENTED (read-only, `APPROVED_AS_CANON`) | read-only list | — |
+| Scene Interpretation | `services/scene_interpretation/` | IMPLEMENTED (immutable artifact) | — | — |
+| Prompt Composer | `services/prompt_composer/` | IMPLEMENTED (deterministic PromptPackage) | — | — |
+| MediaPlan | `services/mediaplan/` | IMPLEMENTED (Scenario-owned) | — | — |
+| Editor Application Service | `services/editor_application/` | IMPLEMENTED (UI-agnostic facade) | consumed | — |
+| PySide6 Desktop Editor | `ui/editor_desktop/` | IMPLEMENTED (facade-backed shell) | IMPLEMENTED (browse + draft text edit + accept) | partial (single hardcoded project) |
+| workspace_project | `services/workspace_project/` | IMPLEMENTED (Scenario-local) | partial | — |
+| Ren'Py exporter | `tools/vne_to_renpy/ordered_ass_*.py` | IMPLEMENTED (deterministic) | — | via CLI |
+| Canonical publisher | `tools/vne_to_renpy/ordered_ass_canonical_publisher.py` | IMPLEMENTED | — | via CLI |
+| Generated-file firewall | marker `# VNE-GENERATED: ORDERED_ASS_RENPY_V1` | IMPLEMENTED | — | IMPLEMENTED |
+| Story Sequence V0 | `services/story_sequence/` | IMPLEMENTED + `MAIN_ACCEPTED` + `REMOTE_PUBLISHED` (`991f85f`) | — (no story-order UI yet) | IMPLEMENTED (export order + `vne_story_start`) |
+
+Factual distinctions (backend vs UI vs end-to-end):
+
+- **Backend is complete** for the accepted-scene lifecycle, media planning, prompt composition,
+  workspace membership, and deterministic Ren'Py publication.
+- **Desktop UI is partial.** The existing `ui/editor_desktop/` is a Qt/PySide6 shell that browses
+  scenes/characters/locations and edits draft scene text fields (`scene_title`, `location_id`,
+  `content_rating`, `TextEntry.text`), with validate/accept. It is bound to **one hardcoded project**
+  (`PROJECT_ID = "narrative_game"`) under the repository `authoring/` paths. It has **no** create/open
+  project UI, **no** story-order/entry editing UI (backend `save_story_sequence` exists; the UI does
+  not expose it), **no** integrated publication trigger, and **no** preview/play workflow.
+- **End-to-end is partial.** Canonical Ren'Py publication and preview/play are exercised via separate
+  CLI tools (`tools/vne_to_renpy/`), not yet wired into a single author-facing editor workflow.
+- **Standalone readiness is absent.** The application config is anchored to `repo_root`/`authoring/`
+  repository paths. `PySide6` is declared in `requirements.txt` (`PySide6==6.11.1`) but is **not**
+  separately declared in `requirements-dev.txt` (which declares only `jsonschema`). The Qt runtime is
+  therefore an editor runtime dependency rather than a dev-checkout tooling dependency, and the
+  standalone dependency audit must inspect the complete dependency chain and packaging requirements.
+
+### 14.5 Proposed roadmap sequence (A → I)
+
+Each stage records: **NAME / STATUS / OBJECTIVE / EXISTING FOUNDATION / REMAINING WORK /
+DEPENDENCIES / DELIVERABLE / ACCEPTANCE / OWNER GATE.** The lettered labels are new to this planning
+cycle; they are not historical milestones.
+
+#### 14.5.A — COMPLETED FOUNDATION
+
+- **STATUS:** `IMPLEMENTED` (backend), `MAIN_ACCEPTED` (Story Sequence V0 per §15.8), partial desktop UI.
+- **OBJECTIVE:** the accepted-scene architecture, desktop editor, publication infrastructure, and
+  Story Sequence V0 already present on the product branch.
+- **EXISTING FOUNDATION:** the full §14.4 table.
+- **REMAINING WORK:** none for the backend; desktop UI and end-to-end gaps are carried into C–I.
+- **DEPENDENCIES:** — (this is the baseline).
+- **DELIVERABLE:** the current product branch state (`1b024c4f`).
+- **ACCEPTANCE:** already satisfied by existing code/tests and canonical §13/§15 reconciliation.
+- **OWNER GATE:** none (already accepted into the product line).
+
+#### 14.5.B — STORY RUNTIME SEMANTICS V1
+
+- **STATUS:** `NEXT_PROPOSED` — the proposed next milestone.
+- **OBJECTIVE:** define and implement story-level runtime semantics on top of the accepted-scene
+  authority, without reviving the historical live-JSON runtime.
+- **EXISTING FOUNDATION:** `SceneBody`/`OrderedASS` per-scene `next_target` (`ChoiceTarget`:
+  `ENTRY`/`SCENE`/`END`) is the only existing scene-to-scene control flow. `StorySequence` V0 owns
+  order + entry (`ordered_scene_ids`, `start_scene_id`) and explicitly **does not** own conditions,
+  flags, variables, player_state, transitions, or runtime state (§15.8, `services/story_sequence/model.py`).
+  A codebase search for `player_state`, `prerequisites`, `flags_required`, `completion_flag` in
+  `services/` and `tools/vne_to_renpy/` returns no implementation.
+- **REMAINING WORK (proposed):** author-level story logic — conditions, prerequisites, flags /
+  variables, player_state, transitions between scenes, and save/load semantics — expressed as
+  **story-level contracts** that feed deterministic Ren'Py generation.
+- **DEPENDENCIES:** A (§14.5.A) and the §15.8 boundary (Story Sequence V0 does not grow into a story
+  graph without a separate gate).
+- **DELIVERABLE:** a ratified design/contract for V1 runtime semantics (ownership boundaries and any
+  contract changes), followed by implementation only after ratification.
+- **ACCEPTANCE:** semantics are deterministic, OrderedASS/SceneBody remains the source of truth, no
+  live-JSON runtime is revived, and the generate-ahead Ren'Py path remains canonical.
+- **OWNER GATE:** `OWNER_DECISION_REQUIRED` — detailed V1 runtime semantics, ownership boundaries, and
+  contract changes require a **separate design/ratification gate** before implementation.
+
+#### 14.5.C — STORY-FLOW AUTHORING
+
+- **STATUS:** `PLANNED_DRAFT` (proposed; depends on B).
+- **OBJECTIVE:** connect the ratified story semantics (B) to the desktop authoring workflow so the
+  author can manage story order, entry, and transitions inside the editor.
+- **EXISTING FOUNDATION:** backend `services/editor_application` already exposes `save_story_sequence`
+  and read-only `get_publication_readiness`; `services/story_sequence/` validates order/entry. The
+  desktop UI does **not** yet surface story order/entry editing.
+- **REMAINING WORK:** author-facing UI for story order + entry + transition logic, wired through the
+  facade and validated against `AcceptedOrderedASSBatch` (exact coverage).
+- **DEPENDENCIES:** B (ratified semantics) and A.
+- **DELIVERABLE:** a desktop story-flow authoring surface producing a valid `StorySequence` (and,
+  after B, the ratified story-logic contract).
+- **ACCEPTANCE:** an author edits order/entry/transitions in the UI; the result validates and drives
+  deterministic export order; no scene-authority bypass.
+- **OWNER GATE:** ratification of B's semantics before this stage begins.
+
+#### 14.5.D — SCENARIO MEDIA WORKFLOW COMPLETION
+
+- **STATUS:** `PLANNED_DRAFT`.
+- **OBJECTIVE:** complete the necessary **Scenario-owned** media authoring/binding for publication
+  without duplicating Character Lab's authoritative character media.
+- **EXISTING FOUNDATION:** `services/mediaplan/` (Scenario-owned MediaPlan) and the §15.6 ratified
+  split (Character Lab = character-owned media; Scenario = scene-specific MediaPlan). Character Media
+  portable consumption is `FUTURE`/`NOT_IMPLEMENTED`/`WAITING_FOR_PORTABLE_MEDIA_HANDOFF`.
+- **REMAINING WORK:** scene-media authoring/binding surface for what Scenario owns; media required for
+  publication is bound to scenes deterministically. No second authoritative Character Media Library.
+- **DEPENDENCIES:** A; §15.6 media ownership boundary.
+- **DELIVERABLE:** a complete Scenario-owned media authoring/binding workflow.
+- **ACCEPTANCE:** a scene's required media is authorable and bound for publication without touching
+  Character Lab media authority.
+- **OWNER GATE:** media-role/asset-role schema for Scenario remains unratified (see §15.6) —
+  `OWNER_DECISION_REQUIRED` before any new media contract.
+
+#### 14.5.E — INTEGRATED PUBLICATION / PREVIEW / PLAY
+
+- **STATUS:** `PLANNED_DRAFT`.
+- **OBJECTIVE:** establish the complete author-facing publishing workflow (publish → preview → play)
+  inside the editor.
+- **EXISTING FOUNDATION:** deterministic OrderedASS → Ren'Py exporter, canonical publisher, and the
+  generated-file firewall are implemented as CLI tools (`tools/vne_to_renpy/`). `vne_story_start` is
+  the **generated** StorySequence entry label (jumps to `start_scene_id`).
+- **REMAINING WORK:** wire publish + preview/play into the editor; an integrated, repeatable
+  author-facing flow. **The global Ren'Py `label start` remains separately owned** — this stage must
+  **not** silently modify `script.rpy` or present entry wiring as already-ratified behavior.
+- **DEPENDENCIES:** A, C, D.
+- **DELIVERABLE:** integrated publication/preview/play workflow in the desktop editor.
+- **ACCEPTANCE:** an author publishes, previews, and plays the generated result from the editor; the
+  generated entry label is `vne_story_start`; `script.rpy` global `start` is left untouched unless a
+  separate, explicit Owner decision authorizes wiring.
+- **OWNER GATE:** any change to global entry wiring is `OWNER_DECISION_REQUIRED` (not assumed here).
+
+#### 14.5.F — EDITOR COMPLETION / ACCEPTANCE
+
+- **STATUS:** `PLANNED_DRAFT`.
+- **OBJECTIVE:** define acceptance checks for **all** required editor capabilities from the Owner's
+  FINISH boundary (§14.2) and classify which Player Experience requirements are in scope, already
+  implemented, or deferred.
+- **EXISTING FOUNDATION:** the §14.4 capabilities. Draft edit, validate, and accept are implemented in
+  the desktop UI; create/open project, story-order UI, publication, preview/play, and save/reopen are
+  not yet complete.
+- **REMAINING WORK:** a checklist mapping each FINISH item to an implemented-or-planned state, plus a
+  Player Experience triage. Reference `PLAYER_EXPERIENCE_SPEC.md` §11–§12: MVP = Classic VN + basic
+  Psychological + read-only inspector (historically target); Mind-reading, full Director, LLM inside
+  RenPy, pre-game questionnaire, settings UI, and full in-place editor are deferred. Only items in
+  scope for the **Scenario Editor authoring product** (not the player-facing runtime) are proposed here.
+- **DEPENDENCIES:** A–E.
+- **DELIVERABLE:** an acceptance matrix for Scenario Editor 1.0 editor capabilities.
+- **ACCEPTANCE:** every FINISH-boundary item is explicitly marked implemented / planned / deferred;
+  no deferred item is reported as complete.
+- **OWNER GATE:** the acceptance matrix and Player Experience scope split require Owner ratification.
+
+#### 14.5.G — STANDALONE APPLICATION
+
+- **STATUS:** `PLANNED_DRAFT`; packaging framework selection is `OWNER_DECISION_REQUIRED`.
+- **OBJECTIVE:** make the editor installable and runnable independently of the source repository and
+  development environment.
+- **EXISTING FOUNDATION:** the desktop app launches via `py -m ui.editor_desktop` (PySide6) but is
+  anchored to `repo_root`/`authoring/` paths with a single hardcoded project; `requirements-dev.txt`
+  declares only `jsonschema` (PySide6 is undeclared).
+- **REMAINING WORK (to investigate, not select yet):** application dependency audit; standalone
+  launch; bundled runtime requirements; application configuration; **external user-project storage**
+  (decoupled from repository `authoring/` paths); missing-dependency handling; installation
+  independence from repository paths.
+- **DEPENDENCIES:** A–F.
+- **DELIVERABLE:** a standalone-capable application with external project storage and a declared
+  dependency/runtime strategy.
+- **ACCEPTANCE:** the app runs without the repository checkout; user projects live outside the repo;
+  missing dependencies are reported, not silently broken.
+- **OWNER GATE:** **no packaging framework is selected without evidence** — `OWNER_DECISION_REQUIRED`
+  after the dependency/storage audit.
+
+#### 14.5.H — INSTALLER AND RELEASE QA
+
+- **STATUS:** `PLANNED_DRAFT`; **Windows is the approved initial release target** (via `OD-SE-ROADMAP-01`).
+- **OBJECTIVE:** define release preparation and quality assurance for the first standalone install.
+- **EXISTING FOUNDATION:** the deterministic publication path and the standalone app (after G).
+- **REMAINING WORK (proposed release checks):** installation package; first launch; user-project
+  creation; save/reopen; authoring flow; generation/publication; playable result; clean-device
+  acceptance; version metadata; release artifact verification.
+- **DEPENDENCIES:** A–G.
+- **DELIVERABLE:** a versioned installer plus a documented release-QA run.
+- **ACCEPTANCE:**
+  1. The installed application works without VS Code, Cline, a source-code checkout, the development
+     repository, or a separately prepared Python development environment.
+  2. Ordinary application reinstallation does **not** silently delete or overwrite existing user
+     projects.
+  3. User-project storage remains independent of the installed application directory.
+  4. The release artifact installs, launches, and completes the full authoring → publication →
+     playable-result flow on a clean device, with verifiable version metadata.
+- **OWNER GATE:** **Windows is the approved initial release target** (via `OD-SE-ROADMAP-01`).
+  Additional operating systems are **outside the current release commitment** and are
+  `OWNER_DECISION_REQUIRED`. The actual storage path, installer technology, and upgrade mechanism
+  remain subjects of future implementation/design — no packaging framework is selected here.
+
+#### 14.5.I — VOYAGE SCENARIO EDITOR 1.0
+
+- **STATUS:** `PLANNED_DRAFT` — the proposed final standalone application milestone.
+- **OBJECTIVE:** a standalone, installable **Voyage Scenario Editor 1.0** satisfying the full §14.2
+  FINISH boundary on the approved initial target (Windows).
+- **EXISTING FOUNDATION:** A–H.
+- **REMAINING WORK:** close all §14.5.F acceptance items; ship the H release artifact.
+- **DEPENDENCIES:** A–H.
+- **DELIVERABLE:** Voyage Scenario Editor 1.0 standalone release.
+- **ACCEPTANCE:** every §14.2 FINISH item is verifiably satisfied; Character Lab, Studio, and
+  shared-workspace ownership boundaries remain unchanged; no unratified platform contract is a
+  dependency.
+- **OWNER GATE:** final release authorization is `OWNER_DECISION_REQUIRED`.
+
+### 14.6 Platform integration (FUTURE, separate track)
+
+Kept **separate** from the standalone Scenario Editor 1.0 path. These are cross-product concerns gated
+by portable contracts; none is presented as a prerequisite of Scenario Editor 1.0 unless evidence
+proves a concrete dependency (none does).
+
+1. **Portable character identity** — `FUTURE` (see §15.5, §13.4). Scenario already stores a stable
+   `character_id`; future alignment with Character Lab portable identity is not designed here.
+2. **VCP / `.vchar` Scenario consumer** — `NOT_IMPLEMENTED` (see §15.5). No consumer contract is
+   invented in this draft.
+3. **Character Media portable handoff** — `FUTURE` / `NOT_IMPLEMENTED` / `WAITING_FOR_PORTABLE_MEDIA_HANDOFF`
+   (see §15.6). Scenario MediaPlan remains Scenario-owned; it does not read Primary Portrait from `.vchar`.
+4. **Shared cross-product workspace** — `NOT YET RATIFIED` (see §15.7). `services/workspace_project/`
+   is Scenario-local today.
+5. **Studio contract** — `FUTURE` / `NOT_IMPLEMENTED` (see §13.4).
+6. **Unified NARRATIVE shell** — `FUTURE` only (see §13.4).
+
+**Mapping the historical S0–S9 draft** (`NARRATIVE_SCENARIO_DEVELOPMENT_MASTER_PLAN_V0`, LOCAL_STORAGE):
+the S0 (baseline recovery/discovery) and S1 (product boundary) substance is now covered by the §13/§15
+reconciliation and this §14 — but their **named historical deliverables**
+(`NARRATIVE_SCENARIO_PLATFORM_INTEGRATION_DISCOVERY_V1_REPORT`, `NARRATIVE_SCENARIO_PRODUCT_BOUNDARY_V1`)
+were not produced as such and are **not fabricated** here. The useful S2–S9 material maps into the
+future integration area above without ratifying any new contract:
+
+- **S2 (External Character Reference)** → item 1/2 (portable character identity + `.vchar` consumer).
+- **S3 (Scene/ASS Character Binding)** → `NOT_IMPLEMENTED`; no ASS schema change is ratified here.
+- **S4 (Workspace Membership)** → item 4 (shared cross-product workspace).
+- **S5 (Location Boundary)** → Location Canon is already implemented (§14.4); cross-product portable
+  location identity remains future.
+- **S6 (Media Boundary)** → item 3 (Character Media portable handoff).
+- **S7 (AI Assistance Boundary)** → Scenario-owned provider-neutral Prompt Composer is implemented;
+  any cross-product AI provider boundary is future/out of scope.
+- **S8 (Studio/Runtime Boundary)** → item 5 (Studio contract).
+- **S9 (Unified NARRATIVE Product Experience)** → item 6 (unified shell).
+
+### 14.7 Owner decisions still needed
+
+Listed only where the decision is **not** already resolved by existing Owner direction or canonical
+evidence. This ratification (`OD-SE-ROADMAP-01`) does **not** close any of the following gates:
+
+- **OD-SE-RUNTIME-01:** ratify the design/ownership/contract for Story Runtime Semantics V1 (§14.5.B).
+- **OD-SE-MEDIA-01:** ratify any Scenario media-role/asset-role schema change before Scenario media
+  binding goes beyond current MediaPlan (§14.5.D; see §15.6).
+- **OD-SE-ENTRY-01:** authorize (or decline) any global Ren'Py `label start` entry wiring; the
+  generated `vne_story_start` remains the default and `script.rpy` is not silently modified (§14.5.E).
+- **OD-SE-PACKAGE-01:** select a packaging/distribution framework based on the §14.5.G audit evidence.
+- **OD-SE-OS-01:** Windows is **approved** as the initial release target (via `OD-SE-ROADMAP-01`);
+  any additional OS remains a separate `OWNER_DECISION_REQUIRED` (§14.5.H).
+- **OD-SE-1.0-01:** authorize the Voyage Scenario Editor 1.0 release itself (§14.5.I).
+
+### 14.8 Historical preservation and non-goals
+
+- **Historical roadmap (N0–N6 / N7 / SVA, §1–§12) is preserved unchanged.**
+- **No second master roadmap is created** (no `NARRATIVE_ROADMAP_V2.md`, `SCENARIO_MASTER_ROADMAP.md`,
+  or `VOYAGE_SCENARIO_MASTER_PLAN.md`).
+- **The historical live-JSON runtime is not revived** (§14.5.B); the authoritative direction remains
+  SceneBody → validation/acceptance → OrderedASS → story-level contracts → deterministic Ren'Py.
+- **Character Lab and Studio ownership are unchanged** (§14.2, §15.5–§15.8).
+- **Platform integration is separately identified** (§14.6) and is not a prerequisite of 1.0.
+- **No packaging framework is selected without an Owner gate** (§14.5.G).
+- This section modifies **only** `docs/narrative/NARRATIVE_ROADMAP.md`. The decision, architecture,
+  document-index, runtime-contract, player-experience, and governance files are **not** changed here;
+  a dedicated post-ratification sync is a separate future task.
