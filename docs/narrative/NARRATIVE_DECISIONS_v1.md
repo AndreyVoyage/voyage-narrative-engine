@@ -746,3 +746,72 @@ SceneBody / OrderedASS — ENTRY / SCENE / END targets и per-scene `next_target
 5. `NARRATIVE_ROADMAP.md` — фазы N0–N6 с критериями готовности.
 
 > Коммит этого документа выполняется через стандартный Narrative workflow (Claude Code), не напрямую.
+
+---
+
+## 16. Продуктовое решение — Scenario Editor 1.0 (2026-10-01)
+
+> Датированный record продуктового решения, синхронизирующий этот документ с
+> `SCENARIO_EDITOR_PRODUCT_DESIGN_DECISIONS_V1.md`. Не отменяет §1–§15; уточняет направление 1.0.
+
+**Decision (Owner, `OD-SE-EDITOR-PURPOSE-01`, AGREED).** Voyage Scenario Editor — самостоятельное
+мультимедийное приложение для автора (писателя). Автор владеет текстом, границами Card, соединениями
+Card, читательскими выборами, Slides, диалогом и мультимедийной композицией. Приложение даёт авторинг,
+редактирование, хранение, валидацию, предпросмотр и публикацию через Ren'Py; оно **не** интерпретирует
+художественный смысл текста.
+
+**Implications.**
+- Объектная игровая логика (flags/prerequisites/state/conditional next_target) **не обязательна** для 1.0.
+- `STORY_RUNTIME_SEMANTICS_V1` (бывший Stage B): `REMOVED_FROM_MANDATORY_1.0_PATH`.
+- `OD-SE-RUNTIME-01`: `NOT RATIFIED`; `B1–B5`: `NOT STARTED / DO NOT START` (не были реализованы).
+- Сохранённые foundations переиспользуются, не переписываются: SceneBody, ASS/OrderedASS,
+  Draft/Validate/Accept, StorySequence V0, MediaPlan, Editor Application Service, Workspace Project,
+  Ren'Py Exporter, Canonical Publisher.
+- Авторская модель Card/Slide/Utterance/Display Portion требует отдельного design gate (не равна
+  SceneBody 1:1); `.vscenario` — рабочее имя, не ратифицированный формат.
+
+**Status:** `OWNER_DISCUSSION_AGREED / AWAITING_CANONICAL_DOC_SYNC` (2026-10-01).
+
+---
+
+## 17. Продуктовое решение — Character Library и Multi-Assistant (2026-10-01)
+
+> Датированный record дополнительного Owner-согласованного продуктового решения, синхронизирующий этот
+> документ с `SCENARIO_CHARACTER_LIBRARY_AND_MULTI_ASSISTANT_V1.md`. Не отменяет §1–§16; дополняет
+> продуктовое направление Scenario Editor 1.0.
+
+**Decision (Owner, `OD-SE-CHARACTER-LIBRARY-01`, AGREED).** Scenario Editor имеет **одну** проектную
+Character Library. Персонаж добавляется либо импортом из Character Lab (`METHOD A`), либо ручным
+созданием внутри Scenario Editor (`METHOD B`) — оба пути ведут к одному и тому же персонажу в проектной
+Character Library. Character Lab **не обязателен** для ручного создания персонажа. Принадлежность к
+Library **не** означает автоматического ввода персонажа в литературное повествование (нет
+автоматического "casting").
+
+**Decision (Owner, `OD-SE-CHARACTER-CONCEPTS-01`, AGREED).** Концептуально разделяются: **CHARACTER**
+(проектный персонаж), **CHARACTER MEDIA LIBRARY** (портреты, выражения, референсы, фото, короткие видео
+и прочие медиа) и **CHARACTER AI ASSISTANT** (опциональная AI-возможность). Персонаж может существовать
+без AI; AI-возможность присоединяется отдельным явным действием автора. Импорт `.vchar` **не**
+активирует автоматически внешнее AI-соединение.
+
+**Decision (Owner, `OD-SE-MULTI-ASSISTANT-01`, AGREED).** Несколько AI-enabled персонажей доступны
+одновременно в одном Dialogue Workshop; остальные персонажи могут оставаться manual-only. Маршрутизация
+и принятие реплик управляются автором: автор выбирает текущего говорящего, пишет/запрашивает AI, правит,
+выбирает одного или нескольких получателей, явно отправляет принятую реплику и отдельно принимает
+ответы. Непринятые AI-черновики **никогда** автоматически не становятся частью произведения, принятым
+событием или принятым контекстом другого персонажа.
+
+**Implications.**
+- Принадлежность к Library ≠ автоматический ввод персонажа в литературное повествование.
+- Импортированный пакет ≠ автоматическое подключение внешнего AI-провайдера.
+- Provider-секреты исключаются из переносимых файлов проекта.
+- Видео/live-portrait — это Scenario-продуктовое требование; текущий Character Lab export (Character
+  Media V1: `PNG`/`JPEG`/`STATIC WEBP`; video/live-portrait `NOT IMPLEMENTED`; standardized emotion
+  catalog `NOT CONFIRMED`) это **не** реализует.
+
+**Boundary (продукт vs техническая реализация).** Вышеперечисленное — **принятое продуктовое поведение
+(accepted PRODUCT behavior)**. Точные технические контракты (сериализация Character Library, схема
+`.vchar` import-а, контракт AI-провайдера, сериализация переносимого проекта) — **открытые TECHNICAL
+implementation decisions**, `OWNER_GATED`, не реализованы и здесь не ратифицируются. Никакая новая схема
+не объявляется реализованной.
+
+**Status:** `OWNER_DISCUSSION_AGREED / AWAITING_CANONICAL_DOC_SYNC` (2026-10-01).

@@ -3,7 +3,7 @@
 > **Назначение.** Карта всех канонических документов проекта: где что лежит, статус, зачем.
 > Начинать чтение отсюда. Пути даны относительно корня репозитория.
 >
-> **Обновлено:** 2026-08-16 (добавлены CRP vNext ratification + decision register + MVP spec/contracts)
+> **Обновлено:** 2026-08-16 (добавлены CRP vNext ratification + decision register + MVP spec/contracts); 2026-10-01 (добавлена продуктовая концепция Scenario Editor 1.0 + Owner addendum Character Library / Multi-Assistant).
 > **Правило:** при добавлении/устаревании документа — обновить этот индекс.
 
 Легенда статусов: **ACTIVE** (действующий) · **CANONICAL** (источник правды) ·
@@ -33,6 +33,8 @@
 | [`NARRATIVE_ROADMAP.md`](NARRATIVE_ROADMAP.md) | ACTIVE | Текущий статус треков (N7 §10, N8 и т.д.). |
 | [`NARRATIVE_FUTURE_TRACKS_v1.md`](NARRATIVE_FUTURE_TRACKS_v1.md) | ACTIVE | Будущие треки (Aside, Voice, Story Setup, …). |
 | [`NARRATIVE_HANDOFF_KIMI_WORK.md`](NARRATIVE_HANDOFF_KIMI_WORK.md) | ACTIVE | Правила делегирования исполнителю + строгий промпт-шаблон + audit-checklist. |
+| [`SCENARIO_EDITOR_PRODUCT_DESIGN_DECISIONS_V1.md`](SCENARIO_EDITOR_PRODUCT_DESIGN_DECISIONS_V1.md) | OWNER_DISCUSSION_AGREED / AWAITING_CANONICAL_DOC_SYNC | Согласованная Owner-концепция Scenario Editor 1.0 (Card/Slide/Utterance/Portion, Dialogue Workshop, Start Page/Menu Editors, hybrid storage). |
+| [`SCENARIO_CHARACTER_LIBRARY_AND_MULTI_ASSISTANT_V1.md`](SCENARIO_CHARACTER_LIBRARY_AND_MULTI_ASSISTANT_V1.md) | OWNER PRODUCT DESIGN ADDENDUM / TECHNICAL IMPLEMENTATION NOT YET RATIFIED | Owner-согласованное дополнение: единая Character Library (ручное создание + импорт из Character Lab), разделение Character / Media Library / optional AI Assistant, групповые реплики, multi-assistant Dialogue Workshop. |
 
 ---
 

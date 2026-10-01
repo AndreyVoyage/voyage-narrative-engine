@@ -592,6 +592,12 @@ The preflight must **not** assume the Character Canon Bridge is the sole referen
 >   release commitment and require separate approval.
 > - This ratification does **not** mark future stages (B–I) as `IMPLEMENTED`, and it is **not** approval
 >   to begin every future implementation stage.
+>
+> **SUPERSESSION ANNOTATION (2026-10-01).** The `OD-SE-ROADMAP-01` record above is preserved verbatim as
+> historical Owner evidence. Its `NEXT MILESTONE: Stage B (Story Runtime Semantics V1)` is **superseded**
+> by the §14.9 corrective addendum. The **active next milestone** is the proposed `SE-1` / `SE-2`
+> authoring-model direction; `STORY_RUNTIME_SEMANTICS_V1` is `REMOVED_FROM_MANDATORY_1.0_PATH` and is
+> **no longer the active next milestone**.
 
 ---
 
@@ -730,7 +736,7 @@ cycle; they are not historical milestones.
 
 #### 14.5.B — STORY RUNTIME SEMANTICS V1
 
-- **STATUS:** `NEXT_PROPOSED` — the proposed next milestone.
+- **STATUS:** `SUPERSEDED_FOR_1.0` — see §14.9 corrective addendum (2026-10-01); no longer the active next milestone.
 - **OBJECTIVE:** define and implement story-level runtime semantics on top of the accepted-scene
   authority, without reviving the historical live-JSON runtime.
 - **EXISTING FOUNDATION:** `SceneBody`/`OrderedASS` per-scene `next_target` (`ChoiceTarget`:
@@ -753,20 +759,25 @@ cycle; they are not historical milestones.
 
 #### 14.5.C — STORY-FLOW AUTHORING
 
-- **STATUS:** `PLANNED_DRAFT` (proposed; depends on B).
-- **OBJECTIVE:** connect the ratified story semantics (B) to the desktop authoring workflow so the
-  author can manage story order, entry, and transitions inside the editor.
+- **STATUS:** `PLANNED_DRAFT` (proposed; historical dependency on Stage B superseded — see §14.9).
+- **OBJECTIVE:** connect the story-flow authoring model to the desktop authoring workflow so the author
+  can manage story order, entry, and scene-to-scene transitions inside the editor, aligned with the
+  proposed `SE-1` / `SE-2` authoring-model direction. The historical rationale (ratified story
+  semantics from Stage B) is retained; `STORY_RUNTIME_SEMANTICS_V1` is superseded for 1.0 (§14.9) and
+  is **not** a prerequisite for authoring to begin.
 - **EXISTING FOUNDATION:** backend `services/editor_application` already exposes `save_story_sequence`
   and read-only `get_publication_readiness`; `services/story_sequence/` validates order/entry. The
   desktop UI does **not** yet surface story order/entry editing.
 - **REMAINING WORK:** author-facing UI for story order + entry + transition logic, wired through the
   facade and validated against `AcceptedOrderedASSBatch` (exact coverage).
-- **DEPENDENCIES:** B (ratified semantics) and A.
-- **DELIVERABLE:** a desktop story-flow authoring surface producing a valid `StorySequence` (and,
-  after B, the ratified story-logic contract).
+- **DEPENDENCIES:** A (and the proposed `SE-1` / `SE-2` authoring model). The historical dependency on
+  B (ratified semantics) is superseded — see §14.9.
+- **DELIVERABLE:** a desktop story-flow authoring surface producing a valid `StorySequence` (without a
+  mandatory Story Runtime Semantics V1 prerequisite).
 - **ACCEPTANCE:** an author edits order/entry/transitions in the UI; the result validates and drives
   deterministic export order; no scene-authority bypass.
-- **OWNER GATE:** ratification of B's semantics before this stage begins.
+- **OWNER GATE:** aligned with the `SE-1` / `SE-2` authoring-model direction (§14.9). The former
+  `ratification of Stage B's semantics` is no longer a gate before authoring begins.
 
 #### 14.5.D — SCENARIO MEDIA WORKFLOW COMPLETION
 
@@ -817,7 +828,7 @@ cycle; they are not historical milestones.
   Psychological + read-only inspector (historically target); Mind-reading, full Director, LLM inside
   RenPy, pre-game questionnaire, settings UI, and full in-place editor are deferred. Only items in
   scope for the **Scenario Editor authoring product** (not the player-facing runtime) are proposed here.
-- **DEPENDENCIES:** A–E.
+- **DEPENDENCIES:** A, C–E.
 - **DELIVERABLE:** an acceptance matrix for Scenario Editor 1.0 editor capabilities.
 - **ACCEPTANCE:** every FINISH-boundary item is explicitly marked implemented / planned / deferred;
   no deferred item is reported as complete.
@@ -835,7 +846,7 @@ cycle; they are not historical milestones.
   launch; bundled runtime requirements; application configuration; **external user-project storage**
   (decoupled from repository `authoring/` paths); missing-dependency handling; installation
   independence from repository paths.
-- **DEPENDENCIES:** A–F.
+- **DEPENDENCIES:** A, C–F.
 - **DELIVERABLE:** a standalone-capable application with external project storage and a declared
   dependency/runtime strategy.
 - **ACCEPTANCE:** the app runs without the repository checkout; user projects live outside the repo;
@@ -851,7 +862,7 @@ cycle; they are not historical milestones.
 - **REMAINING WORK (proposed release checks):** installation package; first launch; user-project
   creation; save/reopen; authoring flow; generation/publication; playable result; clean-device
   acceptance; version metadata; release artifact verification.
-- **DEPENDENCIES:** A–G.
+- **DEPENDENCIES:** A, C–G.
 - **DELIVERABLE:** a versioned installer plus a documented release-QA run.
 - **ACCEPTANCE:**
   1. The installed application works without VS Code, Cline, a source-code checkout, the development
@@ -871,9 +882,9 @@ cycle; they are not historical milestones.
 - **STATUS:** `PLANNED_DRAFT` — the proposed final standalone application milestone.
 - **OBJECTIVE:** a standalone, installable **Voyage Scenario Editor 1.0** satisfying the full §14.2
   FINISH boundary on the approved initial target (Windows).
-- **EXISTING FOUNDATION:** A–H.
+- **EXISTING FOUNDATION:** A, C–H.
 - **REMAINING WORK:** close all §14.5.F acceptance items; ship the H release artifact.
-- **DEPENDENCIES:** A–H.
+- **DEPENDENCIES:** A, C–H (Stage B §14.5.B superseded — see §14.9).
 - **DELIVERABLE:** Voyage Scenario Editor 1.0 standalone release.
 - **ACCEPTANCE:** every §14.2 FINISH item is verifiably satisfied; Character Lab, Studio, and
   shared-workspace ownership boundaries remain unchanged; no unratified platform contract is a
@@ -920,7 +931,9 @@ future integration area above without ratifying any new contract:
 Listed only where the decision is **not** already resolved by existing Owner direction or canonical
 evidence. This ratification (`OD-SE-ROADMAP-01`) does **not** close any of the following gates:
 
-- **OD-SE-RUNTIME-01:** ratify the design/ownership/contract for Story Runtime Semantics V1 (§14.5.B).
+- **OD-SE-RUNTIME-01:** `NOT RATIFIED` — `SUPERSEDED AS A MANDATORY 1.0 DEPENDENCY`. Story Runtime
+  Semantics V1 is no longer a required Owner decision for 1.0 (§14.5.B, §14.9). `B1–B5`: `NEVER
+  STARTED` (never implemented; not presented as implemented and subsequently removed).
 - **OD-SE-MEDIA-01:** ratify any Scenario media-role/asset-role schema change before Scenario media
   binding goes beyond current MediaPlan (§14.5.D; see §15.6).
 - **OD-SE-ENTRY-01:** authorize (or decline) any global Ren'Py `label start` entry wiring; the
@@ -943,3 +956,63 @@ evidence. This ratification (`OD-SE-ROADMAP-01`) does **not** close any of the f
 - This section modifies **only** `docs/narrative/NARRATIVE_ROADMAP.md`. The decision, architecture,
   document-index, runtime-contract, player-experience, and governance files are **not** changed here;
   a dedicated post-ratification sync is a separate future task.
+
+---
+
+## 14.9 Corrective addendum — VOYAGE SCENARIO EDITOR — PRODUCT DESIGN REALIGNMENT V1 (2026-10-01)
+
+> **Precedence.** This dated addendum records a corrective Owner product-design direction. It takes
+> precedence over the superseded `Stage B — Story Runtime Semantics V1` planning below (§14.5.B and the
+> §14 Owner ratification record `OD-SE-ROADMAP-01`). It does **not** delete the historical §1–§14 record.
+
+**Source.** Owner product-design handoff `docs/narrative/SCENARIO_EDITOR_PRODUCT_DESIGN_DECISIONS_V1.md`
+(status `OWNER_DISCUSSION_AGREED / AWAITING_CANONICAL_DOC_SYNC`).
+
+**Source (product addendum).** Owner product-design addendum
+`docs/narrative/SCENARIO_CHARACTER_LIBRARY_AND_MULTI_ASSISTANT_V1.md` (status
+`OWNER_DISCUSSION_AGREED / AWAITING_CANONICAL_DOC_SYNC`) records the Character Library and
+multi-assistant requirements (SE-3 / SE-4) as **product behavior** — not a ratified schema, not a
+ratified AI provider contract, and not a second master roadmap.
+
+**`OD-SE-EDITOR-PURPOSE-01` (AGREED).** Voyage Scenario Editor is a standalone multimedia literary
+authoring application. The writer owns narrative text, Card boundaries, Card connections, reader-facing
+choices, Slides, dialogue, and multimedia composition. The application provides authoring, editing,
+storage, validation, preview, and Ren'Py publication; it does **not** automatically interpret the
+artistic meaning of the text. Object-based gameplay logic is **NOT required** for Scenario Editor 1.0.
+
+**Superseded status records (the historical §14.5.B body is preserved — these components were never
+implemented and are not presented as deleted capabilities):**
+
+- `STORY_RUNTIME_SEMANTICS_V1`: `REMOVED_FROM_MANDATORY_1.0_PATH`.
+- `OD-SE-RUNTIME-01`: `NOT RATIFIED`.
+- `IMPLEMENTATION B1–B5`: `NOT STARTED / DO NOT START`.
+
+**Proposed active release sequence (PROPOSED, pending final Owner approval):**
+
+- `SE-0` — Canonical Product Design Sync (this addendum).
+- `SE-1` — Authoring Model and Storage Foundation.
+- `SE-2` — Card/Slide Authoring and Three Synchronized Views.
+- `SE-3` — Unified Character Library (manual creation + `.vchar` import), character media, and
+  optional AI capability.
+- `SE-4` — Writer-controlled multi-assistant Dialogue Workshop.
+- `SE-5` — Start Page and Game Menu Editors.
+- `SE-6` — Integrated Preview, Ren'Py Publication and Testing.
+- `SE-7` — Standalone Windows Application, Installer and Release QA.
+
+Classification vocabulary retained: `ALREADY_IMPLEMENTED`, `PARTIALLY_IMPLEMENTED`, `MISSING`,
+`REQUIRES_ADAPTATION`, `DEFERRED`, `OBSOLETE_FOR_1.0`.
+
+**Storage + authoring model begin together.** The Card/Slide authoring model and the hybrid storage
+contract are designed jointly in `SE-1`, not deferred until after all authoring features are built.
+
+**Preserved foundations (not rewritten):** SceneBody, ASS/OrderedASS, Draft/Validate/Accept,
+StorySequence V0, MediaPlan, Editor Application Service, Workspace Project, Ren'Py Exporter, and
+Canonical Publisher. Native Ren'Py capabilities are used first; no new custom runtime.
+
+**Compatibility questions deferred to follow-up (not ratified here):** Card↔SceneBody mapping, Slide
+boundaries, complete Utterance↔Display Portion, choice transitions↔visual Card connections, Character
+Lab export↔Scenario import, portable multimedia project storage, and Ren'Py rendering/preview
+boundaries. `.vscenario` remains a working extension name, not a ratified format.
+
+**The SE-0–SE-7 sequence is a proposed updated implementation order pending final Owner approval.** It
+is not an already-completed or independently ratified technical architecture.
