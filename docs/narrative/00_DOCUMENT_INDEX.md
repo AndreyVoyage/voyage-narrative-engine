@@ -35,6 +35,7 @@
 | [`NARRATIVE_HANDOFF_KIMI_WORK.md`](NARRATIVE_HANDOFF_KIMI_WORK.md) | ACTIVE | Правила делегирования исполнителю + строгий промпт-шаблон + audit-checklist. |
 | [`SCENARIO_EDITOR_PRODUCT_DESIGN_DECISIONS_V1.md`](SCENARIO_EDITOR_PRODUCT_DESIGN_DECISIONS_V1.md) | OWNER_DISCUSSION_AGREED / AWAITING_CANONICAL_DOC_SYNC | Согласованная Owner-концепция Scenario Editor 1.0 (Card/Slide/Utterance/Portion, Dialogue Workshop, Start Page/Menu Editors, hybrid storage). |
 | [`SCENARIO_CHARACTER_LIBRARY_AND_MULTI_ASSISTANT_V1.md`](SCENARIO_CHARACTER_LIBRARY_AND_MULTI_ASSISTANT_V1.md) | OWNER PRODUCT DESIGN ADDENDUM / TECHNICAL IMPLEMENTATION NOT YET RATIFIED | Owner-согласованное дополнение: единая Character Library (ручное создание + импорт из Character Lab), разделение Character / Media Library / optional AI Assistant, групповые реплики, multi-assistant Dialogue Workshop. |
+| [`SCENARIO_EDITOR_PROGRESS_JOURNAL_v1.md`](SCENARIO_EDITOR_PROGRESS_JOURNAL_v1.md) | ACTIVE / PROJECT_CONTINUITY | Журнал прогресса Scenario Editor: текущий handoff, хронология вех, ссылки на коммиты, тесты/ревью-эвиденс, открытые гейты, протокол восстановления контекста. |
 
 ---
 
