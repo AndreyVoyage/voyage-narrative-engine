@@ -815,3 +815,98 @@ implementation decisions**, `OWNER_GATED`, не реализованы и зде
 не объявляется реализованной.
 
 **Status:** `OWNER_DISCUSSION_AGREED / AWAITING_CANONICAL_DOC_SYNC` (2026-10-01).
+
+---
+
+## 18. Продуктовое решение — Authoring Model Foundation (OD-SE-AUTHORING-MODEL-01, 2026-10-01)
+
+> Датированный record Owner-направления по авторской модели Scenario Editor 1.0 (SE-1). Не отменяет
+> §1–§17; фиксирует agreed architectural principles. Это документация направления, а **не** реализованный
+> код и **не** ратифицированная техническая схема.
+
+**Decision (Owner, `OD-SE-AUTHORING-MODEL-01`, AGREED — принципы).**
+
+Рабочая модель:
+
+```
+PROJECT
+  → CONNECTED CARDS
+    → SLIDES
+      → CONTENT ITEMS / UTTERANCES
+        → DISPLAY PORTIONS
+```
+
+Правила:
+
+1. Card — независимый редактируемый авторский контейнер.
+2. Card **не** равен автоматически одному SceneBody / OrderedASS / Ren'Py-сцене.
+3. Одна accepted-сцена может представлять несколько Card.
+4. Соединения Card — авторские; обязаны переживать save/reopen.
+5. Читательские ветвления — явные авторские выборы (choices).
+6. Перемещение содержимого не должно молча менять соединения Card.
+7. Полный текст Utterance остаётся авторитетным.
+8. Display Portions — читательские подразделения, а не замена полного Utterance.
+9. Назначения speaker / portrait / emotion на уровне portion обязаны сохраняться.
+10. Принятая publication-метаданные обязаны быть неизменяемыми и hash-pinned.
+11. Существующие `scene_body/1.0`, `ass/0.2` и `vne_story_sequence/0.1` этим таском не изменяются.
+12. Используется детерминированная проекция в существующие accepted-scene / Ren'Py структуры.
+
+Собственный gameplay runtime **не вводится**.
+
+**Boundary (продукт vs техническая реализация).** Вышеперечисленное — **agreed architectural principles**.
+Точные entity-схемы, ID namespace и validation, точная manifest-схема, package-version semantics,
+immutable Display Portion pinning mechanism, startup Card projection validation, cross-scene transition
+validation и media-reference serialization — **deferred to SE-1.1**, `OWNER_GATED`, не ратифицированы и
+не реализованы. Здесь не выбирается изменение `ass/0.2` и не создаётся `ass/0.3`. Не утверждается, что
+Display Portions уже поддерживаются текущим exporter. Не предполагается, что одного `start_card_id`
+достаточно, чтобы произвольная Card в середине сцены стала валидным start entry. Не допускаются
+неподдерживаемые cross-scene entry targets.
+
+**Status:** `OWNER_DIRECTION_AGREED / DOCUMENTED_AWAITING_INDEPENDENT_REVIEW` (2026-10-01).
+
+---
+
+## 19. Продуктовое решение — Storage Contract (OD-SE-STORAGE-CONTRACT-01, 2026-10-01)
+
+> Датированный record Owner-направления по гибридному хранению Scenario Editor 1.0 (SE-1). Не отменяет
+> §1–§18; фиксирует agreed storage principles. Это документация направления, а **не** реализованный код и
+> **не** ратифицированный package contract.
+
+**Decision (Owner, `OD-SE-STORAGE-CONTRACT-01`, AGREED — направление).**
+
+Архитектура: **HYBRID STORAGE**.
+
+- **Working mode:** локальная директория проекта с быстрым независимым Card-level persistence.
+- **Full Save:** один полный переносимый package проекта.
+
+Выбранное техническое направление SE-1 (subject to точный versioned contract в SE-1.1):
+
+- **W1** — локальная JSON/media директория.
+- **P1** — переносимый ZIP package.
+
+Обязательные инварианты:
+
+- стабильные identity объектов;
+- переносимые внутренние media references;
+- нет зависимости от абсолютных путей исходного ПК;
+- manifest и integrity verification;
+- atomic save;
+- previous-good recovery;
+- autosave / unfinished-draft recovery;
+- независимое открытие на другом Windows ПК;
+- поддержка необходимых данных проектной Character Library;
+- не модифицируется Character Lab canon;
+- нет API credentials / provider secrets в package.
+
+**Secrets exclusion scope.** Обычный литературный текст не отклоняется лишь потому, что содержит слова
+вроде "password" или "token". Исключение секретов применяется к credential / configuration полям, а не к
+неограниченной художественной прозе.
+
+Расширение `.vscenario` остаётся рабочим именем до одобрения точного package contract.
+
+**Boundary (продукт vs техническая реализация).** Точные технические детали (final entity schemas, ID
+namespace и validation, точная manifest-схема, package-version semantics, immutable Display Portion
+pinning mechanism, media-reference serialization, точный backup/recovery protocol) — **deferred to
+SE-1.1**, `OWNER_GATED`, не ратифицированы и не реализованы.
+
+**Status:** `OWNER_DIRECTION_AGREED / DOCUMENTED_AWAITING_INDEPENDENT_REVIEW` (2026-10-01).

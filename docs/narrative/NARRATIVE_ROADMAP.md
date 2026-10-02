@@ -1016,3 +1016,45 @@ boundaries. `.vscenario` remains a working extension name, not a ratified format
 
 **The SE-0–SE-7 sequence is a proposed updated implementation order pending final Owner approval.** It
 is not an already-completed or independently ratified technical architecture.
+
+### 14.10 SE-1 Owner direction sync — AUTHORING MODEL & STORAGE FOUNDATION (2026-10-01)
+
+> **Precedence.** Dated Owner-direction record for SE-1. It updates the release-sequence status of
+> SE-0/SE-1 without deleting the historical §14.9 "PROPOSED" sequence or the §14.5.B record. This is
+> documentation of agreed principles, not implemented code and not a ratified technical schema.
+
+**Release-sequence status update:**
+
+- `SE-0` — Canonical Product Design Sync: `CLOSED_AND_PUBLISHED`.
+- `SE-1` — Authoring Model & Storage Foundation: `ACTIVE`.
+- `SE-2` … `SE-7`: unchanged (future; not started here).
+
+**SE-1 bounded implementation order** (each slice requires a separate authorization and a test/review
+gate):
+
+- `SE-1.1` — Identity, authoring model and storage contracts, validation and focused tests.
+- `SE-1.2` — Local Card save/reopen and draft recovery.
+- `SE-1.3` — Deterministic Card-to-OrderedASS projection.
+- `SE-1.4` — Portable project save/reopen, hashes and backup.
+- `SE-1.5` — Ren'Py export integration for accepted portions and authored connections.
+
+**Preserved status records (unchanged):**
+
+- `STORY_RUNTIME_SEMANTICS_V1`: `NOT REQUIRED FOR 1.0`.
+- `OD-SE-RUNTIME-01`: `NOT RATIFIED`.
+- `B1–B5`: `NOT STARTED`.
+
+**Owner architectural direction recorded** in `NARRATIVE_DECISIONS_v1.md`:
+
+- `OD-SE-AUTHORING-MODEL-01` (§18) — Project → Connected Cards → Slides → Content Items/Utterances →
+  Display Portions; Card ≠ one SceneBody/OrderedASS; deterministic projection to existing
+  accepted-scene/Ren'Py structures; no custom gameplay runtime.
+- `OD-SE-STORAGE-CONTRACT-01` (§19) — hybrid storage: W1 local JSON/media directory + P1 portable ZIP
+  package, subject to the precise versioned contract in SE-1.1.
+
+**Deferred to SE-1.1** (not ratified here): final entity schemas; ID namespace and validation; exact
+manifest schema; package-version semantics; immutable Display Portion pinning mechanism; startup Card
+projection validation; cross-scene transition validation; media-reference serialization; exact
+backup/recovery protocol. No change to `ass/0.2` and no `ass/0.3` is selected. Display Portions are not
+yet supported by the current exporter. `start_card_id` alone does not make an arbitrary middle-of-scene
+Card a valid start entry; unsupported cross-scene entry targets are not allowed.
