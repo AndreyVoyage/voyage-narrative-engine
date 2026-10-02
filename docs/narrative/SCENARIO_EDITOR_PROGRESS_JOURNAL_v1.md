@@ -235,6 +235,61 @@ Append-only chronological milestone records. Full SHAs are recorded once known;
 - **Commit SHA:** recorded in a subsequent journal update (self-referential SHA
   rule G; this entry is finalized before the commit's own SHA exists).
 
+### B.12 — SE-1.4 Portable Project Container Candidate
+- **TASK_ID:** `VOYAGE_SCENARIO_EDITOR_SE14_PORTABLE_PROJECT_V1`.
+- **Purpose:** implement the SE-1.4 portable `.vscenario` Project container as a
+  versioned technical candidate: export one validated W1 Project snapshot into a
+  standard ZIP package, transfer it, import into a fresh destination, and reopen
+  through existing W1 persistence. No contract blocker: `relative_path` media
+  resolves to local bytes (packaged); `asset_id` media is a preserved external
+  registry reference (no local bytes). No redesign of the authoring model.
+- **Source HEAD:** `8a94c0c5d87f559fbbe5accc860987694181d2ba` (product branch
+  `Voyage-Scenario-Editor`, locally verified; clean tree, empty staging, no
+  unfinished operation).
+- **Feature branch:** `feature/voyage-scenario-editor-se14-portable-v1`.
+- **Feature worktree:** `C:\DEV\Narrative\vne-scenario-se14-portable-v1`.
+- **Implementation scope:** `export_project` / `validate_package` /
+  `import_project`; versioned P1 manifest (namespace/version/schema, project
+  identity, entry inventory with sizes + SHA-256, `media_mapping`,
+  `project_hash`); streaming archive validation with finite limits; atomic
+  publish; destination overwrite protection.
+- **Changed files:** NEW `services/scenario_authoring/portable.py`; MODIFIED
+  `services/scenario_authoring/__init__.py` (public exports only); NEW
+  `tests/unit/test_scenario_authoring_portable.py`; NEW
+  `docs/narrative/SCENARIO_EDITOR_SE14_PORTABLE_PROJECT_DESIGN_DRAFT_V1.md`;
+  APPEND `docs/narrative/SCENARIO_EDITOR_PROGRESS_JOURNAL_v1.md` (this entry).
+- **Tests (after correction):**
+  - SE-1.4 focused (`test_scenario_authoring_portable.py`) → 27 passed
+    (24 original + 3 new overwrite-policy tests).
+  - `tests/unit` (SE-1.1–1.4) → 96 passed.
+  - Regression `tests/scene_body` + `tests/ass` + `tests/story_sequence` →
+    233 passed.
+  - Total 329 passed, 0 failed.
+- **Round-trip evidence:** `import_project(...).to_dict() == source.to_dict()`;
+  authored `relative_path` media bytes equal the originals; `asset_id` references
+  preserved verbatim; imported Project reopens via `ProjectStore`.
+- **Archive security:** absolute/drive/UNC/traversal/backslash paths, symlink and
+  duplicate members, unexpected members, malformed JSON, unsupported versions,
+  and size/hash mismatches all rejected; finite limits (1024 members, 64 MiB per
+  member, 256 MiB total, 1000x ratio); streaming extraction (no `extractall`).
+- **Known limitations:** `asset_id` media byte resolution is external/deferred;
+  recovery snapshots are not packaged; no media deduplication; package media
+  paths are `media/<relative_path>` (double-`media/` when the authored path
+  already starts with `media/`); intermediate media-source directory symlinks
+  and a destination-root symlink are not fully contained; case-insensitive
+  authored media-path collisions are not deduplicated.
+- **Independent review:** the first review returned `C. REWORK_REQUIRED`
+  (MAJOR 1 — `export_project` silently replaced an existing destination).
+- **Correction (this slice):** `export_project` now defaults to CREATE-ONLY
+  (`overwrite=False`) using an atomic no-clobber hard-link; explicit
+  `overwrite=True` authorizes atomic replacement via `os.replace`. Three new
+  tests cover existing-destination preservation, explicit replacement, and the
+  no-clobber publication race.
+- **Review status:** `REVIEW_PENDING` (correction ready for a targeted SE-1.4
+  correction review; P1 remains a TECHNICAL CANDIDATE pending Owner review).
+- **Next permitted operation:** targeted SE-1.4 correction review; no SE-1.5, no
+  commit/merge/push performed in this slice.
+
 ---
 
 ## C. IMPLEMENTED VS PLANNED

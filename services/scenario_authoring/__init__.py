@@ -63,6 +63,21 @@ from .projection import (
     UnsupportedProjectionError,
     project_scenes,
 )
+from .portable import (
+    PACKAGE_EXTENSION,
+    PACKAGE_FORMAT_NAMESPACE,
+    PACKAGE_FORMAT_VERSION,
+    PACKAGE_MANIFEST_SCHEMA_VERSION,
+    ExportReport,
+    PackageSummary,
+    PortableProjectError,
+    PortableProjectExportError,
+    PortableProjectImportError,
+    PortableProjectValidationError,
+    export_project,
+    import_project,
+    validate_package,
+)
 
 __all__ = [
     # Model
@@ -113,4 +128,18 @@ __all__ = [
     "project_scenes",
     "ProjectionError",
     "UnsupportedProjectionError",
+    # Portable project container (SE-1.4)
+    "PACKAGE_EXTENSION",
+    "PACKAGE_FORMAT_NAMESPACE",
+    "PACKAGE_FORMAT_VERSION",
+    "PACKAGE_MANIFEST_SCHEMA_VERSION",
+    "ExportReport",
+    "PackageSummary",
+    "PortableProjectError",
+    "PortableProjectExportError",
+    "PortableProjectValidationError",
+    "PortableProjectImportError",
+    "export_project",
+    "validate_package",
+    "import_project",
 ]
