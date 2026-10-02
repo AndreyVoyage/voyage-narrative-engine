@@ -176,6 +176,67 @@ Append-only chronological milestone records. Full SHAs are recorded once known;
 
 ---
 
+### B.11 — SE-1.3 Deterministic Projection Candidate
+- **TASK_ID:** `VOYAGE_SCENARIO_EDITOR_SE13_DETERMINISTIC_PROJECTION_V1`.
+- **Purpose:** implement a pure deterministic authoring→OrderedASS projection
+  boundary (Card→SceneBody→`build_ordered_ass`) with explicit scene-map config,
+  explicit connection resolution, deterministic validation, and fail-closed
+  rejection of unsupported content. No custom story runtime, no canonical-schema
+  change.
+- **Source HEAD:** `7de2f0bec78c7300f85f6c73c38f7783cd6fd53d` (product branch
+  `Voyage-Scenario-Editor`, locally verified; clean tree, empty staging).
+- **Feature branch:** `feature/voyage-scenario-editor-se13-projection-v1`.
+- **Feature worktree:** `C:\DEV\Narrative\vne-scenario-se13-projection-v1`.
+- **Implemented scope:** `project_scenes(project, config)` → `Projection`
+  (`scene_bodies`, `scene_order`, `start_scene_id`, `portion_manifests`);
+  `ProjectionConfig` / `SceneMembership` explicit scene map;
+  `supported_scene_transitions` allowlist; `DisplayPortionManifest` hash-verified
+  technical candidate; `ProjectionError` / `UnsupportedProjectionError`.
+- **Changed files:** NEW `services/scenario_authoring/projection.py`; MODIFIED
+  `services/scenario_authoring/__init__.py` (public exports only); NEW
+  `tests/unit/test_scenario_authoring_projection.py`; NEW
+  `docs/narrative/SCENARIO_EDITOR_SE13_PROJECTION_DESIGN_DRAFT_V1.md`; APPEND
+  `docs/narrative/SCENARIO_EDITOR_PROGRESS_JOURNAL_v1.md` (this entry).
+- **Tests:**
+  - SE-1.3 focused (`test_scenario_authoring_projection.py`) → 21 passed.
+  - `tests/unit` (SE-1.1 + SE-1.2 + SE-1.3) → 69 passed.
+  - Regression `tests/scene_body` (53), `tests/ass` (154), `tests/story_sequence`
+    (26) → 233 passed.
+  - Total 302 passed, 0 failed.
+- **Compatibility findings:** projected `SceneBody` objects pass
+  `validate_acceptance_complete` and project to valid `ass/0.2` via
+  `build_ordered_ass` (round-trips `serialize_ordered_ass`/`parse_ordered_ass`);
+  `scene_order` + `start_scene_id` are the exact inputs for `StorySequence`. No
+  canonical contract changed.
+- **Technical limitations:** no reachability/cycle analysis; media bytes not
+  read/copied; `asset_id` syntactically validated only; emotion catalog
+  unratified; Display Portion metadata preserved only in the technical-candidate
+  sidecar (Owner-gated alternatives documented).
+- **Independent review:** `VOYAGE_SCENARIO_EDITOR_SE13_INDEPENDENT_REVIEW_REPORT` →
+  B. PASS_WITH_OPTIONAL_NOTES (0 blocker, 0 major). Evidence: 68 focused and 233
+  regression tests passed (301 total, zero failed). One bounded MINOR diagnostic
+  correction recommended; no architectural rework required.
+- **Diagnostic correction:** `_card_segments()` now detects a background change
+  appearing after an already encountered CHOICE before emitting its
+  `VisualChangeEvent`, raising `UnsupportedProjectionError` (a `ProjectionError`)
+  with the reason "content after a CHOICE item is unsupported" instead of the
+  misleading "branch connections present but the Card has no CHOICE". Covered by
+  one added regression test. Fail-closed; navigation, target semantics, content
+  mappings, canonical contracts and supported capabilities unchanged.
+- **Open technical note (unresolved):** `DisplayPortionManifest` references
+  `utterance_id`, but project-wide `utterance_id` uniqueness is not enforced.
+  Before the manifest becomes an accepted publication artifact, this identity
+  ambiguity must be resolved. `DisplayPortionManifest` remains a
+  `TECHNICAL_DRAFT / IMPLEMENTATION_CANDIDATE`, NOT accepted publication truth.
+- **Review status:** B. PASS_WITH_OPTIONAL_NOTES (independent review; the single
+  bounded MINOR correction is applied and covered in this commit).
+- **Next permitted operation:** Owner-controlled SE-1.4 — Portable Project
+  Container.
+- **Commit SHA:** recorded in a subsequent journal update (self-referential SHA
+  rule G; this entry is finalized before the commit's own SHA exists).
+
+---
+
 ## C. IMPLEMENTED VS PLANNED
 
 ### Implemented in SE-1.1 (locally committed)

@@ -4,8 +4,15 @@
 Scenario Authoring foundation (SE-1.1) -- public API.
 
 Exposes the pure, UI-independent authoring model plus the cross-object
-integrity boundary. Self-contained (stdlib only); never imports an existing
-service, the Ren'Py exporter, or Character Lab.
+integrity boundary, local persistence (SE-1.2), and the deterministic
+authoring->OrderedASS projection boundary (SE-1.3).
+
+The model/validation/persistence modules are self-contained (stdlib only) and
+never import an existing service, the Ren'Py exporter, or Character Lab. The
+``projection`` module is the deliberate, documented SE-1.3 boundary that
+imports only the accepted ``services.scene_body`` contract to produce
+``SceneBody`` output (which the existing ``build_ordered_ass`` then projects to
+``ass/0.2``). No canonical accepted-scene schema is modified.
 """
 
 from __future__ import annotations
@@ -43,6 +50,18 @@ from .persistence import (
     ScenarioAuthoringNotFoundError,
     ScenarioAuthoringRecoveryError,
     ScenarioAuthoringStorageError,
+)
+from .projection import (
+    DISPLAY_PORTION_MANIFEST_SCHEMA_ID,
+    DisplayPortionManifest,
+    OverrideRecord,
+    PortionRecord,
+    Projection,
+    ProjectionConfig,
+    ProjectionError,
+    SceneMembership,
+    UnsupportedProjectionError,
+    project_scenes,
 )
 
 __all__ = [
@@ -83,4 +102,15 @@ __all__ = [
     "ScenarioAuthoringNotFoundError",
     "ScenarioAuthoringCorruptionError",
     "ScenarioAuthoringRecoveryError",
+    # Projection (SE-1.3)
+    "DISPLAY_PORTION_MANIFEST_SCHEMA_ID",
+    "SceneMembership",
+    "ProjectionConfig",
+    "Projection",
+    "DisplayPortionManifest",
+    "PortionRecord",
+    "OverrideRecord",
+    "project_scenes",
+    "ProjectionError",
+    "UnsupportedProjectionError",
 ]
