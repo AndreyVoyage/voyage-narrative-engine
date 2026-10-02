@@ -78,6 +78,10 @@ from .portable import (
     import_project,
     validate_package,
 )
+from .renpy_integration import (
+    RenpyExportResult,
+    export_project_to_renpy,
+)
 
 __all__ = [
     # Model
@@ -142,4 +146,7 @@ __all__ = [
     "export_project",
     "validate_package",
     "import_project",
+    # Ren'Py export integration (SE-1.5)
+    "RenpyExportResult",
+    "export_project_to_renpy",
 ]

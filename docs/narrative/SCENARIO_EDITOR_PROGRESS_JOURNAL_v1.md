@@ -12,7 +12,15 @@
 
 ---
 
-## A. CURRENT HANDOFF
+## A. HISTORICAL SE-1.1 HANDOFF SNAPSHOT (NOT LIVE STATUS)
+
+> **Recovery instruction.** This section preserves the historical SE-1.1 handoff
+> evidence verbatim and is **not** the live project-status authority. It is **not**
+> updated after each commit or push. For current state: inspect the actual Git
+> worktrees, branches, HEADs, and remote refs; read the latest chronological
+> milestone in section B; and use `00_DOCUMENT_INDEX.md` plus the canonical
+> decisions to recover authoritative product context. The SHA values below are
+> historical and must **not** be treated as the current product or feature HEAD.
 
 | Field | Value |
 |---|---|
@@ -288,6 +296,59 @@ Append-only chronological milestone records. Full SHAs are recorded once known;
 - **Review status:** `REVIEW_PENDING` (correction ready for a targeted SE-1.4
   correction review; P1 remains a TECHNICAL CANDIDATE pending Owner review).
 - **Next permitted operation:** targeted SE-1.4 correction review; no SE-1.5, no
+  commit/merge/push performed in this slice.
+
+### B.13 — SE-1.5 Ren'Py Integration Candidate
+- **TASK_ID:** `VOYAGE_SCENARIO_EDITOR_SE15_RENPY_INTEGRATION_V1`.
+- **Purpose:** connect the Scenario Editor authoring pipeline to the EXISTING
+  NARRATIVE Ren'Py exporter (`tools/vne_to_renpy`) through a pure, UI-independent
+  bridge. No second renderer, no custom exporter, no new accepted schema, no
+  acceptance/publication, no commit/merge/push.
+- **Source HEAD:** `d5a4e8d2630bdf5ee6d92a9b566c2b37ddf0cb31` (product branch
+  `Voyage-Scenario-Editor`, locally verified; clean tree, empty staging, no
+  unfinished operation).
+- **Feature branch:** `feature/voyage-scenario-editor-se15-renpy-v1`.
+- **Feature worktree:** `C:\DEV\Narrative\vne-scenario-se15-renpy-v1` (created
+  directly from the verified product HEAD; product worktree untouched).
+- **Implementation scope:** `export_project_to_renpy` + `RenpyExportResult` —
+  validate → `project_scenes` → `build_ordered_ass` → `StorySequence` →
+  `build_ordered_project_candidate`; deterministic provenance (`ass_id`/`version`/
+  `source_ref`/`source_hash`); Display Portion manifests carried (not exported).
+- **Changed files:** NEW `services/scenario_authoring/renpy_integration.py`;
+  MODIFIED `services/scenario_authoring/__init__.py` (public exports only); NEW
+  `tests/unit/test_scenario_authoring_renpy_integration.py`; NEW
+  `docs/narrative/SCENARIO_EDITOR_SE15_RENPY_INTEGRATION_DESIGN_DRAFT_V1.md`;
+  APPEND `docs/narrative/SCENARIO_EDITOR_PROGRESS_JOURNAL_v1.md` (this entry).
+- **Tests:** SE-1.5 focused (`test_scenario_authoring_renpy_integration.py`) →
+  14 passed (T01–T13 plus one real multi-Card vertical example asserting actual
+  generated `.rpy` source content and navigation, not just successful returns).
+  - Focused validation `tests/unit` → 110 passed.
+  - Existing exporter `tests/vne_to_renpy` → 249 passed, 4 skipped.
+  - Relevant regressions `tests/scene_body tests/ass tests/story_sequence` →
+    233 passed.
+- **Full-suite executor report:** 3637 passed; 55 skipped; 8 failed; 10
+  collection errors. The 10 collection errors were independently verified as
+  pre-existing environment/dependency issues (missing `voyage_character_platform`
+  VCP dependency). The 8 failures were reported as pre-existing by the executor,
+  but their independent baseline status remains **UNVERIFIED**. A fully passing
+  repository-wide suite is **not** claimed. The earlier `3623 passed` figure is
+  historical/pre-change baseline evidence, not the post-SE-1.5 result.
+- **Exporter evidence:** the existing `build_ordered_project_candidate` is the
+  only caller of the asset resolver (verified by spy); the real exporter's
+  deterministic header and generated labels are present in the output (no
+  substitute renderer was introduced).
+- **Independent review:** `VOYAGE_SCENARIO_EDITOR_SE15_INDEPENDENT_REVIEW_REPORT`
+  → B. PASS_WITH_OPTIONAL_NOTES. BLOCKERS: 0. MAJOR: 0. REQUIRED_CORRECTIONS:
+  NONE. SE-1.5 is release-ready as an explicitly limited integration bridge, not
+  a complete per-portion presentation system.
+- **Remaining limitations:** per-portion Display Portion presentation is not
+  representable in OrderedASS / ass/0.2 / the exporter (the whole utterance text
+  is exported; portions are carried as a technical-candidate sidecar and are not
+  claimed as accepted truth); `DisplayPortionManifest` utterance identity remains
+  ambiguous (`utterance_id` is not globally unique); `character_symbols` is
+  caller-owned; no Ren'Py SDK execution (SDK unavailable in this environment, not
+  installed); no canonical publication to `novel/game/`.
+- **Next permitted operation:** independent SE-1.5 integration review; no
   commit/merge/push performed in this slice.
 
 ---
