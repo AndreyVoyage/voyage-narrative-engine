@@ -36,6 +36,14 @@ from .model import (
     resolve_effective_overrides,
 )
 from .validation import is_project_consistent, validate_project
+from .persistence import (
+    STORAGE_SCHEMA_VERSION,
+    ProjectStore,
+    ScenarioAuthoringCorruptionError,
+    ScenarioAuthoringNotFoundError,
+    ScenarioAuthoringRecoveryError,
+    ScenarioAuthoringStorageError,
+)
 
 __all__ = [
     # Model
@@ -68,4 +76,11 @@ __all__ = [
     # Errors
     "ScenarioAuthoringError",
     "ScenarioAuthoringValidationError",
+    # Persistence (SE-1.2)
+    "STORAGE_SCHEMA_VERSION",
+    "ProjectStore",
+    "ScenarioAuthoringStorageError",
+    "ScenarioAuthoringNotFoundError",
+    "ScenarioAuthoringCorruptionError",
+    "ScenarioAuthoringRecoveryError",
 ]

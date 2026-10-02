@@ -141,6 +141,39 @@ Append-only chronological milestone records. Full SHAs are recorded once known;
 - **Lifecycle state:** **LOCAL_COMMITTED** — NOT integrated, NOT published.
 - **Next dependency:** Owner-controlled SE-1.2 authorization (not automatic).
 
+### B.10 — SE-1.2 Local Card Persistence Candidate
+- **TASK_ID:** `VOYAGE_SCENARIO_EDITOR_SE12_LOCAL_CARD_PERSISTENCE_V1`.
+- **Purpose:** implement minimal local Project/Card persistence (W1) and explicit
+  previous-good recovery over the SE-1.1 authoring model.
+- **Source HEAD:** `9db94d8e4d55f3f9f290c4db62638d86776d52b6` (product branch
+  `Voyage-Scenario-Editor`).
+- **Feature branch:** `feature/voyage-scenario-editor-se12-persistence-v1`.
+- **Feature worktree:** `C:\DEV\Narrative\vne-scenario-se12-persistence-v1`.
+- **Implemented scope:** `ProjectStore` (`save` / `save_card` / `load` / `recover`
+  / `exists` / `has_recovery`); W1 layout (`project.json` index + `cards/<id>.json`
+  + `recovery/`); per-Card `content_hash`; atomic temp+replace writes; safe path
+  validation; fail-closed corruption detection.
+- **Changed files:** NEW `services/scenario_authoring/persistence.py`; MODIFIED
+  `services/scenario_authoring/__init__.py` (public exports only); NEW
+  `tests/unit/test_scenario_authoring_persistence.py`; NEW
+  `docs/narrative/SCENARIO_EDITOR_SE12_LOCAL_PERSISTENCE_DESIGN_DRAFT_V1.md`;
+  APPEND `docs/narrative/SCENARIO_EDITOR_PROGRESS_JOURNAL_v1.md` (this entry).
+- **Tests:**
+  - `py -B -m pytest tests/unit/test_scenario_authoring_persistence.py -q -p no:cacheprovider` → 17 passed.
+  - SE-1.1 focused (`test_scenario_authoring_model.py`, `test_scenario_authoring_validation.py`) → 31 passed.
+  - Regression (`tests/scene_body`, `tests/ass`, `tests/story_sequence`) → 233 passed.
+  - Total 281 passed, 0 failed.
+- **Technical decisions:** index stores ordered membership + per-Card hash (not
+  full content); Cards persisted independently; Card-first-then-index publication
+  order; previous-good snapshot under `recovery/`; no claimed multi-file atomicity;
+  reconstruction via `project_from_dict` + `validate_project`.
+- **Known limitations:** single-level previous-good; orphan card files not flagged;
+  no index self-hash; no media-byte copying (SE-1.4).
+- **Review status:** `IMPLEMENTATION_CANDIDATE / REVIEW_PENDING` — no independent
+  review has occurred yet.
+- **Next permitted operation:** `INDEPENDENT_SE12_CODE_STORAGE_AND_JOURNAL_REVIEW`.
+- **Commit SHA:** NOT COMMITTED (0 commits; no merge, no push, no network).
+
 ---
 
 ## C. IMPLEMENTED VS PLANNED
